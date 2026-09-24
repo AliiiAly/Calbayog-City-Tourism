@@ -31,8 +31,20 @@ const getTokenFromRequest = (req) => {
     return null;
   }
 
+  /*
+    Express normally stores the Authorization header
+    as req.headers.authorization.
+
+    req.get("authorization") provides an additional
+    reliable way to retrieve the header.
+  */
+
   const authHeader =
-    req.headers.authorization || req.headers.Authorization;
+    (typeof req.get === "function"
+      ? req.get("authorization")
+      : null) ||
+    req.headers.authorization ||
+    req.headers.Authorization;
 
   if (!authHeader) {
     return null;
@@ -153,7 +165,10 @@ const verifyToken = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, getJwtSecret());
+    const decoded = jwt.verify(
+      token,
+      getJwtSecret()
+    );
 
     req.auth = decoded;
 
@@ -167,7 +182,8 @@ const verifyToken = (req, res, next) => {
 
     return res.status(401).json({
       success: false,
-      message: "Unauthorized - invalid or expired token.",
+      message:
+        "Unauthorized - invalid or expired token.",
     });
   }
 };
@@ -182,12 +198,16 @@ const protect = (req, res, next) => {
   if (!token) {
     return res.status(401).json({
       success: false,
-      message: "Unauthorized - no admin token provided.",
+      message:
+        "Unauthorized - no admin token provided.",
     });
   }
 
   try {
-    const decoded = jwt.verify(token, getJwtSecret());
+    const decoded = jwt.verify(
+      token,
+      getJwtSecret()
+    );
 
     /*
       Store the decoded token information.
@@ -211,7 +231,8 @@ const protect = (req, res, next) => {
 
     return res.status(401).json({
       success: false,
-      message: "Unauthorized - invalid or expired admin token.",
+      message:
+        "Unauthorized - invalid or expired admin token.",
     });
   }
 };
@@ -226,16 +247,24 @@ const protectUser = (req, res, next) => {
   if (!token) {
     return res.status(401).json({
       success: false,
-      message: "Unauthorized - no user token provided.",
+      message:
+        "Unauthorized - no user token provided.",
     });
   }
 
   try {
-    const decoded = jwt.verify(token, getJwtSecret());
+    const decoded = jwt.verify(
+      token,
+      getJwtSecret()
+    );
 
     const user = createUserObject(decoded);
 
-    if (!user || user.id === null || user.id === undefined) {
+    if (
+      !user ||
+      user.id === null ||
+      user.id === undefined
+    ) {
       console.error(
         "User JWT error: user ID is missing from token payload.",
         {
@@ -245,7 +274,8 @@ const protectUser = (req, res, next) => {
 
       return res.status(401).json({
         success: false,
-        message: "Unauthorized - user ID is missing.",
+        message:
+          "Unauthorized - user ID is missing.",
       });
     }
 
@@ -279,7 +309,8 @@ const protectUser = (req, res, next) => {
 
     return res.status(401).json({
       success: false,
-      message: "Unauthorized - invalid or expired user token.",
+      message:
+        "Unauthorized - invalid or expired user token.",
     });
   }
 };
@@ -316,7 +347,10 @@ const optionalUser = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, getJwtSecret());
+    const decoded = jwt.verify(
+      token,
+      getJwtSecret()
+    );
 
     const user = createUserObject(decoded);
 
