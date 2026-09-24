@@ -19,7 +19,7 @@ type LoginView =
 
 const API_URL =
   import.meta.env.VITE_API_URL ||
-  "http://localhost:5000/api";
+  "https://calbayog-city-tourism.onrender.com/api";
 
 const GMAIL_REGEX =
   /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
@@ -262,7 +262,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
       /* =================================================
          IMPORTANT AUTHCONTEXT FIX
-         
+
          Your corrected AuthContext expects:
 
            userLogin(userData, accessToken)
