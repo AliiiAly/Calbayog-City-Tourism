@@ -8,10 +8,11 @@ import { supabase } from "./supabase";
 
 export const isNative = Capacitor.isNativePlatform();
 
-const BASE_URL = "/api";
+const BASE_URL =
+  "https://calbayog-city-tourism.onrender.com/api";
 
 export const SERVER_BASE_URL =
-  "http://192.168.254.113:5000/api";
+  "https://calbayog-city-tourism.onrender.com/api";
 
 // =========================================================
 // SUPABASE
