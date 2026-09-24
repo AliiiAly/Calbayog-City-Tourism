@@ -1,0 +1,9 @@
+{
+  "appId": "com.calbayog.tourism",
+  "appName": "Calbayog Tourism",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  }
+}

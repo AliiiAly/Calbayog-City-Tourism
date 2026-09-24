@@ -1,0 +1,251 @@
+/* For information on how to create your own theme, please refer to:
+http://ionicframework.com/docs/theming/ */
+
+/* =========================================================
+   CALBAYOG CITY TOURISM
+   Shared Ionic Theme Variables
+   Matches the existing website design direction
+   ========================================================= */
+
+:root {
+  /* Primary brand colors */
+  --ion-color-primary: #1a7a4a;
+  --ion-color-primary-rgb: 26, 122, 74;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #176b41;
+  --ion-color-primary-tint: #31875c;
+
+  /* Secondary ocean color */
+  --ion-color-secondary: #0077b6;
+  --ion-color-secondary-rgb: 0, 119, 182;
+  --ion-color-secondary-contrast: #ffffff;
+  --ion-color-secondary-contrast-rgb: 255, 255, 255;
+  --ion-color-secondary-shade: #0069a0;
+  --ion-color-secondary-tint: #1a85bd;
+
+  /* Tertiary amber accent */
+  --ion-color-tertiary: #f4a226;
+  --ion-color-tertiary-rgb: 244, 162, 38;
+  --ion-color-tertiary-contrast: #172019;
+  --ion-color-tertiary-contrast-rgb: 23, 32, 25;
+  --ion-color-tertiary-shade: #d78f21;
+  --ion-color-tertiary-tint: #f5ac3c;
+
+  /* Success */
+  --ion-color-success: #2e8b57;
+  --ion-color-success-rgb: 46, 139, 87;
+  --ion-color-success-contrast: #ffffff;
+  --ion-color-success-contrast-rgb: 255, 255, 255;
+  --ion-color-success-shade: #287a4c;
+  --ion-color-success-tint: #439768;
+
+  /* Warning */
+  --ion-color-warning: #f4a226;
+  --ion-color-warning-rgb: 244, 162, 38;
+  --ion-color-warning-contrast: #172019;
+  --ion-color-warning-contrast-rgb: 23, 32, 25;
+  --ion-color-warning-shade: #d78f21;
+  --ion-color-warning-tint: #f5ac3c;
+
+  /* Danger */
+  --ion-color-danger: #d64545;
+  --ion-color-danger-rgb: 214, 69, 69;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-contrast-rgb: 255, 255, 255;
+  --ion-color-danger-shade: #bd3d3d;
+  --ion-color-danger-tint: #db5858;
+
+  /* Neutral colors */
+  --ion-color-light: #f8faf8;
+  --ion-color-light-rgb: 248, 250, 248;
+  --ion-color-light-contrast: #172019;
+  --ion-color-light-contrast-rgb: 23, 32, 25;
+  --ion-color-light-shade: #dadcd9;
+  --ion-color-light-tint: #f9fbf9;
+
+  --ion-color-medium: #737d77;
+  --ion-color-medium-rgb: 115, 125, 119;
+  --ion-color-medium-contrast: #ffffff;
+  --ion-color-medium-contrast-rgb: 255, 255, 255;
+  --ion-color-medium-shade: #656e69;
+  --ion-color-medium-tint: #818a85;
+
+  --ion-color-dark: #172019;
+  --ion-color-dark-rgb: 23, 32, 25;
+  --ion-color-dark-contrast: #ffffff;
+  --ion-color-dark-contrast-rgb: 255, 255, 255;
+  --ion-color-dark-shade: #141c16;
+  --ion-color-dark-tint: #2e362f;
+
+  /* Website typography */
+  --ion-font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  --app-heading-font:
+    "Poppins",
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  /* Website surfaces */
+  --app-background: #f8faf8;
+  --app-surface: #ffffff;
+  --app-surface-muted: #f0f5f1;
+  --app-text: #172019;
+  --app-text-muted: #66736b;
+  --app-border: rgba(23, 32, 25, 0.1);
+
+  /* Brand colors for custom components */
+  --app-primary: #1a7a4a;
+  --app-primary-dark: #145f38;
+  --app-ocean: #0077b6;
+  --app-amber: #f4a226;
+
+  /* Border radius */
+  --app-radius-sm: 8px;
+  --app-radius-md: 12px;
+  --app-radius-lg: 18px;
+  --app-radius-xl: 24px;
+  --app-radius-pill: 999px;
+
+  /* Shadows */
+  --app-shadow-sm:
+    0 2px 8px rgba(20, 95, 56, 0.06);
+
+  --app-shadow-md:
+    0 8px 24px rgba(20, 95, 56, 0.1);
+
+  --app-shadow-lg:
+    0 16px 40px rgba(20, 95, 56, 0.14);
+
+  /* Ionic shape defaults */
+  --ion-border-radius: 12px;
+}
+
+/* =========================================================
+   GLOBAL BODY SETTINGS
+   ========================================================= */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  min-height: 100%;
+  background: var(--app-background);
+  color: var(--app-text);
+  font-family: var(--ion-font-family);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+/* =========================================================
+   TYPOGRAPHY
+   ========================================================= */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin-top: 0;
+  font-family: var(--app-heading-font);
+  font-weight: 700;
+  color: var(--app-text);
+}
+
+p {
+  line-height: 1.65;
+}
+
+/* =========================================================
+   LIGHT MODE
+   ========================================================= */
+
+:root,
+body {
+  --ion-background-color: var(--app-background);
+  --ion-background-color-rgb: 248, 250, 248;
+
+  --ion-text-color: var(--app-text);
+  --ion-text-color-rgb: 23, 32, 25;
+
+  --ion-card-background: var(--app-surface);
+  --ion-item-background: var(--app-surface);
+
+  --ion-border-color: var(--app-border);
+}
+
+/* =========================================================
+   DARK MODE
+   ========================================================= */
+
+body.dark,
+.ion-palette-dark {
+  --app-background: #101b15;
+  --app-surface: #18271e;
+  --app-surface-muted: #203329;
+  --app-text: #f2f7f3;
+  --app-text-muted: #b5c5b9;
+  --app-border: rgba(242, 247, 243, 0.12);
+
+  --ion-background-color: #101b15;
+  --ion-background-color-rgb: 16, 27, 21;
+
+  --ion-text-color: #f2f7f3;
+  --ion-text-color-rgb: 242, 247, 243;
+
+  --ion-card-background: #18271e;
+  --ion-item-background: #18271e;
+  --ion-border-color: var(--app-border);
+}
+
+/* =========================================================
+   COMMON IONIC ELEMENTS
+   ========================================================= */
+
+ion-content {
+  --background: var(--app-background);
+  color: var(--app-text);
+}
+
+ion-toolbar {
+  --background: var(--app-surface);
+  --color: var(--app-text);
+}
+
+ion-card {
+  border-radius: var(--app-radius-lg);
+  box-shadow: var(--app-shadow-sm);
+  overflow: hidden;
+}
+
+ion-button {
+  --border-radius: var(--app-radius-pill);
+  font-family: var(--ion-font-family);
+  font-weight: 600;
+  text-transform: none;
+}
+
+ion-input,
+ion-textarea,
+ion-select {
+  --highlight-color-focused: var(--app-primary);
+}
+
+ion-item {
+  --background: var(--app-surface);
+  --border-color: var(--app-border);
+}
