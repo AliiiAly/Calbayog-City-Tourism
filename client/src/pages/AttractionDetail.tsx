@@ -917,7 +917,7 @@ const AttractionDetail: React.FC = () => {
 
           .detail-media-actions {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: flex-end;
             flex-wrap: wrap;
             gap: 8px;
@@ -947,6 +947,7 @@ const AttractionDetail: React.FC = () => {
             font-weight: 900;
             cursor: pointer;
             box-shadow: none;
+            align-self: flex-start;
             transition:
               color 0.2s ease,
               transform 0.2s ease;
