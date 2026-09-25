@@ -1208,6 +1208,16 @@ const AttractionDetail: React.FC = () => {
             font-weight: 400;
             line-height: 0.95;
             letter-spacing: 0.015em;
+            text-transform: uppercase;
+            font-variant: normal;
+            font-feature-settings: normal;
+          }
+
+          .detail-title::first-letter {
+            font-family: "Barabara" !important;
+            font-size: inherit;
+            font-weight: 400;
+            text-transform: inherit;
           }
 
           /* =================================================
