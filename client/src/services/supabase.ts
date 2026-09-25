@@ -1,89 +1,181 @@
-import { createClient, RealtimeChannel } from '@supabase/supabase-js';
+import {
+  createClient,
+  RealtimeChannel,
+} from "@supabase/supabase-js";
 
-const SUPABASE_URL = 'https://wemjefizjcbjvtplllxa.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndlbWplZml6amNianZ0cGxsbHhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDA1MDUsImV4cCI6MjA5NzI3NjUwNX0.jYyiWGUgJ61ztwqDWoUjR5GAHZJ0TwPHkcA_lXhAWuM';
+// =========================================================
+// SUPABASE CONFIGURATION
+// =========================================================
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL =
+  "https://wemjefizjcbjvtplllxa.supabase.co";
 
-// Subscription types
-export type SubscriptionCallback<T extends Record<string, any> = Record<string, any>> = (payload: any) => void;
+// This is the public Supabase anon key.
+// NEVER use the Supabase service_role key in frontend code.
+export const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndlbWplZml6amNianZ0cGxsbHhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDA1MDUsImV4cCI6MjA5NzI3NjUwNX0.jYyiWGUgJ61ztwqDWoUjR5GAHZJ0TwPHkcA_lXhAWuM";
 
-// Active subscriptions map
-const subscriptions = new Map<string, RealtimeChannel>();
+export const supabase = createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+);
 
-// Helper to create a subscription
-export const subscribeToTable = <T extends Record<string, any> = Record<string, any>>(
+// =========================================================
+// SUBSCRIPTION TYPES
+// =========================================================
+
+export type SubscriptionCallback<
+  T extends Record<string, any> = Record<string, any>,
+> = (payload: any) => void;
+
+// =========================================================
+// ACTIVE SUBSCRIPTIONS
+// =========================================================
+
+const subscriptions = new Map<
+  string,
+  RealtimeChannel
+>();
+
+// =========================================================
+// GENERIC TABLE SUBSCRIPTION
+// =========================================================
+
+export const subscribeToTable = <
+  T extends Record<string, any> = Record<string, any>,
+>(
   table: string,
-  event: 'INSERT' | 'UPDATE' | 'DELETE' | '*',
+  event: "INSERT" | "UPDATE" | "DELETE" | "*",
   callback: SubscriptionCallback<T>,
-  filter?: string
+  filter?: string,
 ): RealtimeChannel => {
   const channelName = `${table}_${event}_${Date.now()}`;
-  
+
   const channel = supabase
     .channel(channelName)
     .on(
-      'postgres_changes' as any,
+      "postgres_changes" as any,
       {
         event,
-        schema: 'public',
+        schema: "public",
         table,
-        filter
+        filter,
       },
-      callback
+      callback,
     )
     .subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        console.log(`✅ Subscribed to ${table} (${event})`);
-      } else if (status === 'CHANNEL_ERROR') {
-        console.error(`❌ Subscription error for ${table}`);
+      if (status === "SUBSCRIBED") {
+        console.log(
+          `✅ Subscribed to ${table} (${event})`,
+        );
+      } else if (status === "CHANNEL_ERROR") {
+        console.error(
+          `❌ Subscription error for ${table}`,
+        );
       }
     });
 
   subscriptions.set(channelName, channel);
+
   return channel;
 };
 
-// Unsubscribe from a specific channel
-export const unsubscribe = (channelName: string) => {
-  const channel = subscriptions.get(channelName);
+// =========================================================
+// UNSUBSCRIBE FROM SPECIFIC CHANNEL
+// =========================================================
+
+export const unsubscribe = (
+  channelName: string,
+) => {
+  const channel =
+    subscriptions.get(channelName);
+
   if (channel) {
     supabase.removeChannel(channel);
     subscriptions.delete(channelName);
-    console.log(`🔌 Unsubscribed from ${channelName}`);
+
+    console.log(
+      `🔌 Unsubscribed from ${channelName}`,
+    );
   }
 };
 
-// Unsubscribe from all channels
+// =========================================================
+// UNSUBSCRIBE FROM ALL CHANNELS
+// =========================================================
+
 export const unsubscribeAll = () => {
   subscriptions.forEach((channel, name) => {
     supabase.removeChannel(channel);
-    console.log(`🔌 Unsubscribed from ${name}`);
+
+    console.log(
+      `🔌 Unsubscribed from ${name}`,
+    );
   });
+
   subscriptions.clear();
 };
 
-// Specific subscription helpers
-export const subscribeToDestinations = (callback: SubscriptionCallback) => {
-  return subscribeToTable('destinations', '*', callback);
+// =========================================================
+// SPECIFIC SUBSCRIPTION HELPERS
+// =========================================================
+
+export const subscribeToDestinations = (
+  callback: SubscriptionCallback,
+) => {
+  return subscribeToTable(
+    "destinations",
+    "*",
+    callback,
+  );
 };
 
-export const subscribeToEvents = (callback: SubscriptionCallback) => {
-  return subscribeToTable('events', '*', callback);
+export const subscribeToEvents = (
+  callback: SubscriptionCallback,
+) => {
+  return subscribeToTable(
+    "events",
+    "*",
+    callback,
+  );
 };
 
-export const subscribeToAccommodations = (callback: SubscriptionCallback) => {
-  return subscribeToTable('accommodations', '*', callback);
+export const subscribeToAccommodations = (
+  callback: SubscriptionCallback,
+) => {
+  return subscribeToTable(
+    "accommodations",
+    "*",
+    callback,
+  );
 };
 
-export const subscribeToGuides = (callback: SubscriptionCallback) => {
-  return subscribeToTable('guides', '*', callback);
+export const subscribeToGuides = (
+  callback: SubscriptionCallback,
+) => {
+  return subscribeToTable(
+    "guides",
+    "*",
+    callback,
+  );
 };
 
-export const subscribeToGettingThere = (callback: SubscriptionCallback) => {
-  return subscribeToTable('getting_there', '*', callback);
+export const subscribeToGettingThere = (
+  callback: SubscriptionCallback,
+) => {
+  return subscribeToTable(
+    "getting_there",
+    "*",
+    callback,
+  );
 };
 
-export const subscribeToItineraryRequests = (callback: SubscriptionCallback) => {
-  return subscribeToTable('itinerary_requests', '*', callback);
+export const subscribeToItineraryRequests = (
+  callback: SubscriptionCallback,
+) => {
+  return subscribeToTable(
+    "itinerary_requests",
+    "*",
+    callback,
+  );
 };
