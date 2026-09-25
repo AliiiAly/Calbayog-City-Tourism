@@ -1343,34 +1343,42 @@ export const createMyMemory = async (
 
   const userToken = getUserToken();
 
-  if (!userToken) {
+  if (!userToken || !userToken.trim()) {
     throw new Error(
       "User authentication is missing. Please log in again before submitting a memory.",
     );
   }
 
-  const response = await userApi.post<{
-  memory: UserMemory;
-  message?: string;
-}>(
-  "/memories",
-  {
-    attraction_id: payload.attraction_id,
-    caption: payload.caption.trim(),
-    image_urls: cleanedImageUrls,
-  },
-  {
+  const requestUrl =
+    "https://calbayog-city-tourism.onrender.com/api/memories";
+
+  const response = await fetch(requestUrl, {
+    method: "POST",
     headers: {
-      Authorization: `Bearer ${userToken}`,
-      "X-Client-Type": "user",
       "Content-Type": "application/json",
+      "Authorization": `Bearer ${userToken.trim()}`,
+      "X-Client-Type": "user",
     },
-  },
-);
+    body: JSON.stringify({
+      attraction_id: payload.attraction_id,
+      caption: payload.caption.trim(),
+      image_urls: cleanedImageUrls,
+    }),
+  });
+
+  const responseData = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      responseData?.message ||
+        responseData?.error ||
+        `Memory submission failed with status ${response.status}.`,
+    );
+  }
 
   return {
-    data: normalizeMemory(response.data.memory),
-    message: response.data.message,
+    data: normalizeMemory(responseData.memory),
+    message: responseData.message,
   };
 };
 
