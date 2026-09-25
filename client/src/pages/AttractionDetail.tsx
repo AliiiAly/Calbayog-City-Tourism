@@ -25,7 +25,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 
-import createMyMemory, { getAttractions } from "../services/api";
+import { createMyMemory, getAttractions } from "../services/api";
 
 import {
   subscribeToTable,
@@ -617,11 +617,11 @@ const AttractionDetail: React.FC = () => {
       if (!imageUrl)
         throw new Error("The uploaded image URL could not be created.");
 
-      await createMyMemory.post("/memories", {
-        attraction_id: attractionId,
-        caption,
-        image_urls: [imageUrl],
-      });
+      await createMyMemory({
+  attraction_id: attractionId,
+  caption,
+  image_urls: [imageUrl],
+});
 
       setMemoryCaption("");
       setMemoryPhoto(null);
