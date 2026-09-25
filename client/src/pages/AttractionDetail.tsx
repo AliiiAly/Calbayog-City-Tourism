@@ -929,8 +929,8 @@ const AttractionDetail: React.FC = () => {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 7px;
-            padding: 8px 12px;
+            gap: 4px;
+            padding: 8px 10px;
             border: 1px solid #e2e5ea;
             border-radius: 10px;
             background: #ffffff;
@@ -943,6 +943,8 @@ const AttractionDetail: React.FC = () => {
             font-size: 0.66rem;
             font-weight: 900;
             cursor: pointer;
+            flex-direction: column;
+            min-width: 42px;
             transition:
               background 0.2s ease,
               border-color 0.2s ease,
@@ -1008,7 +1010,9 @@ const AttractionDetail: React.FC = () => {
             min-width: 15px;
             color: inherit;
             font-size: 0.62rem;
+            line-height: 1;
             font-weight: 900;
+            text-align: center;
           }
 
           .detail-share-notice {
@@ -1815,8 +1819,7 @@ const AttractionDetail: React.FC = () => {
                 onClick={handleShare}
                 aria-label="Share attraction"
               >
-                <Share2 size={17} strokeWidth={2} />
-                Share
+                <Share2 size={18} strokeWidth={2} />
               </button>
 
               <button
@@ -1834,16 +1837,14 @@ const AttractionDetail: React.FC = () => {
               >
                 <Heart
                   className="detail-favorite-icon"
-                  size={18}
+                  size={19}
                   strokeWidth={favoriteActive ? 2.25 : 1.9}
                   fill={favoriteActive ? "currentColor" : "none"}
                 />
 
-                <span>{favoriteActive ? "Saved" : "Save"}</span>
-
-                {favoriteCount > 0 && (
-                  <span className="detail-favorite-count">{favoriteCount}</span>
-                )}
+                <span className="detail-favorite-count">
+                  {favoriteCount}
+                </span>
               </button>
             </div>
 
