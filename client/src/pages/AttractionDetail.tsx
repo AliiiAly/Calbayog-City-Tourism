@@ -925,15 +925,18 @@ const AttractionDetail: React.FC = () => {
           }
 
           .detail-media-action {
-            min-height: 38px;
+            min-height: 0;
+            min-width: 0;
             display: inline-flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             gap: 4px;
-            padding: 8px 10px;
-            border: 1px solid #e2e5ea;
-            border-radius: 10px;
-            background: #ffffff;
+            padding: 3px;
+            border: 0;
+            border-radius: 0;
+            outline: none;
+            background: transparent;
             color: #626a75;
             font-family:
               "Nunito",
@@ -943,38 +946,26 @@ const AttractionDetail: React.FC = () => {
             font-size: 0.66rem;
             font-weight: 900;
             cursor: pointer;
-            flex-direction: column;
-            min-width: 42px;
+            box-shadow: none;
             transition:
-              background 0.2s ease,
-              border-color 0.2s ease,
               color 0.2s ease,
               transform 0.2s ease;
           }
 
-          .detail-media-action:hover {
+          .detail-media-action:hover,
+          .detail-media-action:focus-visible {
             transform: translateY(-1px);
-            border-color: #cdd2da;
+            border: 0;
+            outline: none;
             color: ${CALBAYOG_BLUE};
-            background: #fafbff;
+            background: transparent;
+            box-shadow: none;
           }
 
           .detail-favorite-action.active {
             color: #ed4f6b;
-            border-color:
-              rgba(
-                237,
-                79,
-                107,
-                0.22
-              );
-            background:
-              rgba(
-                237,
-                79,
-                107,
-                0.055
-              );
+            border: 0;
+            background: transparent;
           }
 
           .detail-favorite-action:active,
@@ -1610,9 +1601,9 @@ const AttractionDetail: React.FC = () => {
             }
 
             .detail-media-action {
-              min-height: 36px;
-              padding:
-                7px 10px;
+              min-height: 0;
+              min-width: 0;
+              padding: 3px;
               font-size: 0.62rem;
             }
 
