@@ -159,37 +159,54 @@ userApi.interceptors.request.use(
 
     config.headers = config.headers || {};
 
-    config.headers["X-Client-Type"] = "user";
+if (typeof config.headers.set === "function") {
+  config.headers.set("X-Client-Type", "user");
+} else {
+  config.headers["X-Client-Type"] = "user";
+}
 
-    if (token && token.trim().length > 0) {
-      config.headers.Authorization = `Bearer ${token.trim()}`;
+if (token && token.trim().length > 0) {
+  const authorizationValue = `Bearer ${token.trim()}`;
 
-      console.log(
-        "[USER API] Authorization header attached:",
-        {
-          url: config.url,
-          method: config.method,
-          hasToken: true,
-          tokenLength: token.trim().length,
-        },
-      );
-    } else {
-      delete config.headers.Authorization;
+  if (typeof config.headers.set === "function") {
+    config.headers.set(
+      "Authorization",
+      authorizationValue,
+    );
+  } else {
+    config.headers.Authorization = authorizationValue;
+  }
 
-      console.error(
-        "[USER API] No user token found:",
-        {
-          url: config.url,
-          method: config.method,
-          localStorageUserToken:
-            localStorage.getItem("user_token"),
-          localStorageUserTokenAlias:
-            localStorage.getItem("userToken"),
-          sessionStorageUserToken:
-            sessionStorage.getItem("user_token"),
-        },
-      );
-    }
+  console.log(
+    "[USER API] Authorization header attached:",
+    {
+      url: config.url,
+      method: config.method,
+      hasToken: true,
+      tokenLength: token.trim().length,
+    },
+  );
+} else {
+  if (typeof config.headers.delete === "function") {
+    config.headers.delete("Authorization");
+  } else {
+    delete config.headers.Authorization;
+  }
+
+  console.error(
+    "[USER API] No user token found:",
+    {
+      url: config.url,
+      method: config.method,
+      localStorageUserToken:
+        localStorage.getItem("user_token"),
+      localStorageUserTokenAlias:
+        localStorage.getItem("userToken"),
+      sessionStorageUserToken:
+        sessionStorage.getItem("user_token"),
+    },
+  );
+}
 
     return config;
   },
