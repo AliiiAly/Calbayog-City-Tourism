@@ -31,6 +31,20 @@ const getTokenFromRequest = (req) => {
     return null;
   }
 
+     console.log("[AUTH DEBUG]", {
+    method: req.method,
+    path: req.originalUrl,
+    hasAuthorization: Boolean(
+      req.headers.authorization ||
+        req.headers.Authorization ||
+        (typeof req.get === "function" &&
+          req.get("authorization"))
+    ),
+    authorizationKeys: Object.keys(req.headers).filter((key) =>
+      key.toLowerCase().includes("authorization")
+    ),
+  });
+
   /*
     Express normally stores the Authorization header
     as req.headers.authorization.
