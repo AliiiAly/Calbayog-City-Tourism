@@ -171,6 +171,7 @@ const VerifyEmail: React.FC = () => {
     };
   }, [token]);
 
+  // Opens the existing login modal in the current website tab.
   const handleOpenLogin = () => {
     window.dispatchEvent(new Event("open-login-modal"));
   };
@@ -464,11 +465,13 @@ const VerifyEmail: React.FC = () => {
             <h1 className="verify-title">
               {status === "already-verified"
                 ? "Email Already Verified"
-                : "Email Verified!"}
+                : "Email Verified Successfully!"}
             </h1>
 
             <p className="verify-message">
-              {message}
+              {status === "already-verified"
+                ? message
+                : "Your email address has been verified successfully. You can now sign in to your account."}
             </p>
 
             {user?.email && (
