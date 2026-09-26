@@ -1,47 +1,47 @@
+const Mailjet = require("node-mailjet");
+
 const sendEmail = async ({ to, subject, html }) => {
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error("RESEND_API_KEY is missing.");
+  if (!process.env.MAILJET_API_KEY || !process.env.MAILJET_SECRET_KEY) {
+    throw new Error("Mailjet API keys are missing.");
   }
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-    },
-    body: JSON.stringify({
-      from: "Calbayog City Tourism <onboarding@resend.dev>",
-      to,
-      subject,
-      html,
-    }),
-  });
+  const mailjet = Mailjet.apiConnect(
+    process.env.MAILJET_API_KEY,
+    process.env.MAILJET_SECRET_KEY
+  );
 
-  const data = await response.json();
+  const request = await mailjet
+    .post("send", { version: "v3.1" })
+    .request({
+      Messages: [
+        {
+          From: {
+            Email: "tourismcalbayogcity@gmail.com",
+            Name: "Calbayog City Tourism",
+          },
+          To: [
+            {
+              Email: to,
+            },
+          ],
+          Subject: subject,
+          HTMLPart: html,
+        },
+      ],
+    });
 
-  if (!response.ok) {
-    console.error("❌ Resend email failed:", data);
-    throw new Error(
-      data?.message || "Resend could not send the email."
-    );
-  }
-
-  console.log("📧 Email sent through Resend:", data.id);
-
-  return data;
+  console.log("📧 Email sent through Mailjet:", request.body);
+  return request.body;
 };
 
 const verifyEmailConnection = async () => {
-  if (!process.env.RESEND_API_KEY) {
-    console.error("❌ RESEND_API_KEY is missing.");
+  if (!process.env.MAILJET_API_KEY || !process.env.MAILJET_SECRET_KEY) {
+    console.error("❌ Mailjet API keys are missing.");
     return false;
   }
 
-  console.log("✅ Resend API configuration is ready.");
+  console.log("✅ Mailjet API configuration is ready.");
   return true;
 };
 
-module.exports = {
-  sendEmail,
-  verifyEmailConnection,
-};
+module.exports = { sendEmail, verifyEmailConnection };
