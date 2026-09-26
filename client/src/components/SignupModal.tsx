@@ -48,20 +48,20 @@ const SignupModal: React.FC<SignupModalProps> = ({
 
   const API_URL =
     (import.meta as any).env?.VITE_API_URL ||
-    "http://localhost:5000/api";
+    "https://calbayog-city-tourism.onrender.com/api";
 
   /* =========================================================
      CLEANUP
   ========================================================= */
 
   useEffect(() => {
-  return () => {
-    if (resendTimerRef.current !== null) {
-      window.clearTimeout(resendTimerRef.current);
-      resendTimerRef.current = null;
-    }
-  };
-}, []);
+    return () => {
+      if (resendTimerRef.current !== null) {
+        window.clearTimeout(resendTimerRef.current);
+        resendTimerRef.current = null;
+      }
+    };
+  }, []);
 
   /* =========================================================
      MODAL LIFECYCLE
@@ -381,14 +381,17 @@ const SignupModal: React.FC<SignupModalProps> = ({
         );
 
         if (resendTimerRef.current !== null) {
-  window.clearTimeout(resendTimerRef.current);
-  resendTimerRef.current = null;
-}
+          window.clearTimeout(
+            resendTimerRef.current,
+          );
+          resendTimerRef.current = null;
+        }
 
-resendTimerRef.current = window.setTimeout(() => {
-  setResendMessage("");
-  resendTimerRef.current = null;
-}, 7000);
+        resendTimerRef.current =
+          window.setTimeout(() => {
+            setResendMessage("");
+            resendTimerRef.current = null;
+          }, 7000);
       } catch (err: any) {
         console.error(
           "Resend verification error:",
@@ -1262,7 +1265,7 @@ resendTimerRef.current = window.setTimeout(() => {
           line-height: 1.5;
         }
 
-        .signup-verification-step + 
+        .signup-verification-step +
         .signup-verification-step {
           margin-top: 12px;
         }
