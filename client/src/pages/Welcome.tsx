@@ -39,6 +39,9 @@ import {
   MapPin,
   CalendarDays,
   CloudSun,
+  ChevronLeft,
+  ChevronRight,
+  Play,
 } from "lucide-react";
 
 /* =========================================================
@@ -185,6 +188,16 @@ const featuredVideos = [
     description:
       "Experience the beauty, places, and stories of Calbayog City.",
   },
+
+  // Add additional videos here later.
+  //
+  // {
+  //   id: "calbayog-video-2",
+  //   src: "/another-video.mp4",
+  //   title: "Explore Calbayog",
+  //   description:
+  //     "Discover more places and experiences around the city.",
+  // },
 ];
 
 /* =========================================================
@@ -310,16 +323,6 @@ const getWeatherDescription = (
 const Welcome: React.FC = () => {
   const { user } = useAuth();
 
-  /*
-   * =======================================================
-   * GLOBAL FAVORITES
-   *
-   * Welcome does NOT maintain its own favoriteIds.
-   *
-   * The shared FavoritesContext controls favorite state
-   * and counts for the entire application.
-   * =======================================================
-   */
   const {
     setFavoriteCount,
   } = useFavorites();
@@ -367,7 +370,7 @@ const Welcome: React.FC = () => {
   ] = useState(0);
 
   /* =========================================================
-     TOUCH / SWIPE STATE
+     HERO TOUCH / SWIPE
   ========================================================= */
 
   const touchStartX =
@@ -377,13 +380,34 @@ const Welcome: React.FC = () => {
     useRef<number | null>(null);
 
   /* =========================================================
-     MOUSE DRAG STATE
+     HERO MOUSE DRAG
   ========================================================= */
 
   const mouseStartX =
     useRef<number | null>(null);
 
   const isDragging =
+    useRef(false);
+
+  /* =========================================================
+     FEATURED VIDEO CAROUSEL STATE
+  ========================================================= */
+
+  const [
+    activeVideo,
+    setActiveVideo,
+  ] = useState(0);
+
+  const videoTouchStartX =
+    useRef<number | null>(null);
+
+  const videoTouchEndX =
+    useRef<number | null>(null);
+
+  const videoMouseStartX =
+    useRef<number | null>(null);
+
+  const videoDragging =
     useRef(false);
 
   /* =========================================================
@@ -648,7 +672,7 @@ const Welcome: React.FC = () => {
   }, []);
 
   /* =========================================================
-     NEXT SLIDE
+     HERO NEXT
   ========================================================= */
 
   const nextSlide = () => {
@@ -660,21 +684,20 @@ const Welcome: React.FC = () => {
   };
 
   /* =========================================================
-     PREVIOUS SLIDE
+     HERO PREVIOUS
   ========================================================= */
 
   const previousSlide = () => {
     setActiveSlide(
       (current) =>
         current === 0
-          ? heroSlides.length -
-            1
+          ? heroSlides.length - 1
           : current - 1,
     );
   };
 
   /* =========================================================
-     AUTOMATIC SLIDESHOW
+     HERO AUTOMATIC SLIDESHOW
   ========================================================= */
 
   useEffect(() => {
@@ -698,7 +721,7 @@ const Welcome: React.FC = () => {
   }, []);
 
   /* =========================================================
-     TOUCH START
+     HERO TOUCH START
   ========================================================= */
 
   const handleTouchStart = (
@@ -712,7 +735,7 @@ const Welcome: React.FC = () => {
   };
 
   /* =========================================================
-     TOUCH MOVE
+     HERO TOUCH MOVE
   ========================================================= */
 
   const handleTouchMove = (
@@ -723,7 +746,7 @@ const Welcome: React.FC = () => {
   };
 
   /* =========================================================
-     TOUCH END
+     HERO TOUCH END
   ========================================================= */
 
   const handleTouchEnd = () => {
@@ -769,7 +792,7 @@ const Welcome: React.FC = () => {
   };
 
   /* =========================================================
-     MOUSE DRAG START
+     HERO MOUSE DOWN
   ========================================================= */
 
   const handleMouseDown = (
@@ -783,7 +806,7 @@ const Welcome: React.FC = () => {
   };
 
   /* =========================================================
-     MOUSE DRAG END
+     HERO MOUSE UP
   ========================================================= */
 
   const handleMouseUp = (
@@ -822,7 +845,7 @@ const Welcome: React.FC = () => {
   };
 
   /* =========================================================
-     MOUSE LEAVE
+     HERO MOUSE LEAVE
   ========================================================= */
 
   const handleMouseLeave =
@@ -831,6 +854,195 @@ const Welcome: React.FC = () => {
         null;
 
       isDragging.current =
+        false;
+    };
+
+  /* =========================================================
+     FEATURED VIDEO NEXT
+  ========================================================= */
+
+  const nextVideo = () => {
+    if (
+      featuredVideos.length <=
+      1
+    ) {
+      return;
+    }
+
+    setActiveVideo(
+      (current) =>
+        (current + 1) %
+        featuredVideos.length,
+    );
+  };
+
+  /* =========================================================
+     FEATURED VIDEO PREVIOUS
+  ========================================================= */
+
+  const previousVideo = () => {
+    if (
+      featuredVideos.length <=
+      1
+    ) {
+      return;
+    }
+
+    setActiveVideo(
+      (current) =>
+        current === 0
+          ? featuredVideos.length - 1
+          : current - 1,
+    );
+  };
+
+  /* =========================================================
+     VIDEO TOUCH START
+  ========================================================= */
+
+  const handleVideoTouchStart = (
+    e: React.TouchEvent<HTMLDivElement>,
+  ) => {
+    if (
+      featuredVideos.length <=
+      1
+    ) {
+      return;
+    }
+
+    videoTouchStartX.current =
+      e.touches[0].clientX;
+
+    videoTouchEndX.current =
+      null;
+  };
+
+  /* =========================================================
+     VIDEO TOUCH MOVE
+  ========================================================= */
+
+  const handleVideoTouchMove = (
+    e: React.TouchEvent<HTMLDivElement>,
+  ) => {
+    if (
+      featuredVideos.length <=
+      1
+    ) {
+      return;
+    }
+
+    videoTouchEndX.current =
+      e.touches[0].clientX;
+  };
+
+  /* =========================================================
+     VIDEO TOUCH END
+  ========================================================= */
+
+  const handleVideoTouchEnd = () => {
+    if (
+      videoTouchStartX.current ===
+        null ||
+      videoTouchEndX.current ===
+        null
+    ) {
+      return;
+    }
+
+    const distance =
+      videoTouchStartX.current -
+      videoTouchEndX.current;
+
+    const minimumSwipeDistance = 50;
+
+    if (
+      Math.abs(distance) >=
+      minimumSwipeDistance
+    ) {
+      if (distance > 0) {
+        nextVideo();
+      } else {
+        previousVideo();
+      }
+    }
+
+    videoTouchStartX.current =
+      null;
+
+    videoTouchEndX.current =
+      null;
+  };
+
+  /* =========================================================
+     VIDEO MOUSE DOWN
+  ========================================================= */
+
+  const handleVideoMouseDown = (
+    e: React.MouseEvent<HTMLDivElement>,
+  ) => {
+    if (
+      featuredVideos.length <=
+      1
+    ) {
+      return;
+    }
+
+    videoMouseStartX.current =
+      e.clientX;
+
+    videoDragging.current =
+      true;
+  };
+
+  /* =========================================================
+     VIDEO MOUSE UP
+  ========================================================= */
+
+  const handleVideoMouseUp = (
+    e: React.MouseEvent<HTMLDivElement>,
+  ) => {
+    if (
+      videoMouseStartX.current ===
+        null ||
+      !videoDragging.current
+    ) {
+      return;
+    }
+
+    const distance =
+      videoMouseStartX.current -
+      e.clientX;
+
+    const minimumDragDistance = 50;
+
+    if (
+      Math.abs(distance) >=
+      minimumDragDistance
+    ) {
+      if (distance > 0) {
+        nextVideo();
+      } else {
+        previousVideo();
+      }
+    }
+
+    videoMouseStartX.current =
+      null;
+
+    videoDragging.current =
+      false;
+  };
+
+  /* =========================================================
+     VIDEO MOUSE LEAVE
+  ========================================================= */
+
+  const handleVideoMouseLeave =
+    () => {
+      videoMouseStartX.current =
+        null;
+
+      videoDragging.current =
         false;
     };
 
@@ -863,18 +1075,6 @@ const Welcome: React.FC = () => {
         setWelcomeDestinations(
           selected,
         );
-
-        /*
-         * =====================================================
-         * SYNC DATABASE FAVORITE COUNTS
-         *
-         * The count comes from the attraction record.
-         * It is placed into the shared FavoritesContext.
-         *
-         * This means Welcome and Attractions use the same
-         * total count.
-         * =====================================================
-         */
 
         selected.forEach(
           (
@@ -1061,6 +1261,15 @@ const Welcome: React.FC = () => {
     heroSlides[activeSlide];
 
   /* =========================================================
+     CURRENT VIDEO
+  ========================================================= */
+
+  const currentVideo =
+    featuredVideos[
+      activeVideo
+    ];
+
+  /* =========================================================
      WEATHER DISPLAY
   ========================================================= */
 
@@ -1194,7 +1403,6 @@ const Welcome: React.FC = () => {
               className="welcome-hero-arrow welcome-hero-arrow-left"
               onClick={(e) => {
                 e.stopPropagation();
-
                 previousSlide();
               }}
               aria-label="Previous hero image"
@@ -1207,7 +1415,6 @@ const Welcome: React.FC = () => {
               className="welcome-hero-arrow welcome-hero-arrow-right"
               onClick={(e) => {
                 e.stopPropagation();
-
                 nextSlide();
               }}
               aria-label="Next hero image"
@@ -1371,7 +1578,6 @@ const Welcome: React.FC = () => {
 
         {/* =====================================================
             ATTRACTIONS
-            SHARED AttractionCard
         ===================================================== */}
 
         {!loadingDestinations &&
@@ -1641,9 +1847,7 @@ const Welcome: React.FC = () => {
                               <div className="welcome-accommodation-explore">
                                 View stay
 
-                                <span
-                                  aria-hidden="true"
-                                >
+                                <span aria-hidden="true">
                                   →
                                 </span>
                               </div>
@@ -1660,6 +1864,7 @@ const Welcome: React.FC = () => {
 
         {/* =====================================================
             FEATURED VIDEOS
+            CINEMATIC SWIPEABLE CAROUSEL
         ===================================================== */}
 
         <section className="welcome-videos-section mb-5">
@@ -1679,49 +1884,245 @@ const Welcome: React.FC = () => {
             </div>
           </div>
 
-          <Row className="justify-content-center">
-            {featuredVideos.map(
-              (video) => (
-                <Col
-                  xs={12}
-                  key={video.id}
-                >
-                  <Card className="welcome-video-card border-0">
-                    <div className="welcome-video-wrapper">
-                      <video
-                        className="welcome-video-player"
-                        controls
-                        playsInline
-                        preload="metadata"
-                      >
-                        <source
-                          src={video.src}
-                          type="video/mp4"
-                        />
+          <div
+            className={`welcome-video-carousel ${
+              featuredVideos.length > 1
+                ? "has-multiple"
+                : "single-video"
+            }`}
+            onTouchStart={
+              handleVideoTouchStart
+            }
+            onTouchMove={
+              handleVideoTouchMove
+            }
+            onTouchEnd={
+              handleVideoTouchEnd
+            }
+            onMouseDown={
+              handleVideoMouseDown
+            }
+            onMouseUp={
+              handleVideoMouseUp
+            }
+            onMouseLeave={
+              handleVideoMouseLeave
+            }
+          >
+            <div className="welcome-video-carousel-track">
+              {featuredVideos.map(
+                (
+                  video,
+                  index,
+                ) => {
+                  const total =
+                    featuredVideos.length;
 
-                        Your browser does not
-                        support the video element.
-                      </video>
+                  let offset =
+                    index -
+                    activeVideo;
+
+                  if (
+                    total > 2
+                  ) {
+                    if (
+                      offset >
+                      total / 2
+                    ) {
+                      offset -=
+                        total;
+                    }
+
+                    if (
+                      offset <
+                      -total / 2
+                    ) {
+                      offset +=
+                        total;
+                    }
+                  }
+
+                  const isActive =
+                    index ===
+                    activeVideo;
+
+                  return (
+                    <div
+                      key={
+                        video.id
+                      }
+                      className={`welcome-video-slide ${
+                        isActive
+                          ? "active"
+                          : ""
+                      } ${
+                        offset ===
+                        -1
+                          ? "previous"
+                          : ""
+                      } ${
+                        offset ===
+                        1
+                          ? "next"
+                          : ""
+                      }`}
+                      style={
+                        {
+                          "--video-offset":
+                            offset,
+                        } as React.CSSProperties
+                      }
+                      aria-hidden={
+                        !isActive
+                      }
+                    >
+                      <div className="welcome-video-cinematic-card">
+                        <div className="welcome-video-media">
+                          <video
+                            className="welcome-video-player"
+                            controls={
+                              isActive
+                            }
+                            playsInline
+                            preload={
+                              isActive
+                                ? "metadata"
+                                : "none"
+                            }
+                            muted
+                          >
+                            <source
+                              src={
+                                video.src
+                              }
+                              type="video/mp4"
+                            />
+
+                            Your browser does not
+                            support the video element.
+                          </video>
+
+                          {!isActive && (
+                            <div className="welcome-video-inactive-overlay" />
+                          )}
+
+                          <div className="welcome-video-gradient" />
+
+                          <div className="welcome-video-play-badge">
+                            <Play
+                              size={20}
+                              fill="currentColor"
+                              strokeWidth={
+                                2
+                              }
+                            />
+                          </div>
+
+                          <div className="welcome-video-number">
+                            {String(
+                              index + 1,
+                            ).padStart(
+                              2,
+                              "0",
+                            )}
+                          </div>
+
+                          <div className="welcome-video-caption">
+                            <h3>
+                              {
+                                video.title
+                              }
+                            </h3>
+
+                            <p>
+                              {
+                                video.description
+                              }
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
+                  );
+                },
+              )}
+            </div>
 
-                    <Card.Body className="welcome-video-body">
-                      <h3 className="welcome-video-card-title">
-                        {
-                          video.title
-                        }
-                      </h3>
+            {featuredVideos.length >
+              1 && (
+              <>
+                <button
+                  type="button"
+                  className="welcome-video-arrow welcome-video-arrow-left"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    previousVideo();
+                  }}
+                  aria-label="Previous featured video"
+                >
+                  <ChevronLeft
+                    size={25}
+                    strokeWidth={2}
+                  />
+                </button>
 
-                      <p className="welcome-video-card-description">
-                        {
-                          video.description
+                <button
+                  type="button"
+                  className="welcome-video-arrow welcome-video-arrow-right"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    nextVideo();
+                  }}
+                  aria-label="Next featured video"
+                >
+                  <ChevronRight
+                    size={25}
+                    strokeWidth={2}
+                  />
+                </button>
+
+                <div className="welcome-video-dots">
+                  {featuredVideos.map(
+                    (
+                      video,
+                      index,
+                    ) => (
+                      <button
+                        key={
+                          video.id
                         }
-                      </p>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              ),
+                        type="button"
+                        className={`welcome-video-dot ${
+                          activeVideo ===
+                          index
+                            ? "active"
+                            : ""
+                        }`}
+                        onClick={(
+                          e,
+                        ) => {
+                          e.stopPropagation();
+
+                          setActiveVideo(
+                            index,
+                          );
+                        }}
+                        aria-label={`Show featured video ${
+                          index + 1
+                        }`}
+                        aria-current={
+                          activeVideo ===
+                          index
+                            ? "true"
+                            : undefined
+                        }
+                      />
+                    ),
+                  )}
+                </div>
+              </>
             )}
-          </Row>
+          </div>
         </section>
       </Container>
 
@@ -2006,28 +2407,21 @@ const Welcome: React.FC = () => {
             none;
         }
 
-        .welcome-quick-card {
-          font-family:
-            "Inter",
-            sans-serif;
-        }
-
-        .quick-card-body {
+        .welcome-quick-card,
+        .quick-card-body,
+        .quick-card-label {
           font-family:
             "Inter",
             sans-serif;
         }
 
         .quick-card-label {
-          font-family:
-            "Inter",
-            sans-serif;
           font-weight:
             600;
         }
 
         /* =====================================================
-           SHARED ATTRACTION GRID
+           ATTRACTIONS
         ===================================================== */
 
         .welcome-attractions-heading {
@@ -2299,7 +2693,7 @@ const Welcome: React.FC = () => {
         }
 
         /* =====================================================
-           VIDEOS
+           FEATURED VIDEOS — CINEMATIC CAROUSEL
         ===================================================== */
 
         .welcome-videos-section {
@@ -2321,7 +2715,7 @@ const Welcome: React.FC = () => {
           justify-content:
             center;
           margin-bottom:
-            2.2rem;
+            2.5rem;
         }
 
         .welcome-videos-title {
@@ -2350,60 +2744,177 @@ const Welcome: React.FC = () => {
             #555555;
         }
 
-        .welcome-video-card {
-          width:
-            100%;
-          max-width:
-            820px;
-          margin:
-            0 auto;
-          border-radius:
-            20px;
-          overflow:
-            hidden;
-          background:
-            #ffffff;
-          box-shadow:
-            0 8px 28px
-            rgba(
-              0,
-              0,
-              0,
-              0.08
-            );
-          transition:
-            transform 0.25s ease,
-            box-shadow 0.25s ease;
-        }
-
-        .welcome-video-card:hover {
-          transform:
-            translateY(-4px);
-          box-shadow:
-            0 14px 36px
-            rgba(
-              0,
-              0,
-              0,
-              0.12
-            );
-        }
-
-        .welcome-video-wrapper {
+        .welcome-video-carousel {
           position:
             relative;
           width:
             100%;
-          max-width:
-            780px;
-          margin:
-            0 auto;
-          background:
-            #10131c;
+          min-height:
+            500px;
           overflow:
             hidden;
+          user-select:
+            none;
+          touch-action:
+            pan-y;
+          perspective:
+            1400px;
+          padding:
+            15px 0 65px;
+        }
+
+        .welcome-video-carousel-track {
+          position:
+            relative;
+          width:
+            100%;
+          height:
+            470px;
+          display:
+            flex;
+          align-items:
+            center;
+          justify-content:
+            center;
+        }
+
+        .welcome-video-slide {
+          position:
+            absolute;
+          top:
+            50%;
+          left:
+            50%;
+          width:
+            min(
+              78%,
+              820px
+            );
+          transform:
+            translate(
+              calc(
+                -50% +
+                (
+                  var(
+                    --video-offset
+                  ) *
+                  76%
+                )
+              ),
+              -50%
+            )
+            scale(
+              calc(
+                1 -
+                (
+                  min(
+                    abs(
+                      var(
+                        --video-offset
+                      )
+                    ),
+                    2
+                  ) *
+                  0.12
+                )
+              )
+            );
+          opacity:
+            calc(
+              1 -
+              (
+                min(
+                  abs(
+                    var(
+                      --video-offset
+                    )
+                  ),
+                  2
+                ) *
+                0.28
+              )
+            );
+          z-index:
+            calc(
+              20 -
+              abs(
+                var(
+                  --video-offset
+                )
+              )
+            );
+          transition:
+            transform 0.65s
+              cubic-bezier(
+                0.22,
+                1,
+                0.36,
+                1
+              ),
+            opacity 0.5s ease,
+            filter 0.5s ease;
+          pointer-events:
+            none;
+        }
+
+        .welcome-video-slide.active {
+          pointer-events:
+            auto;
+        }
+
+        .welcome-video-slide.previous,
+        .welcome-video-slide.next {
+          filter:
+            saturate(0.72)
+            brightness(0.72);
+        }
+
+        .welcome-video-cinematic-card {
+          position:
+            relative;
+          width:
+            100%;
+          overflow:
+            hidden;
+          border-radius:
+            24px;
+          background:
+            #10131c;
+          box-shadow:
+            0 25px 65px
+            rgba(
+              0,
+              0,
+              0,
+              0.20
+            );
+          transform:
+            translateZ(0);
+        }
+
+        .welcome-video-slide.active
+          .welcome-video-cinematic-card {
+          box-shadow:
+            0 30px 75px
+            rgba(
+              0,
+              0,
+              0,
+              0.25
+            );
+        }
+
+        .welcome-video-media {
+          position:
+            relative;
+          width:
+            100%;
           aspect-ratio:
             16 / 9;
+          overflow:
+            hidden;
+          background:
+            #10131c;
         }
 
         .welcome-video-player {
@@ -2419,35 +2930,344 @@ const Welcome: React.FC = () => {
             #10131c;
         }
 
-        .welcome-video-body {
-          padding:
-            1.1rem
-            1.2rem
-            1.25rem;
+        .welcome-video-gradient {
+          position:
+            absolute;
+          inset:
+            0;
+          pointer-events:
+            none;
+          background:
+            linear-gradient(
+              180deg,
+              rgba(
+                0,
+                0,
+                0,
+                0.05
+              ) 20%,
+              rgba(
+                0,
+                0,
+                0,
+                0.10
+              ) 42%,
+              rgba(
+                0,
+                0,
+                0,
+                0.78
+              ) 100%
+            );
         }
 
-        .welcome-video-card-title {
-          margin:
-            0 0 0.45rem;
+        .welcome-video-inactive-overlay {
+          position:
+            absolute;
+          inset:
+            0;
+          background:
+            rgba(
+              14,
+              16,
+              26,
+              0.30
+            );
+          pointer-events:
+            none;
+        }
+
+        .welcome-video-play-badge {
+          position:
+            absolute;
+          top:
+            22px;
+          left:
+            22px;
+          width:
+            48px;
+          height:
+            48px;
+          display:
+            flex;
+          align-items:
+            center;
+          justify-content:
+            center;
+          border:
+            1px solid
+            rgba(
+              255,
+              255,
+              255,
+              0.35
+            );
+          border-radius:
+            50%;
+          background:
+            rgba(
+              255,
+              255,
+              255,
+              0.14
+            );
           color:
-            #212529;
+            #ffffff;
+          backdrop-filter:
+            blur(12px);
+          -webkit-backdrop-filter:
+            blur(12px);
+          box-shadow:
+            0 8px 22px
+            rgba(
+              0,
+              0,
+              0,
+              0.20
+            );
+          pointer-events:
+            none;
+        }
+
+        .welcome-video-number {
+          position:
+            absolute;
+          top:
+            22px;
+          right:
+            24px;
+          color:
+            rgba(
+              255,
+              255,
+              255,
+              0.82
+            );
           font-size:
-            1.08rem;
+            0.72rem;
           font-weight:
             700;
-          line-height:
-            1.3;
+          letter-spacing:
+            0.18em;
+          pointer-events:
+            none;
         }
 
-        .welcome-video-card-description {
+        .welcome-video-caption {
+          position:
+            absolute;
+          left:
+            32px;
+          right:
+            32px;
+          bottom:
+            28px;
+          color:
+            #ffffff;
+          pointer-events:
+            none;
+        }
+
+        .welcome-video-caption h3 {
+          margin:
+            0 0 7px;
+          color:
+            #ffffff;
+          font-family:
+            "Barabara",
+            "Arial Black",
+            Arial,
+            sans-serif;
+          font-size:
+            clamp(
+              1.45rem,
+              3vw,
+              2.25rem
+            );
+          font-weight:
+            400;
+          line-height:
+            1;
+          letter-spacing:
+            0.015em;
+          text-shadow:
+            0 3px 15px
+            rgba(
+              0,
+              0,
+              0,
+              0.35
+            );
+        }
+
+        .welcome-video-caption p {
+          max-width:
+            600px;
           margin:
             0;
           color:
-            #6c757d;
+            rgba(
+              255,
+              255,
+              255,
+              0.86
+            );
           font-size:
-            0.8rem;
+            0.78rem;
           line-height:
-            1.6;
+            1.55;
+          text-shadow:
+            0 2px 8px
+            rgba(
+              0,
+              0,
+              0,
+              0.35
+            );
+        }
+
+        .welcome-video-arrow {
+          position:
+            absolute;
+          z-index:
+            50;
+          top:
+            50%;
+          width:
+            48px;
+          height:
+            48px;
+          display:
+            flex;
+          align-items:
+            center;
+          justify-content:
+            center;
+          padding:
+            0;
+          border:
+            1px solid
+            rgba(
+              255,
+              255,
+              255,
+              0.28
+            );
+          border-radius:
+            50%;
+          background:
+            rgba(
+              255,
+              255,
+              255,
+              0.16
+            );
+          color:
+            #ffffff;
+          backdrop-filter:
+            blur(12px);
+          -webkit-backdrop-filter:
+            blur(12px);
+          box-shadow:
+            0 8px 24px
+            rgba(
+              0,
+              0,
+              0,
+              0.16
+            );
+          cursor:
+            pointer;
+          transform:
+            translateY(-50%);
+          transition:
+            background 0.22s ease,
+            color 0.22s ease,
+            transform 0.22s ease,
+            border-color 0.22s ease;
+        }
+
+        .welcome-video-arrow:hover {
+          background:
+            #ffffff;
+          color:
+            ${CALBAYOG_BLUE};
+          border-color:
+            #ffffff;
+          transform:
+            translateY(-50%)
+            scale(
+              1.07
+            );
+        }
+
+        .welcome-video-arrow-left {
+          left:
+            3%;
+        }
+
+        .welcome-video-arrow-right {
+          right:
+            3%;
+        }
+
+        .welcome-video-dots {
+          position:
+            absolute;
+          z-index:
+            50;
+          left:
+            50%;
+          bottom:
+            20px;
+          transform:
+            translateX(-50%);
+          display:
+            flex;
+          align-items:
+            center;
+          gap:
+            8px;
+        }
+
+        .welcome-video-dot {
+          width:
+            8px;
+          height:
+            8px;
+          padding:
+            0;
+          border:
+            0;
+          border-radius:
+            999px;
+          background:
+            rgba(
+              45,
+              49,
+              149,
+              0.22
+            );
+          cursor:
+            pointer;
+          transition:
+            width 0.3s ease,
+            background 0.3s ease,
+            transform 0.3s ease;
+        }
+
+        .welcome-video-dot:hover {
+          transform:
+            scale(
+              1.15
+            );
+        }
+
+        .welcome-video-dot.active {
+          width:
+            27px;
+          background:
+            ${CALBAYOG_BLUE};
         }
 
         /* =====================================================
@@ -2987,6 +3807,30 @@ const Welcome: React.FC = () => {
             margin-top:
               75px;
           }
+
+          .welcome-video-carousel {
+            min-height:
+              440px;
+          }
+
+          .welcome-video-carousel-track {
+            height:
+              410px;
+          }
+
+          .welcome-video-slide {
+            width:
+              84%;
+          }
+
+          .welcome-video-caption {
+            left:
+              25px;
+            right:
+              25px;
+            bottom:
+              24px;
+          }
         }
 
         @media (max-width: 767.98px) {
@@ -3047,8 +3891,6 @@ const Welcome: React.FC = () => {
               2.7rem;
             margin-bottom:
               17px;
-            letter-spacing:
-              0;
           }
 
           .welcome-hero-detail {
@@ -3178,8 +4020,6 @@ const Welcome: React.FC = () => {
                 8vw,
                 2.55rem
               );
-            line-height:
-              1;
           }
 
           .welcome-main-heading {
@@ -3211,8 +4051,6 @@ const Welcome: React.FC = () => {
           .welcome-videos-title {
             font-size:
               1.8rem;
-            line-height:
-              1;
           }
 
           .welcome-accommodations-heading,
@@ -3226,31 +4064,98 @@ const Welcome: React.FC = () => {
               210px;
           }
 
-          .welcome-video-card {
-            border-radius:
-              18px;
-          }
-
-          .welcome-video-body {
-            padding:
-              0.95rem
-              1rem
-              1.05rem;
-          }
-
-          .welcome-video-card-title {
-            font-size:
-              1rem;
-          }
-
-          .welcome-video-card-description {
-            font-size:
-              0.74rem;
-          }
-
           .welcome-videos-section {
             margin-top:
               65px;
+          }
+
+          /* VIDEO CAROUSEL MOBILE */
+
+          .welcome-video-carousel {
+            min-height:
+              390px;
+            padding:
+              8px 0 55px;
+          }
+
+          .welcome-video-carousel-track {
+            height:
+              360px;
+          }
+
+          .welcome-video-slide {
+            width:
+              88%;
+          }
+
+          .welcome-video-cinematic-card {
+            border-radius:
+              19px;
+          }
+
+          .welcome-video-play-badge {
+            top:
+              15px;
+            left:
+              15px;
+            width:
+              40px;
+            height:
+              40px;
+          }
+
+          .welcome-video-number {
+            top:
+              18px;
+            right:
+              17px;
+            font-size:
+              0.63rem;
+          }
+
+          .welcome-video-caption {
+            left:
+              19px;
+            right:
+              19px;
+            bottom:
+              19px;
+          }
+
+          .welcome-video-caption h3 {
+            font-size:
+              1.35rem;
+            margin-bottom:
+              5px;
+          }
+
+          .welcome-video-caption p {
+            font-size:
+              0.68rem;
+            line-height:
+              1.45;
+          }
+
+          .welcome-video-arrow {
+            width:
+              38px;
+            height:
+              38px;
+          }
+
+          .welcome-video-arrow-left {
+            left:
+              7px;
+          }
+
+          .welcome-video-arrow-right {
+            right:
+              7px;
+          }
+
+          .welcome-video-dots {
+            bottom:
+              13px;
           }
         }
 
@@ -3276,8 +4181,6 @@ const Welcome: React.FC = () => {
               2.25rem;
             margin-bottom:
               15px;
-            letter-spacing:
-              0;
           }
 
           .welcome-hero-detail {
@@ -3385,8 +4288,6 @@ const Welcome: React.FC = () => {
           .welcome-display-title {
             font-size:
               2rem;
-            line-height:
-              1.02;
           }
 
           .welcome-main-heading {
@@ -3418,8 +4319,6 @@ const Welcome: React.FC = () => {
           .welcome-videos-title {
             font-size:
               1.65rem;
-            line-height:
-              1.02;
           }
 
           .welcome-accommodations-heading,
@@ -3433,16 +4332,46 @@ const Welcome: React.FC = () => {
               190px;
           }
 
-          .welcome-video-card-description {
-            font-size:
-              0.68rem;
-            line-height:
-              1.55;
-          }
-
           .welcome-videos-section {
             margin-top:
               55px;
+          }
+
+          .welcome-video-carousel {
+            min-height:
+              330px;
+          }
+
+          .welcome-video-carousel-track {
+            height:
+              300px;
+          }
+
+          .welcome-video-slide {
+            width:
+              91%;
+          }
+
+          .welcome-video-cinematic-card {
+            border-radius:
+              17px;
+          }
+
+          .welcome-video-caption h3 {
+            font-size:
+              1.15rem;
+          }
+
+          .welcome-video-caption p {
+            font-size:
+              0.62rem;
+          }
+
+          .welcome-video-arrow {
+            width:
+              34px;
+            height:
+              34px;
           }
         }
 
@@ -3499,6 +4428,25 @@ const Welcome: React.FC = () => {
           .welcome-videos-title {
             font-size:
               1.5rem;
+          }
+
+          .welcome-video-caption {
+            left:
+              15px;
+            right:
+              15px;
+            bottom:
+              15px;
+          }
+
+          .welcome-video-caption h3 {
+            font-size:
+              1rem;
+          }
+
+          .welcome-video-caption p {
+            font-size:
+              0.58rem;
           }
         }
       `}</style>
