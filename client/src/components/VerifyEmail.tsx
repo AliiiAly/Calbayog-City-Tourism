@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 
 const API_URL = (
   (import.meta as any).env?.VITE_API_URL ||
-  "http://localhost:5000/api"
+  "https://calbayog-city-tourism.onrender.com/api"
 ).replace(/\/$/, "");
 
 type VerificationStatus =
@@ -592,6 +592,7 @@ const VerifyEmail: React.FC = () => {
           <p className="verify-brand-name">
             Calbayog City Tourism
           </p>
+
           <p className="verify-brand-tagline">
             Discover. Explore. Experience.
           </p>
