@@ -1,41 +1,82 @@
-const Mailjet = require("node-mailjet");
-
 const sendEmail = async ({ to, subject, html }) => {
   if (!process.env.MAILJET_API_KEY || !process.env.MAILJET_SECRET_KEY) {
     throw new Error("Mailjet API keys are missing.");
   }
 
-  const mailjet = Mailjet.apiConnect(
-    process.env.MAILJET_API_KEY,
-    process.env.MAILJET_SECRET_KEY
-  );
+  const auth = Buffer.from(
+    `${process.env.MAILJET_API_KEY}:${process.env.MAILJET_SECRET_KEY}`
+  ).toString("base64");
 
-  const request = await mailjet
-    .post("send", { version: "v3.1" })
-    .request({
-      Messages: [
-        {
-          From: {
-            Email: "tourismcalbayogcity@gmail.com",
-            Name: "Calbayog City Tourism",
-          },
-          To: [
+  try {
+    const response = await fetch(
+      "https://api.mailjet.com/v3.1/send",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${auth}`,
+        },
+
+        body: JSON.stringify({
+          Messages: [
             {
-              Email: to,
+              From: {
+                Email: "tourismcalbayogcity@gmail.com",
+                Name: "Calbayog City Tourism",
+              },
+
+              To: [
+                {
+                  Email: to,
+                },
+              ],
+
+              Subject: subject,
+
+              HTMLPart: html,
             },
           ],
-          Subject: subject,
-          HTMLPart: html,
-        },
-      ],
-    });
+        }),
+      }
+    );
 
-  console.log("📧 Email sent through Mailjet:", request.body);
-  return request.body;
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      console.error(
+        "❌ MAILJET ERROR:",
+        JSON.stringify(data, null, 2)
+      );
+
+      throw new Error(
+        data?.ErrorMessage ||
+          data?.Messages?.[0]?.Errors?.[0]?.ErrorMessage ||
+          `Mailjet request failed with status ${response.status}.`
+      );
+    }
+
+    console.log(
+      "📧 Mailjet email sent successfully:",
+      JSON.stringify(data, null, 2)
+    );
+
+    return data;
+  } catch (error) {
+    console.error(
+      "❌ EMAIL SENDING ERROR:",
+      error?.message || error
+    );
+
+    throw error;
+  }
 };
 
 const verifyEmailConnection = async () => {
-  if (!process.env.MAILJET_API_KEY || !process.env.MAILJET_SECRET_KEY) {
+  if (
+    !process.env.MAILJET_API_KEY ||
+    !process.env.MAILJET_SECRET_KEY
+  ) {
     console.error("❌ Mailjet API keys are missing.");
     return false;
   }
@@ -44,4 +85,7 @@ const verifyEmailConnection = async () => {
   return true;
 };
 
-module.exports = { sendEmail, verifyEmailConnection };
+module.exports = {
+  sendEmail,
+  verifyEmailConnection,
+};
