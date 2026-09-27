@@ -2002,7 +2002,6 @@ const AdminFeaturedVideos: React.FC = () => {
                   <video
                     src={selectedVideo.video_url}
                     controls
-                    autoPlay
                     playsInline
                   />
                 </div>
