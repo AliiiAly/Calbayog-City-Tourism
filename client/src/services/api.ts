@@ -464,6 +464,21 @@ api.interceptors.request.use(
       return config;
     }
 
+    /*
+     * FEATURED VIDEOS:
+     * Always request the latest list from the backend.
+     *
+     * This prevents an old cached [] response from
+     * remaining visible after a successful upload.
+     */
+    if (
+      (config.url || "").includes(
+        "/featured-videos",
+      )
+    ) {
+      return config;
+    }
+
     const cacheKey =
       getCacheKey(
         config.url || "",
@@ -507,9 +522,16 @@ api.interceptors.response.use(
         );
     }
 
+    /*
+     * FEATURED VIDEOS:
+     * Do not cache the response.
+     */
     if (
       response.config.method?.toLowerCase() ===
-      "get"
+        "get" &&
+      !(response.config.url || "").includes(
+        "/featured-videos",
+      )
     ) {
       const cacheKey =
         getCacheKey(
@@ -2079,6 +2101,11 @@ export const getFeaturedVideos =
   async (): Promise<{
     data: FeaturedVideo[];
   }> => {
+    /*
+     * Featured Videos intentionally bypass the generic
+     * 10-minute web cache because this is admin-managed
+     * content and must immediately reflect uploads/deletions.
+     */
     const response =
       await api.get<{
         data?: FeaturedVideo[];
@@ -2147,6 +2174,12 @@ export const uploadFeaturedVideo =
         formData,
       );
 
+    /*
+     * Remove any old Featured Videos cache entries
+     * just in case one exists from an older deployment.
+     */
+    clearCache("/featured-videos");
+
     return {
       data: response.data.data,
       message:
@@ -2174,6 +2207,12 @@ export const deleteFeaturedVideo =
           id,
         )}`,
       );
+
+    /*
+     * Remove any old Featured Videos cache entries
+     * after deletion as well.
+     */
+    clearCache("/featured-videos");
 
     return {
       message:
