@@ -82,6 +82,18 @@ const getJwtSecret = () => {
   POST /api/auth/login
 
   Admin login
+
+  IMPORTANT:
+  Existing admin accounts may use the mobile_pin
+  as the login credential.
+
+  We therefore support BOTH:
+
+  1. bcrypt hashed admin.password
+  2. existing admin.mobile_pin
+
+  After successful authentication, this route always
+  returns a real JWT so protected admin routes work.
 */
 router.post("/login", async (req, res) => {
   try {
@@ -98,7 +110,7 @@ router.post("/login", async (req, res) => {
       `${getSupabaseRestUrl(
         "admins"
       )}?username=eq.${encodeURIComponent(
-        username
+        username.trim()
       )}&select=*`,
       {
         headers: supabaseHeaders,
@@ -113,17 +125,63 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    const validPassword =
-      await bcrypt.compare(
-        password,
-        admin.password
-      );
+    /* -----------------------------------------------------
+       CHECK NORMAL HASHED PASSWORD
+    ----------------------------------------------------- */
+
+    let validPassword = false;
+
+    if (
+      admin.password &&
+      typeof admin.password === "string"
+    ) {
+      try {
+        validPassword =
+          await bcrypt.compare(
+            String(password),
+            admin.password
+          );
+      } catch (passwordError) {
+        console.warn(
+          "Admin password bcrypt comparison failed:",
+          passwordError.message
+        );
+
+        validPassword = false;
+      }
+    }
+
+    /* -----------------------------------------------------
+       CHECK EXISTING MOBILE PIN
+
+       This keeps compatibility with the existing
+       Admin Dashboard credentials.
+    ----------------------------------------------------- */
+
+    if (
+      !validPassword &&
+      admin.mobile_pin !== null &&
+      admin.mobile_pin !== undefined &&
+      String(admin.mobile_pin).trim() !== ""
+    ) {
+      validPassword =
+        String(admin.mobile_pin) ===
+        String(password);
+    }
+
+    /* -----------------------------------------------------
+       INVALID CREDENTIALS
+    ----------------------------------------------------- */
 
     if (!validPassword) {
       return res.status(401).json({
         message: "Invalid credentials",
       });
     }
+
+    /* -----------------------------------------------------
+       CREATE REAL ADMIN JWT
+    ----------------------------------------------------- */
 
     const token = jwt.sign(
       {
@@ -136,6 +194,10 @@ router.post("/login", async (req, res) => {
         expiresIn: "8h",
       }
     );
+
+    /* -----------------------------------------------------
+       SUCCESS
+    ----------------------------------------------------- */
 
     return res.json({
       token,
@@ -776,37 +838,12 @@ router.post(
    VERIFY EMAIL
 ========================================================= */
 
-/*
-  GET /api/auth/user/verify-email?token=...
-
-  IMPORTANT:
-  The verification token is intentionally NOT deleted
-  after successful verification.
-
-  This makes verification idempotent.
-
-  Example:
-
-  First click:
-    email_verified = true
-
-  Second click / refresh:
-    "Your email is already verified."
-
-  This prevents React development-mode duplicate
-  requests or browser refreshes from producing a
-  false "invalid verification link" message.
-*/
 router.get(
   "/user/verify-email",
   async (req, res) => {
     try {
       const { token } =
         req.query;
-
-      /* -----------------------------------------------------
-         TOKEN REQUIRED
-      ----------------------------------------------------- */
 
       if (!token) {
         return res.status(400).json({
@@ -815,16 +852,8 @@ router.get(
         });
       }
 
-      /* -----------------------------------------------------
-         HASH TOKEN
-      ----------------------------------------------------- */
-
       const tokenHash =
         hashToken(token);
-
-      /* -----------------------------------------------------
-         FIND USER
-      ----------------------------------------------------- */
 
       const response =
         await axios.get(
@@ -842,10 +871,6 @@ router.get(
       const user =
         response.data[0];
 
-      /* -----------------------------------------------------
-         INVALID TOKEN
-      ----------------------------------------------------- */
-
       if (!user) {
         return res.status(400).json({
           message:
@@ -853,19 +878,6 @@ router.get(
           verified: false,
         });
       }
-
-      /* -----------------------------------------------------
-         ALREADY VERIFIED
-      -----------------------------------------------------
-
-         IMPORTANT:
-
-         We check this BEFORE expiration.
-
-         This means that even if the verification
-         timestamp is old, an already verified account
-         is still treated as successfully verified.
-      ----------------------------------------------------- */
 
       if (
         user.email_verified ===
@@ -889,10 +901,6 @@ router.get(
         });
       }
 
-      /* -----------------------------------------------------
-         CHECK EXPIRATION
-      ----------------------------------------------------- */
-
       if (
         !user.email_verification_expires_at ||
         new Date(
@@ -907,26 +915,6 @@ router.get(
           verified: false,
         });
       }
-
-      /* -----------------------------------------------------
-         VERIFY ACCOUNT
-      -----------------------------------------------------
-
-         IMPORTANT:
-
-         DO NOT clear:
-
-           email_verification_token_hash
-           email_verification_expires_at
-
-         Keeping the token hash allows the endpoint
-         to recognize the same verification link later
-         and return "already verified" instead of
-         "invalid link".
-
-         The original token is never stored.
-         Only its SHA-256 hash is stored.
-      ----------------------------------------------------- */
 
       const updateResponse =
         await axios.patch(
@@ -952,10 +940,6 @@ router.get(
       const verifiedUser =
         updateResponse
           .data[0];
-
-      /* -----------------------------------------------------
-         SUCCESS
-      ----------------------------------------------------- */
 
       return res.json({
         message:
@@ -1001,20 +985,6 @@ router.get(
    RESEND VERIFICATION EMAIL
 ========================================================= */
 
-/*
-  POST /api/auth/user/resend-verification
-
-  Body:
-  {
-    username: "example@gmail.com"
-  }
-
-  or:
-
-  {
-    email: "example@gmail.com"
-  }
-*/
 router.post(
   "/user/resend-verification",
   async (req, res) => {
@@ -1024,10 +994,6 @@ router.post(
           req.body.username ||
             req.body.email
         );
-
-      /* -----------------------------------------------------
-         VALIDATION
-      ----------------------------------------------------- */
 
       if (!email) {
         return res.status(400).json({
@@ -1042,10 +1008,6 @@ router.post(
             "Only Gmail addresses ending in @gmail.com are allowed.",
         });
       }
-
-      /* -----------------------------------------------------
-         FIND USER
-      ----------------------------------------------------- */
 
       const response =
         await axios.get(
@@ -1070,10 +1032,6 @@ router.post(
         });
       }
 
-      /* -----------------------------------------------------
-         ALREADY VERIFIED
-      ----------------------------------------------------- */
-
       if (
         user.email_verified ===
         true
@@ -1084,10 +1042,6 @@ router.post(
           alreadyVerified: true,
         });
       }
-
-      /* -----------------------------------------------------
-         CREATE NEW TOKEN
-      ----------------------------------------------------- */
 
       const verificationToken =
         createToken();
@@ -1102,10 +1056,6 @@ router.post(
           Date.now() +
             24 * 60 * 60 * 1000
         ).toISOString();
-
-      /* -----------------------------------------------------
-         UPDATE TOKEN
-      ----------------------------------------------------- */
 
       await axios.patch(
         `${getSupabaseRestUrl(
@@ -1127,10 +1077,6 @@ router.post(
         }
       );
 
-      /* -----------------------------------------------------
-         VERIFICATION URL
-      ----------------------------------------------------- */
-
       const verificationUrl =
         `${getClientUrl()}/verify-email?token=` +
         encodeURIComponent(
@@ -1139,10 +1085,6 @@ router.post(
 
       const safeName =
         escapeHtml(user.name);
-
-      /* -----------------------------------------------------
-         EMAIL
-      ----------------------------------------------------- */
 
       const html = `
         <!DOCTYPE html>
@@ -1316,11 +1258,6 @@ router.post(
    USER LOGIN
 ========================================================= */
 
-/*
-  POST /api/auth/user/login
-
-  User MUST verify Gmail before login.
-*/
 router.post(
   "/user/login",
   async (req, res) => {
@@ -1333,10 +1270,6 @@ router.post(
       const {
         password,
       } = req.body;
-
-      /* -----------------------------------------------------
-         VALIDATION
-      ----------------------------------------------------- */
 
       if (!email || !password) {
         return res.status(400).json({
@@ -1351,10 +1284,6 @@ router.post(
             "Only Gmail addresses ending in @gmail.com are allowed.",
         });
       }
-
-      /* -----------------------------------------------------
-         FIND USER
-      ----------------------------------------------------- */
 
       const response =
         await axios.get(
@@ -1379,20 +1308,12 @@ router.post(
         });
       }
 
-      /* -----------------------------------------------------
-         ACTIVE CHECK
-      ----------------------------------------------------- */
-
       if (!user.is_active) {
         return res.status(403).json({
           message:
             "Account is deactivated.",
         });
       }
-
-      /* -----------------------------------------------------
-         PASSWORD CHECK
-      ----------------------------------------------------- */
 
       const validPassword =
         await bcrypt.compare(
@@ -1406,10 +1327,6 @@ router.post(
             "Invalid credentials.",
         });
       }
-
-      /* -----------------------------------------------------
-         EMAIL VERIFICATION CHECK
-      ----------------------------------------------------- */
 
       if (
         user.email_verified !==
@@ -1426,10 +1343,6 @@ router.post(
         });
       }
 
-      /* -----------------------------------------------------
-         CREATE JWT
-      ----------------------------------------------------- */
-
       const token = jwt.sign(
         {
           id: user.id,
@@ -1443,10 +1356,6 @@ router.post(
           expiresIn: "8h",
         }
       );
-
-      /* -----------------------------------------------------
-         SUCCESS
-      ----------------------------------------------------- */
 
       return res.json({
         token,
@@ -1485,14 +1394,6 @@ router.post(
    FORGOT PASSWORD
 ========================================================= */
 
-/*
-  POST /api/auth/user/forgot-password
-
-  Body:
-  {
-    username: "example@gmail.com"
-  }
-*/
 router.post(
   "/user/forgot-password",
   async (req, res) => {
@@ -1533,21 +1434,12 @@ router.post(
       const user =
         response.data[0];
 
-      /*
-        Don't reveal whether
-        an account exists.
-      */
-
       if (!user) {
         return res.json({
           message:
             "If an account exists with that Gmail address, a password reset email will be sent.",
         });
       }
-
-      /* -----------------------------------------------------
-         MUST BE VERIFIED
-      ----------------------------------------------------- */
 
       if (
         user.email_verified !==
@@ -1561,10 +1453,6 @@ router.post(
         });
       }
 
-      /* -----------------------------------------------------
-         CREATE RESET TOKEN
-      ----------------------------------------------------- */
-
       const resetToken =
         createToken();
 
@@ -1576,10 +1464,6 @@ router.post(
           Date.now() +
             30 * 60 * 1000
         ).toISOString();
-
-      /* -----------------------------------------------------
-         STORE RESET TOKEN
-      ----------------------------------------------------- */
 
       await axios.patch(
         `${getSupabaseRestUrl(
@@ -1601,10 +1485,6 @@ router.post(
         }
       );
 
-      /* -----------------------------------------------------
-         RESET URL
-      ----------------------------------------------------- */
-
       const resetUrl =
         `${getClientUrl()}/reset-password?token=` +
         encodeURIComponent(
@@ -1613,10 +1493,6 @@ router.post(
 
       const safeName =
         escapeHtml(user.name);
-
-      /* -----------------------------------------------------
-         EMAIL
-      ----------------------------------------------------- */
 
       const html = `
         <!DOCTYPE html>
@@ -1799,15 +1675,6 @@ router.post(
    RESET PASSWORD
 ========================================================= */
 
-/*
-  POST /api/auth/user/reset-password
-
-  Body:
-  {
-    token: "...",
-    password: "new password"
-  }
-*/
 router.post(
   "/user/reset-password",
   async (req, res) => {
@@ -1831,16 +1698,8 @@ router.post(
         });
       }
 
-      /* -----------------------------------------------------
-         HASH TOKEN
-      ----------------------------------------------------- */
-
       const tokenHash =
         hashToken(token);
-
-      /* -----------------------------------------------------
-         FIND USER
-      ----------------------------------------------------- */
 
       const response =
         await axios.get(
@@ -1865,10 +1724,6 @@ router.post(
         });
       }
 
-      /* -----------------------------------------------------
-         CHECK EXPIRATION
-      ----------------------------------------------------- */
-
       if (
         !user.password_reset_expires_at ||
         new Date(
@@ -1883,19 +1738,11 @@ router.post(
         });
       }
 
-      /* -----------------------------------------------------
-         HASH NEW PASSWORD
-      ----------------------------------------------------- */
-
       const hashedPassword =
         await bcrypt.hash(
           password,
           10
         );
-
-      /* -----------------------------------------------------
-         UPDATE PASSWORD
-      ----------------------------------------------------- */
 
       await axios.patch(
         `${getSupabaseRestUrl(
@@ -1906,18 +1753,10 @@ router.post(
         {
           password:
             hashedPassword,
-
-          /*
-            Reset tokens ARE one-time tokens.
-            Unlike email verification, this token
-            should be cleared after use.
-          */
           password_reset_token_hash:
             null,
-
           password_reset_expires_at:
             null,
-
           updated_at:
             new Date().toISOString(),
         },
@@ -1953,9 +1792,6 @@ router.post(
    ADMIN USER MANAGEMENT
 ========================================================= */
 
-/*
-  GET /api/auth/admin/users
-*/
 router.get(
   "/admin/users",
   protect,
@@ -1996,9 +1832,6 @@ router.get(
   }
 );
 
-/*
-  GET /api/auth/admin/users/:id
-*/
 router.get(
   "/admin/users/:id",
   protect,
@@ -2042,9 +1875,6 @@ router.get(
   }
 );
 
-/*
-  PUT /api/auth/admin/users/:id
-*/
 router.put(
   "/admin/users/:id",
   protect,
@@ -2092,9 +1922,6 @@ router.put(
   }
 );
 
-/*
-  DELETE /api/auth/admin/users/:id
-*/
 router.delete(
   "/admin/users/:id",
   protect,
