@@ -678,67 +678,75 @@ export const loginAdmin =
     username: string;
     password: string;
   }) => {
-    const response =
-      await supabaseApi.get(
-        `/admins?username=eq.${encodeURIComponent(
-          data.username,
-        )}&select=*`,
-      );
-
-    const admins =
-      Array.isArray(
-        response.data,
-      )
-        ? response.data
-        : [];
-
-    const admin =
-      admins[0];
-
-    if (!admin) {
+    if (
+      !data.username ||
+      !data.username.trim()
+    ) {
       throw new Error(
-        "Invalid username",
+        "Username is required.",
       );
     }
 
-    if (
-      admin.mobile_pin &&
-      admin.mobile_pin ===
-        data.password
-    ) {
-      const token =
-        btoa(
-          JSON.stringify({
-            id: admin.id,
+    if (!data.password) {
+      throw new Error(
+        "Password is required.",
+      );
+    }
+
+    try {
+      const response =
+        await axios.post(
+          `${SERVER_BASE_URL}/auth/login`,
+          {
             username:
-              admin.username,
-            exp:
-              Date.now() +
-              8 *
-                60 *
-                60 *
-                1000,
-          }),
+              data.username.trim(),
+            password:
+              data.password,
+          },
         );
+
+      const token =
+        response.data?.token;
+
+      const admin =
+        response.data?.admin;
+
+      if (!token) {
+        throw new Error(
+          "Admin login failed: no authentication token was returned.",
+        );
+      }
+
+      if (!admin) {
+        throw new Error(
+          "Admin login failed: no admin information was returned.",
+        );
+      }
+
+      localStorage.setItem(
+        "admin_token",
+        token,
+      );
+
+      localStorage.setItem(
+        "admin_user",
+        JSON.stringify(admin),
+      );
 
       return {
         data: {
           token,
-          admin: {
-            id: admin.id,
-            username:
-              admin.username,
-            name: admin.name,
-            email:
-              admin.email,
-          },
+          admin,
         },
       };
-    }
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Admin login failed.";
 
-    throw new Error(
-      "Invalid password. Please use your mobile PIN.",
-    );
+      throw new Error(message);
+    }
   };
 
 // =========================================================
