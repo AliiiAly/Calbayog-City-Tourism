@@ -1901,7 +1901,7 @@ const Welcome: React.FC = () => {
                                 ? "metadata"
                                 : "none"
                             }
-                            muted
+                          
                             onPlay={() => {
                               if (
                                 videoSwiper
