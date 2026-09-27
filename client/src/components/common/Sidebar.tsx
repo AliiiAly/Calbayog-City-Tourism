@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import ReactDOM from "react-dom";
 import { Link, useLocation } from "react-router-dom";
@@ -27,7 +26,8 @@ type IconName =
   | "dashboard"
   | "feedback"
   | "users"
-  | "management";
+  | "management"
+  | "video";
 
 interface SidebarIconProps {
   name: IconName;
@@ -217,6 +217,20 @@ const SidebarIcon: React.FC<SidebarIconProps> = ({
         </svg>
       );
 
+    case "video":
+      return (
+        <svg {...commonProps}>
+          <rect
+            x="3"
+            y="5"
+            width="18"
+            height="14"
+            rx="2"
+          />
+          <path d="m10 9 5 3-5 3V9Z" />
+        </svg>
+      );
+
     default:
       return null;
   }
@@ -371,6 +385,18 @@ const adminSections: SidebarSection[] = [
         icon: "car",
         label: "Getting There",
         description: "Manage transport information",
+      },
+
+      /* =================================================
+         FEATURED VIDEOS
+         ADMIN ONLY
+      ================================================= */
+
+      {
+        to: "/admin/featured-videos",
+        icon: "video",
+        label: "Featured Videos",
+        description: "Manage homepage videos",
       },
     ],
   },
