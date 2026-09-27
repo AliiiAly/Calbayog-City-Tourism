@@ -2054,6 +2054,126 @@ export const deleteMyMemory =
   };
 
 // =========================================================
+// FEATURED VIDEOS
+// =========================================================
+
+export interface FeaturedVideo {
+  id: string;
+  title: string;
+  description?: string | null;
+  video_url: string;
+  storage_path: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const getFeaturedVideos =
+  async (): Promise<{
+    data: FeaturedVideo[];
+  }> => {
+    const response =
+      await api.get<{
+        data?: FeaturedVideo[];
+      }>("/featured-videos");
+
+    return {
+      data: Array.isArray(
+        response.data?.data,
+      )
+        ? response.data.data
+        : [],
+    };
+  };
+
+export const uploadFeaturedVideo =
+  async (
+    file: File,
+    title: string,
+    description?: string,
+  ): Promise<{
+    data: FeaturedVideo;
+    message?: string;
+  }> => {
+    if (!file) {
+      throw new Error(
+        "Featured video file is required.",
+      );
+    }
+
+    if (!title.trim()) {
+      throw new Error(
+        "Featured video title is required.",
+      );
+    }
+
+    const formData =
+      new FormData();
+
+    formData.append(
+      "video",
+      file,
+      file.name,
+    );
+
+    formData.append(
+      "title",
+      title.trim(),
+    );
+
+    if (
+      description &&
+      description.trim()
+    ) {
+      formData.append(
+        "description",
+        description.trim(),
+      );
+    }
+
+    const response =
+      await api.post<{
+        data: FeaturedVideo;
+        message?: string;
+      }>(
+        "/featured-videos",
+        formData,
+      );
+
+    return {
+      data: response.data.data,
+      message:
+        response.data.message,
+    };
+  };
+
+export const deleteFeaturedVideo =
+  async (
+    id: string,
+  ): Promise<{
+    message?: string;
+  }> => {
+    if (!id) {
+      throw new Error(
+        "Featured video ID is required.",
+      );
+    }
+
+    const response =
+      await api.delete<{
+        message?: string;
+      }>(
+        `/featured-videos/${encodeURIComponent(
+          id,
+        )}`,
+      );
+
+    return {
+      message:
+        response.data?.message,
+    };
+  };
+
+// =========================================================
 // DEFAULT EXPORT
 // =========================================================
 
