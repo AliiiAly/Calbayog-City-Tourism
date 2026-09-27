@@ -161,6 +161,15 @@ app.use(
   require("./src/routes/adminManagement")
 );
 
+/* =========================================================
+   FEATURED VIDEOS
+========================================================= */
+
+app.use(
+  "/api/featured-videos",
+  require("./src/routes/featuredVideos")
+);
+
 app.use(
   "/api/getting-there",
   require("./src/routes/gettingThere")
