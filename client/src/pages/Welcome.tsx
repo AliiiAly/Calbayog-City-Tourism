@@ -16,6 +16,8 @@ import {
 import {
   getAccommodations,
   getAttractions,
+  getFeaturedVideos,
+  FeaturedVideo,
 } from "../services/api";
 
 import {
@@ -43,6 +45,27 @@ import {
   ChevronRight,
   Play,
 } from "lucide-react";
+
+import {
+  Swiper,
+  SwiperSlide,
+} from "swiper/react";
+
+import {
+  EffectCoverflow,
+  Navigation,
+  Pagination,
+  A11y,
+} from "swiper/modules";
+
+import type {
+  Swiper as SwiperInstance,
+} from "swiper";
+
+import "swiper/css";
+import "swiper/css/effect-coverflow";
+import "swiper/css/navigation";
+import "swiper/css/pagination";
 
 /* =========================================================
    BRAND COLOR
@@ -170,34 +193,10 @@ const heroSlides = [
   },
 
   {
-    id: "calbayog-4",
+    id: "calbayogonair",
     image: "/calbayogonair.webp",
     alt: "Calbayog City",
   },
-];
-
-/* =========================================================
-   FEATURED VIDEOS
-========================================================= */
-
-const featuredVideos = [
-  {
-    id: "calbayog-video-1",
-    src: "/promo.mp4",
-    title: "Discover Calbayog City",
-    description:
-      "Experience the beauty, places, and stories of Calbayog City.",
-  },
-
-  // Add additional videos here later.
-  //
-  // {
-  //   id: "calbayog-video-2",
-  //   src: "/another-video.mp4",
-  //   title: "Explore Calbayog",
-  //   description:
-  //     "Discover more places and experiences around the city.",
-  // },
 ];
 
 /* =========================================================
@@ -390,25 +389,33 @@ const Welcome: React.FC = () => {
     useRef(false);
 
   /* =========================================================
-     FEATURED VIDEO CAROUSEL STATE
+     FEATURED VIDEO CAROUSEL
   ========================================================= */
+
+  const [
+    featuredVideos,
+    setFeaturedVideos,
+  ] = useState<FeaturedVideo[]>([]);
+
+  const [
+    loadingFeaturedVideos,
+    setLoadingFeaturedVideos,
+  ] = useState(true);
+
+  const [
+    featuredVideosError,
+    setFeaturedVideosError,
+  ] = useState(false);
 
   const [
     activeVideo,
     setActiveVideo,
   ] = useState(0);
 
-  const videoTouchStartX =
-    useRef<number | null>(null);
-
-  const videoTouchEndX =
-    useRef<number | null>(null);
-
-  const videoMouseStartX =
-    useRef<number | null>(null);
-
-  const videoDragging =
-    useRef(false);
+  const [
+    videoSwiper,
+    setVideoSwiper,
+  ] = useState<SwiperInstance | null>(null);
 
   /* =========================================================
      DATE
@@ -858,192 +865,59 @@ const Welcome: React.FC = () => {
     };
 
   /* =========================================================
-     FEATURED VIDEO NEXT
+     LOAD FEATURED VIDEOS
   ========================================================= */
 
-  const nextVideo = () => {
-    if (
-      featuredVideos.length <=
-      1
-    ) {
-      return;
-    }
+  const loadFeaturedVideos =
+    async () => {
+      setLoadingFeaturedVideos(
+        true,
+      );
 
-    setActiveVideo(
-      (current) =>
-        (current + 1) %
-        featuredVideos.length,
-    );
-  };
+      setFeaturedVideosError(
+        false,
+      );
 
-  /* =========================================================
-     FEATURED VIDEO PREVIOUS
-  ========================================================= */
+      try {
+        const response =
+          await getFeaturedVideos();
 
-  const previousVideo = () => {
-    if (
-      featuredVideos.length <=
-      1
-    ) {
-      return;
-    }
+        const data =
+          Array.isArray(
+            response?.data,
+          )
+            ? response.data.filter(
+                (video) =>
+                  Boolean(
+                    video?.id &&
+                    video?.video_url,
+                  ),
+              )
+            : [];
 
-    setActiveVideo(
-      (current) =>
-        current === 0
-          ? featuredVideos.length - 1
-          : current - 1,
-    );
-  };
+        setFeaturedVideos(
+          data,
+        );
 
-  /* =========================================================
-     VIDEO TOUCH START
-  ========================================================= */
+        setActiveVideo(0);
+      } catch (error) {
+        console.error(
+          "Failed to load Featured Videos:",
+          error,
+        );
 
-  const handleVideoTouchStart = (
-    e: React.TouchEvent<HTMLDivElement>,
-  ) => {
-    if (
-      featuredVideos.length <=
-      1
-    ) {
-      return;
-    }
+        setFeaturedVideos(
+          [],
+        );
 
-    videoTouchStartX.current =
-      e.touches[0].clientX;
-
-    videoTouchEndX.current =
-      null;
-  };
-
-  /* =========================================================
-     VIDEO TOUCH MOVE
-  ========================================================= */
-
-  const handleVideoTouchMove = (
-    e: React.TouchEvent<HTMLDivElement>,
-  ) => {
-    if (
-      featuredVideos.length <=
-      1
-    ) {
-      return;
-    }
-
-    videoTouchEndX.current =
-      e.touches[0].clientX;
-  };
-
-  /* =========================================================
-     VIDEO TOUCH END
-  ========================================================= */
-
-  const handleVideoTouchEnd = () => {
-    if (
-      videoTouchStartX.current ===
-        null ||
-      videoTouchEndX.current ===
-        null
-    ) {
-      return;
-    }
-
-    const distance =
-      videoTouchStartX.current -
-      videoTouchEndX.current;
-
-    const minimumSwipeDistance = 50;
-
-    if (
-      Math.abs(distance) >=
-      minimumSwipeDistance
-    ) {
-      if (distance > 0) {
-        nextVideo();
-      } else {
-        previousVideo();
+        setFeaturedVideosError(
+          true,
+        );
+      } finally {
+        setLoadingFeaturedVideos(
+          false,
+        );
       }
-    }
-
-    videoTouchStartX.current =
-      null;
-
-    videoTouchEndX.current =
-      null;
-  };
-
-  /* =========================================================
-     VIDEO MOUSE DOWN
-  ========================================================= */
-
-  const handleVideoMouseDown = (
-    e: React.MouseEvent<HTMLDivElement>,
-  ) => {
-    if (
-      featuredVideos.length <=
-      1
-    ) {
-      return;
-    }
-
-    videoMouseStartX.current =
-      e.clientX;
-
-    videoDragging.current =
-      true;
-  };
-
-  /* =========================================================
-     VIDEO MOUSE UP
-  ========================================================= */
-
-  const handleVideoMouseUp = (
-    e: React.MouseEvent<HTMLDivElement>,
-  ) => {
-    if (
-      videoMouseStartX.current ===
-        null ||
-      !videoDragging.current
-    ) {
-      return;
-    }
-
-    const distance =
-      videoMouseStartX.current -
-      e.clientX;
-
-    const minimumDragDistance = 50;
-
-    if (
-      Math.abs(distance) >=
-      minimumDragDistance
-    ) {
-      if (distance > 0) {
-        nextVideo();
-      } else {
-        previousVideo();
-      }
-    }
-
-    videoMouseStartX.current =
-      null;
-
-    videoDragging.current =
-      false;
-  };
-
-  /* =========================================================
-     VIDEO MOUSE LEAVE
-  ========================================================= */
-
-  const handleVideoMouseLeave =
-    () => {
-      videoMouseStartX.current =
-        null;
-
-      videoDragging.current =
-        false;
     };
 
   /* =========================================================
@@ -1178,6 +1052,8 @@ const Welcome: React.FC = () => {
     void loadWelcomeDestinations();
 
     void loadWelcomeAccommodations();
+
+    void loadFeaturedVideos();
   }, []);
 
   /* =========================================================
@@ -1254,20 +1130,35 @@ const Welcome: React.FC = () => {
   ]);
 
   /* =========================================================
+     FEATURED VIDEO ACTIVE INDEX
+  ========================================================= */
+
+  useEffect(() => {
+    if (
+      featuredVideos.length ===
+      0
+    ) {
+      setActiveVideo(0);
+      return;
+    }
+
+    if (
+      activeVideo >=
+      featuredVideos.length
+    ) {
+      setActiveVideo(0);
+    }
+  }, [
+    featuredVideos.length,
+    activeVideo,
+  ]);
+
+  /* =========================================================
      CURRENT HERO
   ========================================================= */
 
   const currentHero =
     heroSlides[activeSlide];
-
-  /* =========================================================
-     CURRENT VIDEO
-  ========================================================= */
-
-  const currentVideo =
-    featuredVideos[
-      activeVideo
-    ];
 
   /* =========================================================
      WEATHER DISPLAY
@@ -1864,7 +1755,7 @@ const Welcome: React.FC = () => {
 
         {/* =====================================================
             FEATURED VIDEOS
-            CINEMATIC SWIPEABLE CAROUSEL
+            UI INITIATIVE / SWIPER 3D CAROUSEL
         ===================================================== */}
 
         <section className="welcome-videos-section mb-5">
@@ -1884,116 +1775,162 @@ const Welcome: React.FC = () => {
             </div>
           </div>
 
-          <div
-            className={`welcome-video-carousel ${
-              featuredVideos.length > 1
-                ? "has-multiple"
-                : "single-video"
-            }`}
-            onTouchStart={
-              handleVideoTouchStart
-            }
-            onTouchMove={
-              handleVideoTouchMove
-            }
-            onTouchEnd={
-              handleVideoTouchEnd
-            }
-            onMouseDown={
-              handleVideoMouseDown
-            }
-            onMouseUp={
-              handleVideoMouseUp
-            }
-            onMouseLeave={
-              handleVideoMouseLeave
-            }
-          >
-            <div className="welcome-video-carousel-track">
-              {featuredVideos.map(
-                (
-                  video,
-                  index,
+          {loadingFeaturedVideos ? (
+            <div
+              className="welcome-video-loading"
+              aria-live="polite"
+            >
+              <div className="welcome-video-loading-spinner" />
+
+              <span>
+                Loading featured videos...
+              </span>
+            </div>
+          ) : featuredVideos.length ===
+            0 ? (
+            <div
+              className="welcome-video-empty"
+              aria-live="polite"
+            >
+              <div className="welcome-video-empty-icon">
+                <Play
+                  size={25}
+                  strokeWidth={1.8}
+                />
+              </div>
+
+              <h3>
+                No featured videos yet
+              </h3>
+
+              <p>
+                Featured videos uploaded from the
+                admin dashboard will appear here.
+              </p>
+
+              {featuredVideosError && (
+                <small>
+                  Unable to load featured videos
+                  right now.
+                </small>
+              )}
+            </div>
+          ) : (
+            <div className="welcome-video-carousel">
+              <Swiper
+                modules={[
+                  EffectCoverflow,
+                  Navigation,
+                  Pagination,
+                  A11y,
+                ]}
+                effect="coverflow"
+                centeredSlides
+                grabCursor
+                loop={
+                  featuredVideos.length > 2
+                }
+                slidesPerView="auto"
+                speed={700}
+                watchSlidesProgress
+                observer
+                observeParents
+                onSwiper={(
+                  swiper,
                 ) => {
-                  const total =
-                    featuredVideos.length;
+                  setVideoSwiper(
+                    swiper,
+                  );
 
-                  let offset =
-                    index -
-                    activeVideo;
-
-                  if (
-                    total > 2
-                  ) {
-                    if (
-                      offset >
-                      total / 2
-                    ) {
-                      offset -=
-                        total;
-                    }
-
-                    if (
-                      offset <
-                      -total / 2
-                    ) {
-                      offset +=
-                        total;
-                    }
-                  }
-
-                  const isActive =
-                    index ===
-                    activeVideo;
-
-                  return (
-                    <div
+                  setActiveVideo(
+                    swiper.realIndex,
+                  );
+                }}
+                onSlideChange={(
+                  swiper,
+                ) => {
+                  setActiveVideo(
+                    swiper.realIndex,
+                  );
+                }}
+                coverflowEffect={{
+                  rotate: 0,
+                  stretch: 0,
+                  depth: 260,
+                  modifier: 1.25,
+                  scale: 0.84,
+                  slideShadows: false,
+                }}
+                navigation={{
+                  prevEl:
+                    ".welcome-video-prev",
+                  nextEl:
+                    ".welcome-video-next",
+                }}
+                pagination={{
+                  el:
+                    ".welcome-video-pagination",
+                  clickable: true,
+                  dynamicBullets: true,
+                }}
+                className="welcome-featured-swiper"
+              >
+                {featuredVideos.map(
+                  (
+                    video,
+                    index,
+                  ) => (
+                    <SwiperSlide
                       key={
                         video.id
                       }
-                      className={`welcome-video-slide ${
-                        isActive
-                          ? "active"
-                          : ""
-                      } ${
-                        offset ===
-                        -1
-                          ? "previous"
-                          : ""
-                      } ${
-                        offset ===
-                        1
-                          ? "next"
-                          : ""
-                      }`}
-                      style={
-                        {
-                          "--video-offset":
-                            offset,
-                        } as React.CSSProperties
-                      }
-                      aria-hidden={
-                        !isActive
-                      }
+                      className="welcome-featured-swiper-slide"
                     >
                       <div className="welcome-video-cinematic-card">
                         <div className="welcome-video-media">
                           <video
                             className="welcome-video-player"
                             controls={
-                              isActive
+                              activeVideo ===
+                              index
                             }
                             playsInline
                             preload={
-                              isActive
+                              activeVideo ===
+                              index
                                 ? "metadata"
                                 : "none"
                             }
                             muted
+                            onPlay={() => {
+                              if (
+                                videoSwiper
+                              ) {
+                                videoSwiper.allowTouchMove =
+                                  false;
+                              }
+                            }}
+                            onPause={() => {
+                              if (
+                                videoSwiper
+                              ) {
+                                videoSwiper.allowTouchMove =
+                                  true;
+                              }
+                            }}
+                            onEnded={() => {
+                              if (
+                                videoSwiper &&
+                                featuredVideos.length >
+                                  1
+                              ) {
+                                videoSwiper.slideNext();
+                              }
+                            }}
                           >
                             <source
                               src={
-                                video.src
+                                video.video_url
                               }
                               type="video/mp4"
                             />
@@ -2001,10 +1938,6 @@ const Welcome: React.FC = () => {
                             Your browser does not
                             support the video element.
                           </video>
-
-                          {!isActive && (
-                            <div className="welcome-video-inactive-overlay" />
-                          )}
 
                           <div className="welcome-video-gradient" />
 
@@ -2034,95 +1967,51 @@ const Welcome: React.FC = () => {
                               }
                             </h3>
 
-                            <p>
-                              {
-                                video.description
-                              }
-                            </p>
+                            {video.description && (
+                              <p>
+                                {
+                                  video.description
+                                }
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                },
+                    </SwiperSlide>
+                  ),
+                )}
+              </Swiper>
+
+              {featuredVideos.length >
+                1 && (
+                <>
+                  <button
+                    type="button"
+                    className="welcome-video-arrow welcome-video-prev"
+                    aria-label="Previous featured video"
+                  >
+                    <ChevronLeft
+                      size={25}
+                      strokeWidth={2}
+                    />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="welcome-video-arrow welcome-video-next"
+                    aria-label="Next featured video"
+                  >
+                    <ChevronRight
+                      size={25}
+                      strokeWidth={2}
+                    />
+                  </button>
+
+                  <div className="welcome-video-pagination" />
+                </>
               )}
             </div>
-
-            {featuredVideos.length >
-              1 && (
-              <>
-                <button
-                  type="button"
-                  className="welcome-video-arrow welcome-video-arrow-left"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    previousVideo();
-                  }}
-                  aria-label="Previous featured video"
-                >
-                  <ChevronLeft
-                    size={25}
-                    strokeWidth={2}
-                  />
-                </button>
-
-                <button
-                  type="button"
-                  className="welcome-video-arrow welcome-video-arrow-right"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    nextVideo();
-                  }}
-                  aria-label="Next featured video"
-                >
-                  <ChevronRight
-                    size={25}
-                    strokeWidth={2}
-                  />
-                </button>
-
-                <div className="welcome-video-dots">
-                  {featuredVideos.map(
-                    (
-                      video,
-                      index,
-                    ) => (
-                      <button
-                        key={
-                          video.id
-                        }
-                        type="button"
-                        className={`welcome-video-dot ${
-                          activeVideo ===
-                          index
-                            ? "active"
-                            : ""
-                        }`}
-                        onClick={(
-                          e,
-                        ) => {
-                          e.stopPropagation();
-
-                          setActiveVideo(
-                            index,
-                          );
-                        }}
-                        aria-label={`Show featured video ${
-                          index + 1
-                        }`}
-                        aria-current={
-                          activeVideo ===
-                          index
-                            ? "true"
-                            : undefined
-                        }
-                      />
-                    ),
-                  )}
-                </div>
-              </>
-            )}
-          </div>
+          )}
         </section>
       </Container>
 
@@ -2693,7 +2582,8 @@ const Welcome: React.FC = () => {
         }
 
         /* =====================================================
-           FEATURED VIDEOS — CINEMATIC CAROUSEL
+           FEATURED VIDEOS
+           UI INITIATIVE / SWIPER 3D CAROUSEL
         ===================================================== */
 
         .welcome-videos-section {
@@ -2750,123 +2640,64 @@ const Welcome: React.FC = () => {
           width:
             100%;
           min-height:
-            500px;
+            545px;
+          padding:
+            10px 0 65px;
           overflow:
             hidden;
-          user-select:
-            none;
-          touch-action:
-            pan-y;
-          perspective:
-            1400px;
-          padding:
-            15px 0 65px;
         }
 
-        .welcome-video-carousel-track {
-          position:
-            relative;
+        .welcome-featured-swiper {
           width:
             100%;
           height:
-            470px;
+            475px;
+          padding:
+            28px 0 35px;
+          overflow:
+            visible !important;
+        }
+
+        .welcome-featured-swiper
+          .swiper-wrapper {
+          align-items:
+            center;
+        }
+
+        .welcome-featured-swiper-slide {
+          width:
+            min(
+              74%,
+              820px
+            ) !important;
+          height:
+            auto;
           display:
             flex;
           align-items:
             center;
           justify-content:
             center;
-        }
-
-        .welcome-video-slide {
-          position:
-            absolute;
-          top:
-            50%;
-          left:
-            50%;
-          width:
-            min(
-              78%,
-              820px
-            );
-          transform:
-            translate(
-              calc(
-                -50% +
-                (
-                  var(
-                    --video-offset
-                  ) *
-                  76%
-                )
-              ),
-              -50%
-            )
-            scale(
-              calc(
-                1 -
-                (
-                  min(
-                    abs(
-                      var(
-                        --video-offset
-                      )
-                    ),
-                    2
-                  ) *
-                  0.12
-                )
-              )
-            );
-          opacity:
-            calc(
-              1 -
-              (
-                min(
-                  abs(
-                    var(
-                      --video-offset
-                    )
-                  ),
-                  2
-                ) *
-                0.28
-              )
-            );
-          z-index:
-            calc(
-              20 -
-              abs(
-                var(
-                  --video-offset
-                )
-              )
-            );
           transition:
-            transform 0.65s
-              cubic-bezier(
-                0.22,
-                1,
-                0.36,
-                1
-              ),
-            opacity 0.5s ease,
-            filter 0.5s ease;
-          pointer-events:
-            none;
+            opacity 0.45s ease,
+            filter 0.45s ease;
         }
 
-        .welcome-video-slide.active {
-          pointer-events:
-            auto;
-        }
-
-        .welcome-video-slide.previous,
-        .welcome-video-slide.next {
+        .welcome-featured-swiper-slide:not(
+            .swiper-slide-active
+          ) {
+          opacity:
+            0.72;
           filter:
             saturate(0.72)
             brightness(0.72);
+        }
+
+        .welcome-featured-swiper-slide.swiper-slide-active {
+          opacity:
+            1;
+          filter:
+            none;
         }
 
         .welcome-video-cinematic-card {
@@ -2886,21 +2717,21 @@ const Welcome: React.FC = () => {
               0,
               0,
               0,
-              0.20
+              0.22
             );
           transform:
             translateZ(0);
         }
 
-        .welcome-video-slide.active
+        .welcome-featured-swiper-slide.swiper-slide-active
           .welcome-video-cinematic-card {
           box-shadow:
-            0 30px 75px
+            0 32px 80px
             rgba(
               0,
               0,
               0,
-              0.25
+              0.30
             );
         }
 
@@ -2944,37 +2775,21 @@ const Welcome: React.FC = () => {
                 0,
                 0,
                 0,
-                0.05
+                0.04
               ) 20%,
               rgba(
                 0,
                 0,
                 0,
-                0.10
-              ) 42%,
+                0.12
+              ) 45%,
               rgba(
                 0,
                 0,
                 0,
-                0.78
+                0.82
               ) 100%
             );
-        }
-
-        .welcome-video-inactive-overlay {
-          position:
-            absolute;
-          inset:
-            0;
-          background:
-            rgba(
-              14,
-              16,
-              26,
-              0.30
-            );
-          pointer-events:
-            none;
         }
 
         .welcome-video-play-badge {
@@ -3130,7 +2945,7 @@ const Welcome: React.FC = () => {
           position:
             absolute;
           z-index:
-            50;
+            30;
           top:
             50%;
           width:
@@ -3201,24 +3016,35 @@ const Welcome: React.FC = () => {
             );
         }
 
-        .welcome-video-arrow-left {
+        .welcome-video-arrow.swiper-button-disabled {
+          opacity:
+            0.45;
+          cursor:
+            default;
+        }
+
+        .welcome-video-prev {
           left:
             3%;
         }
 
-        .welcome-video-arrow-right {
+        .welcome-video-next {
           right:
             3%;
         }
 
-        .welcome-video-dots {
+        .welcome-video-pagination {
           position:
             absolute;
           z-index:
-            50;
+            30;
           left:
             50%;
           bottom:
+            13px;
+          width:
+            auto !important;
+          min-height:
             20px;
           transform:
             translateX(-50%);
@@ -3226,19 +3052,20 @@ const Welcome: React.FC = () => {
             flex;
           align-items:
             center;
-          gap:
-            8px;
+          justify-content:
+            center;
         }
 
-        .welcome-video-dot {
+        .welcome-video-pagination
+          .swiper-pagination-bullet {
           width:
             8px;
           height:
             8px;
-          padding:
-            0;
-          border:
-            0;
+          margin:
+            0 4px !important;
+          opacity:
+            1;
           border-radius:
             999px;
           background:
@@ -3248,26 +3075,180 @@ const Welcome: React.FC = () => {
               149,
               0.22
             );
-          cursor:
-            pointer;
           transition:
             width 0.3s ease,
             background 0.3s ease,
             transform 0.3s ease;
         }
 
-        .welcome-video-dot:hover {
-          transform:
-            scale(
-              1.15
-            );
-        }
-
-        .welcome-video-dot.active {
+        .welcome-video-pagination
+          .swiper-pagination-bullet-active {
           width:
             27px;
           background:
             ${CALBAYOG_BLUE};
+        }
+
+        .welcome-video-loading {
+          width:
+            100%;
+          min-height:
+            440px;
+          display:
+            flex;
+          flex-direction:
+            column;
+          align-items:
+            center;
+          justify-content:
+            center;
+          gap:
+            16px;
+          color:
+            #6c757d;
+          font-size:
+            0.82rem;
+        }
+
+        .welcome-video-loading-spinner {
+          width:
+            42px;
+          height:
+            42px;
+          border:
+            3px solid
+            rgba(
+              45,
+              49,
+              149,
+              0.16
+            );
+          border-top-color:
+            ${CALBAYOG_BLUE};
+          border-radius:
+            50%;
+          animation:
+            welcomeVideoSpin
+            0.8s linear
+            infinite;
+        }
+
+        @keyframes welcomeVideoSpin {
+          to {
+            transform:
+              rotate(
+                360deg
+              );
+          }
+        }
+
+        .welcome-video-empty {
+          width:
+            100%;
+          min-height:
+            360px;
+          display:
+            flex;
+          flex-direction:
+            column;
+          align-items:
+            center;
+          justify-content:
+            center;
+          padding:
+            40px 20px;
+          border:
+            1px dashed
+            rgba(
+              45,
+              49,
+              149,
+              0.22
+            );
+          border-radius:
+            22px;
+          background:
+            linear-gradient(
+              180deg,
+              rgba(
+                45,
+                49,
+                149,
+                0.025
+              ),
+              rgba(
+                45,
+                49,
+                149,
+                0.055
+              )
+            );
+          text-align:
+            center;
+        }
+
+        .welcome-video-empty-icon {
+          width:
+            58px;
+          height:
+            58px;
+          display:
+            flex;
+          align-items:
+            center;
+          justify-content:
+            center;
+          margin-bottom:
+            16px;
+          border-radius:
+            50%;
+          background:
+            rgba(
+              45,
+              49,
+              149,
+              0.08
+            );
+          color:
+            ${CALBAYOG_BLUE};
+        }
+
+        .welcome-video-empty h3 {
+          margin:
+            0 0 7px;
+          color:
+            #2D3195;
+          font-family:
+            "Barabara",
+            "Arial Black",
+            Arial,
+            sans-serif;
+          font-size:
+            1.4rem;
+          font-weight:
+            400;
+        }
+
+        .welcome-video-empty p {
+          max-width:
+            430px;
+          margin:
+            0;
+          color:
+            #6c757d;
+          font-size:
+            0.76rem;
+          line-height:
+            1.6;
+        }
+
+        .welcome-video-empty small {
+          margin-top:
+            10px;
+          color:
+            #a05a5a;
+          font-size:
+            0.68rem;
         }
 
         /* =====================================================
@@ -3810,17 +3791,17 @@ const Welcome: React.FC = () => {
 
           .welcome-video-carousel {
             min-height:
-              440px;
+              475px;
           }
 
-          .welcome-video-carousel-track {
+          .welcome-featured-swiper {
             height:
               410px;
           }
 
-          .welcome-video-slide {
+          .welcome-featured-swiper-slide {
             width:
-              84%;
+              84% !important;
           }
 
           .welcome-video-caption {
@@ -4073,19 +4054,21 @@ const Welcome: React.FC = () => {
 
           .welcome-video-carousel {
             min-height:
-              390px;
+              410px;
             padding:
-              8px 0 55px;
+              5px 0 55px;
           }
 
-          .welcome-video-carousel-track {
+          .welcome-featured-swiper {
             height:
               360px;
+            padding:
+              20px 0 25px;
           }
 
-          .welcome-video-slide {
+          .welcome-featured-swiper-slide {
             width:
-              88%;
+              88% !important;
           }
 
           .welcome-video-cinematic-card {
@@ -4143,19 +4126,19 @@ const Welcome: React.FC = () => {
               38px;
           }
 
-          .welcome-video-arrow-left {
+          .welcome-video-prev {
             left:
               7px;
           }
 
-          .welcome-video-arrow-right {
+          .welcome-video-next {
             right:
               7px;
           }
 
-          .welcome-video-dots {
+          .welcome-video-pagination {
             bottom:
-              13px;
+              10px;
           }
         }
 
@@ -4339,17 +4322,19 @@ const Welcome: React.FC = () => {
 
           .welcome-video-carousel {
             min-height:
-              330px;
+              350px;
           }
 
-          .welcome-video-carousel-track {
+          .welcome-featured-swiper {
             height:
               300px;
+            padding:
+              15px 0 20px;
           }
 
-          .welcome-video-slide {
+          .welcome-featured-swiper-slide {
             width:
-              91%;
+              91% !important;
           }
 
           .welcome-video-cinematic-card {
@@ -4372,6 +4357,13 @@ const Welcome: React.FC = () => {
               34px;
             height:
               34px;
+          }
+
+          .welcome-video-play-badge {
+            width:
+              36px;
+            height:
+              36px;
           }
         }
 
