@@ -48,6 +48,7 @@ import AdminRequests from "./pages/admin/AdminRequests";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminManagement from "./pages/admin/AdminManagement";
 import AdminFeedback from "./pages/admin/AdminFeedback";
+import AdminFeaturedVideos from "./pages/admin/AdminFeaturedVideos";
 
 /* =========================================================
    HELPERS
@@ -63,7 +64,8 @@ const isAdminRoute = (pathname: string) => {
 
 const SPLASH_KEY = "calbayog_splash_done";
 
-const IS_ADMIN_BUILD = import.meta.env.VITE_BUILD_MODE === "admin";
+const IS_ADMIN_BUILD =
+  import.meta.env.VITE_BUILD_MODE === "admin";
 
 /* =========================================================
    APP
@@ -71,11 +73,15 @@ const IS_ADMIN_BUILD = import.meta.env.VITE_BUILD_MODE === "admin";
 
 const App: React.FC = () => {
   const isAdmin =
-    IS_ADMIN_BUILD || window.location.pathname.startsWith("/admin");
+    IS_ADMIN_BUILD ||
+    window.location.pathname.startsWith("/admin");
 
-  const alreadySeen = sessionStorage.getItem(SPLASH_KEY) === "1";
+  const alreadySeen =
+    sessionStorage.getItem(SPLASH_KEY) === "1";
 
-  const [splashDone, setSplashDone] = useState(isAdmin || alreadySeen);
+  const [splashDone, setSplashDone] = useState(
+    isAdmin || alreadySeen
+  );
 
   /* =========================================================
      INITIAL ADMIN BODY CLASS
@@ -102,14 +108,18 @@ const App: React.FC = () => {
   ========================================================= */
 
   if (!splashDone) {
-    return <SplashScreen onComplete={handleSplashComplete} />;
+    return (
+      <SplashScreen
+        onComplete={handleSplashComplete}
+      />
+    );
   }
 
   /* =========================================================
      APP PROVIDERS
-     
+
      IMPORTANT:
-     
+
      AuthProvider
        ↓
      FavoritesProvider
@@ -117,7 +127,7 @@ const App: React.FC = () => {
      DarkModeProvider
        ↓
      Router
-     
+
      This makes the same favorites state available
      to Welcome, Attractions, AttractionDetail,
      Accommodations, Events, etc.
@@ -143,7 +153,8 @@ const App: React.FC = () => {
 ========================================================= */
 
 const AppContent: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] =
+    useState(false);
 
   const history = useHistory();
 
@@ -171,7 +182,9 @@ const AppContent: React.FC = () => {
     return () => {
       unlisten();
 
-      document.body.classList.remove("admin-page");
+      document.body.classList.remove(
+        "admin-page"
+      );
     };
   }, [history]);
 
@@ -180,7 +193,11 @@ const AppContent: React.FC = () => {
   ========================================================= */
 
   const handleSearch = (query: string) => {
-    history.push(`/attractions?search=${encodeURIComponent(query)}`);
+    history.push(
+      `/attractions?search=${encodeURIComponent(
+        query
+      )}`
+    );
   };
 
   /* =========================================================
@@ -196,7 +213,12 @@ const AppContent: React.FC = () => {
       ===================================================== */}
 
       {!IS_ADMIN_BUILD && (
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar
+          isOpen={sidebarOpen}
+          onClose={() =>
+            setSidebarOpen(false)
+          }
+        />
       )}
 
       {/* =====================================================
@@ -215,7 +237,11 @@ const AppContent: React.FC = () => {
           ================================================= */}
 
           {/* Admin Login */}
-          <Route exact path="/admin/login" component={AdminLogin} />
+          <Route
+            exact
+            path="/admin/login"
+            component={AdminLogin}
+          />
 
           {/* Admin Dashboard */}
           <Route
@@ -328,6 +354,20 @@ const AppContent: React.FC = () => {
           />
 
           {/* =================================================
+              ADMIN FEATURED VIDEOS
+          ================================================= */}
+
+          <Route
+            exact
+            path="/admin/featured-videos"
+            render={() => (
+              <ProtectedRoute>
+                <AdminFeaturedVideos />
+              </ProtectedRoute>
+            )}
+          />
+
+          {/* =================================================
               PUBLIC ROUTES
           ================================================= */}
 
@@ -339,7 +379,9 @@ const AppContent: React.FC = () => {
               render={() => (
                 <>
                   <AppHeader
-                    onMenuClick={() => setSidebarOpen(true)}
+                    onMenuClick={() =>
+                      setSidebarOpen(true)
+                    }
                     onSearch={handleSearch}
                   />
 
@@ -351,7 +393,11 @@ const AppContent: React.FC = () => {
 
           {/* User Login */}
           {!IS_ADMIN_BUILD && (
-            <Route exact path="/login" component={UserLogin} />
+            <Route
+              exact
+              path="/login"
+              component={UserLogin}
+            />
           )}
 
           {/* =================================================
@@ -366,7 +412,9 @@ const AppContent: React.FC = () => {
                 <UserProtectedRoute>
                   <>
                     <AppHeader
-                      onMenuClick={() => setSidebarOpen(true)}
+                      onMenuClick={() =>
+                        setSidebarOpen(true)
+                      }
                       onSearch={handleSearch}
                     />
 
@@ -386,7 +434,9 @@ const AppContent: React.FC = () => {
                 <UserProtectedRoute>
                   <>
                     <AppHeader
-                      onMenuClick={() => setSidebarOpen(true)}
+                      onMenuClick={() =>
+                        setSidebarOpen(true)
+                      }
                       onSearch={handleSearch}
                     />
 
@@ -409,7 +459,9 @@ const AppContent: React.FC = () => {
                 <UserProtectedRoute>
                   <>
                     <AppHeader
-                      onMenuClick={() => setSidebarOpen(true)}
+                      onMenuClick={() =>
+                        setSidebarOpen(true)
+                      }
                       onSearch={handleSearch}
                     />
 
@@ -432,7 +484,9 @@ const AppContent: React.FC = () => {
                 <UserProtectedRoute>
                   <>
                     <AppHeader
-                      onMenuClick={() => setSidebarOpen(true)}
+                      onMenuClick={() =>
+                        setSidebarOpen(true)
+                      }
                       onSearch={handleSearch}
                     />
 
@@ -452,7 +506,9 @@ const AppContent: React.FC = () => {
                 <UserProtectedRoute>
                   <>
                     <AppHeader
-                      onMenuClick={() => setSidebarOpen(true)}
+                      onMenuClick={() =>
+                        setSidebarOpen(true)
+                      }
                       onSearch={handleSearch}
                     />
 
@@ -475,7 +531,9 @@ const AppContent: React.FC = () => {
                 <UserProtectedRoute>
                   <>
                     <AppHeader
-                      onMenuClick={() => setSidebarOpen(true)}
+                      onMenuClick={() =>
+                        setSidebarOpen(true)
+                      }
                       onSearch={handleSearch}
                     />
 
@@ -498,7 +556,9 @@ const AppContent: React.FC = () => {
                 <UserProtectedRoute>
                   <>
                     <AppHeader
-                      onMenuClick={() => setSidebarOpen(true)}
+                      onMenuClick={() =>
+                        setSidebarOpen(true)
+                      }
                       onSearch={handleSearch}
                     />
 
@@ -518,7 +578,9 @@ const AppContent: React.FC = () => {
                 <UserProtectedRoute>
                   <>
                     <AppHeader
-                      onMenuClick={() => setSidebarOpen(true)}
+                      onMenuClick={() =>
+                        setSidebarOpen(true)
+                      }
                       onSearch={handleSearch}
                     />
 
@@ -541,7 +603,9 @@ const AppContent: React.FC = () => {
                 <UserProtectedRoute>
                   <>
                     <AppHeader
-                      onMenuClick={() => setSidebarOpen(true)}
+                      onMenuClick={() =>
+                        setSidebarOpen(true)
+                      }
                       onSearch={handleSearch}
                     />
 
@@ -553,36 +617,40 @@ const AppContent: React.FC = () => {
           )}
 
           {/* =================================================
-    MEMORIES
-================================================= */}
+              MEMORIES
+          ================================================= */}
 
-{!IS_ADMIN_BUILD && (
-  <Route
-    exact
-    path="/memories"
-    render={() => (
-      <UserProtectedRoute>
-        <>
-          <AppHeader
-            onMenuClick={() =>
-              setSidebarOpen(true)
-            }
-            onSearch={handleSearch}
-          />
+          {!IS_ADMIN_BUILD && (
+            <Route
+              exact
+              path="/memories"
+              render={() => (
+                <UserProtectedRoute>
+                  <>
+                    <AppHeader
+                      onMenuClick={() =>
+                        setSidebarOpen(true)
+                      }
+                      onSearch={handleSearch}
+                    />
 
-          <Memories />
-        </>
-      </UserProtectedRoute>
-    )}
-  />
-)}
+                    <Memories />
+                  </>
+                </UserProtectedRoute>
+              )}
+            />
+          )}
 
           {/* =================================================
               EMAIL VERIFICATION
           ================================================= */}
 
           {!IS_ADMIN_BUILD && (
-            <Route exact path="/verify-email" component={VerifyEmail} />
+            <Route
+              exact
+              path="/verify-email"
+              component={VerifyEmail}
+            />
           )}
 
           {/* =================================================
@@ -592,7 +660,13 @@ const AppContent: React.FC = () => {
           <Route
             path="*"
             render={() => (
-              <Redirect to={IS_ADMIN_BUILD ? "/admin/login" : "/"} />
+              <Redirect
+                to={
+                  IS_ADMIN_BUILD
+                    ? "/admin/login"
+                    : "/"
+                }
+              />
             )}
           />
         </Switch>
@@ -621,7 +695,10 @@ const PublicBottomNav: React.FC = () => {
    * - all admin routes
    * - login
    */
-  if (isAdminRoute(pathname) || pathname === "/login") {
+  if (
+    isAdminRoute(pathname) ||
+    pathname === "/login"
+  ) {
     return null;
   }
 
