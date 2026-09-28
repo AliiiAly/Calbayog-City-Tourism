@@ -319,7 +319,27 @@ const getWeatherDescription = (
 ========================================================= */ 
  
 const Welcome: React.FC = () => { 
-  const { user } = useAuth(); 
+  const { user } = useAuth();
+
+  // Plan Trip and My Memories are protected user features.
+  // If a visitor is not logged in, open the app-wide login form
+  // instead of navigating to the protected route.
+  const handleProtectedQuickCardClick = (
+    event: React.MouseEvent<HTMLAnchorElement>,
+    destination: string,
+  ) => {
+    const requiresLogin =
+      destination === "/itinerary" ||
+      destination === "/memories";
+
+    if (!requiresLogin || user) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    window.dispatchEvent(new Event("open-login-modal"));
+  };
  
   const { 
     setFavoriteCount, 
@@ -1483,6 +1503,9 @@ const Welcome: React.FC = () => {
                   <Link
                     to={card.to}
                     className="welcome-quick-link"
+                    onClick={(event) =>
+                      handleProtectedQuickCardClick(event, card.to)
+                    }
                   >
                     <Card className="quick-card welcome-quick-card text-center border-0 h-100">
                       <Card.Body className="quick-card-body">
