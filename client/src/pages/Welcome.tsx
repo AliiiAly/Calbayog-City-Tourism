@@ -1507,6 +1507,21 @@ const Welcome: React.FC = () => {
             0 && (
             <section className="welcome-discover-section mb-5">
               <div className="welcome-attractions-heading">
+                <div className="welcome-mobile-bunting" aria-hidden="true">
+                  <span className="bunting-flag bunting-red" />
+                  <span className="bunting-flag bunting-orange" />
+                  <span className="bunting-flag bunting-yellow" />
+                  <span className="bunting-flag bunting-teal" />
+                  <span className="bunting-flag bunting-red" />
+                  <span className="bunting-flag bunting-orange" />
+                  <span className="bunting-flag bunting-yellow" />
+                  <span className="bunting-flag bunting-teal" />
+                  <span className="bunting-flag bunting-red" />
+                  <span className="bunting-flag bunting-orange" />
+                  <span className="bunting-flag bunting-yellow" />
+                  <span className="bunting-flag bunting-teal" />
+                </div>
+
                 <h2 className="welcome-attractions-title barabara-display">
                   ATTRACTIONS
                 </h2>
@@ -1591,6 +1606,21 @@ const Welcome: React.FC = () => {
             0 && (
             <section className="welcome-accommodations-section mb-5">
               <div className="welcome-accommodations-heading">
+                <div className="welcome-mobile-bunting" aria-hidden="true">
+                  <span className="bunting-flag bunting-red" />
+                  <span className="bunting-flag bunting-orange" />
+                  <span className="bunting-flag bunting-yellow" />
+                  <span className="bunting-flag bunting-teal" />
+                  <span className="bunting-flag bunting-red" />
+                  <span className="bunting-flag bunting-orange" />
+                  <span className="bunting-flag bunting-yellow" />
+                  <span className="bunting-flag bunting-teal" />
+                  <span className="bunting-flag bunting-red" />
+                  <span className="bunting-flag bunting-orange" />
+                  <span className="bunting-flag bunting-yellow" />
+                  <span className="bunting-flag bunting-teal" />
+                </div>
+
                 <h2 className="welcome-accommodations-title barabara-display">
                   ACCOMMODATIONS
                 </h2>
@@ -1805,7 +1835,22 @@ const Welcome: React.FC = () => {
 
         <section className="welcome-videos-section mb-5">
           <div className="welcome-videos-heading">
-            <h2 className="welcome-videos-title barabara-display">
+            <div className="welcome-mobile-bunting" aria-hidden="true">
+                  <span className="bunting-flag bunting-red" />
+                  <span className="bunting-flag bunting-orange" />
+                  <span className="bunting-flag bunting-yellow" />
+                  <span className="bunting-flag bunting-teal" />
+                  <span className="bunting-flag bunting-red" />
+                  <span className="bunting-flag bunting-orange" />
+                  <span className="bunting-flag bunting-yellow" />
+                  <span className="bunting-flag bunting-teal" />
+                  <span className="bunting-flag bunting-red" />
+                  <span className="bunting-flag bunting-orange" />
+                  <span className="bunting-flag bunting-yellow" />
+                  <span className="bunting-flag bunting-teal" />
+                </div>
+
+                <h2 className="welcome-videos-title barabara-display">
               FEATURED VIDEOS
             </h2>
 
@@ -2297,6 +2342,10 @@ const Welcome: React.FC = () => {
             0;
         }
 
+        .welcome-mobile-bunting {
+          display: none;
+        }
+
         .welcome-display-title {
           margin:
             0;
@@ -2305,11 +2354,7 @@ const Welcome: React.FC = () => {
           color:
             #2D3195 !important;
           font-size:
-            clamp(
-              2rem,
-              3.1vw,
-              2.55rem
-            );
+            2.15rem;
           line-height:
             1;
           letter-spacing:
@@ -2452,11 +2497,7 @@ const Welcome: React.FC = () => {
           color:
             #2D3195 !important;
           font-size:
-            clamp(
-              1.8rem,
-              3vw,
-              2.35rem
-            );
+            2.15rem;
           line-height:
             1;
           letter-spacing:
@@ -2522,11 +2563,7 @@ const Welcome: React.FC = () => {
           color:
             #2D3195 !important;
           font-size:
-            clamp(
-              2rem,
-              4vw,
-              3.15rem
-            );
+            2.15rem;
           line-height:
             1;
           letter-spacing:
@@ -2732,11 +2769,7 @@ const Welcome: React.FC = () => {
           color:
             #2D3195 !important;
           font-size:
-            clamp(
-              1.8rem,
-              3vw,
-              2.35rem
-            );
+            2.15rem;
           line-height:
             1;
           letter-spacing:
@@ -4003,6 +4036,24 @@ const Welcome: React.FC = () => {
               16px;
           }
 
+          .welcome-mobile-bunting {
+            width: min(86%, 360px);
+            height: 18px;
+            margin: 0 auto 10px;
+            padding: 0;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            overflow: hidden;
+          }
+
+          .welcome-mobile-bunting .bunting-flag {
+            width: auto;
+            height: 18px;
+            flex: 1 1 0;
+            min-width: 0;
+          }
+
           .welcome-section-eyebrow {
             gap:
               9px;
@@ -4017,13 +4068,12 @@ const Welcome: React.FC = () => {
               24px;
           }
 
-          .welcome-display-title {
+          .welcome-display-title,
+          .welcome-attractions-title,
+          .welcome-accommodations-title,
+          .welcome-videos-title {
             font-size:
-              clamp(
-                1.65rem,
-                7vw,
-                2rem
-              );
+              1.70rem;
           }
 
           .welcome-main-heading {
@@ -4082,7 +4132,7 @@ const Welcome: React.FC = () => {
           .welcome-accommodations-title,
           .welcome-videos-title {
             font-size:
-              1.85rem;
+              1.70rem;
           }
 
           .welcome-accommodations-heading,
@@ -4184,7 +4234,7 @@ const Welcome: React.FC = () => {
 
           .welcome-hero-title {
             font-size:
-              1.75rem;
+              1.60rem;
             margin-bottom:
               9px;
           }
@@ -4280,6 +4330,16 @@ const Welcome: React.FC = () => {
               13px;
           }
 
+          .welcome-mobile-bunting {
+            width: min(88%, 300px);
+            height: 16px;
+            margin-bottom: 9px;
+          }
+
+          .welcome-mobile-bunting .bunting-flag {
+            height: 16px;
+          }
+
           .welcome-section-eyebrow {
             gap:
               7px;
@@ -4294,9 +4354,12 @@ const Welcome: React.FC = () => {
               18px;
           }
 
-          .welcome-display-title {
+          .welcome-display-title,
+          .welcome-attractions-title,
+          .welcome-accommodations-title,
+          .welcome-videos-title {
             font-size:
-              1.7rem;
+              1.70rem;
           }
 
           .welcome-main-heading {
@@ -4321,11 +4384,6 @@ const Welcome: React.FC = () => {
               1.65rem;
           }
 
-          .welcome-attractions-title {
-            font-size:
-              1.8rem;
-          }
-
           .welcome-accommodations-section {
             margin-top:
               55px;
@@ -4334,7 +4392,7 @@ const Welcome: React.FC = () => {
           .welcome-accommodations-title,
           .welcome-videos-title {
             font-size:
-              1.72rem;
+              1.70rem;
           }
 
           .welcome-accommodations-heading,
@@ -4435,9 +4493,22 @@ const Welcome: React.FC = () => {
               11px;
           }
 
-          .welcome-display-title {
+          .welcome-display-title,
+          .welcome-attractions-title,
+          .welcome-accommodations-title,
+          .welcome-videos-title {
             font-size:
-              1.7rem;
+              1.70rem;
+          }
+
+          .welcome-mobile-bunting {
+            width: min(90%, 280px);
+            height: 15px;
+            margin-bottom: 8px;
+          }
+
+          .welcome-mobile-bunting .bunting-flag {
+            height: 15px;
           }
 
           .welcome-section-eyebrow {
@@ -4452,15 +4523,12 @@ const Welcome: React.FC = () => {
               15px;
           }
 
-          .welcome-attractions-title {
-            font-size:
-              1.72rem;
-          }
-
+          .welcome-display-title,
+          .welcome-attractions-title,
           .welcome-accommodations-title,
           .welcome-videos-title {
             font-size:
-              1.62rem;
+              1.60rem;
           }
         }
       `}</style>
