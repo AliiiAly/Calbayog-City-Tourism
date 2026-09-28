@@ -351,6 +351,9 @@ const AppHeaderStyles: React.FC = () => (
 
     /* =====================================================
        BRAND
+
+       IMPORTANT:
+       Logo is kept unchanged.
     ===================================================== */
 
     .header-brand {
@@ -488,8 +491,16 @@ const AppHeaderStyles: React.FC = () => (
         translateY(-1px);
     }
 
+    /* =====================================================
+       LEFT SEARCH BUTTON
+
+       The search icon on the LEFT is now clickable.
+       There is NO separate blue search button on the right.
+    ===================================================== */
+
     .search-icon {
       width: 44px;
+      height: 44px;
 
       padding:
         0 0 0 14px !important;
@@ -506,9 +517,37 @@ const AppHeaderStyles: React.FC = () => (
       color:
         var(--header-muted) !important;
 
+      cursor: pointer;
+
+      flex-shrink: 0;
+
+      appearance: none;
+
       transition:
         color 0.2s ease,
-        transform 0.2s ease;
+        transform 0.2s ease,
+        background 0.2s ease;
+    }
+
+    .search-icon:hover {
+      color:
+        var(--calbayog-blue) !important;
+    }
+
+    .search-icon:active {
+      transform:
+        scale(0.92);
+    }
+
+    .search-icon:focus-visible {
+      outline:
+        2px solid rgba(45, 49, 149, 0.35);
+
+      outline-offset:
+        -3px;
+
+      border-radius:
+        10px;
     }
 
     .search-input-wrapper:focus-within .search-icon {
@@ -538,6 +577,10 @@ const AppHeaderStyles: React.FC = () => (
       font-size: 0.9rem;
 
       outline: none !important;
+
+      flex: 1 1 auto;
+
+      min-width: 0;
     }
 
     .search-input::placeholder {
@@ -552,59 +595,6 @@ const AppHeaderStyles: React.FC = () => (
 
     .search-input:focus::placeholder {
       opacity: 0.58;
-    }
-
-    .search-submit-btn {
-      width: 36px;
-      height: 36px;
-
-      margin:
-        3px 4px 3px 0;
-
-      padding: 0;
-
-      display: inline-flex;
-
-      align-items: center;
-      justify-content: center;
-
-      border: 0;
-
-      border-radius: 10px;
-
-      background:
-        var(--calbayog-blue);
-
-      color: #fff;
-
-      cursor: pointer;
-
-      flex-shrink: 0;
-
-      box-shadow:
-        0 4px 12px rgba(45, 49, 149, 0.16);
-
-      transition:
-        background 0.2s ease,
-        transform 0.22s cubic-bezier(.2,.8,.2,1),
-        box-shadow 0.2s ease;
-    }
-
-    .search-submit-btn:hover {
-      background:
-        var(--calbayog-blue-dark);
-
-      box-shadow:
-        0 6px 16px rgba(45, 49, 149, 0.23);
-
-      transform:
-        translateY(-1px)
-        scale(1.02);
-    }
-
-    .search-submit-btn:active {
-      transform:
-        scale(0.94);
     }
 
     /* =====================================================
@@ -848,123 +838,6 @@ const AppHeaderStyles: React.FC = () => (
     .header-install-btn:hover svg {
       transform:
         translateY(-1px);
-    }
-
-    /* =====================================================
-       INSTALL FALLBACK NOTICE
-    ===================================================== */
-
-    .install-fallback-notice {
-      position: fixed;
-
-      left: 50%;
-      bottom: 18px;
-
-      z-index: 2000;
-
-      width: min(390px, calc(100vw - 28px));
-
-      transform:
-        translateX(-50%);
-
-      padding:
-        14px 16px;
-
-      border:
-        1px solid rgba(45, 49, 149, 0.16);
-
-      border-radius: 16px;
-
-      background:
-        rgba(255, 255, 255, 0.92);
-
-      backdrop-filter:
-        blur(20px)
-        saturate(160%);
-
-      -webkit-backdrop-filter:
-        blur(20px)
-        saturate(160%);
-
-      color:
-        var(--header-text);
-
-      box-shadow:
-        0 18px 45px rgba(15, 23, 42, 0.18);
-
-      font-size: 0.76rem;
-
-      line-height: 1.5;
-
-      animation:
-        installNoticeIn
-        0.25s
-        cubic-bezier(.2,.8,.2,1)
-        both;
-    }
-
-    .install-fallback-notice strong {
-      display: block;
-
-      margin-bottom: 3px;
-
-      color:
-        var(--calbayog-blue);
-
-      font-size: 0.82rem;
-    }
-
-    .install-fallback-close {
-      position: absolute;
-
-      top: 7px;
-      right: 8px;
-
-      width: 26px;
-      height: 26px;
-
-      display: inline-flex;
-
-      align-items: center;
-      justify-content: center;
-
-      padding: 0;
-
-      border: 0;
-
-      border-radius: 8px;
-
-      background:
-        transparent;
-
-      color:
-        var(--header-muted);
-
-      cursor: pointer;
-    }
-
-    .install-fallback-close:hover {
-      background:
-        var(--calbayog-blue-soft);
-
-      color:
-        var(--calbayog-blue);
-    }
-
-    @keyframes installNoticeIn {
-      from {
-        opacity: 0;
-        transform:
-          translateX(-50%)
-          translateY(8px);
-      }
-
-      to {
-        opacity: 1;
-        transform:
-          translateX(-50%)
-          translateY(0);
-      }
     }
 
     /* =====================================================
@@ -1331,6 +1204,10 @@ const AppHeaderStyles: React.FC = () => (
         min-height: 42px;
         height: 42px;
       }
+
+      .search-icon {
+        height: 42px;
+      }
     }
 
     /* =====================================================
@@ -1383,8 +1260,10 @@ const AppHeaderStyles: React.FC = () => (
 
       /* -----------------------------------------------------
          MOBILE LOGO
-         
-         Hidden exactly as requested.
+
+         IMPORTANT:
+         Kept exactly as requested.
+         No logo is shown on mobile.
       ----------------------------------------------------- */
 
       .header-brand {
@@ -1393,19 +1272,22 @@ const AppHeaderStyles: React.FC = () => (
 
       /* -----------------------------------------------------
          MOBILE SEARCH
-         
-         Search takes the space where the logo used to be.
+
+         Smaller and narrower so it does not feel cramped
+         beside Install and Sign In.
       ----------------------------------------------------- */
 
       .header-search-container {
         order: 1;
 
         flex:
-          1 1 auto;
+          1 1 0;
 
         min-width: 0;
 
-        max-width: none;
+        width: auto;
+
+        max-width: 230px;
 
         margin:
           0;
@@ -1421,50 +1303,48 @@ const AppHeaderStyles: React.FC = () => (
       .search-input-wrapper {
         width: 100%;
 
-        min-height: 40px;
-        height: 40px;
+        min-height: 38px;
+        height: 38px;
 
         border-radius:
-          12px !important;
+          11px !important;
       }
 
       .search-input {
-        min-height: 40px;
-        height: 40px;
+        min-height: 38px;
+        height: 38px;
 
         padding:
           0 5px !important;
 
         font-size:
-          0.78rem;
+          0.76rem;
       }
 
       .search-input::placeholder {
         font-size:
-          0.72rem;
+          0.69rem;
       }
 
+      /* -----------------------------------------------------
+         LEFT SEARCH ICON
+
+         This is the ONLY search button.
+         No blue button on the right.
+      ----------------------------------------------------- */
+
       .search-icon {
-        width: 34px;
+        width: 32px;
+
+        height: 38px;
 
         padding:
           0 !important;
       }
 
-      .search-submit-btn {
-        width: 32px;
-        height: 32px;
-
-        margin:
-          3px 3px 3px 0;
-
-        border-radius:
-          9px;
-      }
-
       /* -----------------------------------------------------
          MOBILE ACTIONS
-         
+
          Search = left
          Install + Sign In = right
       ----------------------------------------------------- */
@@ -1563,8 +1443,7 @@ const AppHeaderStyles: React.FC = () => (
       /* -----------------------------------------------------
          SIGNUP HIDDEN ON MOBILE
          
-         The SignupModal itself is NOT removed.
-         Users can still access signup through LoginModal.
+         SignupModal itself is NOT removed.
       ----------------------------------------------------- */
 
       .header-signup-btn {
@@ -1663,27 +1542,25 @@ const AppHeaderStyles: React.FC = () => (
           none;
       }
 
+      /* Narrower search on very small phones */
+      .header-search-container {
+        max-width:
+          210px;
+      }
+
       .search-input {
         font-size:
-          0.74rem;
+          0.72rem;
       }
 
       .search-input::placeholder {
         font-size:
-          0.68rem;
+          0.66rem;
       }
 
       .search-icon {
         width:
-          31px;
-      }
-
-      .search-submit-btn {
-        width:
-          29px;
-
-        height:
-          29px;
+          30px;
       }
     }
 
@@ -1695,8 +1572,7 @@ const AppHeaderStyles: React.FC = () => (
       .sticky-search-header,
       .header-brand,
       .header-search-container,
-      .header-actions,
-      .install-fallback-notice {
+      .header-actions {
         animation:
           none !important;
       }
@@ -1705,7 +1581,7 @@ const AppHeaderStyles: React.FC = () => (
       .header-icon-btn svg,
       .header-brand-mark img,
       .search-input-wrapper,
-      .search-submit-btn,
+      .search-icon,
       .header-login-btn,
       .header-signup-btn,
       .header-install-btn,
@@ -1830,11 +1706,6 @@ const AppHeader: React.FC<AppHeaderProps> = ({
     setIsStandalone,
   ] = useState(false);
 
-  const [
-    showInstallFallback,
-    setShowInstallFallback,
-  ] = useState(false);
-
   const isLoggedInHeader =
     isAdmin
       ? true
@@ -1901,10 +1772,24 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       return;
     }
 
+    /*
+     * If the parent provides onSearch, let the parent
+     * control where the search goes.
+     *
+     * This is important because the App can decide whether
+     * the search belongs to Attractions, Accommodations,
+     * Events, etc.
+     */
     if (onSearch) {
       onSearch(query);
+      setSearch("");
+      return;
     }
 
+    /*
+     * Only use searchPath when this header is being used
+     * without an onSearch handler.
+     */
     const separator =
       searchPath.includes("?")
         ? "&"
@@ -1948,21 +1833,24 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       );
 
       /*
-       * If the site is currently running as
-       * an installed PWA, the install button
-       * should disappear.
+       * If the site is already running as an installed
+       * PWA, hide the install button.
        */
       if (standalone) {
         setDeferredInstallPrompt(null);
         setCanInstallApp(false);
-        setShowInstallFallback(false);
 
         return;
       }
 
       /*
-       * If Chrome already provided the event
-       * before this component mounted, use it.
+       * IMPORTANT:
+       *
+       * We ONLY show the Install App button when Chrome
+       * has actually supplied beforeinstallprompt.
+       *
+       * We DO NOT show a fake install button on mobile
+       * when there is no native prompt.
        */
       if (pendingPwaInstallPrompt) {
         setDeferredInstallPrompt(
@@ -1970,16 +1858,9 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         );
 
         setCanInstallApp(true);
-      } else if (mobileDevice) {
-        /*
-         * Keep the install action available
-         * on mobile even if Chrome has not yet
-         * supplied the native prompt.
-         *
-         * Clicking it will show a fallback
-         * instruction instead of failing silently.
-         */
-        setCanInstallApp(true);
+      } else {
+        setDeferredInstallPrompt(null);
+        setCanInstallApp(false);
       }
     };
 
@@ -2001,8 +1882,6 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       );
 
       setCanInstallApp(true);
-
-      setShowInstallFallback(false);
     };
 
     const handleInstallReady = () => {
@@ -2014,8 +1893,6 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         );
 
         setCanInstallApp(true);
-
-        setShowInstallFallback(false);
       }
     };
 
@@ -2030,18 +1907,10 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       setCanInstallApp(false);
 
       setIsStandalone(true);
-
-      setShowInstallFallback(false);
     };
 
     const handleVisibilityChange =
       () => {
-        /*
-         * Re-check after returning to the
-         * browser. This is useful after a user
-         * installs/uninstalls or returns from
-         * Chrome's install UI.
-         */
         if (
           document.visibilityState ===
           "visible"
@@ -2104,107 +1973,64 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         pendingPwaInstallPrompt;
 
       /*
-       * If Chrome has provided the native
-       * install event, use it.
+       * The button should only be visible when this exists,
+       * but we still guard against it becoming unavailable.
        */
-      if (installPrompt) {
-        try {
-          await installPrompt.prompt();
-
-          const choice =
-            await installPrompt.userChoice;
-
-          /*
-           * The event is one-use.
-           */
-          pendingPwaInstallPrompt =
-            null;
-
-          setDeferredInstallPrompt(
-            null,
-          );
-
-          if (
-            choice.outcome ===
-            "accepted"
-          ) {
-            setCanInstallApp(false);
-            setShowInstallFallback(false);
-          } else {
-            /*
-             * Chrome may provide a fresh event
-             * later. We keep the button visible
-             * on mobile.
-             */
-            setCanInstallApp(
-              !isStandalone &&
-                isMobileInstallDevice,
-            );
-          }
-        } catch (error) {
-          console.error(
-            "PWA install prompt failed:",
-            error,
-          );
-
-          pendingPwaInstallPrompt =
-            null;
-
-          setDeferredInstallPrompt(
-            null,
-          );
-
-          setCanInstallApp(
-            !isStandalone &&
-              isMobileInstallDevice,
-          );
-
-          setShowInstallFallback(
-            true,
-          );
-        }
-
+      if (!installPrompt) {
+        setCanInstallApp(false);
         return;
       }
 
-      /*
-       * IMPORTANT:
-       *
-       * There is no JavaScript API that lets us
-       * manufacture a new beforeinstallprompt
-       * event when Chrome has not supplied one.
-       *
-       * Instead of silently doing nothing,
-       * show a useful fallback.
-       */
-      if (
-        !isStandalone &&
-        isMobileInstallDevice
-      ) {
-        setShowInstallFallback(true);
+      try {
+        await installPrompt.prompt();
+
+        const choice =
+          await installPrompt.userChoice;
+
+        /*
+         * beforeinstallprompt is a one-use event.
+         */
+        pendingPwaInstallPrompt =
+          null;
+
+        setDeferredInstallPrompt(
+          null,
+        );
+
+        if (
+          choice.outcome ===
+          "accepted"
+        ) {
+          setCanInstallApp(false);
+        } else {
+          /*
+           * Do not show a fallback message.
+           * Simply wait for Chrome to provide a new
+           * beforeinstallprompt event.
+           */
+          setCanInstallApp(false);
+        }
+      } catch (error) {
+        console.error(
+          "PWA install prompt failed:",
+          error,
+        );
+
+        pendingPwaInstallPrompt =
+          null;
+
+        setDeferredInstallPrompt(
+          null,
+        );
+
+        /*
+         * No fallback notice.
+         * No manual instructions.
+         * No fake install action.
+         */
+        setCanInstallApp(false);
       }
     };
-
-  /* =========================================================
-     INSTALL FALLBACK AUTO-CLOSE
-  ========================================================= */
-
-  useEffect(() => {
-    if (!showInstallFallback) {
-      return;
-    }
-
-    const timeout =
-      window.setTimeout(() => {
-        setShowInstallFallback(false);
-      }, 7000);
-
-    return () => {
-      window.clearTimeout(
-        timeout,
-      );
-    };
-  }, [showInstallFallback]);
 
   /* =========================================================
      PROFILE OUTSIDE CLICK
@@ -2496,7 +2322,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
             {/* =================================================
                LOGO
 
-               Hidden automatically on mobile.
+               KEPT UNCHANGED.
             ================================================= */}
 
             <div
@@ -2525,13 +2351,26 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                   className="header-search-form"
                 >
                   <InputGroup className="search-input-wrapper">
-                    <InputGroup.Text className="search-icon">
+
+                    {/* =================================================
+                       CLICKABLE LEFT SEARCH ICON
+
+                       This replaces the old blue search button
+                       on the right.
+                    ================================================= */}
+
+                    <button
+                      type="submit"
+                      className="search-icon"
+                      aria-label="Search"
+                      title="Search"
+                    >
                       <HeaderIcon
                         name="search"
                         size={18}
                         strokeWidth={1.8}
                       />
-                    </InputGroup.Text>
+                    </button>
 
                     <Form.Control
                       type="search"
@@ -2548,19 +2387,6 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                       className="search-input"
                       aria-label="Search tourism information"
                     />
-
-                    <button
-                      type="submit"
-                      className="search-submit-btn"
-                      aria-label="Submit search"
-                      title="Search"
-                    >
-                      <HeaderIcon
-                        name="search"
-                        size={17}
-                        strokeWidth={1.9}
-                      />
-                    </button>
                   </InputGroup>
                 </Form>
               </div>
@@ -2585,11 +2411,8 @@ const AppHeader: React.FC<AppHeaderProps> = ({
               {/* =================================================
                  INSTALL APP
 
-                 Mobile:
-                 right side beside Sign In.
-
-                 Desktop/tablet:
-                 normal header action.
+                 Only appears when Chrome actually provides
+                 beforeinstallprompt.
               ================================================= */}
 
               {canInstallApp && (
@@ -2648,10 +2471,6 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                      SIGN UP
 
                      Hidden by CSS on mobile.
-
-                     IMPORTANT:
-                     SignupModal still exists below and can still
-                     be opened from LoginModal's signup action.
                   ------------------------------------------------- */}
 
                   <button
@@ -2809,80 +2628,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       </header>
 
       {/* =========================================================
-          INSTALL FALLBACK
-          
-          Only appears when the user taps Install but Chrome has
-          not provided a native beforeinstallprompt event.
-      ========================================================= */}
-
-      {showInstallFallback &&
-        !isStandalone && (
-          <div
-            className="install-fallback-notice"
-            role="status"
-            aria-live="polite"
-          >
-            <button
-              type="button"
-              className="install-fallback-close"
-              onClick={() =>
-                setShowInstallFallback(
-                  false,
-                )
-              }
-              aria-label="Close install instructions"
-            >
-              ×
-            </button>
-
-            <strong>
-              Install Calbayog City Tourism
-            </strong>
-
-            Chrome has not provided the
-            automatic install prompt yet.
-            Open Chrome's{" "}
-            <strong
-              style={{
-                display: "inline",
-                margin: 0,
-                color: "inherit",
-              }}
-            >
-              ⋮ menu
-            </strong>{" "}
-            and choose{" "}
-            <strong
-              style={{
-                display: "inline",
-                margin: 0,
-                color: "inherit",
-              }}
-            >
-              Add to Home screen
-            </strong>{" "}
-            or{" "}
-            <strong
-              style={{
-                display: "inline",
-                margin: 0,
-                color: "inherit",
-              }}
-            >
-              Install app
-            </strong>
-            .
-          </div>
-        )}
-
-      {/* =========================================================
           LOGIN MODAL
-          
-          IMPORTANT:
-          LoginModal remains unchanged.
-
-          Its existing "Sign up / Create account" action
-          can still open SignupModal.
       ========================================================= */}
 
       <LoginModal
@@ -2916,10 +2662,6 @@ const AppHeader: React.FC<AppHeaderProps> = ({
 
       {/* =========================================================
           SIGNUP MODAL
-
-          NOT REMOVED.
-
-          Mobile users can still reach this through LoginModal.
       ========================================================= */}
 
       <SignupModal
