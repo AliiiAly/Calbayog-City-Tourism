@@ -246,12 +246,6 @@ interface SidebarItem {
   label: string;
   description: string;
   exact?: boolean;
-
-  /**
-   * When true, the item requires a logged-in user.
-   * The item remains visible, but clicking it while
-   * logged out opens the Login modal instead of navigating.
-   */
   requiresAuth?: boolean;
 }
 
@@ -287,12 +281,6 @@ const userSections: SidebarSection[] = [
   {
     title: "Travel Essentials",
     items: [
-      {
-        to: "/getting-there",
-        icon: "car",
-        label: "Getting There",
-        description: "Routes & transportation",
-      },
       {
         to: "/accommodations",
         icon: "hotel",
@@ -380,18 +368,6 @@ const adminSections: SidebarSection[] = [
         label: "Guides",
         description: "Manage tour guides",
       },
-      {
-        to: "/admin/getting-there",
-        icon: "car",
-        label: "Getting There",
-        description: "Manage transport information",
-      },
-
-      /* =================================================
-         FEATURED VIDEOS
-         ADMIN ONLY
-      ================================================= */
-
       {
         to: "/admin/featured-videos",
         icon: "video",
@@ -618,6 +594,30 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const content = (
     <>
+      <style>
+        {`
+          /*
+           * Sidebar font consistency.
+           *
+           * This only controls the Sidebar itself.
+           * The main page font will be handled globally
+           * in the next step.
+           */
+          .sidebar-drawer,
+          .sidebar-drawer button,
+          .sidebar-drawer a,
+          .sidebar-drawer input,
+          .sidebar-drawer textarea,
+          .sidebar-drawer select {
+            font-family:
+              "Poppins",
+              "Inter",
+              Arial,
+              sans-serif;
+          }
+        `}
+      </style>
+
       {isOpen && (
         <div
           className="sidebar-overlay"
