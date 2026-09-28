@@ -37,7 +37,7 @@ import {
   CalendarDays,
   Compass,
   NotebookPen,
-  MapPinned,
+  Images,
   MapPin, 
   CloudSun, 
   ChevronLeft, 
@@ -155,16 +155,16 @@ const quickCards: Array<{
  
   { 
     icon: ( 
-      <MapPinned 
-        size={23} 
-        strokeWidth={2.15} 
-        aria-hidden="true" 
+      <Images
+        size={23}
+        strokeWidth={2.15}
+        aria-hidden="true"
       /> 
     ), 
-    label: "Getting There", 
-    to: "/getting-there", 
-    color: "#0077B6", 
-    bg: "#e0f2ff", 
+    label: "My Memories",
+    to: "/memories",
+    color: "#C45A8D",
+    bg: "#fcecf4", 
   }, 
 ]; 
  
@@ -867,6 +867,20 @@ const Welcome: React.FC = () => {
     };
 
   /* =========================================================
+     PAUSE ALL FEATURED VIDEOS
+  ========================================================= */
+
+  const pauseAllFeaturedVideos = () => {
+    Object.values(
+      videoRefs.current,
+    ).forEach((video) => {
+      if (video) {
+        video.pause();
+      }
+    });
+  };
+
+  /* =========================================================
      LOAD FEATURED VIDEOS
   ========================================================= */
 
@@ -1445,7 +1459,7 @@ const Welcome: React.FC = () => {
                   xs={4}
                   sm={4}
                   md={3}
-                  lg={2}
+                  lg={3}
                   key={card.to}
                 >
                   <Link
@@ -1880,6 +1894,8 @@ const Welcome: React.FC = () => {
                 onSlideChange={(
                   swiper,
                 ) => {
+                  pauseAllFeaturedVideos();
+
                   setActiveVideo(
                     swiper.realIndex,
                   );
@@ -1936,11 +1952,12 @@ const Welcome: React.FC = () => {
                                 ? "metadata"
                                 : "none"
                             }
-                            onPlay={() => {
+                            onPlay={(event) => {
                               Object.entries(videoRefs.current).forEach(
                                 ([videoId, videoElement]) => {
                                   if (
                                     videoElement &&
+                                    videoElement !== event.currentTarget &&
                                     videoId !== String(video.id)
                                   ) {
                                     videoElement.pause();
@@ -2063,6 +2080,22 @@ const Welcome: React.FC = () => {
         .welcome-display-title {
           color:
             #2D3195 !important;
+        }
+
+        .welcome-explore-section {
+          margin-bottom: 96px !important;
+        }
+
+        .welcome-discover-section {
+          margin-bottom: 96px !important;
+        }
+
+        .welcome-accommodations-section {
+          margin-bottom: 96px !important;
+        }
+
+        .welcome-videos-section {
+          margin-bottom: 70px !important;
         }
 
         .welcome-intro {
@@ -2274,8 +2307,8 @@ const Welcome: React.FC = () => {
           font-size:
             clamp(
               2rem,
-              4vw,
-              3.15rem
+              3.1vw,
+              2.55rem
             );
           line-height:
             1;
@@ -2420,8 +2453,8 @@ const Welcome: React.FC = () => {
             #2D3195 !important;
           font-size:
             clamp(
-              1.75rem,
-              4vw,
+              1.8rem,
+              3vw,
               2.35rem
             );
           line-height:
@@ -2700,8 +2733,8 @@ const Welcome: React.FC = () => {
             #2D3195 !important;
           font-size:
             clamp(
-              1.75rem,
-              4vw,
+              1.8rem,
+              3vw,
               2.35rem
             );
           line-height:
@@ -3806,7 +3839,7 @@ const Welcome: React.FC = () => {
           }
           .welcome-hero-slider {
             height:
-              315px;
+              250px;
             border-radius:
               20px;
           }
@@ -3946,9 +3979,13 @@ const Welcome: React.FC = () => {
 
           .welcome-bunting {
             width:
-              100%;
+              calc(100% + 24px);
             height:
               22px;
+            margin-left:
+              -12px;
+            margin-right:
+              -12px;
             margin-bottom:
               20px;
             padding:
@@ -3957,16 +3994,13 @@ const Welcome: React.FC = () => {
 
           .bunting-flag {
             width:
-              28px;
+              auto;
             height:
               22px;
-            flex-basis:
-              28px;
-          }
-
-          .bunting-flag:nth-child(n + 13) {
-            display:
-              none;
+            flex:
+              1 1 0;
+            min-width:
+              16px;
           }
 
           .welcome-section-eyebrow {
@@ -3986,9 +4020,9 @@ const Welcome: React.FC = () => {
           .welcome-display-title {
             font-size:
               clamp(
-                1.7rem,
+                1.65rem,
                 7vw,
-                2.25rem
+                2rem
               );
           }
 
@@ -4023,6 +4057,13 @@ const Welcome: React.FC = () => {
             font-size: 0.72rem;
           }
 
+          .welcome-explore-section,
+          .welcome-discover-section,
+          .welcome-accommodations-section {
+            margin-bottom:
+              86px !important;
+          }
+
           .welcome-attractions-heading {
             margin-bottom:
               1.8rem;
@@ -4041,7 +4082,7 @@ const Welcome: React.FC = () => {
           .welcome-accommodations-title,
           .welcome-videos-title {
             font-size:
-              1.8rem;
+              1.85rem;
           }
 
           .welcome-accommodations-heading,
@@ -4064,14 +4105,14 @@ const Welcome: React.FC = () => {
 
           .welcome-video-carousel {
             min-height:
-              410px;
+              365px;
             padding:
               5px 0 55px;
           }
 
           .welcome-featured-swiper {
             height:
-              360px;
+              320px;
             padding:
               20px 0 25px;
           }
@@ -4127,30 +4168,30 @@ const Welcome: React.FC = () => {
           }
           .welcome-hero-slider {
             height:
-              285px;
+              220px;
             border-radius:
               18px;
           }
 
           .welcome-hero-content {
             left:
-              19px;
+              18px;
             right:
-              19px;
+              18px;
             bottom:
-              34px;
+              31px;
           }
 
           .welcome-hero-title {
             font-size:
-              1.9rem;
+              1.75rem;
             margin-bottom:
-              11px;
+              9px;
           }
 
           .welcome-hero-detail {
             font-size:
-              0.72rem;
+              0.68rem;
             gap:
               7px;
             margin-bottom:
@@ -4216,24 +4257,27 @@ const Welcome: React.FC = () => {
           }
 
           .welcome-bunting {
+            width:
+              calc(100% + 20px);
             height:
-              18px;
+              19px;
+            margin-left:
+              -10px;
+            margin-right:
+              -10px;
             margin-bottom:
               17px;
           }
 
           .bunting-flag {
             width:
-              23px;
+              auto;
             height:
-              18px;
-            flex-basis:
-              23px;
-          }
-
-          .bunting-flag:nth-child(n + 11) {
-            display:
-              none;
+              19px;
+            flex:
+              1 1 0;
+            min-width:
+              13px;
           }
 
           .welcome-section-eyebrow {
@@ -4252,7 +4296,7 @@ const Welcome: React.FC = () => {
 
           .welcome-display-title {
             font-size:
-              1.85rem;
+              1.7rem;
           }
 
           .welcome-main-heading {
@@ -4265,6 +4309,13 @@ const Welcome: React.FC = () => {
               38px;
           }
 
+          .welcome-explore-section,
+          .welcome-discover-section,
+          .welcome-accommodations-section {
+            margin-bottom:
+              78px !important;
+          }
+
           .welcome-attractions-heading {
             margin-bottom:
               1.65rem;
@@ -4272,7 +4323,7 @@ const Welcome: React.FC = () => {
 
           .welcome-attractions-title {
             font-size:
-              1.85rem;
+              1.8rem;
           }
 
           .welcome-accommodations-section {
@@ -4283,7 +4334,7 @@ const Welcome: React.FC = () => {
           .welcome-accommodations-title,
           .welcome-videos-title {
             font-size:
-              1.65rem;
+              1.72rem;
           }
 
           .welcome-accommodations-heading,
@@ -4361,24 +4412,32 @@ const Welcome: React.FC = () => {
           }
 
           .welcome-bunting {
+            width:
+              calc(100% + 16px);
             height:
               18px;
             margin-bottom:
               16px;
+            margin-left:
+              -8px;
+            margin-right:
+              -8px;
           }
 
           .bunting-flag {
             width:
-              22px;
+              auto;
             height:
               18px;
-            flex-basis:
-              22px;
+            flex:
+              1 1 0;
+            min-width:
+              11px;
           }
 
           .welcome-display-title {
             font-size:
-              1.82rem;
+              1.7rem;
           }
 
           .welcome-section-eyebrow {
@@ -4401,7 +4460,7 @@ const Welcome: React.FC = () => {
           .welcome-accommodations-title,
           .welcome-videos-title {
             font-size:
-              1.5rem;
+              1.62rem;
           }
         }
       `}</style>
