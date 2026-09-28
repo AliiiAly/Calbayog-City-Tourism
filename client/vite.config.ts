@@ -13,7 +13,7 @@ export default defineConfig({
         'favicon.ico',
         'apple-touch-icon.png',
         'logo.png',
-        'app-icon.svg',
+        'calbayog-app-icon.png',
       ],
 
       manifest: {
@@ -28,7 +28,7 @@ export default defineConfig({
         dir: 'ltr',
 
         /*
-         * Blue branding matching the Calbayog City Tourism logo.
+         * Blue branding matching the Calbayog City Tourism app.
          */
         theme_color: '#263A9F',
         background_color: '#263A9F',
@@ -39,42 +39,23 @@ export default defineConfig({
         start_url: '/',
         scope: '/',
 
+        /*
+         * Dedicated app icon.
+         * The same high-resolution PNG is used for both
+         * the standard and maskable PWA icon purposes.
+         */
         icons: [
           {
-            src: 'app-icon.svg',
-            sizes: '192x192',
-            type: 'image/svg+xml',
+            src: 'calbayog-app-icon.png',
+            sizes: '512x512',
+            type: 'image/png',
             purpose: 'any',
           },
           {
-            src: 'app-icon.svg',
+            src: 'calbayog-app-icon.png',
             sizes: '512x512',
-            type: 'image/svg+xml',
-            purpose: 'any maskable',
-          },
-        ],
-
-        screenshots: [
-          {
-            src: 'pwa-screenshot-home.png',
-            sizes: '1080x1920',
             type: 'image/png',
-            form_factor: 'narrow',
-            label: 'Calbayog City Tourism home page',
-          },
-          {
-            src: 'pwa-screenshot-destinations.png',
-            sizes: '1080x1920',
-            type: 'image/png',
-            form_factor: 'narrow',
-            label: 'Explore destinations in Calbayog City',
-          },
-          {
-            src: 'pwa-screenshot-wide.png',
-            sizes: '1920x1080',
-            type: 'image/png',
-            form_factor: 'wide',
-            label: 'Calbayog City Tourism on desktop',
+            purpose: 'maskable',
           },
         ],
 
