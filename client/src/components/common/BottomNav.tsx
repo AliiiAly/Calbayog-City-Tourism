@@ -82,7 +82,7 @@ const BottomNav: React.FC<BottomNavProps> = () => {
         {`
           /* ==========================================================
              CALBAYOG CITY TOURISM FOOTER
-             FULL RESPONSIVE LAYOUT
+             SAME 3-COLUMN ARRANGEMENT ON ALL SCREENS
           ========================================================== */
 
           .calbayog-footer {
@@ -119,7 +119,7 @@ const BottomNav: React.FC<BottomNavProps> = () => {
           }
 
           /* ==========================================================
-             MAIN FOOTER CONTENT
+             MAIN FOOTER
           ========================================================== */
 
           .calbayog-footer-main {
@@ -138,7 +138,7 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
             column-gap: 70px;
 
-            row-gap: 36px;
+            row-gap: 0;
           }
 
           /* ==========================================================
@@ -152,6 +152,7 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
           .calbayog-footer-brand-link {
             display: inline-flex;
+
             align-items: center;
 
             max-width: 100%;
@@ -233,7 +234,7 @@ const BottomNav: React.FC<BottomNavProps> = () => {
           }
 
           /* ==========================================================
-             CONTACT INFORMATION
+             CONTACT
           ========================================================== */
 
           .calbayog-footer-contact-list {
@@ -406,7 +407,7 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
             justify-content: space-between;
 
-            gap: 24px;
+            gap: 20px;
           }
 
           .calbayog-footer-copyright {
@@ -441,6 +442,8 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             font-weight: 600;
 
             white-space: nowrap;
+
+            flex: 0 0 auto;
           }
 
           .calbayog-footer-location-icon {
@@ -476,7 +479,7 @@ const BottomNav: React.FC<BottomNavProps> = () => {
           }
 
           /* ==========================================================
-             DESKTOP / LAPTOP
+             LAPTOP
           ========================================================== */
 
           @media (max-width: 1199px) {
@@ -489,335 +492,75 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             .calbayog-footer-bottom-wrapper {
               width: calc(100% - 60px);
             }
-          }
-
-          /* ==========================================================
-             TABLET / SMALL LAPTOP
-          ========================================================== */
-
-          @media (max-width: 900px) {
-            .calbayog-footer-main {
-              width: calc(100% - 48px);
-
-              grid-template-columns:
-                minmax(0, 1fr)
-                minmax(0, 1fr)
-                minmax(0, 1fr);
-
-              column-gap: 30px;
-
-              row-gap: 32px;
-
-              padding: 40px 0 36px;
-            }
-
-            .calbayog-footer-description {
-              max-width: 100%;
-            }
-
-            .calbayog-footer-bottom-wrapper {
-              width: calc(100% - 48px);
-            }
-
-            .calbayog-footer-bottom {
-              gap: 18px;
-            }
-
-            .calbayog-footer-contact {
-              font-size: 0.72rem;
-            }
-
-            .calbayog-footer-facebook-name {
-              font-size: 0.71rem;
-            }
-          }
-
-          /* ==========================================================
-             TABLET PORTRAIT / LARGE PHONE
-          ========================================================== */
-
-          @media (max-width: 760px) {
-            .calbayog-footer-main {
-              width: calc(100% - 36px);
-
-              display: grid;
-
-              grid-template-columns:
-                minmax(0, 1fr)
-                minmax(0, 1fr);
-
-              column-gap: 28px;
-
-              row-gap: 30px;
-
-              padding: 38px 0 34px;
-            }
-
-            .calbayog-footer-brand {
-              grid-column: 1 / -1;
-            }
-
-            .calbayog-footer-description {
-              max-width: 620px;
-            }
-
-            .calbayog-footer-bottom-wrapper {
-              width: calc(100% - 36px);
-            }
-          }
-
-          /* ==========================================================
-             MOBILE
-          ========================================================== */
-
-          @media (max-width: 600px) {
-            .calbayog-footer {
-              overflow-x: hidden;
-            }
-
-            .calbayog-footer-main {
-              width: calc(100% - 30px);
-
-              display: flex;
-
-              flex-direction: column;
-
-              gap: 28px;
-
-              padding: 36px 0 32px;
-            }
-
-            .calbayog-footer-brand,
-            .calbayog-footer-main > div {
-              width: 100%;
-
-              min-width: 0;
-            }
-
-            .calbayog-footer-logo {
-              width: 31px;
-              height: 31px;
-
-              max-width: 31px;
-
-              flex: 0 0 31px;
-            }
 
             .calbayog-footer-brand-name {
               font-size: 0.82rem;
             }
 
             .calbayog-footer-description {
-              width: 100%;
-
-              max-width: none;
-
-              margin-top: 11px;
-
               font-size: 0.72rem;
-
-              line-height: 1.65;
             }
 
             .calbayog-footer-heading {
-              margin-bottom: 13px;
-
-              font-size: 0.76rem;
-            }
-
-            .calbayog-footer-contact-list {
-              gap: 11px;
+              font-size: 0.75rem;
             }
 
             .calbayog-footer-contact {
-              font-size: 0.72rem;
-
-              line-height: 1.55;
-            }
-
-            .calbayog-footer-contact-icon {
-              width: 18px;
-              height: 18px;
-
-              flex-basis: 18px;
-            }
-
-            .calbayog-footer-facebook-link {
-              gap: 9px;
-            }
-
-            .calbayog-footer-facebook-icon {
-              width: 29px;
-              height: 29px;
-
-              flex-basis: 29px;
+              font-size: 0.69rem;
             }
 
             .calbayog-footer-facebook-name {
-              font-size: 0.72rem;
-
-              line-height: 1.45;
+              font-size: 0.70rem;
             }
 
             .calbayog-footer-facebook-label {
-              font-size: 0.64rem;
-
-              line-height: 1.45;
-            }
-
-            .calbayog-footer-bottom-wrapper {
-              width: calc(100% - 30px);
-            }
-
-            .calbayog-footer-bottom {
-              min-height: auto;
-
-              padding: 16px 0 18px;
-
-              flex-direction: column;
-
-              align-items: flex-start;
-
-              justify-content: center;
-
-              gap: 7px;
-            }
-
-            .calbayog-footer-copyright {
-              width: 100%;
-
-              font-size: 0.62rem;
-
-              line-height: 1.55;
-            }
-
-            .calbayog-footer-location {
-              font-size: 0.62rem;
-
-              white-space: normal;
+              font-size: 0.63rem;
             }
           }
 
           /* ==========================================================
-             SMALL PHONES
+             TABLET
+             IMPORTANT:
+             STILL 3 COLUMNS
           ========================================================== */
 
-          @media (max-width: 420px) {
+          @media (max-width: 900px) {
             .calbayog-footer-main {
-              width: calc(100% - 24px);
+              width: calc(100% - 40px);
 
-              gap: 26px;
+              grid-template-columns:
+                minmax(0, 1.35fr)
+                minmax(0, 1fr)
+                minmax(0, 1fr);
 
-              padding-top: 32px;
+              column-gap: 24px;
 
-              padding-bottom: 30px;
-            }
-
-            .calbayog-footer-bottom-wrapper {
-              width: calc(100% - 24px);
+              padding: 34px 0 30px;
             }
 
             .calbayog-footer-logo {
-              width: 29px;
-              height: 29px;
+              width: 30px;
+              height: 30px;
 
-              max-width: 29px;
+              max-width: 30px;
 
-              flex-basis: 29px;
+              flex-basis: 30px;
             }
 
             .calbayog-footer-brand-link {
-              gap: 8px;
+              gap: 7px;
             }
 
             .calbayog-footer-brand-name {
-              font-size: 0.78rem;
-
-              line-height: 1.3;
+              font-size: 0.73rem;
             }
 
             .calbayog-footer-description {
-              font-size: 0.69rem;
+              max-width: 100%;
 
-              line-height: 1.65;
-            }
+              margin-top: 10px;
 
-            .calbayog-footer-heading {
-              font-size: 0.74rem;
-            }
-
-            .calbayog-footer-contact {
-              font-size: 0.69rem;
-
-              gap: 8px;
-            }
-
-            .calbayog-footer-contact-icon {
-              width: 17px;
-              height: 17px;
-
-              flex-basis: 17px;
-            }
-
-            .calbayog-footer-facebook-icon {
-              width: 28px;
-              height: 28px;
-
-              flex-basis: 28px;
-            }
-
-            .calbayog-footer-facebook-name {
-              font-size: 0.69rem;
-            }
-
-            .calbayog-footer-facebook-label {
-              font-size: 0.61rem;
-            }
-
-            .calbayog-footer-copyright {
-              font-size: 0.60rem;
-            }
-
-            .calbayog-footer-location {
-              font-size: 0.60rem;
-            }
-          }
-
-          /* ==========================================================
-             VERY SMALL PHONES
-             320px - 360px
-          ========================================================== */
-
-          @media (max-width: 360px) {
-            .calbayog-footer-main {
-              width: calc(100% - 20px);
-
-              gap: 24px;
-
-              padding-top: 28px;
-
-              padding-bottom: 28px;
-            }
-
-            .calbayog-footer-bottom-wrapper {
-              width: calc(100% - 20px);
-            }
-
-            .calbayog-footer-logo {
-              width: 27px;
-              height: 27px;
-
-              max-width: 27px;
-
-              flex-basis: 27px;
-            }
-
-            .calbayog-footer-brand-name {
-              font-size: 0.74rem;
-            }
-
-            .calbayog-footer-description {
-              font-size: 0.66rem;
+              font-size: 0.64rem;
 
               line-height: 1.6;
             }
@@ -825,107 +568,479 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             .calbayog-footer-heading {
               margin-bottom: 11px;
 
-              font-size: 0.72rem;
+              font-size: 0.68rem;
             }
 
             .calbayog-footer-contact-list {
-              gap: 10px;
+              gap: 9px;
             }
 
             .calbayog-footer-contact {
-              font-size: 0.66rem;
+              gap: 6px;
 
-              gap: 7px;
+              font-size: 0.62rem;
+
+              line-height: 1.45;
             }
 
             .calbayog-footer-contact-icon {
-              width: 16px;
-              height: 16px;
+              width: 15px;
+              height: 15px;
 
-              flex-basis: 16px;
+              flex-basis: 15px;
             }
 
             .calbayog-footer-facebook-link {
-              gap: 8px;
+              gap: 7px;
             }
 
             .calbayog-footer-facebook-icon {
-              width: 26px;
-              height: 26px;
+              width: 25px;
+              height: 25px;
 
-              flex-basis: 26px;
+              flex-basis: 25px;
 
               border-radius: 7px;
             }
 
             .calbayog-footer-facebook-name {
-              font-size: 0.66rem;
+              font-size: 0.62rem;
+
+              line-height: 1.4;
             }
 
             .calbayog-footer-facebook-label {
-              font-size: 0.58rem;
+              font-size: 0.56rem;
+
+              line-height: 1.4;
+            }
+
+            .calbayog-footer-bottom-wrapper {
+              width: calc(100% - 40px);
             }
 
             .calbayog-footer-bottom {
-              padding: 14px 0 16px;
+              min-height: 52px;
+
+              gap: 12px;
+            }
+
+            .calbayog-footer-copyright {
+              font-size: 0.58rem;
+            }
+
+            .calbayog-footer-location {
+              font-size: 0.58rem;
+            }
+
+            .calbayog-footer-location-icon svg {
+              width: 11px;
+              height: 11px;
+            }
+          }
+
+          /* ==========================================================
+             MOBILE
+             STILL 3 COLUMNS
+          ========================================================== */
+
+          @media (max-width: 600px) {
+            .calbayog-footer-main {
+              width: calc(100% - 24px);
+
+              grid-template-columns:
+                minmax(0, 1.35fr)
+                minmax(0, 1fr)
+                minmax(0, 1fr);
+
+              column-gap: 12px;
+
+              padding: 28px 0 25px;
+            }
+
+            .calbayog-footer-logo {
+              width: 24px;
+              height: 24px;
+
+              max-width: 24px;
+
+              flex-basis: 24px;
+            }
+
+            .calbayog-footer-brand-link {
+              gap: 5px;
+            }
+
+            .calbayog-footer-brand-name {
+              font-size: 0.59rem;
+
+              line-height: 1.25;
+            }
+
+            .calbayog-footer-description {
+              margin-top: 8px;
+
+              font-size: 0.53rem;
+
+              line-height: 1.55;
+            }
+
+            .calbayog-footer-heading {
+              margin-bottom: 8px;
+
+              font-size: 0.59rem;
+
+              line-height: 1.3;
+            }
+
+            .calbayog-footer-contact-list {
+              gap: 7px;
+            }
+
+            .calbayog-footer-contact {
+              gap: 4px;
+
+              font-size: 0.51rem;
+
+              line-height: 1.4;
+            }
+
+            .calbayog-footer-contact-icon {
+              width: 12px;
+              height: 12px;
+
+              flex-basis: 12px;
+            }
+
+            .calbayog-footer-contact-icon svg {
+              width: 12px;
+              height: 12px;
+            }
+
+            .calbayog-footer-facebook-link {
+              gap: 5px;
+            }
+
+            .calbayog-footer-facebook-icon {
+              width: 21px;
+              height: 21px;
+
+              flex-basis: 21px;
+
+              border-radius: 6px;
+            }
+
+            .calbayog-footer-facebook-icon svg {
+              width: 12px;
+              height: 12px;
+            }
+
+            .calbayog-footer-facebook-name {
+              font-size: 0.51rem;
+
+              line-height: 1.35;
+            }
+
+            .calbayog-footer-facebook-label {
+              margin-top: 1px;
+
+              font-size: 0.45rem;
+
+              line-height: 1.35;
+            }
+
+            .calbayog-footer-bottom-wrapper {
+              width: calc(100% - 24px);
+            }
+
+            .calbayog-footer-bottom {
+              min-height: 45px;
+
+              gap: 8px;
+            }
+
+            .calbayog-footer-copyright {
+              font-size: 0.48rem;
+
+              line-height: 1.35;
+            }
+
+            .calbayog-footer-location {
+              gap: 3px;
+
+              font-size: 0.48rem;
+
+              line-height: 1.35;
+            }
+
+            .calbayog-footer-location-icon svg {
+              width: 9px;
+              height: 9px;
+            }
+          }
+
+          /* ==========================================================
+             SMALL PHONES
+             STILL 3 COLUMNS
+          ========================================================== */
+
+          @media (max-width: 420px) {
+            .calbayog-footer-main {
+              width: calc(100% - 18px);
+
+              column-gap: 8px;
+
+              padding: 24px 0 22px;
+            }
+
+            .calbayog-footer-logo {
+              width: 21px;
+              height: 21px;
+
+              max-width: 21px;
+
+              flex-basis: 21px;
+            }
+
+            .calbayog-footer-brand-link {
+              gap: 4px;
+            }
+
+            .calbayog-footer-brand-name {
+              font-size: 0.52rem;
+            }
+
+            .calbayog-footer-description {
+              margin-top: 7px;
+
+              font-size: 0.47rem;
+
+              line-height: 1.5;
+            }
+
+            .calbayog-footer-heading {
+              margin-bottom: 7px;
+
+              font-size: 0.53rem;
+            }
+
+            .calbayog-footer-contact-list {
+              gap: 6px;
+            }
+
+            .calbayog-footer-contact {
+              gap: 3px;
+
+              font-size: 0.46rem;
+            }
+
+            .calbayog-footer-contact-icon {
+              width: 11px;
+              height: 11px;
+
+              flex-basis: 11px;
+            }
+
+            .calbayog-footer-contact-icon svg {
+              width: 11px;
+              height: 11px;
+            }
+
+            .calbayog-footer-facebook-link {
+              gap: 4px;
+            }
+
+            .calbayog-footer-facebook-icon {
+              width: 19px;
+              height: 19px;
+
+              flex-basis: 19px;
+            }
+
+            .calbayog-footer-facebook-icon svg {
+              width: 11px;
+              height: 11px;
+            }
+
+            .calbayog-footer-facebook-name {
+              font-size: 0.46rem;
+            }
+
+            .calbayog-footer-facebook-label {
+              font-size: 0.41rem;
+            }
+
+            .calbayog-footer-bottom-wrapper {
+              width: calc(100% - 18px);
+            }
+
+            .calbayog-footer-bottom {
+              min-height: 40px;
 
               gap: 6px;
             }
 
             .calbayog-footer-copyright {
-              font-size: 0.57rem;
+              font-size: 0.43rem;
             }
 
             .calbayog-footer-location {
-              font-size: 0.57rem;
+              font-size: 0.43rem;
+
+              gap: 2px;
+            }
+
+            .calbayog-footer-location-icon svg {
+              width: 8px;
+              height: 8px;
             }
           }
 
           /* ==========================================================
-             EXTREMELY NARROW DEVICES
-             Prevents horizontal overflow on unusual screens.
+             VERY SMALL PHONES
+             STILL 3 COLUMNS
+          ========================================================== */
+
+          @media (max-width: 360px) {
+            .calbayog-footer-main {
+              width: calc(100% - 14px);
+
+              column-gap: 6px;
+
+              padding: 21px 0 20px;
+            }
+
+            .calbayog-footer-logo {
+              width: 19px;
+              height: 19px;
+
+              max-width: 19px;
+
+              flex-basis: 19px;
+            }
+
+            .calbayog-footer-brand-name {
+              font-size: 0.48rem;
+            }
+
+            .calbayog-footer-description {
+              font-size: 0.43rem;
+            }
+
+            .calbayog-footer-heading {
+              font-size: 0.49rem;
+            }
+
+            .calbayog-footer-contact {
+              font-size: 0.42rem;
+            }
+
+            .calbayog-footer-contact-icon {
+              width: 10px;
+              height: 10px;
+
+              flex-basis: 10px;
+            }
+
+            .calbayog-footer-contact-icon svg {
+              width: 10px;
+              height: 10px;
+            }
+
+            .calbayog-footer-facebook-icon {
+              width: 17px;
+              height: 17px;
+
+              flex-basis: 17px;
+            }
+
+            .calbayog-footer-facebook-icon svg {
+              width: 10px;
+              height: 10px;
+            }
+
+            .calbayog-footer-facebook-name {
+              font-size: 0.42rem;
+            }
+
+            .calbayog-footer-facebook-label {
+              font-size: 0.38rem;
+            }
+
+            .calbayog-footer-bottom-wrapper {
+              width: calc(100% - 14px);
+            }
+
+            .calbayog-footer-bottom {
+              min-height: 36px;
+
+              gap: 5px;
+            }
+
+            .calbayog-footer-copyright {
+              font-size: 0.39rem;
+            }
+
+            .calbayog-footer-location {
+              font-size: 0.39rem;
+            }
+          }
+
+          /* ==========================================================
+             EXTREMELY SMALL SCREENS
           ========================================================== */
 
           @media (max-width: 320px) {
             .calbayog-footer-main {
-              width: calc(100% - 16px);
+              width: calc(100% - 10px);
 
-              padding-top: 25px;
+              column-gap: 5px;
 
-              padding-bottom: 25px;
+              padding-top: 19px;
+
+              padding-bottom: 18px;
             }
 
-            .calbayog-footer-bottom-wrapper {
-              width: calc(100% - 16px);
-            }
+            .calbayog-footer-logo {
+              width: 17px;
+              height: 17px;
 
-            .calbayog-footer-brand-link {
-              gap: 7px;
+              max-width: 17px;
+
+              flex-basis: 17px;
             }
 
             .calbayog-footer-brand-name {
-              font-size: 0.70rem;
+              font-size: 0.44rem;
             }
 
             .calbayog-footer-description {
-              font-size: 0.63rem;
+              font-size: 0.40rem;
+            }
+
+            .calbayog-footer-heading {
+              font-size: 0.45rem;
             }
 
             .calbayog-footer-contact {
-              font-size: 0.63rem;
+              font-size: 0.39rem;
             }
 
             .calbayog-footer-facebook-name {
-              font-size: 0.63rem;
+              font-size: 0.39rem;
             }
 
             .calbayog-footer-facebook-label {
-              font-size: 0.56rem;
+              font-size: 0.35rem;
+            }
+
+            .calbayog-footer-bottom-wrapper {
+              width: calc(100% - 10px);
             }
 
             .calbayog-footer-copyright,
             .calbayog-footer-location {
-              font-size: 0.55rem;
+              font-size: 0.36rem;
             }
           }
 
