@@ -1426,9 +1426,9 @@ const Welcome: React.FC = () => {
             {quickCards.map(
               (card) => (
                 <Col
-                  xs={3}
-                  sm={3}
-                  md={3}
+                  xs={6}
+                  sm={4}
+                  md={2}
                   key={card.to}
                 >
                   <Link
@@ -1940,6 +1940,7 @@ const Welcome: React.FC = () => {
                           </video>
 
                           <div className="welcome-video-gradient" />
+                          <div className="welcome-video-shine" aria-hidden="true" />
 
                           <div className="welcome-video-play-badge">
                             <Play
@@ -1949,15 +1950,6 @@ const Welcome: React.FC = () => {
                                 2
                               }
                             />
-                          </div>
-
-                          <div className="welcome-video-number">
-                            {String(
-                              index + 1,
-                            ).padStart(
-                              2,
-                              "0",
-                            )}
                           </div>
 
                           <div className="welcome-video-caption">
@@ -2276,10 +2268,12 @@ const Welcome: React.FC = () => {
         }
 
         .welcome-quick-grid {
-          margin-top:
-            0;
-          row-gap:
-            42px;
+          margin-top: 0;
+          row-gap: 28px;
+        }
+
+        .welcome-quick-grid > [class*="col"] {
+          display: flex;
         }
 
         .welcome-quick-link {
@@ -2299,14 +2293,100 @@ const Welcome: React.FC = () => {
         .welcome-quick-card,
         .quick-card-body,
         .quick-card-label {
-          font-family:
-            "Inter",
-            sans-serif;
+          font-family: "Inter", sans-serif;
+        }
+
+        .welcome-quick-link {
+          width: 100%;
+          height: 100%;
+        }
+
+        .welcome-quick-card {
+          position: relative;
+          width: 100%;
+          min-height: 142px;
+          border-radius: 22px !important;
+          background: rgba(255,255,255,0.88) !important;
+          border: 1px solid rgba(45,49,149,0.07) !important;
+          box-shadow: 0 8px 26px rgba(25,31,70,0.07);
+          overflow: hidden;
+          transition: transform .28s ease, box-shadow .28s ease, border-color .28s ease;
+        }
+
+        .welcome-quick-card::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(145deg, rgba(255,255,255,.92), rgba(245,247,255,.58));
+          pointer-events: none;
+        }
+
+        .welcome-quick-card:hover {
+          transform: translateY(-7px);
+          box-shadow: 0 18px 38px rgba(45,49,149,0.13);
+          border-color: rgba(45,49,149,0.14) !important;
+        }
+
+        .quick-card-body {
+          position: relative;
+          z-index: 1;
+          min-height: 142px;
+          padding: 18px 10px 15px !important;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 11px;
+        }
+
+        .quick-card-icon-wrap {
+          position: relative;
+          width: 64px !important;
+          height: 64px !important;
+          min-width: 64px;
+          border-radius: 20px !important;
+          display: flex !important;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(255,255,255,.72);
+          box-shadow: 0 8px 18px rgba(32,38,90,.10), inset 0 1px 0 rgba(255,255,255,.65);
+          transition: transform .28s ease, border-radius .28s ease;
+        }
+
+        .quick-card-icon-wrap::after {
+          content: "";
+          position: absolute;
+          inset: 5px;
+          border: 1px solid rgba(255,255,255,.45);
+          border-radius: 15px;
+          pointer-events: none;
+        }
+
+        .welcome-quick-card:hover .quick-card-icon-wrap {
+          transform: translateY(-2px) rotate(-2deg);
+          border-radius: 18px !important;
+        }
+
+        .quick-card-icon {
+          position: relative;
+          z-index: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          filter: drop-shadow(0 2px 3px rgba(0,0,0,.08));
+        }
+
+        .quick-card-icon svg {
+          width: 27px;
+          height: 27px;
+          stroke-width: 2;
         }
 
         .quick-card-label {
-          font-weight:
-            600;
+          font-size: .76rem;
+          font-weight: 700;
+          letter-spacing: .01em;
+          line-height: 1.2;
         }
 
         /* =====================================================
@@ -2587,17 +2667,13 @@ const Welcome: React.FC = () => {
         ===================================================== */
 
         .welcome-videos-section {
-          width:
-            100%;
-          margin-top:
-            90px;
+          width: 100%;
+          margin-top: 72px;
         }
 
         .welcome-videos-heading {
-          width:
-            100%;
-          display:
-            flex;
+          width: 100%;
+          display: flex;
           flex-direction:
             column;
           align-items:
@@ -2665,11 +2741,7 @@ const Welcome: React.FC = () => {
         }
 
         .welcome-featured-swiper-slide {
-          width:
-            min(
-              74%,
-              820px
-            ) !important;
+          width: min(76%, 860px) !important;
           height:
             auto;
           display:
@@ -2678,26 +2750,21 @@ const Welcome: React.FC = () => {
             center;
           justify-content:
             center;
-          transition:
-            opacity 0.45s ease,
-            filter 0.45s ease;
+          transition: opacity .55s ease, filter .55s ease, transform .7s cubic-bezier(.22,.61,.36,1);
         }
 
         .welcome-featured-swiper-slide:not(
             .swiper-slide-active
           ) {
-          opacity:
-            0.72;
-          filter:
-            saturate(0.72)
-            brightness(0.72);
+          opacity: .48;
+          filter: saturate(.62) brightness(.64) blur(.25px);
+          transform: scale(.94);
         }
 
         .welcome-featured-swiper-slide.swiper-slide-active {
-          opacity:
-            1;
-          filter:
-            none;
+          opacity: 1;
+          filter: none;
+          transform: scale(1);
         }
 
         .welcome-video-cinematic-card {
@@ -2711,28 +2778,16 @@ const Welcome: React.FC = () => {
             24px;
           background:
             #10131c;
-          box-shadow:
-            0 25px 65px
-            rgba(
-              0,
-              0,
-              0,
-              0.22
-            );
-          transform:
-            translateZ(0);
+          box-shadow: 0 25px 65px rgba(0,0,0,.22);
+          transform: translateZ(0);
+          border: 1px solid rgba(255,255,255,.08);
+          transition: box-shadow .55s ease, border-color .55s ease, transform .55s ease;
         }
 
         .welcome-featured-swiper-slide.swiper-slide-active
           .welcome-video-cinematic-card {
-          box-shadow:
-            0 32px 80px
-            rgba(
-              0,
-              0,
-              0,
-              0.30
-            );
+          box-shadow: 0 34px 90px rgba(31,37,90,.28);
+          border-color: rgba(255,255,255,.18);
         }
 
         .welcome-video-media {
@@ -2792,6 +2847,26 @@ const Welcome: React.FC = () => {
             );
         }
 
+        .welcome-video-shine {
+          position: absolute;
+          inset: 0;
+          z-index: 2;
+          pointer-events: none;
+          background: linear-gradient(110deg, transparent 34%, rgba(255,255,255,.13) 47%, transparent 60%);
+          transform: translateX(-120%);
+          opacity: 0;
+        }
+
+        .welcome-featured-swiper-slide.swiper-slide-active .welcome-video-shine {
+          opacity: 1;
+          animation: welcomeVideoShine 5.5s ease-in-out infinite;
+        }
+
+        @keyframes welcomeVideoShine {
+          0%, 62% { transform: translateX(-120%); }
+          78%, 100% { transform: translateX(120%); }
+        }
+
         .welcome-video-play-badge {
           position:
             absolute;
@@ -2832,40 +2907,15 @@ const Welcome: React.FC = () => {
             blur(12px);
           -webkit-backdrop-filter:
             blur(12px);
-          box-shadow:
-            0 8px 22px
-            rgba(
-              0,
-              0,
-              0,
-              0.20
-            );
+          box-shadow: 0 10px 28px rgba(0,0,0,.24);
+          transition: transform .3s ease, background .3s ease;
           pointer-events:
             none;
         }
 
-        .welcome-video-number {
-          position:
-            absolute;
-          top:
-            22px;
-          right:
-            24px;
-          color:
-            rgba(
-              255,
-              255,
-              255,
-              0.82
-            );
-          font-size:
-            0.72rem;
-          font-weight:
-            700;
-          letter-spacing:
-            0.18em;
-          pointer-events:
-            none;
+        .welcome-video-cinematic-card:hover .welcome-video-play-badge {
+          transform: scale(1.08);
+          background: rgba(255,255,255,.20);
         }
 
         .welcome-video-caption {
@@ -3068,13 +3118,8 @@ const Welcome: React.FC = () => {
             1;
           border-radius:
             999px;
-          background:
-            rgba(
-              45,
-              49,
-              149,
-              0.22
-            );
+          background: rgba(45,49,149,.18);
+          box-shadow: 0 2px 7px rgba(45,49,149,.08);
           transition:
             width 0.3s ease,
             background 0.3s ease,
@@ -3775,8 +3820,23 @@ const Welcome: React.FC = () => {
           }
 
           .welcome-quick-grid {
-            row-gap:
-              38px;
+            row-gap: 18px;
+          }
+
+          .welcome-quick-card,
+          .quick-card-body {
+            min-height: 126px;
+          }
+
+          .quick-card-icon-wrap {
+            width: 54px !important;
+            height: 54px !important;
+            min-width: 54px;
+            border-radius: 17px !important;
+          }
+
+          .quick-card-label {
+            font-size: .68rem;
           }
 
           .welcome-accommodations-section {
@@ -4087,15 +4147,6 @@ const Welcome: React.FC = () => {
               40px;
           }
 
-          .welcome-video-number {
-            top:
-              18px;
-            right:
-              17px;
-            font-size:
-              0.63rem;
-          }
-
           .welcome-video-caption {
             left:
               19px;
@@ -4279,8 +4330,23 @@ const Welcome: React.FC = () => {
           }
 
           .welcome-quick-grid {
-            row-gap:
-              38px;
+            row-gap: 18px;
+          }
+
+          .welcome-quick-card,
+          .quick-card-body {
+            min-height: 126px;
+          }
+
+          .quick-card-icon-wrap {
+            width: 54px !important;
+            height: 54px !important;
+            min-width: 54px;
+            border-radius: 17px !important;
+          }
+
+          .quick-card-label {
+            font-size: .68rem;
           }
 
           .welcome-attractions-heading {
