@@ -43,36 +43,6 @@ export default defineConfig({
             type: 'image/png',
             purpose: 'any',
           },
-          {
-            src: '/app-icon.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'maskable',
-          },
-        ],
-
-        screenshots: [
-          {
-            src: 'pwa-screenshot-home.png',
-            sizes: '1080x1920',
-            type: 'image/png',
-            form_factor: 'narrow',
-            label: 'Calbayog City Tourism home page',
-          },
-          {
-            src: 'pwa-screenshot-destinations.png',
-            sizes: '1080x1920',
-            type: 'image/png',
-            form_factor: 'narrow',
-            label: 'Explore destinations in Calbayog City',
-          },
-          {
-            src: 'pwa-screenshot-wide.png',
-            sizes: '1920x1080',
-            type: 'image/png',
-            form_factor: 'wide',
-            label: 'Calbayog City Tourism on desktop',
-          },
         ],
 
         categories: [
