@@ -1,28 +1,28 @@
 import React, {
-  useEffect,
-  useRef,
-  useState,
+useEffect,
+useRef,
+useState,
 } from "react";
 
 import { Link } from "react-router-dom";
 
 import {
-  Container,
-  Row,
-  Col,
-  Card,
+Container,
+Row,
+Col,
+Card,
 } from "react-bootstrap";
 
 import {
-  getAccommodations,
-  getAttractions,
-  getFeaturedVideos,
-  FeaturedVideo,
+getAccommodations,
+getAttractions,
+getFeaturedVideos,
+FeaturedVideo,
 } from "../services/api";
 
 import {
-  Destination,
-  Accommodation,
+Destination,
+Accommodation,
 } from "../types";
 
 import { useAuth } from "../context/AuthContext";
@@ -32,34 +32,34 @@ import { useFavorites } from "../context/FavoritesContext";
 import AttractionCard from "../components/attractions/AttractionCard";
 
 import {
-  FerrisWheel,
-  Houses,
-  CalendarFold,
-  Compass,
-  NotebookPen,
-  Car,
-  MapPin,
-  CalendarDays,
-  CloudSun,
-  ChevronLeft,
-  ChevronRight,
-  Play,
+FerrisWheel,
+Houses,
+CalendarFold,
+Compass,
+NotebookPen,
+Car,
+MapPin,
+CalendarDays,
+CloudSun,
+ChevronLeft,
+ChevronRight,
+Play,
 } from "lucide-react";
 
 import {
-  Swiper,
-  SwiperSlide,
+Swiper,
+SwiperSlide,
 } from "swiper/react";
 
 import {
-  EffectCoverflow,
-  Navigation,
-  Pagination,
-  A11y,
+EffectCoverflow,
+Navigation,
+Pagination,
+A11y,
 } from "swiper/modules";
 
 import type {
-  Swiper as SwiperInstance,
+Swiper as SwiperInstance,
 } from "swiper";
 
 import "swiper/css";
@@ -68,4448 +68,4394 @@ import "swiper/css/navigation";
 import "swiper/css/pagination";
 
 /* =========================================================
-   BRAND COLOR
+BRAND COLOR
 ========================================================= */
 
 const CALBAYOG_BLUE = "#2D3195";
 
 /* =========================================================
-   QUICK ACCESS CARDS
+QUICK ACCESS CARDS
 ========================================================= */
 
 const quickCards: Array<{
-  icon: React.ReactNode;
-  label: string;
-  to: string;
-  color: string;
-  bg: string;
+icon: React.ReactNode;
+label: string;
+to: string;
+color: string;
+bg: string;
 }> = [
-  {
-    icon: (
-      <FerrisWheel
-        size={22}
-        strokeWidth={2.2}
-        aria-hidden="true"
-      />
-    ),
-    label: "Attractions",
-    to: "/attractions",
-    color: "#0077B6",
-    bg: "#e0f2ff",
-  },
+{
+icon: (
+<FerrisWheel
+     size={22}
+     strokeWidth={2.2}
+     aria-hidden="true"
+   />
+),
+label: "Attractions",
+to: "/attractions",
+color: "#0077B6",
+bg: "#e0f2ff",
+},
 
-  {
-    icon: (
-      <Houses
-        size={22}
-        strokeWidth={2.2}
-        aria-hidden="true"
-      />
-    ),
-    label: "Stays",
-    to: "/accommodations",
-    color: "#F4A226",
-    bg: "#fff8e6",
-  },
+{
+icon: (
+<Houses
+     size={22}
+     strokeWidth={2.2}
+     aria-hidden="true"
+   />
+),
+label: "Stays",
+to: "/accommodations",
+color: "#F4A226",
+bg: "#fff8e6",
+},
 
-  {
-    icon: (
-      <CalendarFold
-        size={22}
-        strokeWidth={2.2}
-        aria-hidden="true"
-      />
-    ),
-    label: "Events",
-    to: "/events",
-    color: "#e63946",
-    bg: "#ffe8ea",
-  },
+{
+icon: (
+<CalendarFold
+     size={22}
+     strokeWidth={2.2}
+     aria-hidden="true"
+   />
+),
+label: "Events",
+to: "/events",
+color: "#e63946",
+bg: "#ffe8ea",
+},
 
-  {
-    icon: (
-      <Compass
-        size={22}
-        strokeWidth={2.2}
-        aria-hidden="true"
-      />
-    ),
-    label: "Guides",
-    to: "/guides",
-    color: "#2d6a4f",
-    bg: "#e8f5ee",
-  },
+{
+icon: (
+<Compass
+     size={22}
+     strokeWidth={2.2}
+     aria-hidden="true"
+   />
+),
+label: "Guides",
+to: "/guides",
+color: "#2d6a4f",
+bg: "#e8f5ee",
+},
 
-  {
-    icon: (
-      <NotebookPen
-        size={22}
-        strokeWidth={2.2}
-        aria-hidden="true"
-      />
-    ),
-    label: "Plan Trip",
-    to: "/itinerary",
-    color: "#6d4c41",
-    bg: "#f0ebe6",
-  },
+{
+icon: (
+<NotebookPen
+     size={22}
+     strokeWidth={2.2}
+     aria-hidden="true"
+   />
+),
+label: "Plan Trip",
+to: "/itinerary",
+color: "#6d4c41",
+bg: "#f0ebe6",
+},
 
-  {
-    icon: (
-      <Car
-        size={22}
-        strokeWidth={2.2}
-        aria-hidden="true"
-      />
-    ),
-    label: "Getting There",
-    to: "/getting-there",
-    color: "#0077B6",
-    bg: "#e0f2ff",
-  },
+{
+icon: (
+<Car
+     size={22}
+     strokeWidth={2.2}
+     aria-hidden="true"
+   />
+),
+label: "Getting There",
+to: "/getting-there",
+color: "#0077B6",
+bg: "#e0f2ff",
+},
 ];
 
 /* =========================================================
-   HERO SLIDES
+HERO SLIDES
 ========================================================= */
 
 const heroSlides = [
-  {
-    id: "calbayog-1",
-    image: "/calbayog1.jpg",
-    alt: "Calbayog City",
-  },
+{
+id: "calbayog-1",
+image: "/calbayog1.jpg",
+alt: "Calbayog City",
+},
 
-  {
-    id: "calbayog-2",
-    image: "/calbayog2.jpeg",
-    alt: "Calbayog City",
-  },
+{
+id: "calbayog-2",
+image: "/calbayog2.jpeg",
+alt: "Calbayog City",
+},
 
-  {
-    id: "calbayog-3",
-    image: "/calbayog3.jpg",
-    alt: "Calbayog City",
-  },
+{
+id: "calbayog-3",
+image: "/calbayog3.jpg",
+alt: "Calbayog City",
+},
 
-  {
-    id: "calbayogonair",
-    image: "/calbayogonair.webp",
-    alt: "Calbayog City",
-  },
+{
+id: "calbayogonair",
+image: "/calbayogonair.webp",
+alt: "Calbayog City",
+},
 ];
 
 /* =========================================================
-   WEATHER TYPES
+WEATHER TYPES
 ========================================================= */
 
 type WeatherState = {
-  temperature: number | null;
-  weatherCode: number | null;
-  isDay: boolean;
-  loading: boolean;
-  error: boolean;
+temperature: number | null;
+weatherCode: number | null;
+isDay: boolean;
+loading: boolean;
+error: boolean;
 };
 
 /* =========================================================
-   WEATHER DESCRIPTION
+WEATHER DESCRIPTION
 ========================================================= */
 
 const getWeatherDescription = (
-  weatherCode: number | null,
+weatherCode: number | null,
 ): string => {
-  if (weatherCode === null) {
-    return "Weather unavailable";
-  }
+if (weatherCode === null) {
+return "Weather unavailable";
+}
 
-  if (weatherCode === 0) {
-    return "Clear sky";
-  }
+if (weatherCode === 0) {
+return "Clear sky";
+}
 
-  if (
-    weatherCode === 1 ||
-    weatherCode === 2
-  ) {
-    return "Partly cloudy";
-  }
+if (
+weatherCode === 1 ||
+weatherCode === 2
+) {
+return "Partly cloudy";
+}
 
-  if (weatherCode === 3) {
-    return "Overcast";
-  }
+if (weatherCode === 3) {
+return "Overcast";
+}
 
-  if (
-    weatherCode === 45 ||
-    weatherCode === 48
-  ) {
-    return "Foggy";
-  }
+if (
+weatherCode === 45 ||
+weatherCode === 48
+) {
+return "Foggy";
+}
 
-  if (
-    weatherCode === 51 ||
-    weatherCode === 53 ||
-    weatherCode === 55
-  ) {
-    return "Drizzle";
-  }
+if (
+weatherCode === 51 ||
+weatherCode === 53 ||
+weatherCode === 55
+) {
+return "Drizzle";
+}
 
-  if (
-    weatherCode === 56 ||
-    weatherCode === 57
-  ) {
-    return "Freezing drizzle";
-  }
+if (
+weatherCode === 56 ||
+weatherCode === 57
+) {
+return "Freezing drizzle";
+}
 
-  if (
-    weatherCode === 61 ||
-    weatherCode === 63 ||
-    weatherCode === 65
-  ) {
-    return "Rain";
-  }
+if (
+weatherCode === 61 ||
+weatherCode === 63 ||
+weatherCode === 65
+) {
+return "Rain";
+}
 
-  if (
-    weatherCode === 66 ||
-    weatherCode === 67
-  ) {
-    return "Freezing rain";
-  }
+if (
+weatherCode === 66 ||
+weatherCode === 67
+) {
+return "Freezing rain";
+}
 
-  if (
-    weatherCode === 71 ||
-    weatherCode === 73 ||
-    weatherCode === 75
-  ) {
-    return "Snow";
-  }
+if (
+weatherCode === 71 ||
+weatherCode === 73 ||
+weatherCode === 75
+) {
+return "Snow";
+}
 
-  if (weatherCode === 77) {
-    return "Snow grains";
-  }
+if (weatherCode === 77) {
+return "Snow grains";
+}
 
-  if (
-    weatherCode === 80 ||
-    weatherCode === 81 ||
-    weatherCode === 82
-  ) {
-    return "Rain showers";
-  }
+if (
+weatherCode === 80 ||
+weatherCode === 81 ||
+weatherCode === 82
+) {
+return "Rain showers";
+}
 
-  if (
-    weatherCode === 85 ||
-    weatherCode === 86
-  ) {
-    return "Snow showers";
-  }
+if (
+weatherCode === 85 ||
+weatherCode === 86
+) {
+return "Snow showers";
+}
 
-  if (weatherCode === 95) {
-    return "Thunderstorm";
-  }
+if (weatherCode === 95) {
+return "Thunderstorm";
+}
 
-  if (
-    weatherCode === 96 ||
-    weatherCode === 99
-  ) {
-    return "Thunderstorm with hail";
-  }
+if (
+weatherCode === 96 ||
+weatherCode === 99
+) {
+return "Thunderstorm with hail";
+}
 
-  return "Current weather";
+return "Current weather";
 };
 
 /* =========================================================
-   WELCOME COMPONENT
+WELCOME COMPONENT
 ========================================================= */
 
 const Welcome: React.FC = () => {
-  const { user } = useAuth();
+const { user } = useAuth();
 
-  const {
-    setFavoriteCount,
-  } = useFavorites();
+const {
+setFavoriteCount,
+} = useFavorites();
 
-  /* =========================================================
-     WELCOME DATA
-  ========================================================= */
+/* =========================================================
+WELCOME DATA
+========================================================= */
 
-  const [
-    welcomeDestinations,
-    setWelcomeDestinations,
-  ] = useState<Destination[]>([]);
+const [
+welcomeDestinations,
+setWelcomeDestinations,
+] = useState<Destination[]>([]);
 
-  const [
-    welcomeAccommodations,
-    setWelcomeAccommodations,
-  ] = useState<Accommodation[]>([]);
+const [
+welcomeAccommodations,
+setWelcomeAccommodations,
+] = useState<Accommodation[]>([]);
 
-  const [
-    loadingDestinations,
-    setLoadingDestinations,
-  ] = useState(true);
+const [
+loadingDestinations,
+setLoadingDestinations,
+] = useState(true);
 
-  const [
-    loadingAccommodations,
-    setLoadingAccommodations,
-  ] = useState(true);
+const [
+loadingAccommodations,
+setLoadingAccommodations,
+] = useState(true);
 
-  /* =========================================================
-     IMAGE ROTATION
-  ========================================================= */
+/* =========================================================
+IMAGE ROTATION
+========================================================= */
 
-  const [
-    imageIndexes,
-    setImageIndexes,
-  ] = useState<Record<string, number>>({});
+const [
+imageIndexes,
+setImageIndexes,
+] = useState<Record<string, number>>({});
 
-  /* =========================================================
-     HERO SLIDER STATE
-  ========================================================= */
+/* =========================================================
+HERO SLIDER STATE
+========================================================= */
 
-  const [
-    activeSlide,
-    setActiveSlide,
-  ] = useState(0);
+const [
+activeSlide,
+setActiveSlide,
+] = useState(0);
 
-  /* =========================================================
-     HERO TOUCH / SWIPE
-  ========================================================= */
+/* =========================================================
+HERO TOUCH / SWIPE
+========================================================= */
 
-  const touchStartX =
-    useRef<number | null>(null);
+const touchStartX =
+useRef<number | null>(null);
 
-  const touchEndX =
-    useRef<number | null>(null);
+const touchEndX =
+useRef<number | null>(null);
 
-  /* =========================================================
-     HERO MOUSE DRAG
-  ========================================================= */
+/* =========================================================
+HERO MOUSE DRAG
+========================================================= */
 
-  const mouseStartX =
-    useRef<number | null>(null);
+const mouseStartX =
+useRef<number | null>(null);
 
-  const isDragging =
-    useRef(false);
+const isDragging =
+useRef(false);
 
-  /* =========================================================
-     FEATURED VIDEO CAROUSEL
-  ========================================================= */
+/* =========================================================
+FEATURED VIDEO CAROUSEL
+========================================================= */
 
-  const [
-    featuredVideos,
-    setFeaturedVideos,
-  ] = useState<FeaturedVideo[]>([]);
+const [
+featuredVideos,
+setFeaturedVideos,
+] = useState<FeaturedVideo[]>([]);
 
-  const [
-    loadingFeaturedVideos,
-    setLoadingFeaturedVideos,
-  ] = useState(true);
+const [
+loadingFeaturedVideos,
+setLoadingFeaturedVideos,
+] = useState(true);
 
-  const [
-    featuredVideosError,
-    setFeaturedVideosError,
-  ] = useState(false);
+const [
+featuredVideosError,
+setFeaturedVideosError,
+] = useState(false);
 
-  const [
-    activeVideo,
-    setActiveVideo,
-  ] = useState(0);
+const [
+activeVideo,
+setActiveVideo,
+] = useState(0);
 
-  const [
-    videoSwiper,
-    setVideoSwiper,
-  ] = useState<SwiperInstance | null>(null);
+const [
+videoSwiper,
+setVideoSwiper,
+] = useState<SwiperInstance | null>(null);
 
-  /* =========================================================
-     DATE
-  ========================================================= */
+/* =========================================================
+DATE
+========================================================= */
 
-  const [
-    currentDate,
-    setCurrentDate,
-  ] = useState("");
+const [
+currentDate,
+setCurrentDate,
+] = useState("");
 
-  /* =========================================================
-     WEATHER
-  ========================================================= */
+/* =========================================================
+WEATHER
+========================================================= */
 
-  const [
-    weather,
-    setWeather,
-  ] = useState<WeatherState>({
-    temperature: null,
-    weatherCode: null,
-    isDay: true,
-    loading: true,
-    error: false,
-  });
+const [
+weather,
+setWeather,
+] = useState<WeatherState>({
+temperature: null,
+weatherCode: null,
+isDay: true,
+loading: true,
+error: false,
+});
 
-  /* =========================================================
-     USER GREETING
-  ========================================================= */
+/* =========================================================
+USER GREETING
+========================================================= */
 
-  const firstName = user?.name
-    ? user.name
-        .trim()
-        .split(/\s+/)[0]
-    : "";
+const firstName = user?.name
+? user.name
+.trim()
+.split(/\s+/)[0]
+: "";
 
-  const welcomeGreeting =
-    firstName
-      ? `MABUHAY, ${firstName.toUpperCase()}!`
-      : "MABUHAY!";
+const welcomeGreeting =
+firstName
+? MABUHAY, ${firstName.toUpperCase()}!
+: "MABUHAY!";
 
-  /* =========================================================
-     LOAD CURRENT DATE
-  ========================================================= */
+/* =========================================================
+LOAD CURRENT DATE
+========================================================= */
 
-  useEffect(() => {
-    const updateDate = () => {
-      const now = new Date();
+useEffect(() => {
+const updateDate = () => {
+const now = new Date();
 
-      const formattedDate =
-        new Intl.DateTimeFormat(
-          "en-PH",
+  const formattedDate =
+    new Intl.DateTimeFormat(
+      "en-PH",
+      {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+        timeZone:
+          "Asia/Manila",
+      },
+    ).format(now);
+
+  setCurrentDate(
+    formattedDate,
+  );
+};
+
+updateDate();
+
+const interval =
+  window.setInterval(
+    updateDate,
+    60 * 1000,
+  );
+
+return () => {
+  window.clearInterval(
+    interval,
+  );
+};
+
+}, []);
+
+/* =========================================================
+LOAD CURRENT CALBAYOG WEATHER
+========================================================= */
+
+useEffect(() => {
+const controller =
+new AbortController();
+
+const loadWeather =
+  async () => {
+    try {
+      setWeather(
+        (previous) => ({
+          ...previous,
+          loading: true,
+          error: false,
+        }),
+      );
+
+      const geocodingResponse =
+        await fetch(
+          "https://geocoding-api.open-meteo.com/v1/search?name=Calbayog&count=10&language=en&format=json",
           {
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-            timeZone:
-              "Asia/Manila",
+            signal:
+              controller.signal,
           },
-        ).format(now);
+        );
 
-      setCurrentDate(
-        formattedDate,
+      if (
+        !geocodingResponse.ok
+      ) {
+        throw new Error(
+          "Unable to find Calbayog location.",
+        );
+      }
+
+      const geocodingData =
+        await geocodingResponse.json();
+
+      const results =
+        Array.isArray(
+          geocodingData?.results,
+        )
+          ? geocodingData.results
+          : [];
+
+      const calbayogLocation =
+        results.find(
+          (location: any) =>
+            location?.country_code ===
+              "PH" &&
+            String(
+              location?.name ||
+                "",
+            ).toLowerCase() ===
+              "calbayog",
+        ) ||
+        results.find(
+          (location: any) =>
+            location?.country_code ===
+            "PH",
+        );
+
+      if (
+        !calbayogLocation?.latitude ||
+        !calbayogLocation?.longitude
+      ) {
+        throw new Error(
+          "Calbayog location was not found.",
+        );
+      }
+
+      const weatherResponse =
+        await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(
+            calbayogLocation.latitude,
+          )}&longitude=${encodeURIComponent(
+            calbayogLocation.longitude,
+          )}&current=temperature_2m,weather_code,is_day&timezone=Asia%2FManila`,
+          {
+            signal:
+              controller.signal,
+          },
+        );
+
+      if (
+        !weatherResponse.ok
+      ) {
+        throw new Error(
+          "Unable to load current weather.",
+        );
+      }
+
+      const weatherData =
+        await weatherResponse.json();
+
+      const current =
+        weatherData?.current;
+
+      if (!current) {
+        throw new Error(
+          "Current weather data is unavailable.",
+        );
+      }
+
+      setWeather({
+        temperature:
+          typeof current.temperature_2m ===
+          "number"
+            ? current.temperature_2m
+            : null,
+
+        weatherCode:
+          typeof current.weather_code ===
+          "number"
+            ? current.weather_code
+            : null,
+
+        isDay:
+          Number(
+            current.is_day,
+          ) === 1,
+
+        loading: false,
+        error: false,
+      });
+    } catch (error: any) {
+      if (
+        error?.name ===
+        "AbortError"
+      ) {
+        return;
+      }
+
+      console.error(
+        "Failed to load Calbayog weather:",
+        error,
       );
-    };
 
-    updateDate();
+      setWeather({
+        temperature: null,
+        weatherCode: null,
+        isDay: true,
+        loading: false,
+        error: true,
+      });
+    }
+  };
 
-    const interval =
-      window.setInterval(
-        updateDate,
-        60 * 1000,
-      );
+void loadWeather();
 
-    return () => {
-      window.clearInterval(
-        interval,
-      );
-    };
-  }, []);
+const weatherInterval =
+  window.setInterval(
+    loadWeather,
+    15 * 60 * 1000,
+  );
 
-  /* =========================================================
-     LOAD CURRENT CALBAYOG WEATHER
-  ========================================================= */
+return () => {
+  controller.abort();
 
-  useEffect(() => {
-    const controller =
-      new AbortController();
+  window.clearInterval(
+    weatherInterval,
+  );
+};
 
-    const loadWeather =
-      async () => {
-        try {
-          setWeather(
-            (previous) => ({
-              ...previous,
-              loading: true,
-              error: false,
-            }),
-          );
+}, []);
 
-          const geocodingResponse =
-            await fetch(
-              "https://geocoding-api.open-meteo.com/v1/search?name=Calbayog&count=10&language=en&format=json",
-              {
-                signal:
-                  controller.signal,
-              },
-            );
+/* =========================================================
+PRELOAD HERO IMAGES
+========================================================= */
 
-          if (
-            !geocodingResponse.ok
-          ) {
-            throw new Error(
-              "Unable to find Calbayog location.",
-            );
-          }
+useEffect(() => {
+heroSlides.forEach(
+(slide) => {
+const image =
+new Image();
 
-          const geocodingData =
-            await geocodingResponse.json();
+    image.src =
+      slide.image;
+  },
+);
 
-          const results =
-            Array.isArray(
-              geocodingData?.results,
-            )
-              ? geocodingData.results
-              : [];
+}, []);
 
-          const calbayogLocation =
-            results.find(
-              (location: any) =>
-                location?.country_code ===
-                  "PH" &&
-                String(
-                  location?.name ||
-                    "",
-                ).toLowerCase() ===
-                  "calbayog",
-            ) ||
-            results.find(
-              (location: any) =>
-                location?.country_code ===
-                "PH",
-            );
+/* =========================================================
+HERO NEXT
+========================================================= */
 
-          if (
-            !calbayogLocation?.latitude ||
-            !calbayogLocation?.longitude
-          ) {
-            throw new Error(
-              "Calbayog location was not found.",
-            );
-          }
+const nextSlide = () => {
+setActiveSlide(
+(current) =>
+(current + 1) %
+heroSlides.length,
+);
+};
 
-          const weatherResponse =
-            await fetch(
-              `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(
-                calbayogLocation.latitude,
-              )}&longitude=${encodeURIComponent(
-                calbayogLocation.longitude,
-              )}&current=temperature_2m,weather_code,is_day&timezone=Asia%2FManila`,
-              {
-                signal:
-                  controller.signal,
-              },
-            );
+/* =========================================================
+HERO PREVIOUS
+========================================================= */
 
-          if (
-            !weatherResponse.ok
-          ) {
-            throw new Error(
-              "Unable to load current weather.",
-            );
-          }
+const previousSlide = () => {
+setActiveSlide(
+(current) =>
+current === 0
+? heroSlides.length - 1
+: current - 1,
+);
+};
 
-          const weatherData =
-            await weatherResponse.json();
+/* =========================================================
+HERO AUTOMATIC SLIDESHOW
+========================================================= */
 
-          const current =
-            weatherData?.current;
+useEffect(() => {
+const interval =
+window.setInterval(
+() => {
+setActiveSlide(
+(current) =>
+(current + 1) %
+heroSlides.length,
+);
+},
+6000,
+);
 
-          if (!current) {
-            throw new Error(
-              "Current weather data is unavailable.",
-            );
-          }
+return () => {
+  window.clearInterval(
+    interval,
+  );
+};
 
-          setWeather({
-            temperature:
-              typeof current.temperature_2m ===
-              "number"
-                ? current.temperature_2m
-                : null,
+}, []);
 
-            weatherCode:
-              typeof current.weather_code ===
-              "number"
-                ? current.weather_code
-                : null,
+/* =========================================================
+HERO TOUCH START
+========================================================= */
 
-            isDay:
-              Number(
-                current.is_day,
-              ) === 1,
+const handleTouchStart = (
+e: React.TouchEvent<HTMLDivElement>,
+) => {
+touchStartX.current =
+e.touches[0].clientX;
 
-            loading: false,
-            error: false,
-          });
-        } catch (error: any) {
-          if (
-            error?.name ===
-            "AbortError"
-          ) {
-            return;
-          }
+touchEndX.current =
+  null;
 
-          console.error(
-            "Failed to load Calbayog weather:",
-            error,
-          );
+};
 
-          setWeather({
-            temperature: null,
-            weatherCode: null,
-            isDay: true,
-            loading: false,
-            error: true,
-          });
+/* =========================================================
+HERO TOUCH MOVE
+========================================================= */
+
+const handleTouchMove = (
+e: React.TouchEvent<HTMLDivElement>,
+) => {
+touchEndX.current =
+e.touches[0].clientX;
+};
+
+/* =========================================================
+HERO TOUCH END
+========================================================= */
+
+const handleTouchEnd = () => {
+if (
+touchStartX.current ===
+null ||
+touchEndX.current ===
+null
+) {
+return;
+}
+
+const distance =
+  touchStartX.current -
+  touchEndX.current;
+
+const minimumSwipeDistance = 50;
+
+if (
+  Math.abs(distance) <
+  minimumSwipeDistance
+) {
+  touchStartX.current =
+    null;
+
+  touchEndX.current =
+    null;
+
+  return;
+}
+
+if (distance > 0) {
+  nextSlide();
+} else {
+  previousSlide();
+}
+
+touchStartX.current =
+  null;
+
+touchEndX.current =
+  null;
+
+};
+
+/* =========================================================
+HERO MOUSE DOWN
+========================================================= */
+
+const handleMouseDown = (
+e: React.MouseEvent<HTMLDivElement>,
+) => {
+mouseStartX.current =
+e.clientX;
+
+isDragging.current =
+  true;
+
+};
+
+/* =========================================================
+HERO MOUSE UP
+========================================================= */
+
+const handleMouseUp = (
+e: React.MouseEvent<HTMLDivElement>,
+) => {
+if (
+mouseStartX.current ===
+null ||
+!isDragging.current
+) {
+return;
+}
+
+const distance =
+  mouseStartX.current -
+  e.clientX;
+
+const minimumDragDistance = 50;
+
+if (
+  Math.abs(distance) >=
+  minimumDragDistance
+) {
+  if (distance > 0) {
+    nextSlide();
+  } else {
+    previousSlide();
+  }
+}
+
+mouseStartX.current =
+  null;
+
+isDragging.current =
+  false;
+
+};
+
+/* =========================================================
+HERO MOUSE LEAVE
+========================================================= */
+
+const handleMouseLeave =
+() => {
+mouseStartX.current =
+null;
+
+  isDragging.current =
+    false;
+};
+
+/* =========================================================
+LOAD FEATURED VIDEOS
+========================================================= */
+
+const loadFeaturedVideos =
+async () => {
+setLoadingFeaturedVideos(
+true,
+);
+
+  setFeaturedVideosError(
+    false,
+  );
+
+  try {
+    const response =
+      await getFeaturedVideos();
+
+    const data =
+      Array.isArray(
+        response?.data,
+      )
+        ? response.data.filter(
+            (video) =>
+              Boolean(
+                video?.id &&
+                video?.video_url,
+              ),
+          )
+        : [];
+
+    setFeaturedVideos(
+      data,
+    );
+
+    setActiveVideo(0);
+  } catch (error) {
+    console.error(
+      "Failed to load Featured Videos:",
+      error,
+    );
+
+    setFeaturedVideos(
+      [],
+    );
+
+    setFeaturedVideosError(
+      true,
+    );
+  } finally {
+    setLoadingFeaturedVideos(
+      false,
+    );
+  }
+};
+
+/* =========================================================
+LOAD SELECTED ATTRACTIONS
+========================================================= */
+
+const loadWelcomeDestinations =
+async () => {
+setLoadingDestinations(
+true,
+);
+
+  try {
+    const response =
+      await getAttractions({
+        show_on_welcome: true,
+      });
+
+    const data =
+      Array.isArray(
+        response?.data,
+      )
+        ? response.data
+        : [];
+
+    const selected =
+      data.slice(0, 4);
+
+    setWelcomeDestinations(
+      selected,
+    );
+
+    selected.forEach(
+      (
+        attraction: Destination,
+      ) => {
+        const attractionId =
+          String(
+            (attraction as any)
+              ?.id ?? "",
+          ).trim();
+
+        if (
+          !attractionId
+        ) {
+          return;
         }
-      };
 
-    void loadWeather();
+        const count =
+          Math.max(
+            0,
+            Number(
+              (
+                attraction as any
+              )?.favorites ??
+                0,
+            ) || 0,
+          );
 
-    const weatherInterval =
-      window.setInterval(
-        loadWeather,
-        15 * 60 * 1000,
-      );
-
-    return () => {
-      controller.abort();
-
-      window.clearInterval(
-        weatherInterval,
-      );
-    };
-  }, []);
-
-  /* =========================================================
-     PRELOAD HERO IMAGES
-  ========================================================= */
-
-  useEffect(() => {
-    heroSlides.forEach(
-      (slide) => {
-        const image =
-          new Image();
-
-        image.src =
-          slide.image;
+        setFavoriteCount(
+          "attraction",
+          attractionId,
+          count,
+        );
       },
     );
-  }, []);
 
-  /* =========================================================
-     HERO NEXT
-  ========================================================= */
-
-  const nextSlide = () => {
-    setActiveSlide(
-      (current) =>
-        (current + 1) %
-        heroSlides.length,
+    setImageIndexes({});
+  } catch (error) {
+    console.error(
+      "Failed to load Welcome Page attractions:",
+      error,
     );
-  };
 
-  /* =========================================================
-     HERO PREVIOUS
-  ========================================================= */
-
-  const previousSlide = () => {
-    setActiveSlide(
-      (current) =>
-        current === 0
-          ? heroSlides.length - 1
-          : current - 1,
+    setWelcomeDestinations(
+      [],
     );
-  };
+  } finally {
+    setLoadingDestinations(
+      false,
+    );
+  }
+};
 
-  /* =========================================================
-     HERO AUTOMATIC SLIDESHOW
-  ========================================================= */
+/* =========================================================
+LOAD SELECTED ACCOMMODATIONS
+========================================================= */
 
-  useEffect(() => {
-    const interval =
-      window.setInterval(
-        () => {
-          setActiveSlide(
-            (current) =>
-              (current + 1) %
-              heroSlides.length,
-          );
-        },
-        6000,
-      );
+const loadWelcomeAccommodations =
+async () => {
+setLoadingAccommodations(
+true,
+);
 
-    return () => {
-      window.clearInterval(
-        interval,
-      );
-    };
-  }, []);
+  try {
+    const response =
+      await getAccommodations({
+        show_on_welcome: true,
+      });
 
-  /* =========================================================
-     HERO TOUCH START
-  ========================================================= */
+    const data =
+      Array.isArray(
+        response?.data,
+      )
+        ? response.data
+        : [];
 
-  const handleTouchStart = (
-    e: React.TouchEvent<HTMLDivElement>,
-  ) => {
-    touchStartX.current =
-      e.touches[0].clientX;
+    setWelcomeAccommodations(
+      data.slice(0, 4),
+    );
+  } catch (error) {
+    console.error(
+      "Failed to load Welcome Page accommodations:",
+      error,
+    );
 
-    touchEndX.current =
-      null;
-  };
+    setWelcomeAccommodations(
+      [],
+    );
+  } finally {
+    setLoadingAccommodations(
+      false,
+    );
+  }
+};
 
-  /* =========================================================
-     HERO TOUCH MOVE
-  ========================================================= */
+/* =========================================================
+INITIAL LOAD
+========================================================= */
 
-  const handleTouchMove = (
-    e: React.TouchEvent<HTMLDivElement>,
-  ) => {
-    touchEndX.current =
-      e.touches[0].clientX;
-  };
+useEffect(() => {
+void loadWelcomeDestinations();
 
-  /* =========================================================
-     HERO TOUCH END
-  ========================================================= */
+void loadWelcomeAccommodations();
 
-  const handleTouchEnd = () => {
-    if (
-      touchStartX.current ===
-        null ||
-      touchEndX.current ===
-        null
-    ) {
-      return;
-    }
+void loadFeaturedVideos();
 
-    const distance =
-      touchStartX.current -
-      touchEndX.current;
+}, []);
 
-    const minimumSwipeDistance = 50;
+/* =========================================================
+AUTO ROTATE ATTRACTION IMAGES
+========================================================= */
 
-    if (
-      Math.abs(distance) <
-      minimumSwipeDistance
-    ) {
-      touchStartX.current =
-        null;
+useEffect(() => {
+if (
+welcomeDestinations.length ===
+0
+) {
+return;
+}
 
-      touchEndX.current =
-        null;
-
-      return;
-    }
-
-    if (distance > 0) {
-      nextSlide();
-    } else {
-      previousSlide();
-    }
-
-    touchStartX.current =
-      null;
-
-    touchEndX.current =
-      null;
-  };
-
-  /* =========================================================
-     HERO MOUSE DOWN
-  ========================================================= */
-
-  const handleMouseDown = (
-    e: React.MouseEvent<HTMLDivElement>,
-  ) => {
-    mouseStartX.current =
-      e.clientX;
-
-    isDragging.current =
-      true;
-  };
-
-  /* =========================================================
-     HERO MOUSE UP
-  ========================================================= */
-
-  const handleMouseUp = (
-    e: React.MouseEvent<HTMLDivElement>,
-  ) => {
-    if (
-      mouseStartX.current ===
-        null ||
-      !isDragging.current
-    ) {
-      return;
-    }
-
-    const distance =
-      mouseStartX.current -
-      e.clientX;
-
-    const minimumDragDistance = 50;
-
-    if (
-      Math.abs(distance) >=
-      minimumDragDistance
-    ) {
-      if (distance > 0) {
-        nextSlide();
-      } else {
-        previousSlide();
-      }
-    }
-
-    mouseStartX.current =
-      null;
-
-    isDragging.current =
-      false;
-  };
-
-  /* =========================================================
-     HERO MOUSE LEAVE
-  ========================================================= */
-
-  const handleMouseLeave =
+const interval =
+  window.setInterval(
     () => {
-      mouseStartX.current =
-        null;
+      setImageIndexes(
+        (previous) => {
+          const next = {
+            ...previous,
+          };
 
-      isDragging.current =
-        false;
-    };
-
-  /* =========================================================
-     LOAD FEATURED VIDEOS
-  ========================================================= */
-
-  const loadFeaturedVideos =
-    async () => {
-      setLoadingFeaturedVideos(
-        true,
-      );
-
-      setFeaturedVideosError(
-        false,
-      );
-
-      try {
-        const response =
-          await getFeaturedVideos();
-
-        const data =
-          Array.isArray(
-            response?.data,
-          )
-            ? response.data.filter(
-                (video) =>
-                  Boolean(
-                    video?.id &&
-                    video?.video_url,
-                  ),
-              )
-            : [];
-
-        setFeaturedVideos(
-          data,
-        );
-
-        setActiveVideo(0);
-      } catch (error) {
-        console.error(
-          "Failed to load Featured Videos:",
-          error,
-        );
-
-        setFeaturedVideos(
-          [],
-        );
-
-        setFeaturedVideosError(
-          true,
-        );
-      } finally {
-        setLoadingFeaturedVideos(
-          false,
-        );
-      }
-    };
-
-  /* =========================================================
-     LOAD SELECTED ATTRACTIONS
-  ========================================================= */
-
-  const loadWelcomeDestinations =
-    async () => {
-      setLoadingDestinations(
-        true,
-      );
-
-      try {
-        const response =
-          await getAttractions({
-            show_on_welcome: true,
-          });
-
-        const data =
-          Array.isArray(
-            response?.data,
-          )
-            ? response.data
-            : [];
-
-        const selected =
-          data.slice(0, 4);
-
-        setWelcomeDestinations(
-          selected,
-        );
-
-        selected.forEach(
-          (
-            attraction: Destination,
-          ) => {
-            const attractionId =
-              String(
-                (attraction as any)
-                  ?.id ?? "",
-              ).trim();
-
-            if (
-              !attractionId
-            ) {
-              return;
-            }
-
-            const count =
-              Math.max(
-                0,
-                Number(
-                  (
-                    attraction as any
-                  )?.favorites ??
-                    0,
-                ) || 0,
-              );
-
-            setFavoriteCount(
-              "attraction",
-              attractionId,
-              count,
-            );
-          },
-        );
-
-        setImageIndexes({});
-      } catch (error) {
-        console.error(
-          "Failed to load Welcome Page attractions:",
-          error,
-        );
-
-        setWelcomeDestinations(
-          [],
-        );
-      } finally {
-        setLoadingDestinations(
-          false,
-        );
-      }
-    };
-
-  /* =========================================================
-     LOAD SELECTED ACCOMMODATIONS
-  ========================================================= */
-
-  const loadWelcomeAccommodations =
-    async () => {
-      setLoadingAccommodations(
-        true,
-      );
-
-      try {
-        const response =
-          await getAccommodations({
-            show_on_welcome: true,
-          });
-
-        const data =
-          Array.isArray(
-            response?.data,
-          )
-            ? response.data
-            : [];
-
-        setWelcomeAccommodations(
-          data.slice(0, 4),
-        );
-      } catch (error) {
-        console.error(
-          "Failed to load Welcome Page accommodations:",
-          error,
-        );
-
-        setWelcomeAccommodations(
-          [],
-        );
-      } finally {
-        setLoadingAccommodations(
-          false,
-        );
-      }
-    };
-
-  /* =========================================================
-     INITIAL LOAD
-  ========================================================= */
-
-  useEffect(() => {
-    void loadWelcomeDestinations();
-
-    void loadWelcomeAccommodations();
-
-    void loadFeaturedVideos();
-  }, []);
-
-  /* =========================================================
-     AUTO ROTATE ATTRACTION IMAGES
-  ========================================================= */
-
-  useEffect(() => {
-    if (
-      welcomeDestinations.length ===
-      0
-    ) {
-      return;
-    }
-
-    const interval =
-      window.setInterval(
-        () => {
-          setImageIndexes(
-            (previous) => {
-              const next = {
-                ...previous,
-              };
-
-              welcomeDestinations.forEach(
-                (destination) => {
-                  const images =
-                    Array.isArray(
-                      destination.images,
+          welcomeDestinations.forEach(
+            (destination) => {
+              const images =
+                Array.isArray(
+                  destination.images,
+                )
+                  ? destination.images.filter(
+                      Boolean,
                     )
-                      ? destination.images.filter(
-                          Boolean,
-                        )
-                      : [];
+                  : [];
 
-                  const id =
-                    String(
-                      (
-                        destination as any
-                      )?.id ?? "",
-                    ).trim();
+              const id =
+                String(
+                  (
+                    destination as any
+                  )?.id ?? "",
+                ).trim();
 
-                  if (
-                    id &&
-                    images.length >
-                      1
-                  ) {
-                    const currentIndex =
-                      previous[
-                        id
-                      ] || 0;
+              if (
+                id &&
+                images.length >
+                  1
+              ) {
+                const currentIndex =
+                  previous[
+                    id
+                  ] || 0;
 
-                    next[id] =
-                      (currentIndex +
-                        1) %
-                      images.length;
-                  }
-                },
-              );
-
-              return next;
+                next[id] =
+                  (currentIndex +
+                    1) %
+                  images.length;
+              }
             },
           );
+
+          return next;
         },
-        5500,
       );
+    },
+    5500,
+  );
 
-    return () => {
-      window.clearInterval(
-        interval,
-      );
-    };
-  }, [
-    welcomeDestinations,
-  ]);
+return () => {
+  window.clearInterval(
+    interval,
+  );
+};
 
-  /* =========================================================
-     FEATURED VIDEO ACTIVE INDEX
-  ========================================================= */
+}, [
+welcomeDestinations,
+]);
 
-  useEffect(() => {
-    if (
-      featuredVideos.length ===
-      0
-    ) {
-      setActiveVideo(0);
-      return;
-    }
+/* =========================================================
+FEATURED VIDEO ACTIVE INDEX
+========================================================= */
 
-    if (
-      activeVideo >=
-      featuredVideos.length
-    ) {
-      setActiveVideo(0);
-    }
-  }, [
-    featuredVideos.length,
-    activeVideo,
-  ]);
+useEffect(() => {
+if (
+featuredVideos.length ===
+0
+) {
+setActiveVideo(0);
+return;
+}
 
-  /* =========================================================
-     CURRENT HERO
-  ========================================================= */
+if (
+  activeVideo >=
+  featuredVideos.length
+) {
+  setActiveVideo(0);
+}
 
-  const currentHero =
-    heroSlides[activeSlide];
+}, [
+featuredVideos.length,
+activeVideo,
+]);
 
-  /* =========================================================
-     WEATHER DISPLAY
-  ========================================================= */
+/* =========================================================
+CURRENT HERO
+========================================================= */
 
-  const weatherDescription =
-    getWeatherDescription(
-      weather.weatherCode,
-    );
+const currentHero =
+heroSlides[activeSlide];
 
-  const weatherText =
-    weather.loading
-      ? "Loading weather..."
-      : weather.error
-        ? "Weather unavailable"
-        : weather.temperature !==
-            null
-          ? `${weather.temperature.toFixed(
+/* =========================================================
+WEATHER DISPLAY
+========================================================= */
+
+const weatherDescription =
+getWeatherDescription(
+weather.weatherCode,
+);
+
+const weatherText =
+weather.loading
+? "Loading weather..."
+: weather.error
+? "Weather unavailable"
+: weather.temperature !==
+null
+? ${weather.temperature.toFixed(
               1,
-            )}°C`
-          : weatherDescription;
+            )}°C
+: weatherDescription;
 
-  /* =========================================================
-     RENDER
-  ========================================================= */
+/* =========================================================
+RENDER
+========================================================= */
 
-  return (
-    <div className="page-enter welcome-page">
-      <Container className="welcome-container py-4 py-md-5">
+return (
+<div className="page-enter welcome-page">
+<Container className="welcome-container py-4 py-md-5">
 
-        {/* =====================================================
-            SWIPEABLE WELCOME HERO
-        ===================================================== */}
+    {/* =====================================================
+        SWIPEABLE WELCOME HERO
+    ===================================================== */}
 
-        <section className="welcome-hero-section mb-5">
-          <div
-            className="welcome-hero-slider"
-            onTouchStart={
-              handleTouchStart
-            }
-            onTouchMove={
-              handleTouchMove
-            }
-            onTouchEnd={
-              handleTouchEnd
-            }
-            onMouseDown={
-              handleMouseDown
-            }
-            onMouseUp={
-              handleMouseUp
-            }
-            onMouseLeave={
-              handleMouseLeave
-            }
-          >
-            <img
-              key={
-                currentHero.id
-              }
-              src={
-                currentHero.image
-              }
-              alt={
-                currentHero.alt
-              }
-              className="welcome-hero-image"
-              draggable={false}
-            />
+    <section className="welcome-hero-section mb-5">
+      <div
+        className="welcome-hero-slider"
+        onTouchStart={
+          handleTouchStart
+        }
+        onTouchMove={
+          handleTouchMove
+        }
+        onTouchEnd={
+          handleTouchEnd
+        }
+        onMouseDown={
+          handleMouseDown
+        }
+        onMouseUp={
+          handleMouseUp
+        }
+        onMouseLeave={
+          handleMouseLeave
+        }
+      >
+        <img
+          key={
+            currentHero.id
+          }
+          src={
+            currentHero.image
+          }
+          alt={
+            currentHero.alt
+          }
+          className="welcome-hero-image"
+          draggable={false}
+        />
 
-            <div className="welcome-hero-overlay" />
+        <div className="welcome-hero-overlay" />
 
-            <div className="welcome-hero-content">
-              <h1 className="welcome-hero-title barabara-display">
-                {welcomeGreeting}
-              </h1>
+        <div className="welcome-hero-content">
+          <h1 className="welcome-hero-title barabara-display">
+            {welcomeGreeting}
+          </h1>
 
-              <div className="welcome-hero-detail">
-                <span className="welcome-hero-detail-icon">
-                  <MapPin
-                    size={23}
-                    strokeWidth={
-                      2.1
-                    }
-                    aria-hidden="true"
-                  />
-                </span>
+          <div className="welcome-hero-detail">
+            <span className="welcome-hero-detail-icon">
+              <MapPin
+                size={23}
+                strokeWidth={
+                  2.1
+                }
+                aria-hidden="true"
+              />
+            </span>
 
-                <span>
-                  Calbayog City, Philippines
-                </span>
-              </div>
-
-              <div className="welcome-hero-detail">
-                <span className="welcome-hero-detail-icon">
-                  <CalendarDays
-                    size={23}
-                    strokeWidth={
-                      2.1
-                    }
-                    aria-hidden="true"
-                  />
-                </span>
-
-                <span>
-                  {currentDate ||
-                    "Loading date..."}
-                </span>
-              </div>
-
-              <div
-                className="welcome-hero-detail"
-                aria-live="polite"
-              >
-                <span className="welcome-hero-detail-icon">
-                  <CloudSun
-                    size={25}
-                    strokeWidth={
-                      2.1
-                    }
-                    aria-hidden="true"
-                  />
-                </span>
-
-                <span>
-                  {weatherText}
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="welcome-hero-arrow welcome-hero-arrow-left"
-              onClick={(e) => {
-                e.stopPropagation();
-                previousSlide();
-              }}
-              aria-label="Previous hero image"
-            >
-              ‹
-            </button>
-
-            <button
-              type="button"
-              className="welcome-hero-arrow welcome-hero-arrow-right"
-              onClick={(e) => {
-                e.stopPropagation();
-                nextSlide();
-              }}
-              aria-label="Next hero image"
-            >
-              ›
-            </button>
-
-            <div className="welcome-hero-dots">
-              {heroSlides.map(
-                (
-                  slide,
-                  index,
-                ) => (
-                  <button
-                    type="button"
-                    key={
-                      slide.id
-                    }
-                    className={`welcome-hero-dot ${
-                      activeSlide ===
-                      index
-                        ? "active"
-                        : ""
-                    }`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-
-                      setActiveSlide(
-                        index,
-                      );
-                    }}
-                    aria-label={`Show hero image ${
-                      index + 1
-                    }`}
-                    aria-current={
-                      activeSlide ===
-                      index
-                        ? "true"
-                        : undefined
-                    }
-                  />
-                ),
-              )}
-            </div>
+            <span>
+              Calbayog City, Philippines
+            </span>
           </div>
-        </section>
 
-        {/* =====================================================
-            EXPLORE CALBAYOG
-        ===================================================== */}
+          <div className="welcome-hero-detail">
+            <span className="welcome-hero-detail-icon">
+              <CalendarDays
+                size={23}
+                strokeWidth={
+                  2.1
+                }
+                aria-hidden="true"
+              />
+            </span>
 
-        <section className="welcome-explore-section mb-5">
-          <div className="welcome-section-heading">
-            <div className="welcome-intro">
-              <div className="welcome-intro-eyebrow">
-                WELCOME TO CALBAYOG
-              </div>
+            <span>
+              {currentDate ||
+                "Loading date..."}
+            </span>
+          </div>
 
-              <p className="welcome-intro-text">
-                Explore breathtaking
-                waterfalls, peaceful
-                coastlines, rich heritage,
-                and local experiences
-                waiting to be discovered.
-              </p>
-            </div>
+          <div
+            className="welcome-hero-detail"
+            aria-live="polite"
+          >
+            <span className="welcome-hero-detail-icon">
+              <CloudSun
+                size={25}
+                strokeWidth={
+                  2.1
+                }
+                aria-hidden="true"
+              />
+            </span>
 
-            <div
-              className="welcome-bunting"
-              aria-hidden="true"
+            <span>
+              {weatherText}
+            </span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="welcome-hero-arrow welcome-hero-arrow-left"
+          onClick={(e) => {
+            e.stopPropagation();
+            previousSlide();
+          }}
+          aria-label="Previous hero image"
+        >
+          ‹
+        </button>
+
+        <button
+          type="button"
+          className="welcome-hero-arrow welcome-hero-arrow-right"
+          onClick={(e) => {
+            e.stopPropagation();
+            nextSlide();
+          }}
+          aria-label="Next hero image"
+        >
+          ›
+        </button>
+
+        <div className="welcome-hero-dots">
+          {heroSlides.map(
+            (
+              slide,
+              index,
+            ) => (
+              <button
+                type="button"
+                key={
+                  slide.id
+                }
+                className={`welcome-hero-dot ${
+                  activeSlide ===
+                  index
+                    ? "active"
+                    : ""
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+
+                  setActiveSlide(
+                    index,
+                  );
+                }}
+                aria-label={`Show hero image ${
+                  index + 1
+                }`}
+                aria-current={
+                  activeSlide ===
+                  index
+                    ? "true"
+                    : undefined
+                }
+              />
+            ),
+          )}
+        </div>
+      </div>
+    </section>
+
+    {/* =====================================================
+        EXPLORE CALBAYOG
+    ===================================================== */}
+
+    <section className="welcome-explore-section mb-5">
+      <div className="welcome-section-heading">
+        <div className="welcome-intro">
+          <div className="welcome-intro-eyebrow">
+            WELCOME TO CALBAYOG
+          </div>
+
+          <p className="welcome-intro-text">
+            Explore breathtaking
+            waterfalls, peaceful
+            coastlines, rich heritage,
+            and local experiences
+            waiting to be discovered.
+          </p>
+        </div>
+
+        <div
+          className="welcome-bunting"
+          aria-hidden="true"
+        >
+          <span className="bunting-flag bunting-red" />
+          <span className="bunting-flag bunting-orange" />
+          <span className="bunting-flag bunting-yellow" />
+          <span className="bunting-flag bunting-teal" />
+
+          <span className="bunting-flag bunting-red" />
+          <span className="bunting-flag bunting-orange" />
+          <span className="bunting-flag bunting-yellow" />
+          <span className="bunting-flag bunting-teal" />
+
+          <span className="bunting-flag bunting-red" />
+          <span className="bunting-flag bunting-orange" />
+          <span className="bunting-flag bunting-yellow" />
+          <span className="bunting-flag bunting-teal" />
+
+          <span className="bunting-flag bunting-red" />
+          <span className="bunting-flag bunting-orange" />
+          <span className="bunting-flag bunting-yellow" />
+          <span className="bunting-flag bunting-teal" />
+
+          <span className="bunting-flag bunting-red" />
+          <span className="bunting-flag bunting-orange" />
+          <span className="bunting-flag bunting-yellow" />
+          <span className="bunting-flag bunting-teal" />
+        </div>
+
+        <div className="section-header welcome-main-heading">
+          <div>
+            <h2 className="section-title welcome-display-title barabara-display">
+              EXPLORE CALBAYOG
+            </h2>
+          </div>
+        </div>
+
+        <div className="welcome-section-eyebrow welcome-explore-eyebrow">
+          <span className="welcome-heading-line" />
+
+          <span>
+            Find a place worth slowing down for
+          </span>
+
+          <span className="welcome-heading-line" />
+        </div>
+      </div>
+
+      <Row className="g-3 g-md-4 welcome-quick-grid">
+        {quickCards.map(
+          (card) => (
+            <Col
+              xs={3}
+              sm={3}
+              md={3}
+              key={card.to}
             >
-              <span className="bunting-flag bunting-red" />
-              <span className="bunting-flag bunting-orange" />
-              <span className="bunting-flag bunting-yellow" />
-              <span className="bunting-flag bunting-teal" />
+              <Link
+                to={card.to}
+                className="welcome-quick-link"
+              >
+                <Card className="quick-card welcome-quick-card text-center border-0 h-100">
+                  <Card.Body className="quick-card-body">
+                    <div
+                      className="quick-card-icon-wrap"
+                      style={{
+                        background:
+                          card.bg,
+                      }}
+                    >
+                      <span className="quick-card-icon">
+                        {card.icon}
+                      </span>
+                    </div>
 
-              <span className="bunting-flag bunting-red" />
-              <span className="bunting-flag bunting-orange" />
-              <span className="bunting-flag bunting-yellow" />
-              <span className="bunting-flag bunting-teal" />
+                    <div
+                      className="quick-card-label"
+                      style={{
+                        color:
+                          card.color,
+                      }}
+                    >
+                      {card.label}
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Link>
+            </Col>
+          ),
+        )}
+      </Row>
+    </section>
 
-              <span className="bunting-flag bunting-red" />
-              <span className="bunting-flag bunting-orange" />
-              <span className="bunting-flag bunting-yellow" />
-              <span className="bunting-flag bunting-teal" />
+    {/* =====================================================
+        ATTRACTIONS
+    ===================================================== */}
 
-              <span className="bunting-flag bunting-red" />
-              <span className="bunting-flag bunting-orange" />
-              <span className="bunting-flag bunting-yellow" />
-              <span className="bunting-flag bunting-teal" />
+    {!loadingDestinations &&
+      welcomeDestinations.length >
+        0 && (
+        <section className="welcome-discover-section mb-5">
+          <div className="welcome-attractions-heading">
+            <h2 className="welcome-attractions-title barabara-display">
+              ATTRACTIONS
+            </h2>
 
-              <span className="bunting-flag bunting-red" />
-              <span className="bunting-flag bunting-orange" />
-              <span className="bunting-flag bunting-yellow" />
-              <span className="bunting-flag bunting-teal" />
-            </div>
-
-            <div className="section-header welcome-main-heading">
-              <div>
-                <h2 className="section-title welcome-display-title barabara-display">
-                  EXPLORE CALBAYOG
-                </h2>
-              </div>
-            </div>
-
-            <div className="welcome-section-eyebrow welcome-explore-eyebrow">
+            <div className="welcome-section-eyebrow welcome-attractions-eyebrow">
               <span className="welcome-heading-line" />
 
               <span>
-                Find a place worth slowing down for
+                Places worth discovering in Calbayog
               </span>
 
               <span className="welcome-heading-line" />
             </div>
           </div>
 
-          <Row className="g-3 g-md-4 welcome-quick-grid">
-            {quickCards.map(
-              (card) => (
-                <Col
-                  xs={6}
-                  sm={4}
-                  md={2}
-                  key={card.to}
-                >
-                  <Link
-                    to={card.to}
-                    className="welcome-quick-link"
-                  >
-                    <Card className="quick-card welcome-quick-card text-center border-0 h-100">
-                      <Card.Body className="quick-card-body">
-                        <div
-                          className="quick-card-icon-wrap"
-                          style={{
-                            background:
-                              card.bg,
-                          }}
-                        >
-                          <span className="quick-card-icon">
-                            {card.icon}
-                          </span>
-                        </div>
+          <Row className="welcome-attractions-grid">
+            {welcomeDestinations.map(
+              (attraction) => {
+                const attractionId =
+                  String(
+                    (attraction as any)
+                      ?.id ?? "",
+                  ).trim();
 
-                        <div
-                          className="quick-card-label"
-                          style={{
-                            color:
-                              card.color,
-                          }}
-                        >
-                          {card.label}
-                        </div>
-                      </Card.Body>
-                    </Card>
-                  </Link>
-                </Col>
-              ),
+                return (
+                  <Col
+                    xs={12}
+                    sm={6}
+                    lg={3}
+                    key={
+                      attractionId ||
+                      attraction.name
+                    }
+                    className="welcome-attraction-col"
+                  >
+                    <AttractionCard
+                      attraction={
+                        attraction
+                      }
+                      imageIndex={
+                        attractionId
+                          ? imageIndexes[
+                              attractionId
+                            ] || 0
+                          : 0
+                      }
+                      showFavoriteCount={
+                        true
+                      }
+                      showFeatured={
+                        true
+                      }
+                    />
+                  </Col>
+                );
+              },
             )}
           </Row>
         </section>
+      )}
 
-        {/* =====================================================
-            ATTRACTIONS
-        ===================================================== */}
+    {/* =====================================================
+        ACCOMMODATIONS
+    ===================================================== */}
 
-        {!loadingDestinations &&
-          welcomeDestinations.length >
-            0 && (
-            <section className="welcome-discover-section mb-5">
-              <div className="welcome-attractions-heading">
-                <h2 className="welcome-attractions-title barabara-display">
-                  ATTRACTIONS
-                </h2>
-
-                <div className="welcome-section-eyebrow welcome-attractions-eyebrow">
-                  <span className="welcome-heading-line" />
-
-                  <span>
-                    Places worth discovering in Calbayog
-                  </span>
-
-                  <span className="welcome-heading-line" />
-                </div>
-              </div>
-
-              <Row className="welcome-attractions-grid">
-                {welcomeDestinations.map(
-                  (attraction) => {
-                    const attractionId =
-                      String(
-                        (attraction as any)
-                          ?.id ?? "",
-                      ).trim();
-
-                    return (
-                      <Col
-                        xs={12}
-                        sm={6}
-                        lg={3}
-                        key={
-                          attractionId ||
-                          attraction.name
-                        }
-                        className="welcome-attraction-col"
-                      >
-                        <AttractionCard
-                          attraction={
-                            attraction
-                          }
-                          imageIndex={
-                            attractionId
-                              ? imageIndexes[
-                                  attractionId
-                                ] || 0
-                              : 0
-                          }
-                          showFavoriteCount={
-                            true
-                          }
-                          showFeatured={
-                            true
-                          }
-                        />
-                      </Col>
-                    );
-                  },
-                )}
-              </Row>
-            </section>
-          )}
-
-        {/* =====================================================
-            ACCOMMODATIONS
-        ===================================================== */}
-
-        {!loadingAccommodations &&
-          welcomeAccommodations.length >
-            0 && (
-            <section className="welcome-accommodations-section mb-5">
-              <div className="welcome-accommodations-heading">
-                <h2 className="welcome-accommodations-title barabara-display">
-                  ACCOMMODATIONS
-                </h2>
-
-                <div className="welcome-section-eyebrow">
-                  <span className="welcome-heading-line" />
-
-                  <span>
-                    Places to stay in Calbayog
-                  </span>
-
-                  <span className="welcome-heading-line" />
-                </div>
-              </div>
-
-              <Row className="g-3 g-md-4">
-                {welcomeAccommodations.map(
-                  (
-                    accommodation,
-                  ) => {
-                    const accommodationData =
-                      accommodation as any;
-
-                    const images =
-                      Array.isArray(
-                        accommodationData.images,
-                      )
-                        ? accommodationData.images
-                        : typeof accommodationData.images ===
-                              "string" &&
-                            accommodationData.images.trim()
-                          ? accommodationData.images
-                              .split(",")
-                              .map(
-                                (
-                                  image: string,
-                                ) =>
-                                  image.trim(),
-                              )
-                              .filter(
-                                Boolean,
-                              )
-                          : [];
-
-                    const image =
-                      images[0] || "";
-
-                    const priceMin =
-                      accommodationData.price_min;
-
-                    const priceMax =
-                      accommodationData.price_max;
-
-                    const hasPriceMin =
-                      priceMin !== null &&
-                      priceMin !==
-                        undefined &&
-                      priceMin !== "";
-
-                    const hasPriceMax =
-                      priceMax !== null &&
-                      priceMax !==
-                        undefined &&
-                      priceMax !== "";
-
-                    let priceText =
-                      "";
-
-                    if (
-                      hasPriceMin &&
-                      hasPriceMax
-                    ) {
-                      priceText = `₱${Number(
-                        priceMin,
-                      ).toLocaleString()} – ₱${Number(
-                        priceMax,
-                      ).toLocaleString()}`;
-                    } else if (
-                      hasPriceMin
-                    ) {
-                      priceText = `From ₱${Number(
-                        priceMin,
-                      ).toLocaleString()}`;
-                    } else if (
-                      hasPriceMax
-                    ) {
-                      priceText = `Up to ₱${Number(
-                        priceMax,
-                      ).toLocaleString()}`;
-                    }
-
-                    return (
-                      <Col
-                        xs={12}
-                        sm={6}
-                        lg={3}
-                        key={
-                          accommodation.id
-                        }
-                      >
-                        <Link
-                          to={`/accommodations/${accommodation.id}`}
-                          className="welcome-accommodation-link"
-                          style={{
-                            textDecoration:
-                              "none",
-                            display:
-                              "block",
-                            height:
-                              "100%",
-                          }}
-                        >
-                          <Card
-                            className="welcome-accommodation-card border-0 h-100"
-                            style={{
-                              borderRadius:
-                                "18px",
-                              overflow:
-                                "hidden",
-                              background:
-                                "#fff",
-                              boxShadow:
-                                "0 4px 18px rgba(0,0,0,0.08)",
-                              transition:
-                                "transform 0.25s ease, box-shadow 0.25s ease",
-                            }}
-                            onMouseEnter={(
-                              e,
-                            ) => {
-                              e.currentTarget.style.transform =
-                                "translateY(-6px)";
-
-                              e.currentTarget.style.boxShadow =
-                                "0 12px 30px rgba(0,0,0,0.14)";
-                            }}
-                            onMouseLeave={(
-                              e,
-                            ) => {
-                              e.currentTarget.style.transform =
-                                "translateY(0)";
-
-                              e.currentTarget.style.boxShadow =
-                                "0 4px 18px rgba(0,0,0,0.08)";
-                            }}
-                          >
-                            <div className="welcome-accommodation-image-wrapper">
-                              {image ? (
-                                <img
-                                  src={
-                                    image
-                                  }
-                                  alt={
-                                    accommodation.name
-                                  }
-                                  className="welcome-accommodation-image"
-                                  loading="lazy"
-                                />
-                              ) : (
-                                <div className="welcome-accommodation-placeholder">
-                                  🏨
-                                </div>
-                              )}
-
-                              <div className="welcome-accommodation-image-overlay" />
-                            </div>
-
-                            <Card.Body className="welcome-accommodation-body">
-                              <Card.Title className="welcome-accommodation-title">
-                                {
-                                  accommodation.name
-                                }
-                              </Card.Title>
-
-                              {accommodationData.location_address && (
-                                <p className="welcome-accommodation-address">
-                                  {
-                                    accommodationData.location_address
-                                  }
-                                </p>
-                              )}
-
-                              {priceText && (
-                                <div className="welcome-accommodation-price">
-                                  {
-                                    priceText
-                                  }
-                                </div>
-                              )}
-
-                              <div className="welcome-accommodation-explore">
-                                View stay
-
-                                <span aria-hidden="true">
-                                  →
-                                </span>
-                              </div>
-                            </Card.Body>
-                          </Card>
-                        </Link>
-                      </Col>
-                    );
-                  },
-                )}
-              </Row>
-            </section>
-          )}
-
-        {/* =====================================================
-            FEATURED VIDEOS
-            UI INITIATIVE / SWIPER 3D CAROUSEL
-        ===================================================== */}
-
-        <section className="welcome-videos-section mb-5">
-          <div className="welcome-videos-heading">
-            <h2 className="welcome-videos-title barabara-display">
-              FEATURED VIDEOS
+    {!loadingAccommodations &&
+      welcomeAccommodations.length >
+        0 && (
+        <section className="welcome-accommodations-section mb-5">
+          <div className="welcome-accommodations-heading">
+            <h2 className="welcome-accommodations-title barabara-display">
+              ACCOMMODATIONS
             </h2>
 
-            <div className="welcome-section-eyebrow welcome-videos-eyebrow">
+            <div className="welcome-section-eyebrow">
               <span className="welcome-heading-line" />
 
               <span>
-                Experience Calbayog through video
+                Places to stay in Calbayog
               </span>
 
               <span className="welcome-heading-line" />
             </div>
           </div>
 
-          {loadingFeaturedVideos ? (
-            <div
-              className="welcome-video-loading"
-              aria-live="polite"
-            >
-              <div className="welcome-video-loading-spinner" />
+          <Row className="g-3 g-md-4">
+            {welcomeAccommodations.map(
+              (
+                accommodation,
+              ) => {
+                const accommodationData =
+                  accommodation as any;
 
-              <span>
-                Loading featured videos...
-              </span>
-            </div>
-          ) : featuredVideos.length ===
-            0 ? (
-            <div
-              className="welcome-video-empty"
-              aria-live="polite"
-            >
-              <div className="welcome-video-empty-icon">
-                <Play
-                  size={25}
-                  strokeWidth={1.8}
-                />
-              </div>
+                const images =
+                  Array.isArray(
+                    accommodationData.images,
+                  )
+                    ? accommodationData.images
+                    : typeof accommodationData.images ===
+                          "string" &&
+                        accommodationData.images.trim()
+                      ? accommodationData.images
+                          .split(",")
+                          .map(
+                            (
+                              image: string,
+                            ) =>
+                              image.trim(),
+                          )
+                          .filter(
+                            Boolean,
+                          )
+                      : [];
 
-              <h3>
-                No featured videos yet
-              </h3>
+                const image =
+                  images[0] || "";
 
-              <p>
-                Featured videos uploaded from the
-                admin dashboard will appear here.
-              </p>
+                const priceMin =
+                  accommodationData.price_min;
 
-              {featuredVideosError && (
-                <small>
-                  Unable to load featured videos
-                  right now.
-                </small>
-              )}
-            </div>
-          ) : (
-            <div className="welcome-video-carousel">
-              <Swiper
-                modules={[
-                  EffectCoverflow,
-                  Navigation,
-                  Pagination,
-                  A11y,
-                ]}
-                effect="coverflow"
-                centeredSlides
-                grabCursor
-                loop={
-                  featuredVideos.length > 2
+                const priceMax =
+                  accommodationData.price_max;
+
+                const hasPriceMin =
+                  priceMin !== null &&
+                  priceMin !==
+                    undefined &&
+                  priceMin !== "";
+
+                const hasPriceMax =
+                  priceMax !== null &&
+                  priceMax !==
+                    undefined &&
+                  priceMax !== "";
+
+                let priceText =
+                  "";
+
+                if (
+                  hasPriceMin &&
+                  hasPriceMax
+                ) {
+                  priceText = `₱${Number(
+                    priceMin,
+                  ).toLocaleString()} – ₱${Number(
+                    priceMax,
+                  ).toLocaleString()}`;
+                } else if (
+                  hasPriceMin
+                ) {
+                  priceText = `From ₱${Number(
+                    priceMin,
+                  ).toLocaleString()}`;
+                } else if (
+                  hasPriceMax
+                ) {
+                  priceText = `Up to ₱${Number(
+                    priceMax,
+                  ).toLocaleString()}`;
                 }
-                slidesPerView="auto"
-                speed={700}
-                watchSlidesProgress
-                observer
-                observeParents
-                onSwiper={(
-                  swiper,
-                ) => {
-                  setVideoSwiper(
-                    swiper,
-                  );
 
-                  setActiveVideo(
-                    swiper.realIndex,
-                  );
-                }}
-                onSlideChange={(
-                  swiper,
-                ) => {
-                  setActiveVideo(
-                    swiper.realIndex,
-                  );
-                }}
-                coverflowEffect={{
-                  rotate: 0,
-                  stretch: 0,
-                  depth: 260,
-                  modifier: 1.25,
-                  scale: 0.84,
-                  slideShadows: false,
-                }}
-                navigation={{
-                  prevEl:
-                    ".welcome-video-prev",
-                  nextEl:
-                    ".welcome-video-next",
-                }}
-                pagination={{
-                  el:
-                    ".welcome-video-pagination",
-                  clickable: true,
-                  dynamicBullets: true,
-                }}
-                className="welcome-featured-swiper"
-              >
-                {featuredVideos.map(
-                  (
-                    video,
-                    index,
-                  ) => (
-                    <SwiperSlide
-                      key={
-                        video.id
-                      }
-                      className="welcome-featured-swiper-slide"
+                return (
+                  <Col
+                    xs={12}
+                    sm={6}
+                    lg={3}
+                    key={
+                      accommodation.id
+                    }
+                  >
+                    <Link
+                      to={`/accommodations/${accommodation.id}`}
+                      className="welcome-accommodation-link"
+                      style={{
+                        textDecoration:
+                          "none",
+                        display:
+                          "block",
+                        height:
+                          "100%",
+                      }}
                     >
-                      <div className="welcome-video-cinematic-card">
-                        <div className="welcome-video-media">
-                          <video
-                            className="welcome-video-player"
-                            controls={
-                              activeVideo ===
-                              index
-                            }
-                            playsInline
-                            preload={
-                              activeVideo ===
-                              index
-                                ? "metadata"
-                                : "none"
-                            }
-                          
-                            onPlay={() => {
-                              if (
-                                videoSwiper
-                              ) {
-                                videoSwiper.allowTouchMove =
-                                  false;
-                              }
-                            }}
-                            onPause={() => {
-                              if (
-                                videoSwiper
-                              ) {
-                                videoSwiper.allowTouchMove =
-                                  true;
-                              }
-                            }}
-                            onEnded={() => {
-                              if (
-                                videoSwiper &&
-                                featuredVideos.length >
-                                  1
-                              ) {
-                                videoSwiper.slideNext();
-                              }
-                            }}
-                          >
-                            <source
+                      <Card
+                        className="welcome-accommodation-card border-0 h-100"
+                        style={{
+                          borderRadius:
+                            "18px",
+                          overflow:
+                            "hidden",
+                          background:
+                            "#fff",
+                          boxShadow:
+                            "0 4px 18px rgba(0,0,0,0.08)",
+                          transition:
+                            "transform 0.25s ease, box-shadow 0.25s ease",
+                        }}
+                        onMouseEnter={(
+                          e,
+                        ) => {
+                          e.currentTarget.style.transform =
+                            "translateY(-6px)";
+
+                          e.currentTarget.style.boxShadow =
+                            "0 12px 30px rgba(0,0,0,0.14)";
+                        }}
+                        onMouseLeave={(
+                          e,
+                        ) => {
+                          e.currentTarget.style.transform =
+                            "translateY(0)";
+
+                          e.currentTarget.style.boxShadow =
+                            "0 4px 18px rgba(0,0,0,0.08)";
+                        }}
+                      >
+                        <div className="welcome-accommodation-image-wrapper">
+                          {image ? (
+                            <img
                               src={
-                                video.video_url
+                                image
                               }
-                              type="video/mp4"
+                              alt={
+                                accommodation.name
+                              }
+                              className="welcome-accommodation-image"
+                              loading="lazy"
                             />
+                          ) : (
+                            <div className="welcome-accommodation-placeholder">
+                              🏨
+                            </div>
+                          )}
 
-                            Your browser does not
-                            support the video element.
-                          </video>
-
-                          <div className="welcome-video-gradient" />
-                          <div className="welcome-video-shine" aria-hidden="true" />
-
-                          <div className="welcome-video-play-badge">
-                            <Play
-                              size={20}
-                              fill="currentColor"
-                              strokeWidth={
-                                2
-                              }
-                            />
-                          </div>
-
-                          <div className="welcome-video-caption">
-                            <h3>
-                              {
-                                video.title
-                              }
-                            </h3>
-
-                            {video.description && (
-                              <p>
-                                {
-                                  video.description
-                                }
-                              </p>
-                            )}
-                          </div>
+                          <div className="welcome-accommodation-image-overlay" />
                         </div>
-                      </div>
-                    </SwiperSlide>
-                  ),
-                )}
-              </Swiper>
 
-              {featuredVideos.length >
-                1 && (
-                <>
-                  <button
-                    type="button"
-                    className="welcome-video-arrow welcome-video-prev"
-                    aria-label="Previous featured video"
-                  >
-                    <ChevronLeft
-                      size={25}
-                      strokeWidth={2}
-                    />
-                  </button>
+                        <Card.Body className="welcome-accommodation-body">
+                          <Card.Title className="welcome-accommodation-title">
+                            {
+                              accommodation.name
+                            }
+                          </Card.Title>
 
-                  <button
-                    type="button"
-                    className="welcome-video-arrow welcome-video-next"
-                    aria-label="Next featured video"
-                  >
-                    <ChevronRight
-                      size={25}
-                      strokeWidth={2}
-                    />
-                  </button>
+                          {accommodationData.location_address && (
+                            <p className="welcome-accommodation-address">
+                              {
+                                accommodationData.location_address
+                              }
+                            </p>
+                          )}
 
-                  <div className="welcome-video-pagination" />
-                </>
-              )}
-            </div>
-          )}
+                          {priceText && (
+                            <div className="welcome-accommodation-price">
+                              {
+                                priceText
+                              }
+                            </div>
+                          )}
+
+                          <div className="welcome-accommodation-explore">
+                            View stay
+
+                            <span aria-hidden="true">
+                              →
+                            </span>
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    </Link>
+                  </Col>
+                );
+              },
+            )}
+          </Row>
         </section>
-      </Container>
+      )}
 
-      {/* =======================================================
-          WELCOME PAGE STYLES
-      ======================================================= */}
+    {/* =====================================================
+        FEATURED VIDEOS
+        UI INITIATIVE / SWIPER 3D CAROUSEL
+    ===================================================== */}
 
-      <style>{`
-        @import url(
-          'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
+    <section className="welcome-videos-section mb-5">
+      <div className="welcome-videos-heading">
+        <h2 className="welcome-videos-title barabara-display">
+          FEATURED VIDEOS
+        </h2>
+
+        <div className="welcome-section-eyebrow welcome-videos-eyebrow">
+          <span className="welcome-heading-line" />
+
+          <span>
+            Experience Calbayog through video
+          </span>
+
+          <span className="welcome-heading-line" />
+        </div>
+      </div>
+
+      {loadingFeaturedVideos ? (
+        <div
+          className="welcome-video-loading"
+          aria-live="polite"
+        >
+          <div className="welcome-video-loading-spinner" />
+
+          <span>
+            Loading featured videos...
+          </span>
+        </div>
+      ) : featuredVideos.length ===
+        0 ? (
+        <div
+          className="welcome-video-empty"
+          aria-live="polite"
+        >
+          <div className="welcome-video-empty-icon">
+            <Play
+              size={25}
+              strokeWidth={1.8}
+            />
+          </div>
+
+          <h3>
+            No featured videos yet
+          </h3>
+
+          <p>
+            Featured videos uploaded from the
+            admin dashboard will appear here.
+          </p>
+
+          {featuredVideosError && (
+            <small>
+              Unable to load featured videos
+              right now.
+            </small>
+          )}
+        </div>
+      ) : (
+        <div className="welcome-video-carousel">
+          <Swiper
+            modules={[
+              EffectCoverflow,
+              Navigation,
+              Pagination,
+              A11y,
+            ]}
+            effect="coverflow"
+            centeredSlides
+            grabCursor
+            loop={
+              featuredVideos.length > 2
+            }
+            slidesPerView="auto"
+            speed={700}
+            watchSlidesProgress
+            observer
+            observeParents
+            onSwiper={(
+              swiper,
+            ) => {
+              setVideoSwiper(
+                swiper,
+              );
+
+              setActiveVideo(
+                swiper.realIndex,
+              );
+            }}
+            onSlideChange={(
+              swiper,
+            ) => {
+              setActiveVideo(
+                swiper.realIndex,
+              );
+            }}
+            coverflowEffect={{
+              rotate: 0,
+              stretch: 0,
+              depth: 260,
+              modifier: 1.25,
+              scale: 0.84,
+              slideShadows: false,
+            }}
+            navigation={{
+              prevEl:
+                ".welcome-video-prev",
+              nextEl:
+                ".welcome-video-next",
+            }}
+            pagination={{
+              el:
+                ".welcome-video-pagination",
+              clickable: true,
+              dynamicBullets: true,
+            }}
+            className="welcome-featured-swiper"
+          >
+            {featuredVideos.map(
+              (
+                video,
+                index,
+              ) => (
+                <SwiperSlide
+                  key={
+                    video.id
+                  }
+                  className="welcome-featured-swiper-slide"
+                >
+                  <div className="welcome-video-cinematic-card">
+                    <div className="welcome-video-media">
+                      <video
+                        className="welcome-video-player"
+                        controls={
+                          activeVideo ===
+                          index
+                        }
+                        playsInline
+                        preload={
+                          activeVideo ===
+                          index
+                            ? "metadata"
+                            : "none"
+                        }
+                      
+                        onPlay={() => {
+                          if (
+                            videoSwiper
+                          ) {
+                            videoSwiper.allowTouchMove =
+                              false;
+                          }
+                        }}
+                        onPause={() => {
+                          if (
+                            videoSwiper
+                          ) {
+                            videoSwiper.allowTouchMove =
+                              true;
+                          }
+                        }}
+                        onEnded={() => {
+                          if (
+                            videoSwiper &&
+                            featuredVideos.length >
+                              1
+                          ) {
+                            videoSwiper.slideNext();
+                          }
+                        }}
+                      >
+                        <source
+                          src={
+                            video.video_url
+                          }
+                          type="video/mp4"
+                        />
+
+                        Your browser does not
+                        support the video element.
+                      </video>
+
+                      <div className="welcome-video-gradient" />
+
+                      <div className="welcome-video-play-badge">
+                        <Play
+                          size={20}
+                          fill="currentColor"
+                          strokeWidth={
+                            2
+                          }
+                        />
+                      </div>
+
+                      <div className="welcome-video-number">
+                        {String(
+                          index + 1,
+                        ).padStart(
+                          2,
+                          "0",
+                        )}
+                      </div>
+
+                      <div className="welcome-video-caption">
+                        <h3>
+                          {
+                            video.title
+                          }
+                        </h3>
+
+                        {video.description && (
+                          <p>
+                            {
+                              video.description
+                            }
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </SwiperSlide>
+              ),
+            )}
+          </Swiper>
+
+          {featuredVideos.length >
+            1 && (
+            <>
+              <button
+                type="button"
+                className="welcome-video-arrow welcome-video-prev"
+                aria-label="Previous featured video"
+              >
+                <ChevronLeft
+                  size={25}
+                  strokeWidth={2}
+                />
+              </button>
+
+              <button
+                type="button"
+                className="welcome-video-arrow welcome-video-next"
+                aria-label="Next featured video"
+              >
+                <ChevronRight
+                  size={25}
+                  strokeWidth={2}
+                />
+              </button>
+
+              <div className="welcome-video-pagination" />
+            </>
+          )}
+        </div>
+      )}
+    </section>
+  </Container>
+
+  {/* =======================================================
+      WELCOME PAGE STYLES
+  ======================================================= */}
+
+  <style>{`
+    @import url(
+      'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
+    );
+
+    @font-face {
+      font-family: "Barabara";
+      src: url("/fonts/BARABARA-final.otf")
+        format("opentype");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    .welcome-page,
+    .welcome-page * {
+      font-family:
+        "Inter",
+        sans-serif;
+    }
+
+    .barabara-display {
+      font-family:
+        "Barabara",
+        "Arial Black",
+        Arial,
+        sans-serif !important;
+      font-style: normal;
+      font-weight: 400;
+    }
+
+    .welcome-display-title {
+      color:
+        #2D3195 !important;
+    }
+
+    .welcome-intro {
+      width:
+        100%;
+      max-width:
+        680px;
+      margin:
+        0 auto 30px;
+      padding:
+        0 12px;
+      text-align:
+        center;
+    }
+
+    .welcome-intro-eyebrow {
+      margin:
+        0;
+      color:
+        #2D3195;
+      font-size:
+        0.62rem;
+      font-weight:
+        700;
+      letter-spacing:
+        0.18em;
+      line-height:
+        1.2;
+      text-transform:
+        uppercase;
+    }
+
+    .welcome-intro-text {
+      margin:
+        10px auto 0;
+      max-width:
+        630px;
+      color:
+        #666666;
+      font-size:
+        0.79rem;
+      font-weight:
+        400;
+      line-height:
+        1.7;
+    }
+
+    .welcome-section-heading {
+      width:
+        100%;
+      display:
+        flex;
+      flex-direction:
+        column;
+      align-items:
+        center;
+      padding-top:
+        18px;
+      margin-bottom:
+        2.6rem;
+    }
+
+    .welcome-main-heading {
+      width:
+        100%;
+      display:
+        flex;
+      justify-content:
+        center;
+      align-items:
+        center;
+      margin-top:
+        0;
+      margin-bottom:
+        7px;
+    }
+
+    .welcome-main-heading > div {
+      width:
+        100%;
+      text-align:
+        center;
+    }
+
+    .welcome-explore-eyebrow {
+      margin-top:
+        0;
+      margin-bottom:
+        0;
+    }
+
+    .welcome-bunting {
+      width:
+        min(100%, 940px);
+      height:
+        32px;
+      display:
+        flex;
+      align-items:
+        flex-start;
+      justify-content:
+        center;
+      overflow:
+        hidden;
+      margin:
+        0 auto 26px;
+      padding:
+        0 8px;
+      line-height:
+        0;
+    }
+
+    .bunting-flag {
+      position:
+        relative;
+      display:
+        block;
+      width:
+        46px;
+      height:
+        32px;
+      flex:
+        0 0 46px;
+      clip-path:
+        polygon(
+          0 0,
+          100% 0,
+          50% 100%
         );
+      margin-left:
+        -1px;
+    }
 
-        @font-face {
-          font-family: "Barabara";
-          src: url("/fonts/BARABARA-final.otf")
-            format("opentype");
-          font-weight: 400;
-          font-style: normal;
-          font-display: swap;
-        }
+    .bunting-red {
+      background:
+        #ED1C24;
+    }
 
-        .welcome-page,
-        .welcome-page * {
-          font-family:
-            "Inter",
-            sans-serif;
-        }
+    .bunting-orange {
+      background:
+        #F36C21;
+    }
 
-        .barabara-display {
-          font-family:
-            "Barabara",
-            "Arial Black",
-            Arial,
-            sans-serif !important;
-          font-style: normal;
-          font-weight: 400;
-        }
+    .bunting-yellow {
+      background:
+        #F2B705;
+    }
 
-        .welcome-display-title {
-          color:
-            #2D3195 !important;
-        }
+    .bunting-teal {
+      background:
+        #14A6A0;
+    }
 
-        .welcome-intro {
-          width:
-            100%;
-          max-width:
-            680px;
-          margin:
-            0 auto 30px;
-          padding:
-            0 12px;
-          text-align:
-            center;
-        }
+    .bunting-flag:not(:first-child) {
+      border-left:
+        2px solid #ffffff;
+    }
 
-        .welcome-intro-eyebrow {
-          margin:
-            0;
-          color:
-            #2D3195;
-          font-size:
-            0.62rem;
-          font-weight:
-            700;
-          letter-spacing:
-            0.18em;
-          line-height:
-            1.2;
-          text-transform:
-            uppercase;
-        }
+    .welcome-section-eyebrow {
+      display:
+        flex;
+      align-items:
+        center;
+      justify-content:
+        center;
+      width:
+        100%;
+      gap:
+        12px;
+      color:
+        #555555;
+      font-size:
+        0.68rem;
+      font-weight:
+        600;
+      letter-spacing:
+        0.14em;
+      text-transform:
+        uppercase;
+      line-height:
+        1.2;
+      text-align:
+        center;
+    }
 
-        .welcome-intro-text {
-          margin:
-            10px auto 0;
-          max-width:
-            630px;
-          color:
-            #666666;
-          font-size:
-            0.79rem;
-          font-weight:
-            400;
-          line-height:
-            1.7;
-        }
+    .welcome-heading-line {
+      width:
+        38px;
+      height:
+        1px;
+      background:
+        rgba(
+          45,
+          49,
+          149,
+          0.24
+        );
+      flex-shrink:
+        0;
+    }
 
-        .welcome-section-heading {
-          width:
-            100%;
-          display:
-            flex;
-          flex-direction:
-            column;
-          align-items:
-            center;
-          padding-top:
-            18px;
-          margin-bottom:
-            2.6rem;
-        }
+    .welcome-display-title {
+      margin:
+        0;
+      padding:
+        0;
+      color:
+        #2D3195 !important;
+      font-size:
+        clamp(
+          2rem,
+          4vw,
+          3.15rem
+        );
+      line-height:
+        1;
+      letter-spacing:
+        0.015em;
+      text-align:
+        center;
+    }
 
-        .welcome-main-heading {
-          width:
-            100%;
-          display:
-            flex;
-          justify-content:
-            center;
-          align-items:
-            center;
-          margin-top:
-            0;
-          margin-bottom:
-            7px;
-        }
+    .welcome-quick-grid {
+      margin-top:
+        0;
+      row-gap:
+        42px;
+    }
 
-        .welcome-main-heading > div {
-          width:
-            100%;
-          text-align:
-            center;
-        }
+    .welcome-quick-link {
+      color:
+        inherit;
+      text-decoration:
+        none;
+    }
 
-        .welcome-explore-eyebrow {
-          margin-top:
-            0;
-          margin-bottom:
-            0;
-        }
+    .welcome-quick-link:hover {
+      color:
+        inherit;
+      text-decoration:
+        none;
+    }
 
-        .welcome-bunting {
-          width:
-            min(100%, 940px);
-          height:
-            32px;
-          display:
-            flex;
-          align-items:
-            flex-start;
-          justify-content:
-            center;
-          overflow:
-            hidden;
-          margin:
-            0 auto 26px;
-          padding:
-            0 8px;
-          line-height:
-            0;
-        }
+    .welcome-quick-card,
+    .quick-card-body,
+    .quick-card-label {
+      font-family:
+        "Inter",
+        sans-serif;
+    }
 
-        .bunting-flag {
-          position:
-            relative;
-          display:
-            block;
-          width:
-            46px;
-          height:
-            32px;
-          flex:
-            0 0 46px;
-          clip-path:
-            polygon(
-              0 0,
-              100% 0,
-              50% 100%
-            );
-          margin-left:
-            -1px;
-        }
+    .quick-card-label {
+      font-weight:
+        600;
+    }
 
-        .bunting-red {
-          background:
-            #ED1C24;
-        }
+    /* =====================================================
+       ATTRACTIONS
+    ===================================================== */
 
-        .bunting-orange {
-          background:
-            #F36C21;
-        }
+    .welcome-attractions-heading {
+      width:
+        100%;
+      display:
+        flex;
+      flex-direction:
+        column;
+      align-items:
+        center;
+      justify-content:
+        center;
+      margin-bottom:
+        2.35rem;
+    }
 
-        .bunting-yellow {
-          background:
-            #F2B705;
-        }
+    .welcome-attractions-title {
+      margin:
+        0 0 7px;
+      padding:
+        0;
+      color:
+        #2D3195 !important;
+      font-size:
+        clamp(
+          1.75rem,
+          4vw,
+          2.35rem
+        );
+      line-height:
+        1;
+      letter-spacing:
+        0.015em;
+      text-align:
+        center;
+    }
 
-        .bunting-teal {
-          background:
-            #14A6A0;
-        }
+    .welcome-attractions-eyebrow {
+      color:
+        #555555;
+    }
 
-        .bunting-flag:not(:first-child) {
-          border-left:
-            2px solid #ffffff;
-        }
+    .welcome-attractions-grid {
+      margin-left:
+        -12px;
+      margin-right:
+        -12px;
+      row-gap:
+        46px;
+    }
 
-        .welcome-section-eyebrow {
-          display:
-            flex;
-          align-items:
-            center;
-          justify-content:
-            center;
-          width:
-            100%;
-          gap:
-            12px;
-          color:
-            #555555;
-          font-size:
-            0.68rem;
-          font-weight:
-            600;
-          letter-spacing:
-            0.14em;
-          text-transform:
-            uppercase;
-          line-height:
-            1.2;
-          text-align:
-            center;
-        }
+    .welcome-attraction-col {
+      padding-left:
+        12px;
+      padding-right:
+        12px;
+      display:
+        flex;
+    }
 
-        .welcome-heading-line {
-          width:
-            38px;
-          height:
-            1px;
-          background:
+    /* =====================================================
+       ACCOMMODATIONS
+    ===================================================== */
+
+    .welcome-accommodations-section {
+      width:
+        100%;
+      margin-top:
+        85px;
+    }
+
+    .welcome-accommodations-heading {
+      width:
+        100%;
+      display:
+        flex;
+      flex-direction:
+        column;
+      align-items:
+        center;
+      justify-content:
+        center;
+      margin-bottom:
+        2rem;
+    }
+
+    .welcome-accommodations-title {
+      margin:
+        0 0 7px;
+      padding:
+        0;
+      color:
+        #2D3195 !important;
+      font-size:
+        clamp(
+          2rem,
+          4vw,
+          3.15rem
+        );
+      line-height:
+        1;
+      letter-spacing:
+        0.015em;
+      text-align:
+        center;
+    }
+
+    .welcome-accommodation-link {
+      color:
+        inherit;
+    }
+
+    .welcome-accommodation-link:hover {
+      color:
+        inherit;
+    }
+
+    .welcome-accommodation-card,
+    .welcome-accommodation-card * {
+      font-family:
+        "Inter",
+        sans-serif;
+    }
+
+    .welcome-accommodation-image-wrapper {
+      position:
+        relative;
+      height:
+        210px;
+      overflow:
+        hidden;
+      background:
+        #eef2ef;
+    }
+
+    .welcome-accommodation-image {
+      width:
+        100%;
+      height:
+        100%;
+      object-fit:
+        cover;
+      display:
+        block;
+      transition:
+        transform 0.4s ease;
+    }
+
+    .welcome-accommodation-card:hover
+      .welcome-accommodation-image {
+      transform:
+        scale(1.04);
+    }
+
+    .welcome-accommodation-placeholder {
+      width:
+        100%;
+      height:
+        100%;
+      display:
+        flex;
+      align-items:
+        center;
+      justify-content:
+        center;
+      font-size:
+        3rem;
+      background:
+        #eef2ef;
+    }
+
+    .welcome-accommodation-image-overlay {
+      position:
+        absolute;
+      inset:
+        0;
+      background:
+        linear-gradient(
+          to top,
+          rgba(
+            0,
+            0,
+            0,
+            0.38
+          ),
+          transparent 55%
+        );
+      pointer-events:
+        none;
+    }
+
+    .welcome-accommodation-body {
+      padding:
+        1.1rem
+        1.1rem
+        1.2rem;
+      display:
+        flex;
+      flex-direction:
+        column;
+      height:
+        calc(100% - 210px);
+    }
+
+    .welcome-accommodation-title {
+      margin:
+        0 0 0.5rem;
+      color:
+        #212529;
+      font-size:
+        1.05rem;
+      font-weight:
+        700;
+      line-height:
+        1.3;
+    }
+
+    .welcome-accommodation-address {
+      margin:
+        0 0 0.7rem;
+      color:
+        #6c757d;
+      font-size:
+        0.76rem;
+      line-height:
+        1.5;
+      display:
+        -webkit-box;
+      -webkit-line-clamp:
+        2;
+      -webkit-box-orient:
+        vertical;
+      overflow:
+        hidden;
+    }
+
+    .welcome-accommodation-price {
+      color:
+        #2D3195;
+      font-size:
+        0.78rem;
+      font-weight:
+        700;
+      margin-bottom:
+        0.75rem;
+    }
+
+    .welcome-accommodation-explore {
+      margin-top:
+        auto;
+      padding-top:
+        0.7rem;
+      border-top:
+        1px solid
+        #f0f0f0;
+      color:
+        #2D3195;
+      font-size:
+        0.78rem;
+      font-weight:
+        700;
+      display:
+        flex;
+      align-items:
+        center;
+      gap:
+        5px;
+    }
+
+    /* =====================================================
+       FEATURED VIDEOS
+       UI INITIATIVE / SWIPER 3D CAROUSEL
+    ===================================================== */
+
+    .welcome-videos-section {
+      width:
+        100%;
+      margin-top:
+        90px;
+    }
+
+    .welcome-videos-heading {
+      width:
+        100%;
+      display:
+        flex;
+      flex-direction:
+        column;
+      align-items:
+        center;
+      justify-content:
+        center;
+      margin-bottom:
+        2.5rem;
+    }
+
+    .welcome-videos-title {
+      margin:
+        0 0 7px;
+      padding:
+        0;
+      color:
+        #2D3195 !important;
+      font-size:
+        clamp(
+          1.75rem,
+          4vw,
+          2.35rem
+        );
+      line-height:
+        1;
+      letter-spacing:
+        0.015em;
+      text-align:
+        center;
+    }
+
+    .welcome-videos-eyebrow {
+      color:
+        #555555;
+    }
+
+    .welcome-video-carousel {
+      position:
+        relative;
+      width:
+        100%;
+      min-height:
+        545px;
+      padding:
+        10px 0 65px;
+      overflow:
+        hidden;
+    }
+
+    .welcome-featured-swiper {
+      width:
+        100%;
+      height:
+        475px;
+      padding:
+        28px 0 35px;
+      overflow:
+        visible !important;
+    }
+
+    .welcome-featured-swiper
+      .swiper-wrapper {
+      align-items:
+        center;
+    }
+
+    .welcome-featured-swiper-slide {
+      width:
+        min(
+          74%,
+          820px
+        ) !important;
+      height:
+        auto;
+      display:
+        flex;
+      align-items:
+        center;
+      justify-content:
+        center;
+      transition:
+        opacity 0.45s ease,
+        filter 0.45s ease;
+    }
+
+    .welcome-featured-swiper-slide:not(
+        .swiper-slide-active
+      ) {
+      opacity:
+        0.72;
+      filter:
+        saturate(0.72)
+        brightness(0.72);
+    }
+
+    .welcome-featured-swiper-slide.swiper-slide-active {
+      opacity:
+        1;
+      filter:
+        none;
+    }
+
+    .welcome-video-cinematic-card {
+      position:
+        relative;
+      width:
+        100%;
+      overflow:
+        hidden;
+      border-radius:
+        24px;
+      background:
+        #10131c;
+      box-shadow:
+        0 25px 65px
+        rgba(
+          0,
+          0,
+          0,
+          0.22
+        );
+      transform:
+        translateZ(0);
+    }
+
+    .welcome-featured-swiper-slide.swiper-slide-active
+      .welcome-video-cinematic-card {
+      box-shadow:
+        0 32px 80px
+        rgba(
+          0,
+          0,
+          0,
+          0.30
+        );
+    }
+
+    .welcome-video-media {
+      position:
+        relative;
+      width:
+        100%;
+      aspect-ratio:
+        16 / 9;
+      overflow:
+        hidden;
+      background:
+        #10131c;
+    }
+
+    .welcome-video-player {
+      width:
+        100%;
+      height:
+        100%;
+      display:
+        block;
+      object-fit:
+        cover;
+      background:
+        #10131c;
+    }
+
+    .welcome-video-gradient {
+      position:
+        absolute;
+      inset:
+        0;
+      pointer-events:
+        none;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(
+            0,
+            0,
+            0,
+            0.04
+          ) 20%,
+          rgba(
+            0,
+            0,
+            0,
+            0.12
+          ) 45%,
+          rgba(
+            0,
+            0,
+            0,
+            0.82
+          ) 100%
+        );
+    }
+
+    .welcome-video-play-badge {
+      position:
+        absolute;
+      top:
+        22px;
+      left:
+        22px;
+      width:
+        48px;
+      height:
+        48px;
+      display:
+        flex;
+      align-items:
+        center;
+      justify-content:
+        center;
+      border:
+        1px solid
+        rgba(
+          255,
+          255,
+          255,
+          0.35
+        );
+      border-radius:
+        50%;
+      background:
+        rgba(
+          255,
+          255,
+          255,
+          0.14
+        );
+      color:
+        #ffffff;
+      backdrop-filter:
+        blur(12px);
+      -webkit-backdrop-filter:
+        blur(12px);
+      box-shadow:
+        0 8px 22px
+        rgba(
+          0,
+          0,
+          0,
+          0.20
+        );
+      pointer-events:
+        none;
+    }
+
+    .welcome-video-number {
+      position:
+        absolute;
+      top:
+        22px;
+      right:
+        24px;
+      color:
+        rgba(
+          255,
+          255,
+          255,
+          0.82
+        );
+      font-size:
+        0.72rem;
+      font-weight:
+        700;
+      letter-spacing:
+        0.18em;
+      pointer-events:
+        none;
+    }
+
+    .welcome-video-caption {
+      position:
+        absolute;
+      left:
+        32px;
+      right:
+        32px;
+      bottom:
+        28px;
+      color:
+        #ffffff;
+      pointer-events:
+        none;
+    }
+
+    .welcome-video-caption h3 {
+      margin:
+        0 0 7px;
+      color:
+        #ffffff;
+      font-family:
+        "Barabara",
+        "Arial Black",
+        Arial,
+        sans-serif;
+      font-size:
+        clamp(
+          1.45rem,
+          3vw,
+          2.25rem
+        );
+      font-weight:
+        400;
+      line-height:
+        1;
+      letter-spacing:
+        0.015em;
+      text-shadow:
+        0 3px 15px
+        rgba(
+          0,
+          0,
+          0,
+          0.35
+        );
+    }
+
+    .welcome-video-caption p {
+      max-width:
+        600px;
+      margin:
+        0;
+      color:
+        rgba(
+          255,
+          255,
+          255,
+          0.86
+        );
+      font-size:
+        0.78rem;
+      line-height:
+        1.55;
+      text-shadow:
+        0 2px 8px
+        rgba(
+          0,
+          0,
+          0,
+          0.35
+        );
+    }
+
+    .welcome-video-arrow {
+      position:
+        absolute;
+      z-index:
+        30;
+      top:
+        50%;
+      width:
+        48px;
+      height:
+        48px;
+      display:
+        flex;
+      align-items:
+        center;
+      justify-content:
+        center;
+      padding:
+        0;
+      border:
+        1px solid
+        rgba(
+          255,
+          255,
+          255,
+          0.28
+        );
+      border-radius:
+        50%;
+      background:
+        rgba(
+          255,
+          255,
+          255,
+          0.16
+        );
+      color:
+        #ffffff;
+      backdrop-filter:
+        blur(12px);
+      -webkit-backdrop-filter:
+        blur(12px);
+      box-shadow:
+        0 8px 24px
+        rgba(
+          0,
+          0,
+          0,
+          0.16
+        );
+      cursor:
+        pointer;
+      transform:
+        translateY(-50%);
+      transition:
+        background 0.22s ease,
+        color 0.22s ease,
+        transform 0.22s ease,
+        border-color 0.22s ease;
+    }
+
+    .welcome-video-arrow:hover {
+      background:
+        #ffffff;
+      color:
+        ${CALBAYOG_BLUE};
+      border-color:
+        #ffffff;
+      transform:
+        translateY(-50%)
+        scale(
+          1.07
+        );
+    }
+
+    .welcome-video-arrow.swiper-button-disabled {
+      opacity:
+        0.45;
+      cursor:
+        default;
+    }
+
+    .welcome-video-prev {
+      left:
+        3%;
+    }
+
+    .welcome-video-next {
+      right:
+        3%;
+    }
+
+    .welcome-video-pagination {
+      position:
+        absolute;
+      z-index:
+        30;
+      left:
+        50%;
+      bottom:
+        13px;
+      width:
+        auto !important;
+      min-height:
+        20px;
+      transform:
+        translateX(-50%);
+      display:
+        flex;
+      align-items:
+        center;
+      justify-content:
+        center;
+    }
+
+    .welcome-video-pagination
+      .swiper-pagination-bullet {
+      width:
+        8px;
+      height:
+        8px;
+      margin:
+        0 4px !important;
+      opacity:
+        1;
+      border-radius:
+        999px;
+      background:
+        rgba(
+          45,
+          49,
+          149,
+          0.22
+        );
+      transition:
+        width 0.3s ease,
+        background 0.3s ease,
+        transform 0.3s ease;
+    }
+
+    .welcome-video-pagination
+      .swiper-pagination-bullet-active {
+      width:
+        27px;
+      background:
+        ${CALBAYOG_BLUE};
+    }
+
+    .welcome-video-loading {
+      width:
+        100%;
+      min-height:
+        440px;
+      display:
+        flex;
+      flex-direction:
+        column;
+      align-items:
+        center;
+      justify-content:
+        center;
+      gap:
+        16px;
+      color:
+        #6c757d;
+      font-size:
+        0.82rem;
+    }
+
+    .welcome-video-loading-spinner {
+      width:
+        42px;
+      height:
+        42px;
+      border:
+        3px solid
+        rgba(
+          45,
+          49,
+          149,
+          0.16
+        );
+      border-top-color:
+        ${CALBAYOG_BLUE};
+      border-radius:
+        50%;
+      animation:
+        welcomeVideoSpin
+        0.8s linear
+        infinite;
+    }
+
+    @keyframes welcomeVideoSpin {
+      to {
+        transform:
+          rotate(
+            360deg
+          );
+      }
+    }
+
+    .welcome-video-empty {
+      width:
+        100%;
+      min-height:
+        360px;
+      display:
+        flex;
+      flex-direction:
+        column;
+      align-items:
+        center;
+      justify-content:
+        center;
+      padding:
+        40px 20px;
+      border:
+        1px dashed
+        rgba(
+          45,
+          49,
+          149,
+          0.22
+        );
+      border-radius:
+        22px;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(
+            45,
+            49,
+            149,
+            0.025
+          ),
+          rgba(
+            45,
+            49,
+            149,
+            0.055
+          )
+        );
+      text-align:
+        center;
+    }
+
+    .welcome-video-empty-icon {
+      width:
+        58px;
+      height:
+        58px;
+      display:
+        flex;
+      align-items:
+        center;
+      justify-content:
+        center;
+      margin-bottom:
+        16px;
+      border-radius:
+        50%;
+      background:
+        rgba(
+          45,
+          49,
+          149,
+          0.08
+        );
+      color:
+        ${CALBAYOG_BLUE};
+    }
+
+    .welcome-video-empty h3 {
+      margin:
+        0 0 7px;
+      color:
+        #2D3195;
+      font-family:
+        "Barabara",
+        "Arial Black",
+        Arial,
+        sans-serif;
+      font-size:
+        1.4rem;
+      font-weight:
+        400;
+    }
+
+    .welcome-video-empty p {
+      max-width:
+        430px;
+      margin:
+        0;
+      color:
+        #6c757d;
+      font-size:
+        0.76rem;
+      line-height:
+        1.6;
+    }
+
+    .welcome-video-empty small {
+      margin-top:
+        10px;
+      color:
+        #a05a5a;
+      font-size:
+        0.68rem;
+    }
+
+    /* =====================================================
+       HERO
+    ===================================================== */
+
+    .welcome-hero-section {
+      width:
+        100%;
+    }
+
+    .welcome-hero-slider {
+      position:
+        relative;
+      width:
+        100%;
+      height:
+        390px;
+      overflow:
+        hidden;
+      border-radius:
+        24px;
+      background:
+        #102a23;
+      box-shadow:
+        0 12px 35px
+        rgba(
+          0,
+          0,
+          0,
+          0.10
+        );
+      cursor:
+        grab;
+      user-select:
+        none;
+      touch-action:
+        pan-y;
+    }
+
+    .welcome-hero-slider:active {
+      cursor:
+        grabbing;
+    }
+
+    .welcome-hero-image {
+      position:
+        absolute;
+      inset:
+        0;
+      width:
+        100%;
+      height:
+        100%;
+      object-fit:
+        cover;
+      object-position:
+        center;
+      display:
+        block;
+      pointer-events:
+        none;
+      animation:
+        welcomeHeroImageFade
+        0.65s
+        ease;
+    }
+
+    @keyframes welcomeHeroImageFade {
+      from {
+        opacity:
+          0.45;
+        transform:
+          scale(
+            1.035
+          );
+      }
+
+      to {
+        opacity:
+          1;
+        transform:
+          scale(
+            1
+          );
+      }
+    }
+
+    .welcome-hero-overlay {
+      position:
+        absolute;
+      inset:
+        0;
+      pointer-events:
+        none;
+      background:
+        linear-gradient(
+          90deg,
+          rgba(
+            0,
+            0,
+            0,
+            0.68
+          ) 0%,
+          rgba(
+            0,
+            0,
+            0,
+            0.52
+          ) 25%,
+          rgba(
+            0,
+            0,
+            0,
+            0.25
+          ) 52%,
+          rgba(
+            0,
+            0,
+            0,
+            0.06
+          ) 100%
+        ),
+        linear-gradient(
+          180deg,
+          rgba(
+            0,
+            0,
+            0,
+            0.22
+          ) 0%,
+          rgba(
+            0,
+            0,
+            0,
+            0.02
+          ) 50%,
+          rgba(
+            0,
+            0,
+            0,
+            0.24
+          ) 100%
+        );
+    }
+
+    .welcome-hero-content {
+      position:
+        absolute;
+      z-index:
+        5;
+      left:
+        7%;
+      top:
+        50%;
+      transform:
+        translateY(-50%);
+      display:
+        flex;
+      flex-direction:
+        column;
+      align-items:
+        flex-start;
+      color:
+        #ffffff;
+      max-width:
+        620px;
+    }
+
+    .welcome-hero-title {
+      margin:
+        0 0 20px;
+      padding:
+        0;
+      color:
+        #ffffff;
+      font-size:
+        clamp(
+          2.6rem,
+          4.5vw,
+          4rem
+        );
+      line-height:
+        0.9;
+      letter-spacing:
+        0;
+      text-shadow:
+        0 3px 12px
+        rgba(
+          0,
+          0,
+          0,
+          0.24
+        );
+      white-space:
+        nowrap;
+    }
+
+    .welcome-hero-detail {
+      display:
+        flex;
+      align-items:
+        center;
+      gap:
+        12px;
+      margin-bottom:
+        10px;
+      color:
+        #ffffff;
+      font-size:
+        clamp(
+          0.92rem,
+          1.65vw,
+          1.25rem
+        );
+      font-weight:
+        400;
+      line-height:
+        1.4;
+      text-shadow:
+        0 2px 8px
+        rgba(
+          0,
+          0,
+          0,
+          0.40
+        );
+    }
+
+    .welcome-hero-detail:last-child {
+      margin-bottom:
+        0;
+    }
+
+    .welcome-hero-detail-icon {
+      width:
+        27px;
+      min-width:
+        27px;
+      height:
+        27px;
+      display:
+        inline-flex;
+      align-items:
+        center;
+      justify-content:
+        center;
+      color:
+        #ffffff;
+      flex-shrink:
+        0;
+      line-height:
+        1;
+      filter:
+        drop-shadow(
+          0 2px 5px
+          rgba(
+            0,
+            0,
+            0,
+            0.30
+          )
+        );
+    }
+
+    .welcome-hero-detail-icon svg {
+      display:
+        block;
+      color:
+        #ffffff;
+    }
+
+    .welcome-hero-arrow {
+      position:
+        absolute;
+      z-index:
+        10;
+      top:
+        50%;
+      transform:
+        translateY(-50%);
+      width:
+        44px;
+      height:
+        44px;
+      display:
+        flex;
+      align-items:
+        center;
+      justify-content:
+        center;
+      padding:
+        0;
+      border:
+        1px solid
+        rgba(
+          255,
+          255,
+          255,
+          0.22
+        );
+      border-radius:
+        50%;
+      background:
+        rgba(
+          255,
+          255,
+          255,
+          0.16
+        );
+      color:
+        #ffffff;
+      font-size:
+        32px;
+      font-family:
+        Arial,
+        sans-serif;
+      font-weight:
+        300;
+      line-height:
+        1;
+      backdrop-filter:
+        blur(10px);
+      -webkit-backdrop-filter:
+        blur(10px);
+      box-shadow:
+        0 5px 15px
+        rgba(
+          0,
+          0,
+          0,
+          0.12
+        );
+      cursor:
+        pointer;
+      transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        transform 0.2s ease,
+        border-color 0.2s ease;
+    }
+
+    .welcome-hero-arrow:hover {
+      background:
+        rgba(
+          255,
+          255,
+          255,
+          0.90
+        );
+      color:
+        #2D3195;
+      border-color:
+        rgba(
+          255,
+          255,
+          255,
+          0.95
+        );
+      transform:
+        translateY(-50%)
+        scale(
+          1.06
+        );
+    }
+
+    .welcome-hero-arrow-left {
+      left:
+        16px;
+    }
+
+    .welcome-hero-arrow-right {
+      right:
+        16px;
+    }
+
+    .welcome-hero-dots {
+      position:
+        absolute;
+      z-index:
+        10;
+      left:
+        50%;
+      bottom:
+        17px;
+      transform:
+        translateX(-50%);
+      display:
+        flex;
+      align-items:
+        center;
+      gap:
+        8px;
+    }
+
+    .welcome-hero-dot {
+      width:
+        8px;
+      height:
+        8px;
+      padding:
+        0;
+      border:
+        0;
+      border-radius:
+        50%;
+      background:
+        rgba(
+          255,
+          255,
+          255,
+          0.68
+        );
+      cursor:
+        pointer;
+      transition:
+        width 0.25s ease,
+        background 0.25s ease,
+        transform 0.25s ease;
+    }
+
+    .welcome-hero-dot:hover {
+      transform:
+        scale(
+          1.15
+        );
+    }
+
+    .welcome-hero-dot.active {
+      width:
+        24px;
+      border-radius:
+        999px;
+      background:
+        #2D3195;
+      box-shadow:
+        0 0 8px
+        rgba(
+          45,
+          49,
+          149,
+          0.45
+        );
+    }
+
+    /* =====================================================
+       RESPONSIVE
+    ===================================================== */
+
+    @media (max-width: 991.98px) {
+      .welcome-hero-slider {
+        height:
+          370px;
+        border-radius:
+          22px;
+      }
+
+      .welcome-hero-content {
+        left:
+          6%;
+      }
+
+      .welcome-hero-title {
+        font-size:
+          clamp(
+            2.5rem,
+            5.5vw,
+            3.6rem
+          );
+        margin-bottom:
+          18px;
+      }
+
+      .welcome-hero-detail {
+        font-size:
+          1rem;
+        gap:
+          10px;
+        margin-bottom:
+          9px;
+      }
+
+      .welcome-hero-arrow {
+        width:
+          42px;
+        height:
+          42px;
+      }
+
+      .welcome-intro {
+        margin-bottom:
+          28px;
+      }
+
+      .welcome-intro-text {
+        font-size:
+          0.76rem;
+      }
+
+      .welcome-bunting {
+        height:
+          29px;
+        margin-bottom:
+          23px;
+      }
+
+      .bunting-flag {
+        width:
+          40px;
+        height:
+          29px;
+        flex-basis:
+          40px;
+      }
+
+      .welcome-section-heading {
+        margin-bottom:
+          2.4rem;
+      }
+
+      .welcome-main-heading {
+        margin-bottom:
+          6px;
+      }
+
+      .welcome-quick-grid {
+        row-gap:
+          38px;
+      }
+
+      .welcome-accommodations-section {
+        margin-top:
+          75px;
+      }
+
+      .welcome-videos-section {
+        margin-top:
+          75px;
+      }
+
+      .welcome-video-carousel {
+        min-height:
+          475px;
+      }
+
+      .welcome-featured-swiper {
+        height:
+          410px;
+      }
+
+      .welcome-featured-swiper-slide {
+        width:
+          84% !important;
+      }
+
+      .welcome-video-caption {
+        left:
+          25px;
+        right:
+          25px;
+        bottom:
+          24px;
+      }
+    }
+
+    @media (max-width: 767.98px) {
+      .welcome-hero-slider {
+        height:
+          430px;
+        border-radius:
+          20px;
+      }
+
+      .welcome-hero-image {
+        object-position:
+          center center;
+      }
+
+      .welcome-hero-overlay {
+        background:
+          linear-gradient(
+            180deg,
             rgba(
-              45,
-              49,
-              149,
-              0.24
-            );
-          flex-shrink:
-            0;
-        }
-
-        .welcome-display-title {
-          margin:
-            0;
-          padding:
-            0;
-          color:
-            #2D3195 !important;
-          font-size:
-            clamp(
-              2rem,
-              4vw,
-              3.15rem
-            );
-          line-height:
-            1;
-          letter-spacing:
-            0.015em;
-          text-align:
-            center;
-        }
-
-        .welcome-quick-grid {
-          margin-top: 0;
-          row-gap: 28px;
-        }
-
-        .welcome-quick-grid > [class*="col"] {
-          display: flex;
-        }
-
-        .welcome-quick-link {
-          color:
-            inherit;
-          text-decoration:
-            none;
-        }
-
-        .welcome-quick-link:hover {
-          color:
-            inherit;
-          text-decoration:
-            none;
-        }
-
-        .welcome-quick-card,
-        .quick-card-body,
-        .quick-card-label {
-          font-family: "Inter", sans-serif;
-        }
-
-        .welcome-quick-link {
-          width: 100%;
-          height: 100%;
-        }
-
-        .welcome-quick-card {
-          position: relative;
-          width: 100%;
-          min-height: 142px;
-          border-radius: 22px !important;
-          background: rgba(255,255,255,0.88) !important;
-          border: 1px solid rgba(45,49,149,0.07) !important;
-          box-shadow: 0 8px 26px rgba(25,31,70,0.07);
-          overflow: hidden;
-          transition: transform .28s ease, box-shadow .28s ease, border-color .28s ease;
-        }
-
-        .welcome-quick-card::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(145deg, rgba(255,255,255,.92), rgba(245,247,255,.58));
-          pointer-events: none;
-        }
-
-        .welcome-quick-card:hover {
-          transform: translateY(-7px);
-          box-shadow: 0 18px 38px rgba(45,49,149,0.13);
-          border-color: rgba(45,49,149,0.14) !important;
-        }
-
-        .quick-card-body {
-          position: relative;
-          z-index: 1;
-          min-height: 142px;
-          padding: 18px 10px 15px !important;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 11px;
-        }
-
-        .quick-card-icon-wrap {
-          position: relative;
-          width: 64px !important;
-          height: 64px !important;
-          min-width: 64px;
-          border-radius: 20px !important;
-          display: flex !important;
-          align-items: center;
-          justify-content: center;
-          border: 1px solid rgba(255,255,255,.72);
-          box-shadow: 0 8px 18px rgba(32,38,90,.10), inset 0 1px 0 rgba(255,255,255,.65);
-          transition: transform .28s ease, border-radius .28s ease;
-        }
-
-        .quick-card-icon-wrap::after {
-          content: "";
-          position: absolute;
-          inset: 5px;
-          border: 1px solid rgba(255,255,255,.45);
-          border-radius: 15px;
-          pointer-events: none;
-        }
-
-        .welcome-quick-card:hover .quick-card-icon-wrap {
-          transform: translateY(-2px) rotate(-2deg);
-          border-radius: 18px !important;
-        }
-
-        .quick-card-icon {
-          position: relative;
-          z-index: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          filter: drop-shadow(0 2px 3px rgba(0,0,0,.08));
-        }
-
-        .quick-card-icon svg {
-          width: 27px;
-          height: 27px;
-          stroke-width: 2;
-        }
-
-        .quick-card-label {
-          font-size: .76rem;
-          font-weight: 700;
-          letter-spacing: .01em;
-          line-height: 1.2;
-        }
-
-        /* =====================================================
-           ATTRACTIONS
-        ===================================================== */
-
-        .welcome-attractions-heading {
-          width:
-            100%;
-          display:
-            flex;
-          flex-direction:
-            column;
-          align-items:
-            center;
-          justify-content:
-            center;
-          margin-bottom:
-            2.35rem;
-        }
-
-        .welcome-attractions-title {
-          margin:
-            0 0 7px;
-          padding:
-            0;
-          color:
-            #2D3195 !important;
-          font-size:
-            clamp(
-              1.75rem,
-              4vw,
-              2.35rem
-            );
-          line-height:
-            1;
-          letter-spacing:
-            0.015em;
-          text-align:
-            center;
-        }
-
-        .welcome-attractions-eyebrow {
-          color:
-            #555555;
-        }
-
-        .welcome-attractions-grid {
-          margin-left:
-            -12px;
-          margin-right:
-            -12px;
-          row-gap:
-            46px;
-        }
-
-        .welcome-attraction-col {
-          padding-left:
-            12px;
-          padding-right:
-            12px;
-          display:
-            flex;
-        }
-
-        /* =====================================================
-           ACCOMMODATIONS
-        ===================================================== */
-
-        .welcome-accommodations-section {
-          width:
-            100%;
-          margin-top:
-            85px;
-        }
-
-        .welcome-accommodations-heading {
-          width:
-            100%;
-          display:
-            flex;
-          flex-direction:
-            column;
-          align-items:
-            center;
-          justify-content:
-            center;
-          margin-bottom:
-            2rem;
-        }
-
-        .welcome-accommodations-title {
-          margin:
-            0 0 7px;
-          padding:
-            0;
-          color:
-            #2D3195 !important;
-          font-size:
-            clamp(
-              2rem,
-              4vw,
-              3.15rem
-            );
-          line-height:
-            1;
-          letter-spacing:
-            0.015em;
-          text-align:
-            center;
-        }
-
-        .welcome-accommodation-link {
-          color:
-            inherit;
-        }
-
-        .welcome-accommodation-link:hover {
-          color:
-            inherit;
-        }
-
-        .welcome-accommodation-card,
-        .welcome-accommodation-card * {
-          font-family:
-            "Inter",
-            sans-serif;
-        }
-
-        .welcome-accommodation-image-wrapper {
-          position:
-            relative;
-          height:
-            210px;
-          overflow:
-            hidden;
-          background:
-            #eef2ef;
-        }
-
-        .welcome-accommodation-image {
-          width:
-            100%;
-          height:
-            100%;
-          object-fit:
-            cover;
-          display:
-            block;
-          transition:
-            transform 0.4s ease;
-        }
-
-        .welcome-accommodation-card:hover
-          .welcome-accommodation-image {
-          transform:
-            scale(1.04);
-        }
-
-        .welcome-accommodation-placeholder {
-          width:
-            100%;
-          height:
-            100%;
-          display:
-            flex;
-          align-items:
-            center;
-          justify-content:
-            center;
-          font-size:
-            3rem;
-          background:
-            #eef2ef;
-        }
-
-        .welcome-accommodation-image-overlay {
-          position:
-            absolute;
-          inset:
-            0;
-          background:
-            linear-gradient(
-              to top,
-              rgba(
-                0,
-                0,
-                0,
-                0.38
-              ),
-              transparent 55%
-            );
-          pointer-events:
-            none;
-        }
-
-        .welcome-accommodation-body {
-          padding:
-            1.1rem
-            1.1rem
-            1.2rem;
-          display:
-            flex;
-          flex-direction:
-            column;
-          height:
-            calc(100% - 210px);
-        }
-
-        .welcome-accommodation-title {
-          margin:
-            0 0 0.5rem;
-          color:
-            #212529;
-          font-size:
-            1.05rem;
-          font-weight:
-            700;
-          line-height:
-            1.3;
-        }
-
-        .welcome-accommodation-address {
-          margin:
-            0 0 0.7rem;
-          color:
-            #6c757d;
-          font-size:
-            0.76rem;
-          line-height:
-            1.5;
-          display:
-            -webkit-box;
-          -webkit-line-clamp:
-            2;
-          -webkit-box-orient:
-            vertical;
-          overflow:
-            hidden;
-        }
-
-        .welcome-accommodation-price {
-          color:
-            #2D3195;
-          font-size:
-            0.78rem;
-          font-weight:
-            700;
-          margin-bottom:
-            0.75rem;
-        }
-
-        .welcome-accommodation-explore {
-          margin-top:
-            auto;
-          padding-top:
-            0.7rem;
-          border-top:
-            1px solid
-            #f0f0f0;
-          color:
-            #2D3195;
-          font-size:
-            0.78rem;
-          font-weight:
-            700;
-          display:
-            flex;
-          align-items:
-            center;
-          gap:
-            5px;
-        }
-
-        /* =====================================================
-           FEATURED VIDEOS
-           UI INITIATIVE / SWIPER 3D CAROUSEL
-        ===================================================== */
-
-        .welcome-videos-section {
-          width: 100%;
-          margin-top: 72px;
-        }
-
-        .welcome-videos-heading {
-          width: 100%;
-          display: flex;
-          flex-direction:
-            column;
-          align-items:
-            center;
-          justify-content:
-            center;
-          margin-bottom:
-            2.5rem;
-        }
-
-        .welcome-videos-title {
-          margin:
-            0 0 7px;
-          padding:
-            0;
-          color:
-            #2D3195 !important;
-          font-size:
-            clamp(
-              1.75rem,
-              4vw,
-              2.35rem
-            );
-          line-height:
-            1;
-          letter-spacing:
-            0.015em;
-          text-align:
-            center;
-        }
-
-        .welcome-videos-eyebrow {
-          color:
-            #555555;
-        }
-
-        .welcome-video-carousel {
-          position:
-            relative;
-          width:
-            100%;
-          min-height:
-            545px;
-          padding:
-            10px 0 65px;
-          overflow:
-            hidden;
-        }
-
-        .welcome-featured-swiper {
-          width:
-            100%;
-          height:
-            475px;
-          padding:
-            28px 0 35px;
-          overflow:
-            visible !important;
-        }
-
-        .welcome-featured-swiper
-          .swiper-wrapper {
-          align-items:
-            center;
-        }
-
-        .welcome-featured-swiper-slide {
-          width: min(76%, 860px) !important;
-          height:
-            auto;
-          display:
-            flex;
-          align-items:
-            center;
-          justify-content:
-            center;
-          transition: opacity .55s ease, filter .55s ease, transform .7s cubic-bezier(.22,.61,.36,1);
-        }
-
-        .welcome-featured-swiper-slide:not(
-            .swiper-slide-active
-          ) {
-          opacity: .48;
-          filter: saturate(.62) brightness(.64) blur(.25px);
-          transform: scale(.94);
-        }
-
-        .welcome-featured-swiper-slide.swiper-slide-active {
-          opacity: 1;
-          filter: none;
-          transform: scale(1);
-        }
-
-        .welcome-video-cinematic-card {
-          position:
-            relative;
-          width:
-            100%;
-          overflow:
-            hidden;
-          border-radius:
-            24px;
-          background:
-            #10131c;
-          box-shadow: 0 25px 65px rgba(0,0,0,.22);
-          transform: translateZ(0);
-          border: 1px solid rgba(255,255,255,.08);
-          transition: box-shadow .55s ease, border-color .55s ease, transform .55s ease;
-        }
-
-        .welcome-featured-swiper-slide.swiper-slide-active
-          .welcome-video-cinematic-card {
-          box-shadow: 0 34px 90px rgba(31,37,90,.28);
-          border-color: rgba(255,255,255,.18);
-        }
-
-        .welcome-video-media {
-          position:
-            relative;
-          width:
-            100%;
-          aspect-ratio:
-            16 / 9;
-          overflow:
-            hidden;
-          background:
-            #10131c;
-        }
-
-        .welcome-video-player {
-          width:
-            100%;
-          height:
-            100%;
-          display:
-            block;
-          object-fit:
-            cover;
-          background:
-            #10131c;
-        }
-
-        .welcome-video-gradient {
-          position:
-            absolute;
-          inset:
-            0;
-          pointer-events:
-            none;
-          background:
-            linear-gradient(
-              180deg,
-              rgba(
-                0,
-                0,
-                0,
-                0.04
-              ) 20%,
-              rgba(
-                0,
-                0,
-                0,
-                0.12
-              ) 45%,
-              rgba(
-                0,
-                0,
-                0,
-                0.82
-              ) 100%
-            );
-        }
-
-        .welcome-video-shine {
-          position: absolute;
-          inset: 0;
-          z-index: 2;
-          pointer-events: none;
-          background: linear-gradient(110deg, transparent 34%, rgba(255,255,255,.13) 47%, transparent 60%);
-          transform: translateX(-120%);
-          opacity: 0;
-        }
-
-        .welcome-featured-swiper-slide.swiper-slide-active .welcome-video-shine {
-          opacity: 1;
-          animation: welcomeVideoShine 5.5s ease-in-out infinite;
-        }
-
-        @keyframes welcomeVideoShine {
-          0%, 62% { transform: translateX(-120%); }
-          78%, 100% { transform: translateX(120%); }
-        }
-
-        .welcome-video-play-badge {
-          position:
-            absolute;
-          top:
-            22px;
-          left:
-            22px;
-          width:
-            48px;
-          height:
-            48px;
-          display:
-            flex;
-          align-items:
-            center;
-          justify-content:
-            center;
-          border:
-            1px solid
+              0,
+              0,
+              0,
+              0.32
+            ) 0%,
             rgba(
-              255,
-              255,
-              255,
-              0.35
-            );
-          border-radius:
-            50%;
-          background:
-            rgba(
-              255,
-              255,
-              255,
+              0,
+              0,
+              0,
               0.14
-            );
-          color:
-            #ffffff;
-          backdrop-filter:
-            blur(12px);
-          -webkit-backdrop-filter:
-            blur(12px);
-          box-shadow: 0 10px 28px rgba(0,0,0,.24);
-          transition: transform .3s ease, background .3s ease;
-          pointer-events:
-            none;
-        }
-
-        .welcome-video-cinematic-card:hover .welcome-video-play-badge {
-          transform: scale(1.08);
-          background: rgba(255,255,255,.20);
-        }
-
-        .welcome-video-caption {
-          position:
-            absolute;
-          left:
-            32px;
-          right:
-            32px;
-          bottom:
-            28px;
-          color:
-            #ffffff;
-          pointer-events:
-            none;
-        }
-
-        .welcome-video-caption h3 {
-          margin:
-            0 0 7px;
-          color:
-            #ffffff;
-          font-family:
-            "Barabara",
-            "Arial Black",
-            Arial,
-            sans-serif;
-          font-size:
-            clamp(
-              1.45rem,
-              3vw,
-              2.25rem
-            );
-          font-weight:
-            400;
-          line-height:
-            1;
-          letter-spacing:
-            0.015em;
-          text-shadow:
-            0 3px 15px
+            ) 28%,
             rgba(
               0,
               0,
               0,
-              0.35
-            );
-        }
-
-        .welcome-video-caption p {
-          max-width:
-            600px;
-          margin:
-            0;
-          color:
-            rgba(
-              255,
-              255,
-              255,
-              0.86
-            );
-          font-size:
-            0.78rem;
-          line-height:
-            1.55;
-          text-shadow:
-            0 2px 8px
-            rgba(
-              0,
-              0,
-              0,
-              0.35
-            );
-        }
-
-        .welcome-video-arrow {
-          position:
-            absolute;
-          z-index:
-            30;
-          top:
-            50%;
-          width:
-            48px;
-          height:
-            48px;
-          display:
-            flex;
-          align-items:
-            center;
-          justify-content:
-            center;
-          padding:
-            0;
-          border:
-            1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.28
-            );
-          border-radius:
-            50%;
-          background:
-            rgba(
-              255,
-              255,
-              255,
-              0.16
-            );
-          color:
-            #ffffff;
-          backdrop-filter:
-            blur(12px);
-          -webkit-backdrop-filter:
-            blur(12px);
-          box-shadow:
-            0 8px 24px
-            rgba(
-              0,
-              0,
-              0,
-              0.16
-            );
-          cursor:
-            pointer;
-          transform:
-            translateY(-50%);
-          transition:
-            background 0.22s ease,
-            color 0.22s ease,
-            transform 0.22s ease,
-            border-color 0.22s ease;
-        }
-
-        .welcome-video-arrow:hover {
-          background:
-            #ffffff;
-          color:
-            ${CALBAYOG_BLUE};
-          border-color:
-            #ffffff;
-          transform:
-            translateY(-50%)
-            scale(
-              1.07
-            );
-        }
-
-        .welcome-video-arrow.swiper-button-disabled {
-          opacity:
-            0.45;
-          cursor:
-            default;
-        }
-
-        .welcome-video-prev {
-          left:
-            3%;
-        }
-
-        .welcome-video-next {
-          right:
-            3%;
-        }
-
-        .welcome-video-pagination {
-          position:
-            absolute;
-          z-index:
-            30;
-          left:
-            50%;
-          bottom:
-            13px;
-          width:
-            auto !important;
-          min-height:
-            20px;
-          transform:
-            translateX(-50%);
-          display:
-            flex;
-          align-items:
-            center;
-          justify-content:
-            center;
-        }
-
-        .welcome-video-pagination
-          .swiper-pagination-bullet {
-          width:
-            8px;
-          height:
-            8px;
-          margin:
-            0 4px !important;
-          opacity:
-            1;
-          border-radius:
-            999px;
-          background: rgba(45,49,149,.18);
-          box-shadow: 0 2px 7px rgba(45,49,149,.08);
-          transition:
-            width 0.3s ease,
-            background 0.3s ease,
-            transform 0.3s ease;
-        }
-
-        .welcome-video-pagination
-          .swiper-pagination-bullet-active {
-          width:
-            27px;
-          background:
-            ${CALBAYOG_BLUE};
-        }
-
-        .welcome-video-loading {
-          width:
-            100%;
-          min-height:
-            440px;
-          display:
-            flex;
-          flex-direction:
-            column;
-          align-items:
-            center;
-          justify-content:
-            center;
-          gap:
-            16px;
-          color:
-            #6c757d;
-          font-size:
-            0.82rem;
-        }
-
-        .welcome-video-loading-spinner {
-          width:
-            42px;
-          height:
-            42px;
-          border:
-            3px solid
-            rgba(
-              45,
-              49,
-              149,
-              0.16
-            );
-          border-top-color:
-            ${CALBAYOG_BLUE};
-          border-radius:
-            50%;
-          animation:
-            welcomeVideoSpin
-            0.8s linear
-            infinite;
-        }
-
-        @keyframes welcomeVideoSpin {
-          to {
-            transform:
-              rotate(
-                360deg
-              );
-          }
-        }
-
-        .welcome-video-empty {
-          width:
-            100%;
-          min-height:
-            360px;
-          display:
-            flex;
-          flex-direction:
-            column;
-          align-items:
-            center;
-          justify-content:
-            center;
-          padding:
-            40px 20px;
-          border:
-            1px dashed
-            rgba(
-              45,
-              49,
-              149,
-              0.22
-            );
-          border-radius:
-            22px;
-          background:
-            linear-gradient(
-              180deg,
-              rgba(
-                45,
-                49,
-                149,
-                0.025
-              ),
-              rgba(
-                45,
-                49,
-                149,
-                0.055
-              )
-            );
-          text-align:
-            center;
-        }
-
-        .welcome-video-empty-icon {
-          width:
-            58px;
-          height:
-            58px;
-          display:
-            flex;
-          align-items:
-            center;
-          justify-content:
-            center;
-          margin-bottom:
-            16px;
-          border-radius:
-            50%;
-          background:
-            rgba(
-              45,
-              49,
-              149,
-              0.08
-            );
-          color:
-            ${CALBAYOG_BLUE};
-        }
-
-        .welcome-video-empty h3 {
-          margin:
-            0 0 7px;
-          color:
-            #2D3195;
-          font-family:
-            "Barabara",
-            "Arial Black",
-            Arial,
-            sans-serif;
-          font-size:
-            1.4rem;
-          font-weight:
-            400;
-        }
-
-        .welcome-video-empty p {
-          max-width:
-            430px;
-          margin:
-            0;
-          color:
-            #6c757d;
-          font-size:
-            0.76rem;
-          line-height:
-            1.6;
-        }
-
-        .welcome-video-empty small {
-          margin-top:
-            10px;
-          color:
-            #a05a5a;
-          font-size:
-            0.68rem;
-        }
-
-        /* =====================================================
-           HERO
-        ===================================================== */
-
-        .welcome-hero-section {
-          width:
-            100%;
-        }
-
-        .welcome-hero-slider {
-          position:
-            relative;
-          width:
-            100%;
-          height:
-            390px;
-          overflow:
-            hidden;
-          border-radius:
-            24px;
-          background:
-            #102a23;
-          box-shadow:
-            0 12px 35px
-            rgba(
-              0,
-              0,
-              0,
-              0.10
-            );
-          cursor:
-            grab;
-          user-select:
-            none;
-          touch-action:
-            pan-y;
-        }
-
-        .welcome-hero-slider:active {
-          cursor:
-            grabbing;
-        }
-
-        .welcome-hero-image {
-          position:
-            absolute;
-          inset:
-            0;
-          width:
-            100%;
-          height:
-            100%;
-          object-fit:
-            cover;
-          object-position:
-            center;
-          display:
-            block;
-          pointer-events:
-            none;
-          animation:
-            welcomeHeroImageFade
-            0.65s
-            ease;
-        }
-
-        @keyframes welcomeHeroImageFade {
-          from {
-            opacity:
-              0.45;
-            transform:
-              scale(
-                1.035
-              );
-          }
-
-          to {
-            opacity:
-              1;
-            transform:
-              scale(
-                1
-              );
-          }
-        }
-
-        .welcome-hero-overlay {
-          position:
-            absolute;
-          inset:
-            0;
-          pointer-events:
-            none;
-          background:
-            linear-gradient(
-              90deg,
-              rgba(
-                0,
-                0,
-                0,
-                0.68
-              ) 0%,
-              rgba(
-                0,
-                0,
-                0,
-                0.52
-              ) 25%,
-              rgba(
-                0,
-                0,
-                0,
-                0.25
-              ) 52%,
-              rgba(
-                0,
-                0,
-                0,
-                0.06
-              ) 100%
-            ),
-            linear-gradient(
-              180deg,
-              rgba(
-                0,
-                0,
-                0,
-                0.22
-              ) 0%,
-              rgba(
-                0,
-                0,
-                0,
-                0.02
-              ) 50%,
-              rgba(
-                0,
-                0,
-                0,
-                0.24
-              ) 100%
-            );
-        }
-
-        .welcome-hero-content {
-          position:
-            absolute;
-          z-index:
-            5;
-          left:
-            7%;
-          top:
-            50%;
-          transform:
-            translateY(-50%);
-          display:
-            flex;
-          flex-direction:
-            column;
-          align-items:
-            flex-start;
-          color:
-            #ffffff;
-          max-width:
-            620px;
-        }
-
-        .welcome-hero-title {
-          margin:
-            0 0 20px;
-          padding:
-            0;
-          color:
-            #ffffff;
-          font-size:
-            clamp(
-              2.6rem,
-              4.5vw,
-              4rem
-            );
-          line-height:
-            0.9;
-          letter-spacing:
-            0;
-          text-shadow:
-            0 3px 12px
-            rgba(
-              0,
-              0,
-              0,
-              0.24
-            );
-          white-space:
-            nowrap;
-        }
-
-        .welcome-hero-detail {
-          display:
-            flex;
-          align-items:
-            center;
-          gap:
-            12px;
-          margin-bottom:
-            10px;
-          color:
-            #ffffff;
-          font-size:
-            clamp(
-              0.92rem,
-              1.65vw,
-              1.25rem
-            );
-          font-weight:
-            400;
-          line-height:
-            1.4;
-          text-shadow:
-            0 2px 8px
-            rgba(
-              0,
-              0,
-              0,
-              0.40
-            );
-        }
-
-        .welcome-hero-detail:last-child {
-          margin-bottom:
-            0;
-        }
-
-        .welcome-hero-detail-icon {
-          width:
-            27px;
-          min-width:
-            27px;
-          height:
-            27px;
-          display:
-            inline-flex;
-          align-items:
-            center;
-          justify-content:
-            center;
-          color:
-            #ffffff;
-          flex-shrink:
-            0;
-          line-height:
-            1;
-          filter:
-            drop-shadow(
-              0 2px 5px
-              rgba(
-                0,
-                0,
-                0,
-                0.30
-              )
-            );
-        }
-
-        .welcome-hero-detail-icon svg {
-          display:
-            block;
-          color:
-            #ffffff;
-        }
-
-        .welcome-hero-arrow {
-          position:
-            absolute;
-          z-index:
-            10;
-          top:
-            50%;
-          transform:
-            translateY(-50%);
-          width:
-            44px;
-          height:
-            44px;
-          display:
-            flex;
-          align-items:
-            center;
-          justify-content:
-            center;
-          padding:
-            0;
-          border:
-            1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.22
-            );
-          border-radius:
-            50%;
-          background:
-            rgba(
-              255,
-              255,
-              255,
-              0.16
-            );
-          color:
-            #ffffff;
-          font-size:
-            32px;
-          font-family:
-            Arial,
-            sans-serif;
-          font-weight:
-            300;
-          line-height:
-            1;
-          backdrop-filter:
-            blur(10px);
-          -webkit-backdrop-filter:
-            blur(10px);
-          box-shadow:
-            0 5px 15px
-            rgba(
-              0,
-              0,
-              0,
-              0.12
-            );
-          cursor:
-            pointer;
-          transition:
-            background 0.2s ease,
-            color 0.2s ease,
-            transform 0.2s ease,
-            border-color 0.2s ease;
-        }
-
-        .welcome-hero-arrow:hover {
-          background:
-            rgba(
-              255,
-              255,
-              255,
-              0.90
-            );
-          color:
-            #2D3195;
-          border-color:
-            rgba(
-              255,
-              255,
-              255,
-              0.95
-            );
-          transform:
-            translateY(-50%)
-            scale(
-              1.06
-            );
-        }
-
-        .welcome-hero-arrow-left {
-          left:
-            16px;
-        }
-
-        .welcome-hero-arrow-right {
-          right:
-            16px;
-        }
-
-        .welcome-hero-dots {
-          position:
-            absolute;
-          z-index:
-            10;
-          left:
-            50%;
-          bottom:
-            17px;
-          transform:
-            translateX(-50%);
-          display:
-            flex;
-          align-items:
-            center;
-          gap:
-            8px;
-        }
-
-        .welcome-hero-dot {
-          width:
-            8px;
-          height:
-            8px;
-          padding:
-            0;
-          border:
-            0;
-          border-radius:
-            50%;
-          background:
-            rgba(
-              255,
-              255,
-              255,
               0.68
-            );
-          cursor:
-            pointer;
-          transition:
-            width 0.25s ease,
-            background 0.25s ease,
-            transform 0.25s ease;
-        }
-
-        .welcome-hero-dot:hover {
-          transform:
-            scale(
-              1.15
-            );
-        }
-
-        .welcome-hero-dot.active {
-          width:
-            24px;
-          border-radius:
-            999px;
-          background:
-            #2D3195;
-          box-shadow:
-            0 0 8px
-            rgba(
-              45,
-              49,
-              149,
-              0.45
-            );
-        }
-
-        /* =====================================================
-           RESPONSIVE
-        ===================================================== */
-
-        @media (max-width: 991.98px) {
-          .welcome-hero-slider {
-            height:
-              370px;
-            border-radius:
-              22px;
-          }
-
-          .welcome-hero-content {
-            left:
-              6%;
-          }
-
-          .welcome-hero-title {
-            font-size:
-              clamp(
-                2.5rem,
-                5.5vw,
-                3.6rem
-              );
-            margin-bottom:
-              18px;
-          }
-
-          .welcome-hero-detail {
-            font-size:
-              1rem;
-            gap:
-              10px;
-            margin-bottom:
-              9px;
-          }
-
-          .welcome-hero-arrow {
-            width:
-              42px;
-            height:
-              42px;
-          }
-
-          .welcome-intro {
-            margin-bottom:
-              28px;
-          }
-
-          .welcome-intro-text {
-            font-size:
-              0.76rem;
-          }
-
-          .welcome-bunting {
-            height:
-              29px;
-            margin-bottom:
-              23px;
-          }
-
-          .bunting-flag {
-            width:
-              40px;
-            height:
-              29px;
-            flex-basis:
-              40px;
-          }
-
-          .welcome-section-heading {
-            margin-bottom:
-              2.4rem;
-          }
-
-          .welcome-main-heading {
-            margin-bottom:
-              6px;
-          }
-
-          .welcome-quick-grid {
-            row-gap: 18px;
-          }
-
-          .welcome-quick-card,
-          .quick-card-body {
-            min-height: 126px;
-          }
-
-          .quick-card-icon-wrap {
-            width: 54px !important;
-            height: 54px !important;
-            min-width: 54px;
-            border-radius: 17px !important;
-          }
-
-          .quick-card-label {
-            font-size: .68rem;
-          }
-
-          .welcome-accommodations-section {
-            margin-top:
-              75px;
-          }
-
-          .welcome-videos-section {
-            margin-top:
-              75px;
-          }
-
-          .welcome-video-carousel {
-            min-height:
-              475px;
-          }
-
-          .welcome-featured-swiper {
-            height:
-              410px;
-          }
-
-          .welcome-featured-swiper-slide {
-            width:
-              84% !important;
-          }
-
-          .welcome-video-caption {
-            left:
-              25px;
-            right:
-              25px;
-            bottom:
-              24px;
-          }
-        }
-
-        @media (max-width: 767.98px) {
-          .welcome-hero-slider {
-            height:
-              430px;
-            border-radius:
-              20px;
-          }
-
-          .welcome-hero-image {
-            object-position:
-              center center;
-          }
-
-          .welcome-hero-overlay {
-            background:
-              linear-gradient(
-                180deg,
-                rgba(
-                  0,
-                  0,
-                  0,
-                  0.32
-                ) 0%,
-                rgba(
-                  0,
-                  0,
-                  0,
-                  0.14
-                ) 28%,
-                rgba(
-                  0,
-                  0,
-                  0,
-                  0.68
-                ) 100%
-              );
-          }
-
-          .welcome-hero-content {
-            left:
-              26px;
-            right:
-              26px;
-            top:
-              auto;
-            bottom:
-              52px;
-            transform:
-              none;
-            max-width:
-              none;
-          }
-
-          .welcome-hero-title {
-            font-size:
-              2.7rem;
-            margin-bottom:
-              17px;
-          }
-
-          .welcome-hero-detail {
-            font-size:
-              0.94rem;
-            gap:
-              10px;
-            margin-bottom:
-              8px;
-          }
-
-          .welcome-hero-detail-icon {
-            width:
-              24px;
-            min-width:
-              24px;
-            height:
-              24px;
-          }
-
-          .welcome-hero-detail-icon svg {
-            width:
-              21px;
-            height:
-              21px;
-          }
-
-          .welcome-hero-arrow {
-            width:
-              38px;
-            height:
-              38px;
-            font-size:
-              28px;
-          }
-
-          .welcome-hero-arrow-left {
-            left:
-              10px;
-          }
-
-          .welcome-hero-arrow-right {
-            right:
-              10px;
-          }
-
-          .welcome-hero-dots {
-            bottom:
-              16px;
-          }
-
-          .welcome-intro {
-            max-width:
-              560px;
-            margin-bottom:
-              27px;
-            padding:
-              0 8px;
-          }
-
-          .welcome-intro-eyebrow {
-            font-size:
-              0.56rem;
-            letter-spacing:
-              0.16em;
-          }
-
-          .welcome-intro-text {
-            max-width:
-              470px;
-            font-size:
-              0.68rem;
-            line-height:
-              1.65;
-            margin-top:
-              9px;
-          }
-
-          .welcome-section-heading {
-            margin-bottom:
-              2rem;
-          }
-
-          .welcome-bunting {
-            width:
-              100%;
-            height:
-              24px;
-            margin-bottom:
-              22px;
-            padding:
-              0;
-          }
-
-          .bunting-flag {
-            width:
-              30px;
-            height:
-              24px;
-            flex-basis:
-              30px;
-          }
-
-          .bunting-flag:nth-child(n + 13) {
-            display:
-              none;
-          }
-
-          .welcome-section-eyebrow {
-            gap:
-              9px;
-            font-size:
-              0.58rem;
-            letter-spacing:
-              0.11em;
-          }
-
-          .welcome-heading-line {
-            width:
-              24px;
-          }
-
-          .welcome-display-title {
-            font-size:
-              clamp(
-                1.8rem,
-                8vw,
-                2.55rem
-              );
-          }
-
-          .welcome-main-heading {
-            margin-bottom:
-              6px;
-          }
-
-          .welcome-quick-grid {
-            row-gap:
-              42px;
-          }
-
-          .welcome-attractions-heading {
-            margin-bottom:
-              1.8rem;
-          }
-
-          .welcome-attractions-grid {
-            row-gap:
-              36px;
-          }
-
-          .welcome-accommodations-section {
-            margin-top:
-              65px;
-          }
-
-          .welcome-accommodations-title,
-          .welcome-videos-title {
-            font-size:
-              1.8rem;
-          }
-
-          .welcome-accommodations-heading,
-          .welcome-videos-heading {
-            margin-bottom:
-              1.8rem;
-          }
-
-          .welcome-accommodation-image-wrapper {
-            height:
-              210px;
-          }
-
-          .welcome-videos-section {
-            margin-top:
-              65px;
-          }
-
-          /* VIDEO CAROUSEL MOBILE */
-
-          .welcome-video-carousel {
-            min-height:
-              410px;
-            padding:
-              5px 0 55px;
-          }
-
-          .welcome-featured-swiper {
-            height:
-              360px;
-            padding:
-              20px 0 25px;
-          }
-
-          .welcome-featured-swiper-slide {
-            width:
-              88% !important;
-          }
-
-          .welcome-video-cinematic-card {
-            border-radius:
-              19px;
-          }
-
-          .welcome-video-play-badge {
-            top:
-              15px;
-            left:
-              15px;
-            width:
-              40px;
-            height:
-              40px;
-          }
-
-          .welcome-video-caption {
-            left:
-              19px;
-            right:
-              19px;
-            bottom:
-              19px;
-          }
-
-          .welcome-video-caption h3 {
-            font-size:
-              1.35rem;
-            margin-bottom:
-              5px;
-          }
-
-          .welcome-video-caption p {
-            font-size:
-              0.68rem;
-            line-height:
-              1.45;
-          }
-
-          .welcome-video-arrow {
-            width:
-              38px;
-            height:
-              38px;
-          }
-
-          .welcome-video-prev {
-            left:
-              7px;
-          }
-
-          .welcome-video-next {
-            right:
-              7px;
-          }
-
-          .welcome-video-pagination {
-            bottom:
-              10px;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .welcome-hero-slider {
-            height:
-              410px;
-            border-radius:
-              18px;
-          }
-
-          .welcome-hero-content {
-            left:
-              21px;
-            right:
-              21px;
-            bottom:
-              48px;
-          }
-
-          .welcome-hero-title {
-            font-size:
-              2.25rem;
-            margin-bottom:
-              15px;
-          }
-
-          .welcome-hero-detail {
-            font-size:
-              0.79rem;
-            gap:
-              8px;
-            margin-bottom:
-              7px;
-          }
-
-          .welcome-hero-detail-icon {
-            width:
-              21px;
-            min-width:
-              21px;
-            height:
-              21px;
-          }
-
-          .welcome-hero-detail-icon svg {
-            width:
-              19px;
-            height:
-              19px;
-          }
-
-          .welcome-hero-arrow {
-            width:
-              34px;
-            height:
-              34px;
-            font-size:
-              24px;
-          }
-
-          .welcome-hero-arrow-left {
-            left:
-              8px;
-          }
-
-          .welcome-hero-arrow-right {
-            right:
-              8px;
-          }
-
-          .welcome-intro {
-            margin-bottom:
-              24px;
-            padding:
-              0 5px;
-          }
-
-          .welcome-intro-eyebrow {
-            font-size:
-              0.51rem;
-            letter-spacing:
-              0.14em;
-          }
-
-          .welcome-intro-text {
-            font-size:
-              0.62rem;
-            line-height:
-              1.6;
-            margin-top:
-              8px;
-          }
-
-          .welcome-bunting {
-            height:
-              20px;
-            margin-bottom:
-              18px;
-          }
-
-          .bunting-flag {
-            width:
-              25px;
-            height:
-              20px;
-            flex-basis:
-              25px;
-          }
-
-          .bunting-flag:nth-child(n + 11) {
-            display:
-              none;
-          }
-
-          .welcome-section-eyebrow {
-            gap:
-              7px;
-            font-size:
-              0.52rem;
-            letter-spacing:
-              0.09em;
-          }
-
-          .welcome-heading-line {
-            width:
-              18px;
-          }
-
-          .welcome-display-title {
-            font-size:
-              2rem;
-          }
-
-          .welcome-main-heading {
-            margin-bottom:
-              5px;
-          }
-
-          .welcome-quick-grid {
-            row-gap: 18px;
-          }
-
-          .welcome-quick-card,
-          .quick-card-body {
-            min-height: 126px;
-          }
-
-          .quick-card-icon-wrap {
-            width: 54px !important;
-            height: 54px !important;
-            min-width: 54px;
-            border-radius: 17px !important;
-          }
-
-          .quick-card-label {
-            font-size: .68rem;
-          }
-
-          .welcome-attractions-heading {
-            margin-bottom:
-              1.65rem;
-          }
-
-          .welcome-attractions-title {
-            font-size:
-              2rem;
-          }
-
-          .welcome-accommodations-section {
-            margin-top:
-              55px;
-          }
-
-          .welcome-accommodations-title,
-          .welcome-videos-title {
-            font-size:
-              1.65rem;
-          }
-
-          .welcome-accommodations-heading,
-          .welcome-videos-heading {
-            margin-bottom:
-              1.55rem;
-          }
-
-          .welcome-accommodation-image-wrapper {
-            height:
-              190px;
-          }
-
-          .welcome-videos-section {
-            margin-top:
-              55px;
-          }
-
-          .welcome-video-carousel {
-            min-height:
-              350px;
-          }
-
-          .welcome-featured-swiper {
-            height:
-              300px;
-            padding:
-              15px 0 20px;
-          }
-
-          .welcome-featured-swiper-slide {
-            width:
-              91% !important;
-          }
-
-          .welcome-video-cinematic-card {
-            border-radius:
-              17px;
-          }
-
-          .welcome-video-caption h3 {
-            font-size:
-              1.15rem;
-          }
-
-          .welcome-video-caption p {
-            font-size:
-              0.62rem;
-          }
-
-          .welcome-video-arrow {
-            width:
-              34px;
-            height:
-              34px;
-          }
-
-          .welcome-video-play-badge {
-            width:
-              36px;
-            height:
-              36px;
-          }
-        }
-
-        @media (max-width: 380px) {
-          .welcome-intro-eyebrow {
-            font-size:
-              0.48rem;
-          }
-
-          .welcome-intro-text {
-            font-size:
-              0.59rem;
-          }
-
-          .welcome-bunting {
-            height:
-              18px;
-            margin-bottom:
-              16px;
-          }
-
-          .bunting-flag {
-            width:
-              22px;
-            height:
-              18px;
-            flex-basis:
-              22px;
-          }
-
-          .welcome-display-title {
-            font-size:
-              1.82rem;
-          }
-
-          .welcome-section-eyebrow {
-            font-size:
-              0.49rem;
-            gap:
-              6px;
-          }
-
-          .welcome-heading-line {
-            width:
-              15px;
-          }
-
-          .welcome-attractions-title {
-            font-size:
-              1.82rem;
-          }
-
-          .welcome-accommodations-title,
-          .welcome-videos-title {
-            font-size:
-              1.5rem;
-          }
-
-          .welcome-video-caption {
-            left:
-              15px;
-            right:
-              15px;
-            bottom:
-              15px;
-          }
-
-          .welcome-video-caption h3 {
-            font-size:
-              1rem;
-          }
-
-          .welcome-video-caption p {
-            font-size:
-              0.58rem;
-          }
-        }
-      `}</style>
-    </div>
-  );
+            ) 100%
+          );
+      }
+
+      .welcome-hero-content {
+        left:
+          26px;
+        right:
+          26px;
+        top:
+          auto;
+        bottom:
+          52px;
+        transform:
+          none;
+        max-width:
+          none;
+      }
+
+      .welcome-hero-title {
+        font-size:
+          2.7rem;
+        margin-bottom:
+          17px;
+      }
+
+      .welcome-hero-detail {
+        font-size:
+          0.94rem;
+        gap:
+          10px;
+        margin-bottom:
+          8px;
+      }
+
+      .welcome-hero-detail-icon {
+        width:
+          24px;
+        min-width:
+          24px;
+        height:
+          24px;
+      }
+
+      .welcome-hero-detail-icon svg {
+        width:
+          21px;
+        height:
+          21px;
+      }
+
+      .welcome-hero-arrow {
+        width:
+          38px;
+        height:
+          38px;
+        font-size:
+          28px;
+      }
+
+      .welcome-hero-arrow-left {
+        left:
+          10px;
+      }
+
+      .welcome-hero-arrow-right {
+        right:
+          10px;
+      }
+
+      .welcome-hero-dots {
+        bottom:
+          16px;
+      }
+
+      .welcome-intro {
+        max-width:
+          560px;
+        margin-bottom:
+          27px;
+        padding:
+          0 8px;
+      }
+
+      .welcome-intro-eyebrow {
+        font-size:
+          0.56rem;
+        letter-spacing:
+          0.16em;
+      }
+
+      .welcome-intro-text {
+        max-width:
+          470px;
+        font-size:
+          0.68rem;
+        line-height:
+          1.65;
+        margin-top:
+          9px;
+      }
+
+      .welcome-section-heading {
+        margin-bottom:
+          2rem;
+      }
+
+      .welcome-bunting {
+        width:
+          100%;
+        height:
+          24px;
+        margin-bottom:
+          22px;
+        padding:
+          0;
+      }
+
+      .bunting-flag {
+        width:
+          30px;
+        height:
+          24px;
+        flex-basis:
+          30px;
+      }
+
+      .bunting-flag:nth-child(n + 13) {
+        display:
+          none;
+      }
+
+      .welcome-section-eyebrow {
+        gap:
+          9px;
+        font-size:
+          0.58rem;
+        letter-spacing:
+          0.11em;
+      }
+
+      .welcome-heading-line {
+        width:
+          24px;
+      }
+
+      .welcome-display-title {
+        font-size:
+          clamp(
+            1.8rem,
+            8vw,
+            2.55rem
+          );
+      }
+
+      .welcome-main-heading {
+        margin-bottom:
+          6px;
+      }
+
+      .welcome-quick-grid {
+        row-gap:
+          42px;
+      }
+
+      .welcome-attractions-heading {
+        margin-bottom:
+          1.8rem;
+      }
+
+      .welcome-attractions-grid {
+        row-gap:
+          36px;
+      }
+
+      .welcome-accommodations-section {
+        margin-top:
+          65px;
+      }
+
+      .welcome-accommodations-title,
+      .welcome-videos-title {
+        font-size:
+          1.8rem;
+      }
+
+      .welcome-accommodations-heading,
+      .welcome-videos-heading {
+        margin-bottom:
+          1.8rem;
+      }
+
+      .welcome-accommodation-image-wrapper {
+        height:
+          210px;
+      }
+
+      .welcome-videos-section {
+        margin-top:
+          65px;
+      }
+
+      /* VIDEO CAROUSEL MOBILE */
+
+      .welcome-video-carousel {
+        min-height:
+          410px;
+        padding:
+          5px 0 55px;
+      }
+
+      .welcome-featured-swiper {
+        height:
+          360px;
+        padding:
+          20px 0 25px;
+      }
+
+      .welcome-featured-swiper-slide {
+        width:
+          88% !important;
+      }
+
+      .welcome-video-cinematic-card {
+        border-radius:
+          19px;
+      }
+
+      .welcome-video-play-badge {
+        top:
+          15px;
+        left:
+          15px;
+        width:
+          40px;
+        height:
+          40px;
+      }
+
+      .welcome-video-number {
+        top:
+          18px;
+        right:
+          17px;
+        font-size:
+          0.63rem;
+      }
+
+      .welcome-video-caption {
+        left:
+          19px;
+        right:
+          19px;
+        bottom:
+          19px;
+      }
+
+      .welcome-video-caption h3 {
+        font-size:
+          1.35rem;
+        margin-bottom:
+          5px;
+      }
+
+      .welcome-video-caption p {
+        font-size:
+          0.68rem;
+        line-height:
+          1.45;
+      }
+
+      .welcome-video-arrow {
+        width:
+          38px;
+        height:
+          38px;
+      }
+
+      .welcome-video-prev {
+        left:
+          7px;
+      }
+
+      .welcome-video-next {
+        right:
+          7px;
+      }
+
+      .welcome-video-pagination {
+        bottom:
+          10px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .welcome-hero-slider {
+        height:
+          410px;
+        border-radius:
+          18px;
+      }
+
+      .welcome-hero-content {
+        left:
+          21px;
+        right:
+          21px;
+        bottom:
+          48px;
+      }
+
+      .welcome-hero-title {
+        font-size:
+          2.25rem;
+        margin-bottom:
+          15px;
+      }
+
+      .welcome-hero-detail {
+        font-size:
+          0.79rem;
+        gap:
+          8px;
+        margin-bottom:
+          7px;
+      }
+
+      .welcome-hero-detail-icon {
+        width:
+          21px;
+        min-width:
+          21px;
+        height:
+          21px;
+      }
+
+      .welcome-hero-detail-icon svg {
+        width:
+          19px;
+        height:
+          19px;
+      }
+
+      .welcome-hero-arrow {
+        width:
+          34px;
+        height:
+          34px;
+        font-size:
+          24px;
+      }
+
+      .welcome-hero-arrow-left {
+        left:
+          8px;
+      }
+
+      .welcome-hero-arrow-right {
+        right:
+          8px;
+      }
+
+      .welcome-intro {
+        margin-bottom:
+          24px;
+        padding:
+          0 5px;
+      }
+
+      .welcome-intro-eyebrow {
+        font-size:
+          0.51rem;
+        letter-spacing:
+          0.14em;
+      }
+
+      .welcome-intro-text {
+        font-size:
+          0.62rem;
+        line-height:
+          1.6;
+        margin-top:
+          8px;
+      }
+
+      .welcome-bunting {
+        height:
+          20px;
+        margin-bottom:
+          18px;
+      }
+
+      .bunting-flag {
+        width:
+          25px;
+        height:
+          20px;
+        flex-basis:
+          25px;
+      }
+
+      .bunting-flag:nth-child(n + 11) {
+        display:
+          none;
+      }
+
+      .welcome-section-eyebrow {
+        gap:
+          7px;
+        font-size:
+          0.52rem;
+        letter-spacing:
+          0.09em;
+      }
+
+      .welcome-heading-line {
+        width:
+          18px;
+      }
+
+      .welcome-display-title {
+        font-size:
+          2rem;
+      }
+
+      .welcome-main-heading {
+        margin-bottom:
+          5px;
+      }
+
+      .welcome-quick-grid {
+        row-gap:
+          38px;
+      }
+
+      .welcome-attractions-heading {
+        margin-bottom:
+          1.65rem;
+      }
+
+      .welcome-attractions-title {
+        font-size:
+          2rem;
+      }
+
+      .welcome-accommodations-section {
+        margin-top:
+          55px;
+      }
+
+      .welcome-accommodations-title,
+      .welcome-videos-title {
+        font-size:
+          1.65rem;
+      }
+
+      .welcome-accommodations-heading,
+      .welcome-videos-heading {
+        margin-bottom:
+          1.55rem;
+      }
+
+      .welcome-accommodation-image-wrapper {
+        height:
+          190px;
+      }
+
+      .welcome-videos-section {
+        margin-top:
+          55px;
+      }
+
+      .welcome-video-carousel {
+        min-height:
+          350px;
+      }
+
+      .welcome-featured-swiper {
+        height:
+          300px;
+        padding:
+          15px 0 20px;
+      }
+
+      .welcome-featured-swiper-slide {
+        width:
+          91% !important;
+      }
+
+      .welcome-video-cinematic-card {
+        border-radius:
+          17px;
+      }
+
+      .welcome-video-caption h3 {
+        font-size:
+          1.15rem;
+      }
+
+      .welcome-video-caption p {
+        font-size:
+          0.62rem;
+      }
+
+      .welcome-video-arrow {
+        width:
+          34px;
+        height:
+          34px;
+      }
+
+      .welcome-video-play-badge {
+        width:
+          36px;
+        height:
+          36px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .welcome-intro-eyebrow {
+        font-size:
+          0.48rem;
+      }
+
+      .welcome-intro-text {
+        font-size:
+          0.59rem;
+      }
+
+      .welcome-bunting {
+        height:
+          18px;
+        margin-bottom:
+          16px;
+      }
+
+      .bunting-flag {
+        width:
+          22px;
+        height:
+          18px;
+        flex-basis:
+          22px;
+      }
+
+      .welcome-display-title {
+        font-size:
+          1.82rem;
+      }
+
+      .welcome-section-eyebrow {
+        font-size:
+          0.49rem;
+        gap:
+          6px;
+      }
+
+      .welcome-heading-line {
+        width:
+          15px;
+      }
+
+      .welcome-attractions-title {
+        font-size:
+          1.82rem;
+      }
+
+      .welcome-accommodations-title,
+      .welcome-videos-title {
+        font-size:
+          1.5rem;
+      }
+
+      .welcome-video-caption {
+        left:
+          15px;
+        right:
+          15px;
+        bottom:
+          15px;
+      }
+
+      .welcome-video-caption h3 {
+        font-size:
+          1rem;
+      }
+
+      .welcome-video-caption p {
+        font-size:
+          0.58rem;
+      }
+    }
+  `}</style>
+</div>
+
+);
 };
 
 export default Welcome;
