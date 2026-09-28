@@ -67,6 +67,7 @@ import {
   Destination,
   ItineraryDay,
 } from "../types";
+import { useAuth } from "../context/AuthContext";
 
 /* =========================================================
    BRAND
@@ -813,6 +814,12 @@ const SortableItem: React.FC<{
 
 const ItineraryPlanner: React.FC =
   () => {
+    const {
+      user,
+      userToken,
+      loading: authLoading,
+    } = useAuth();
+
     const [days, setDays] =
       useState<ItineraryDay[]>(() => {
         try {
@@ -952,6 +959,14 @@ const ItineraryPlanner: React.FC =
     ===================================================== */
 
     useEffect(() => {
+      if (
+        authLoading ||
+        !user ||
+        !userToken
+      ) {
+        return;
+      }
+
       getAttractions()
         .then((response) => {
           setDestinations(
@@ -970,7 +985,11 @@ const ItineraryPlanner: React.FC =
 
           setDestinations([]);
         });
-    }, []);
+    }, [
+      authLoading,
+      user,
+      userToken,
+    ]);
 
     /* =====================================================
        CATEGORY LIST
@@ -1748,6 +1767,74 @@ const ItineraryPlanner: React.FC =
           option.value ===
           preferences.travelPace,
       ) || paceOptions[1];
+
+    /* =====================================================
+       AUTHENTICATION GATE
+    ===================================================== */
+
+    if (authLoading) {
+      return (
+        <div className="page-enter itinerary-page">
+          <section className="itinerary-header">
+            <div className="itinerary-header-inner">
+              <h1 className="itinerary-title">
+                PLAN YOUR TRIP
+              </h1>
+
+              <p className="itinerary-subtitle">
+                Checking your account...
+              </p>
+            </div>
+          </section>
+
+          <Container className="itinerary-container">
+            <Alert
+              variant="info"
+              className="planner-auth-alert"
+            >
+              Please wait while we check your
+              login status.
+            </Alert>
+          </Container>
+        </div>
+      );
+    }
+
+    if (!user || !userToken) {
+      return (
+        <div className="page-enter itinerary-page">
+          <section className="itinerary-header">
+            <div className="itinerary-header-inner">
+              <h1 className="itinerary-title">
+                PLAN YOUR TRIP
+              </h1>
+
+              <p className="itinerary-subtitle">
+                Create a personalized
+                itinerary and discover
+                the places you want to
+                experience in Calbayog
+                City.
+              </p>
+            </div>
+          </section>
+
+          <Container className="itinerary-container">
+            <Alert
+              variant="warning"
+              className="planner-auth-alert"
+            >
+              <strong>
+                Please log in to plan your trip.
+              </strong>{" "}
+              You need to be logged in to
+              create and customize your
+              Calbayog itinerary.
+            </Alert>
+          </Container>
+        </div>
+      );
+    }
 
     /* =====================================================
        RENDER
@@ -5061,6 +5148,18 @@ const ItineraryPlanner: React.FC =
             font-size: 0.7rem;
             line-height: 1.5;
             color: #858d88;
+          }
+
+          .planner-auth-alert {
+            margin: 18px 0 0;
+            border-radius: 14px;
+            border: 1px solid #e7d9a8;
+            padding: 16px 18px;
+            font-family:
+              "Nunito",
+              sans-serif;
+            font-size: 0.76rem;
+            line-height: 1.6;
           }
 
           /* =====================================================
