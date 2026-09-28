@@ -5,18 +5,21 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
   plugins: [
     react(),
+
     VitePWA({
       registerType: 'autoUpdate',
 
       includeAssets: [
         'favicon.ico',
         'apple-touch-icon.png',
+        'logo.png',
+        'app-icon.svg',
       ],
 
       manifest: {
         id: '/',
         name: 'Calbayog City Tourism',
-        short_name: 'Calbayog Tourism',
+        short_name: 'Calbayog City Tourism',
 
         description:
           'Explore Calbayog City, discover beautiful destinations, plan your trip, and experience the culture and attractions of Samar.',
@@ -24,8 +27,11 @@ export default defineConfig({
         lang: 'en',
         dir: 'ltr',
 
-        theme_color: '#1A7A4A',
-        background_color: '#ffffff',
+        /*
+         * Blue branding matching the Calbayog City Tourism logo.
+         */
+        theme_color: '#263A9F',
+        background_color: '#263A9F',
 
         display: 'standalone',
         orientation: 'portrait-primary',
@@ -35,26 +41,19 @@ export default defineConfig({
 
         icons: [
           {
-            src: 'pwa-192x192.png',
+            src: 'app-icon.svg',
             sizes: '192x192',
-            type: 'image/png',
+            type: 'image/svg+xml',
             purpose: 'any',
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'app-icon.svg',
             sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any maskable',
           },
         ],
 
-        /*
-         * These screenshots are used by Chrome's
-         * Richer Install UI.
-         *
-         * We will add the actual screenshots to
-         * the public/ folder in the next step.
-         */
         screenshots: [
           {
             src: 'pwa-screenshot-home.png',
@@ -86,7 +85,9 @@ export default defineConfig({
       },
 
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
+        globPatterns: [
+          '**/*.{js,css,html,ico,png,svg,webp}',
+        ],
 
         runtimeCaching: [
           {
@@ -101,8 +102,10 @@ export default defineConfig({
               },
             },
           },
+
           {
-            urlPattern: /^https?:\/\/tile\.openstreetmap\.org\/.*/,
+            urlPattern:
+              /^https?:\/\/tile\.openstreetmap\.org\/.*/,
             handler: 'CacheFirst',
             options: {
               cacheName: 'map-tiles',
