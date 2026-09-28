@@ -63,11 +63,11 @@ import {
 } from "lucide-react";
 
 import { getAttractions } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 import {
   Destination,
   ItineraryDay,
 } from "../types";
-import { useAuth } from "../context/AuthContext";
 
 /* =========================================================
    BRAND
@@ -83,6 +83,10 @@ const SOFT_BLUE = "#EEF0FF";
 const STORAGE_KEY = "calbayog_itinerary";
 const PREFERENCES_STORAGE_KEY =
   "calbayog_itinerary_preferences";
+
+const API_URL =
+  (import.meta as any).env?.VITE_API_URL ||
+  "https://calbayog-city-tourism.onrender.com/api";
 
 /* =========================================================
    CATEGORY COLORS
@@ -817,8 +821,14 @@ const ItineraryPlanner: React.FC =
     const {
       user,
       userToken,
-      loading: authLoading,
+      authLoading,
     } = useAuth();
+
+    const [itineraryId, setItineraryId] =
+      useState<string | null>(null);
+
+    const [itineraryLoading, setItineraryLoading] =
+      useState(true);
 
     const [days, setDays] =
       useState<ItineraryDay[]>(() => {
@@ -955,18 +965,109 @@ const ItineraryPlanner: React.FC =
     );
 
     /* =====================================================
+       LOAD SAVED USER ITINERARY
+    ===================================================== */
+
+    useEffect(() => {
+      if (authLoading) {
+        return;
+      }
+
+      if (!user || !userToken) {
+        setItineraryId(null);
+        setItineraryLoading(false);
+        return;
+      }
+
+      let cancelled = false;
+
+      const loadSavedItinerary = async () => {
+        setItineraryLoading(true);
+
+        try {
+          const response = await fetch(
+            `${API_URL}/itineraries`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${userToken}`,
+              },
+            },
+          );
+
+          if (!response.ok) {
+            throw new Error(
+              `Failed to load itinerary (${response.status})`,
+            );
+          }
+
+          const data = await response.json();
+          const savedItinerary = data?.itinerary;
+
+          if (cancelled) {
+            return;
+          }
+
+          if (savedItinerary) {
+            setItineraryId(savedItinerary.id || null);
+
+            if (Array.isArray(savedItinerary.days)) {
+              const normalizedDays = savedItinerary.days.map(
+                (day: ItineraryDay, index: number) => ({
+                  ...day,
+                  day: index + 1,
+                  destinations: Array.isArray(day.destinations)
+                    ? day.destinations
+                    : [],
+                }),
+              );
+
+              setDays(normalizedDays);
+              setGenerated(normalizedDays.length > 0);
+            }
+
+            setPreferences({
+              ...defaultPreferences,
+              travelDateStart: savedItinerary.travel_date_start || "",
+              travelDateEnd: savedItinerary.travel_date_end || "",
+              groupSize: Number(savedItinerary.group_size) || 1,
+              groupType: savedItinerary.group_type || "Solo",
+              selectedInterests: Array.isArray(savedItinerary.selected_interests)
+                ? savedItinerary.selected_interests
+                : [],
+              travelPace: savedItinerary.travel_pace || "Balanced",
+              budget: savedItinerary.budget || "Moderate",
+              specialRequests: savedItinerary.special_requests || "",
+            });
+          } else {
+            setItineraryId(null);
+            setDays([]);
+            setGenerated(false);
+          }
+        } catch (error) {
+          console.error(
+            "Unable to load saved itinerary:",
+            error,
+          );
+        } finally {
+          if (!cancelled) {
+            setItineraryLoading(false);
+          }
+        }
+      };
+
+      loadSavedItinerary();
+
+      return () => {
+        cancelled = true;
+      };
+    }, [authLoading, user, userToken]);
+
+    /* =====================================================
        LOAD ATTRACTIONS
     ===================================================== */
 
     useEffect(() => {
-      if (
-        authLoading ||
-        !user ||
-        !userToken
-      ) {
-        return;
-      }
-
       getAttractions()
         .then((response) => {
           setDestinations(
@@ -985,11 +1086,7 @@ const ItineraryPlanner: React.FC =
 
           setDestinations([]);
         });
-    }, [
-      authLoading,
-      user,
-      userToken,
-    ]);
+    }, []);
 
     /* =====================================================
        CATEGORY LIST
@@ -1382,161 +1479,245 @@ const ItineraryPlanner: React.FC =
        SAVE PREFERENCES
     ===================================================== */
 
-    const savePreferences =
-      () => {
-        const validationError =
-          validatePreferences();
+    const savePreferences = async () => {
+      const validationError =
+        validatePreferences();
 
-        if (validationError) {
-          setCustomizerError(
-            validationError,
-          );
-          return false;
-        }
+      if (validationError) {
+        setCustomizerError(validationError);
+        return false;
+      }
 
-        try {
-          localStorage.setItem(
-            PREFERENCES_STORAGE_KEY,
-            JSON.stringify(
-              preferences,
-            ),
-          );
+      if (!user || !userToken) {
+        setCustomizerError(
+          "Please log in to save your personalized itinerary.",
+        );
+        return false;
+      }
 
-          setCustomizationSaved(
-            true,
-          );
+      try {
+        const payload = {
+          travel_date_start: preferences.travelDateStart,
+          travel_date_end: preferences.travelDateEnd,
+          group_size: preferences.groupSize,
+          group_type: preferences.groupType,
+          selected_interests: preferences.selectedInterests,
+          travel_pace: preferences.travelPace,
+          budget: preferences.budget,
+          special_requests: preferences.specialRequests,
+          days,
+        };
 
-          window.setTimeout(
-            () => {
-              setCustomizationSaved(
-                false,
-              );
+        const response = await fetch(
+          itineraryId
+            ? `${API_URL}/itineraries/${itineraryId}`
+            : `${API_URL}/itineraries`,
+          {
+            method: itineraryId ? "PUT" : "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${userToken}`,
             },
-            2000,
-          );
+            body: JSON.stringify(payload),
+          },
+        );
 
-          return true;
-        } catch (error) {
-          console.error(
-            "Unable to save itinerary preferences:",
-            error,
-          );
+        const data = await response.json();
 
-          setCustomizerError(
-            "We couldn't save your trip preferences. Please try again.",
+        if (!response.ok) {
+          throw new Error(
+            data?.message || "Unable to save itinerary preferences.",
           );
-
-          return false;
         }
-      };
+
+        if (data?.itinerary?.id) {
+          setItineraryId(data.itinerary.id);
+        }
+
+        setCustomizationSaved(true);
+
+        window.setTimeout(() => {
+          setCustomizationSaved(false);
+        }, 2000);
+
+        return true;
+      } catch (error) {
+        console.error(
+          "Unable to save itinerary preferences:",
+          error,
+        );
+
+        setCustomizerError(
+          error instanceof Error
+            ? error.message
+            : "We couldn't save your trip preferences. Please try again.",
+        );
+
+        return false;
+      }
+    };
 
     /* =====================================================
        GENERATE ITINERARY
     ===================================================== */
 
-    const generateItinerary =
-      () => {
-        const validationError =
-          validatePreferences();
+    const generateItinerary = async () => {
+      const validationError =
+        validatePreferences();
 
-        if (validationError) {
-          setCustomizerError(
-            validationError,
-          );
-          return;
-        }
+      if (validationError) {
+        setCustomizerError(validationError);
+        return;
+      }
 
-        if (
-          destinations.length ===
-          0
-        ) {
-          setCustomizerError(
-            "No attractions are currently available. Please try again in a moment.",
-          );
-          return;
-        }
+      if (destinations.length === 0) {
+        setCustomizerError(
+          "No attractions are currently available. Please try again in a moment.",
+        );
+        return;
+      }
 
-        const generatedDays =
-          generateCustomizedDays(
-            destinations,
-            preferences,
-          );
+      const generatedDays = generateCustomizedDays(
+        destinations,
+        preferences,
+      );
 
-        if (
-          generatedDays.length ===
-          0
-        ) {
-          setCustomizerError(
-            "We couldn't build an itinerary from the available attractions.",
-          );
-          return;
-        }
+      if (generatedDays.length === 0) {
+        setCustomizerError(
+          "We couldn't build an itinerary from the available attractions.",
+        );
+        return;
+      }
 
+      setDays(generatedDays);
+      setGenerated(true);
+      setCustomizerError("");
+
+      if (user && userToken) {
         try {
-          localStorage.setItem(
-            PREFERENCES_STORAGE_KEY,
-            JSON.stringify(
-              preferences,
-            ),
+          const payload = {
+            travel_date_start: preferences.travelDateStart,
+            travel_date_end: preferences.travelDateEnd,
+            group_size: preferences.groupSize,
+            group_type: preferences.groupType,
+            selected_interests: preferences.selectedInterests,
+            travel_pace: preferences.travelPace,
+            budget: preferences.budget,
+            special_requests: preferences.specialRequests,
+            days: generatedDays,
+          };
+
+          const response = await fetch(
+            itineraryId
+              ? `${API_URL}/itineraries/${itineraryId}`
+              : `${API_URL}/itineraries`,
+            {
+              method: itineraryId ? "PUT" : "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${userToken}`,
+              },
+              body: JSON.stringify(payload),
+            },
           );
 
-          localStorage.setItem(
-            STORAGE_KEY,
-            JSON.stringify(
-              generatedDays,
-            ),
-          );
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(
+              data?.message || "Unable to save generated itinerary.",
+            );
+          }
+
+          if (data?.itinerary?.id) {
+            setItineraryId(data.itinerary.id);
+          }
         } catch (error) {
           console.error(
             "Unable to save generated itinerary:",
             error,
           );
+          setCustomizerError(
+            error instanceof Error
+              ? error.message
+              : "Your itinerary was generated, but we couldn't save it to your account.",
+          );
         }
+      }
 
-        setDays(
-          generatedDays,
-        );
+      setShowCustomizer(false);
 
-        setGenerated(true);
-        setShowCustomizer(false);
-        setCustomizerError("");
-
-        window.scrollTo({
-          top: 0,
-          behavior: "smooth",
-        });
-      };
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    };
 
     /* =====================================================
        SAVE ITINERARY
     ===================================================== */
 
-    const saveItinerary = () => {
+    const saveItinerary = async () => {
+      if (!user || !userToken) {
+        setCustomizerError(
+          "Please log in to save your personalized itinerary.",
+        );
+        return;
+      }
+
       try {
-        localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify(days),
+        const payload = {
+          travel_date_start: preferences.travelDateStart,
+          travel_date_end: preferences.travelDateEnd,
+          group_size: preferences.groupSize,
+          group_type: preferences.groupType,
+          selected_interests: preferences.selectedInterests,
+          travel_pace: preferences.travelPace,
+          budget: preferences.budget,
+          special_requests: preferences.specialRequests,
+          days,
+        };
+
+        const response = await fetch(
+          itineraryId
+            ? `${API_URL}/itineraries/${itineraryId}`
+            : `${API_URL}/itineraries`,
+          {
+            method: itineraryId ? "PUT" : "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${userToken}`,
+            },
+            body: JSON.stringify(payload),
+          },
         );
 
-        localStorage.setItem(
-          PREFERENCES_STORAGE_KEY,
-          JSON.stringify(
-            preferences,
-          ),
-        );
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data?.message || "Unable to save itinerary.",
+          );
+        }
+
+        if (data?.itinerary?.id) {
+          setItineraryId(data.itinerary.id);
+        }
 
         setSaved(true);
 
-        window.setTimeout(
-          () => {
-            setSaved(false);
-          },
-          2000,
-        );
+        window.setTimeout(() => {
+          setSaved(false);
+        }, 2000);
       } catch (error) {
         console.error(
           "Unable to save itinerary:",
           error,
+        );
+        setCustomizerError(
+          error instanceof Error
+            ? error.message
+            : "We couldn't save your itinerary. Please try again.",
         );
       }
     };
@@ -1545,14 +1726,51 @@ const ItineraryPlanner: React.FC =
        CLEAR ITINERARY
     ===================================================== */
 
-    const clearItinerary = () => {
-      localStorage.removeItem(
-        STORAGE_KEY,
-      );
+    const clearItinerary = async () => {
+      if (!user || !userToken) {
+        setCustomizerError(
+          "Please log in to manage your personalized itinerary.",
+        );
+        return;
+      }
 
-      setDays([]);
-      setGenerated(false);
-      setShowClearModal(false);
+      try {
+        if (itineraryId) {
+          const response = await fetch(
+            `${API_URL}/itineraries/${itineraryId}`,
+            {
+              method: "DELETE",
+              headers: {
+                Authorization: `Bearer ${userToken}`,
+              },
+            },
+          );
+
+          const data = await response.json();
+
+          if (!response.ok && response.status !== 404) {
+            throw new Error(
+              data?.message || "Unable to clear itinerary.",
+            );
+          }
+        }
+
+        setItineraryId(null);
+        setDays([]);
+        setGenerated(false);
+        setShowClearModal(false);
+        setCustomizerError("");
+      } catch (error) {
+        console.error(
+          "Unable to clear itinerary:",
+          error,
+        );
+        setCustomizerError(
+          error instanceof Error
+            ? error.message
+            : "We couldn't clear your itinerary. Please try again.",
+        );
+      }
     };
 
     /* =====================================================
@@ -1769,34 +1987,16 @@ const ItineraryPlanner: React.FC =
       ) || paceOptions[1];
 
     /* =====================================================
-       AUTHENTICATION GATE
+       RENDER
     ===================================================== */
 
-    if (authLoading) {
+    if (authLoading || itineraryLoading) {
       return (
-        <div className="page-enter itinerary-page">
-          <section className="itinerary-header">
-            <div className="itinerary-header-inner">
-              <h1 className="itinerary-title">
-                PLAN YOUR TRIP
-              </h1>
-
-              <p className="itinerary-subtitle">
-                Checking your account...
-              </p>
-            </div>
-          </section>
-
-          <Container className="itinerary-container">
-            <Alert
-              variant="info"
-              className="planner-auth-alert"
-            >
-              Please wait while we check your
-              login status.
-            </Alert>
-          </Container>
-        </div>
+        <Container className="itinerary-container py-5">
+          <div className="text-center py-5">
+            <p className="mb-0">Loading your personalized itinerary...</p>
+          </div>
+        </Container>
       );
     }
 
@@ -1805,40 +2005,40 @@ const ItineraryPlanner: React.FC =
         <div className="page-enter itinerary-page">
           <section className="itinerary-header">
             <div className="itinerary-header-inner">
-              <h1 className="itinerary-title">
-                PLAN YOUR TRIP
-              </h1>
-
+              <h1 className="itinerary-title">PLAN YOUR TRIP</h1>
               <p className="itinerary-subtitle">
-                Create a personalized
-                itinerary and discover
-                the places you want to
-                experience in Calbayog
-                City.
+                Sign in to create and save a personalized Calbayog City itinerary.
               </p>
             </div>
           </section>
 
           <Container className="itinerary-container">
-            <Alert
-              variant="warning"
-              className="planner-auth-alert"
-            >
-              <strong>
-                Please log in to plan your trip.
-              </strong>{" "}
-              You need to be logged in to
-              create and customize your
-              Calbayog itinerary.
-            </Alert>
+            <section className="planner-intro">
+              <div className="planner-intro-content">
+                <div className="planner-intro-icon">
+                  <Sparkles size={22} strokeWidth={1.8} />
+                </div>
+                <div>
+                  <div className="planner-eyebrow">PERSONALIZED PLANNING</div>
+                  <h2 className="planner-intro-title">Your itinerary belongs to your account</h2>
+                  <p className="planner-intro-text">
+                    Please sign in to create, save, and access your personalized trip plan across your sessions.
+                  </p>
+                </div>
+              </div>
+              <Button
+                as={Link}
+                to="/"
+                className="planner-primary-button"
+              >
+                <ChevronRight size={16} strokeWidth={2} />
+                Return Home
+              </Button>
+            </section>
           </Container>
         </div>
       );
     }
-
-    /* =====================================================
-       RENDER
-    ===================================================== */
 
     return (
       <div className="page-enter itinerary-page">
@@ -5148,18 +5348,6 @@ const ItineraryPlanner: React.FC =
             font-size: 0.7rem;
             line-height: 1.5;
             color: #858d88;
-          }
-
-          .planner-auth-alert {
-            margin: 18px 0 0;
-            border-radius: 14px;
-            border: 1px solid #e7d9a8;
-            padding: 16px 18px;
-            font-family:
-              "Nunito",
-              sans-serif;
-            font-size: 0.76rem;
-            line-height: 1.6;
           }
 
           /* =====================================================
