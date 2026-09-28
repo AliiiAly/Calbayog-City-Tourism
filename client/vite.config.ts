@@ -17,11 +17,22 @@ export default defineConfig({
         id: '/',
         name: 'Calbayog City Tourism',
         short_name: 'Calbayog Tourism',
-        description: 'Discover the wonders of Calbayog City, Western Samar',
+
+        description:
+          'Explore Calbayog City, discover beautiful destinations, plan your trip, and experience the culture and attractions of Samar.',
+
+        lang: 'en',
+        dir: 'ltr',
+
         theme_color: '#1A7A4A',
         background_color: '#ffffff',
+
         display: 'standalone',
+        orientation: 'portrait-primary',
+
         start_url: '/',
+        scope: '/',
+
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -35,6 +46,42 @@ export default defineConfig({
             type: 'image/png',
             purpose: 'any',
           },
+        ],
+
+        /*
+         * These screenshots are used by Chrome's
+         * Richer Install UI.
+         *
+         * We will add the actual screenshots to
+         * the public/ folder in the next step.
+         */
+        screenshots: [
+          {
+            src: 'pwa-screenshot-home.png',
+            sizes: '1080x1920',
+            type: 'image/png',
+            form_factor: 'narrow',
+            label: 'Calbayog City Tourism home page',
+          },
+          {
+            src: 'pwa-screenshot-destinations.png',
+            sizes: '1080x1920',
+            type: 'image/png',
+            form_factor: 'narrow',
+            label: 'Explore destinations in Calbayog City',
+          },
+          {
+            src: 'pwa-screenshot-wide.png',
+            sizes: '1920x1080',
+            type: 'image/png',
+            form_factor: 'wide',
+            label: 'Calbayog City Tourism on desktop',
+          },
+        ],
+
+        categories: [
+          'travel',
+          'lifestyle',
         ],
       },
 
