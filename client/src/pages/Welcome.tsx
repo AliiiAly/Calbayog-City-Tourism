@@ -1433,6 +1433,24 @@ const Welcome: React.FC = () => {
               <span className="bunting-flag bunting-teal" />
             </div>
 
+            <div
+              className="welcome-mobile-bunting welcome-explore-mobile-bunting"
+              aria-hidden="true"
+            >
+              <span className="bunting-flag bunting-red" />
+              <span className="bunting-flag bunting-orange" />
+              <span className="bunting-flag bunting-yellow" />
+              <span className="bunting-flag bunting-teal" />
+              <span className="bunting-flag bunting-red" />
+              <span className="bunting-flag bunting-orange" />
+              <span className="bunting-flag bunting-yellow" />
+              <span className="bunting-flag bunting-teal" />
+              <span className="bunting-flag bunting-red" />
+              <span className="bunting-flag bunting-orange" />
+              <span className="bunting-flag bunting-yellow" />
+              <span className="bunting-flag bunting-teal" />
+            </div>
+
             <div className="section-header welcome-main-heading">
               <div>
                 <h2 className="section-title welcome-display-title barabara-display">
@@ -3884,6 +3902,10 @@ const Welcome: React.FC = () => {
               6px;
           }
 
+          .welcome-explore-mobile-bunting {
+            margin-bottom: 14px;
+          }
+
           .welcome-quick-grid {
             row-gap:
               38px;
@@ -4061,6 +4083,11 @@ const Welcome: React.FC = () => {
           }
 
           .welcome-bunting {
+            display: none;
+          }
+
+          .welcome-explore-mobile-bunting,
+          .welcome-mobile-bunting {
             width: min(88%, 300px);
             height: 16px;
             margin: 0 auto 14px;
@@ -4093,6 +4120,7 @@ const Welcome: React.FC = () => {
             overflow: hidden;
           }
 
+          .welcome-explore-mobile-bunting .bunting-flag,
           .welcome-mobile-bunting .bunting-flag {
             width: auto;
             height: 16px;
@@ -4118,7 +4146,7 @@ const Welcome: React.FC = () => {
           .welcome-attractions-title,
           .welcome-videos-title {
             font-size:
-              1.70rem;
+              1.45rem;
           }
 
           .welcome-main-heading {
@@ -4368,10 +4396,7 @@ const Welcome: React.FC = () => {
           }
 
           .welcome-bunting {
-            width: min(88%, 300px);
-            height: 16px;
-            margin: 0 auto 14px;
-            padding: 0;
+            display: none;
           }
 
           .bunting-flag {
@@ -4385,12 +4410,14 @@ const Welcome: React.FC = () => {
               0;
           }
 
+          .welcome-explore-mobile-bunting,
           .welcome-mobile-bunting {
             width: min(88%, 300px);
             height: 16px;
             margin: 0 auto 14px;
           }
 
+          .welcome-explore-mobile-bunting .bunting-flag,
           .welcome-mobile-bunting .bunting-flag {
             height: 16px;
           }
@@ -4411,15 +4438,23 @@ const Welcome: React.FC = () => {
 
           .welcome-display-title,
           .welcome-attractions-title,
-          .welcome-accommodations-title,
           .welcome-videos-title {
             font-size:
-              1.70rem;
+              1.45rem;
+          }
+
+          .welcome-accommodations-title {
+            font-size:
+              1.45rem;
           }
 
           .welcome-main-heading {
             margin-bottom:
               5px;
+          }
+
+          .welcome-explore-mobile-bunting {
+            margin-bottom: 12px;
           }
 
           .welcome-quick-grid {
@@ -4525,9 +4560,7 @@ const Welcome: React.FC = () => {
           }
 
           .welcome-bunting {
-            width: min(90%, 280px);
-            height: 15px;
-            margin: 0 auto 12px;
+            display: none;
           }
 
           .bunting-flag {
@@ -4545,15 +4578,17 @@ const Welcome: React.FC = () => {
           .welcome-attractions-title,
           .welcome-videos-title {
             font-size:
-              1.70rem;
+              1.45rem;
           }
 
+          .welcome-explore-mobile-bunting,
           .welcome-mobile-bunting {
             width: min(90%, 280px);
             height: 15px;
             margin: 0 auto 12px;
           }
 
+          .welcome-explore-mobile-bunting .bunting-flag,
           .welcome-mobile-bunting .bunting-flag {
             height: 15px;
           }
@@ -4580,7 +4615,7 @@ const Welcome: React.FC = () => {
           .welcome-accommodations-title,
           .welcome-videos-title {
             font-size:
-              1.60rem;
+              1.30rem;
           }
         }
       `}</style>
