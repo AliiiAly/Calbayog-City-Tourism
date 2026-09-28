@@ -1556,10 +1556,38 @@ const AppHeaderStyles: React.FC = () => (
         border-radius: 12px;
       }
 
+      /* Keep the Install App action visible on mobile. */
+      .header-install-btn {
+        width: auto;
+        min-width: 40px;
+        height: 40px;
+        min-height: 40px;
+
+        padding: 0 10px;
+
+        border-radius: 12px;
+      }
+
+      .header-install-btn span {
+        display: inline;
+      }
+
       .search-input-wrapper,
       .search-input {
         min-height: 43px;
         height: 43px;
+      }
+    }
+
+    @media (max-width: 390px) {
+      .header-install-btn {
+        width: 40px;
+        min-width: 40px;
+        padding: 0;
+      }
+
+      .header-install-btn span {
+        display: none;
       }
     }
 
@@ -1681,6 +1709,10 @@ const AppHeader: React.FC<AppHeaderProps> = ({
     useState<BeforeInstallPromptEvent | null>(null);
 
   const [canInstallApp, setCanInstallApp] = useState(false);
+
+  const [isMobileInstallDevice, setIsMobileInstallDevice] = useState(false);
+
+  const [isStandalone, setIsStandalone] = useState(false);
 
   const isLoggedInHeader = isAdmin ? true : isUserAuthenticated;
 
@@ -1844,13 +1876,28 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   ========================================================= */
 
   useEffect(() => {
-    const isStandalone =
+    const standalone =
       window.matchMedia?.("(display-mode: standalone)").matches ||
       (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
 
-    if (isStandalone) {
+    const mobileDevice =
+      /Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent) ||
+      window.navigator.maxTouchPoints > 1;
+
+    setIsStandalone(standalone);
+    setIsMobileInstallDevice(mobileDevice);
+
+    if (standalone) {
+      setDeferredInstallPrompt(null);
       setCanInstallApp(false);
       return;
+    }
+
+    // On mobile devices, keep the Install App button visible even before
+    // Chrome sends beforeinstallprompt. If the browser supports the native
+    // prompt, the event below will replace the fallback with the real prompt.
+    if (mobileDevice) {
+      setCanInstallApp(true);
     }
 
     const handleBeforeInstallPrompt = (event: Event) => {
@@ -1863,6 +1910,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
     const handleAppInstalled = () => {
       setDeferredInstallPrompt(null);
       setCanInstallApp(false);
+      setIsStandalone(true);
     };
 
     window.addEventListener(
@@ -1884,18 +1932,40 @@ const AppHeader: React.FC<AppHeaderProps> = ({
 
   const handleInstallApp = async () => {
     if (!deferredInstallPrompt) {
+      const isIOS =
+        /iPad|iPhone|iPod/i.test(window.navigator.userAgent) ||
+        (window.navigator.platform === "MacIntel" &&
+          window.navigator.maxTouchPoints > 1);
+
+      window.alert(
+        isIOS
+          ? 'To install Calbayog City Tourism, tap the Share button in your browser and choose "Add to Home Screen".'
+          : 'To install Calbayog City Tourism, open your browser menu (⋮) and choose "Install app" or "Add to Home screen".',
+      );
+
       return;
     }
 
     try {
       await deferredInstallPrompt.prompt();
 
-      await deferredInstallPrompt.userChoice;
+      const choice = await deferredInstallPrompt.userChoice;
+
+      // beforeinstallprompt events are one-use events. If the user dismisses
+      // the native prompt, keep the button visible so they can try again or
+      // follow the browser's manual installation instructions.
+      setDeferredInstallPrompt(null);
+
+      if (choice.outcome === "accepted") {
+        setCanInstallApp(false);
+      } else {
+        setCanInstallApp(!isStandalone);
+      }
     } catch (error) {
       console.error("PWA install prompt failed:", error);
-    } finally {
+
       setDeferredInstallPrompt(null);
-      setCanInstallApp(false);
+      setCanInstallApp(!isStandalone && isMobileInstallDevice);
     }
   };
 
