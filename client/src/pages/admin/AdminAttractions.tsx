@@ -1853,15 +1853,9 @@ const AdminAttractions: React.FC = () => {
   ========================================================= */
 
   const openEdit = (attraction: Attraction) => {
-    // Make sure an edit click never leaves the detail modal open behind it.
-    setViewItem(null);
+    const d: any = attraction;
 
-    const d: any = attraction || {};
-
-    const category =
-      CATEGORY_DESIGNS[d.category] && ATTRACTION_TYPES[d.category]
-        ? d.category
-        : "Nature";
+    const category = d.category || "Nature";
 
     const attractionType =
       d.attraction_type || ATTRACTION_TYPES[category]?.[0] || "";
@@ -2064,8 +2058,6 @@ const AdminAttractions: React.FC = () => {
         entrance_fee: form.entrance_fee?.trim() || "",
         operational_hours: form.operational_hours?.trim() || "",
         best_time_to_visit: form.best_time_to_visit?.trim() || "",
-        website: form.website?.trim() || "",
-        attractions: form.attractions?.trim() || "",
         things_to_do: form.things_to_do?.trim() || "",
 
         tags: (form.tags || "")
@@ -2656,10 +2648,7 @@ const AdminAttractions: React.FC = () => {
                         <Button
                           size="sm"
                           variant="outline-primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEdit(attraction);
-                          }}
+                          onClick={() => openEdit(attraction)}
                           className="admin-edit-button"
                         >
                           <Pencil size={14} strokeWidth={2} />
@@ -2706,7 +2695,7 @@ const AdminAttractions: React.FC = () => {
             closeButton
             className="admin-attraction-form-header"
             style={{
-              background: (CATEGORY_DESIGNS[form.category] || CATEGORY_DESIGNS.Other).gradient,
+              background: CATEGORY_DESIGNS[form.category]?.gradient,
               color: "#fff",
             }}
           >
@@ -2730,7 +2719,7 @@ const AdminAttractions: React.FC = () => {
 
           <Modal.Body
             style={{
-              background: (CATEGORY_DESIGNS[form.category] || CATEGORY_DESIGNS.Other).bgPattern,
+              background: CATEGORY_DESIGNS[form.category]?.bgPattern,
 
               padding: "24px",
             }}
