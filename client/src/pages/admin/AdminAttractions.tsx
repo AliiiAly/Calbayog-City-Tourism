@@ -129,7 +129,7 @@ const ATTRACTION_TYPES: Record<string, string[]> = {
 const CATEGORY_DESIGNS: Record<
   string,
   {
-    icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+    icon: React.ElementType;
     color: string;
     gradient: string;
     bgPattern: string;
@@ -1874,9 +1874,7 @@ const AdminAttractions: React.FC = () => {
         entrance_fee: form.entrance_fee?.trim() || "",
         operational_hours: form.operational_hours?.trim() || "",
         best_time_to_visit: form.best_time_to_visit?.trim() || "",
-        /* These fields are intentionally NOT sent because
-           they do not exist in public.attractions. */
-        things_to_do: form.things_to_do?.trim() || "",
+                    things_to_do: form.things_to_do?.trim() || "",
 
         tags: (form.tags || "")
           .split(",")
