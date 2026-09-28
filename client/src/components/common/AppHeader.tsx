@@ -1648,6 +1648,27 @@ interface BeforeInstallPromptEvent extends Event {
   }>;
 }
 
+/*
+ * Keep the browser install event at module level so AppHeader does not
+ * miss beforeinstallprompt if Chrome fires it before the component effect
+ * finishes mounting.
+ */
+let pendingPwaInstallPrompt: BeforeInstallPromptEvent | null = null;
+
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeinstallprompt", (event: Event) => {
+    event.preventDefault();
+
+    pendingPwaInstallPrompt = event as BeforeInstallPromptEvent;
+
+    window.dispatchEvent(new Event("calbayog-pwa-install-ready"));
+  });
+
+  window.addEventListener("appinstalled", () => {
+    pendingPwaInstallPrompt = null;
+  });
+}
+
 const AppHeader: React.FC<AppHeaderProps> = ({
   onMenuClick,
   onSearch,
@@ -1893,21 +1914,35 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       return;
     }
 
-    // On mobile devices, keep the Install App button visible even before
-    // Chrome sends beforeinstallprompt. If the browser supports the native
-    // prompt, the event below will replace the fallback with the real prompt.
-    if (mobileDevice) {
+    // If Chrome already fired beforeinstallprompt before this component
+    // mounted, use the saved event immediately.
+    if (pendingPwaInstallPrompt) {
+      setDeferredInstallPrompt(pendingPwaInstallPrompt);
+      setCanInstallApp(true);
+    } else if (mobileDevice) {
+      // Keep the button visible on mobile so the user can always find
+      // the install action. The native prompt is used whenever Chrome
+      // provides beforeinstallprompt.
       setCanInstallApp(true);
     }
 
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
 
-      setDeferredInstallPrompt(event as BeforeInstallPromptEvent);
+      pendingPwaInstallPrompt = event as BeforeInstallPromptEvent;
+      setDeferredInstallPrompt(pendingPwaInstallPrompt);
       setCanInstallApp(true);
     };
 
+    const handleInstallReady = () => {
+      if (pendingPwaInstallPrompt) {
+        setDeferredInstallPrompt(pendingPwaInstallPrompt);
+        setCanInstallApp(true);
+      }
+    };
+
     const handleAppInstalled = () => {
+      pendingPwaInstallPrompt = null;
       setDeferredInstallPrompt(null);
       setCanInstallApp(false);
       setIsStandalone(true);
@@ -1918,6 +1953,11 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       handleBeforeInstallPrompt,
     );
 
+    window.addEventListener(
+      "calbayog-pwa-install-ready",
+      handleInstallReady,
+    );
+
     window.addEventListener("appinstalled", handleAppInstalled);
 
     return () => {
@@ -1926,44 +1966,60 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         handleBeforeInstallPrompt,
       );
 
+      window.removeEventListener(
+        "calbayog-pwa-install-ready",
+        handleInstallReady,
+      );
+
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);
 
   const handleInstallApp = async () => {
-    if (!deferredInstallPrompt) {
-      const isIOS =
-        /iPad|iPhone|iPod/i.test(window.navigator.userAgent) ||
-        (window.navigator.platform === "MacIntel" &&
-          window.navigator.maxTouchPoints > 1);
+    /*
+     * Prefer the real browser installation prompt.
+     *
+     * We intentionally do not show the old "open your browser menu"
+     * alert here. If Chrome has provided beforeinstallprompt, the
+     * button should open Chrome's native installation UI.
+     */
+    const installPrompt =
+      deferredInstallPrompt || pendingPwaInstallPrompt;
 
-      window.alert(
-        isIOS
-          ? 'To install Calbayog City Tourism, tap the Share button in your browser and choose "Add to Home Screen".'
-          : 'To install Calbayog City Tourism, open your browser menu (⋮) and choose "Install app" or "Add to Home screen".',
-      );
-
+    if (!installPrompt) {
+      /*
+       * The browser has not supplied a native prompt yet. Keep the
+       * button visible instead of sending the user to the browser menu.
+       * If Chrome later provides beforeinstallprompt, the listener above
+       * will automatically attach it to this button.
+       */
+      setCanInstallApp(!isStandalone && isMobileInstallDevice);
       return;
     }
 
     try {
-      await deferredInstallPrompt.prompt();
+      await installPrompt.prompt();
 
-      const choice = await deferredInstallPrompt.userChoice;
+      const choice = await installPrompt.userChoice;
 
-      // beforeinstallprompt events are one-use events. If the user dismisses
-      // the native prompt, keep the button visible so they can try again or
-      // follow the browser's manual installation instructions.
+      pendingPwaInstallPrompt = null;
       setDeferredInstallPrompt(null);
 
       if (choice.outcome === "accepted") {
         setCanInstallApp(false);
       } else {
+        /*
+         * A BeforeInstallPromptEvent is one-use. After dismissal we
+         * cannot safely call prompt() on the same event again.
+         * Keep the button visible and wait for Chrome to provide a
+         * fresh beforeinstallprompt event.
+         */
         setCanInstallApp(!isStandalone);
       }
     } catch (error) {
       console.error("PWA install prompt failed:", error);
 
+      pendingPwaInstallPrompt = null;
       setDeferredInstallPrompt(null);
       setCanInstallApp(!isStandalone && isMobileInstallDevice);
     }
