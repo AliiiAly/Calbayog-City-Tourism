@@ -1537,51 +1537,7 @@ const Welcome: React.FC = () => {
                 </div>
               </div>
 
-              <Row className="welcome-attractions-grid">
-                {welcomeDestinations.map(
-                  (attraction) => {
-                    const attractionId =
-                      String(
-                        (attraction as any)
-                          ?.id ?? "",
-                      ).trim();
-
-                    return (
-                      <Col
-                        xs={12}
-                        sm={6}
-                        lg={3}
-                        key={
-                          attractionId ||
-                          attraction.name
-                        }
-                        className="welcome-attraction-col"
-                      >
-                        <AttractionCard
-                          attraction={
-                            attraction
-                          }
-                          imageIndex={
-                            attractionId
-                              ? imageIndexes[
-                                  attractionId
-                                ] || 0
-                              : 0
-                          }
-                          showFavoriteCount={
-                            true
-                          }
-                          showFeatured={
-                            true
-                          }
-                        />
-                      </Col>
-                    );
-                  },
-                )}
-              </Row>
-            
-              <div className="welcome-view-more-wrap">
+              <div className="welcome-attractions-toolbar">
                 <Link
                   to="/attractions"
                   className="welcome-view-more-button"
@@ -1593,6 +1549,79 @@ const Welcome: React.FC = () => {
                     aria-hidden="true"
                   />
                 </Link>
+              </div>
+
+              <div className="welcome-attractions-carousel">
+                <Swiper
+                  modules={[A11y]}
+                  slidesPerView={1.12}
+                  spaceBetween={16}
+                  centeredSlides={false}
+                  grabCursor
+                  watchOverflow
+                  resistanceRatio={0.85}
+                  touchRatio={1}
+                  breakpoints={{
+                    576: {
+                      slidesPerView: 2.1,
+                      spaceBetween: 18,
+                    },
+                    768: {
+                      slidesPerView: 2.35,
+                      spaceBetween: 20,
+                    },
+                    992: {
+                      slidesPerView: 3.1,
+                      spaceBetween: 22,
+                    },
+                    1200: {
+                      slidesPerView: 4,
+                      spaceBetween: 24,
+                    },
+                  }}
+                  className="welcome-attractions-swiper"
+                >
+                  {welcomeDestinations.map(
+                    (attraction) => {
+                      const attractionId =
+                        String(
+                          (attraction as any)
+                            ?.id ?? "",
+                        ).trim();
+
+                      return (
+                        <SwiperSlide
+                          key={
+                            attractionId ||
+                            attraction.name
+                          }
+                          className="welcome-attraction-slide"
+                        >
+                          <div className="welcome-attraction-card-shell">
+                            <AttractionCard
+                              attraction={
+                                attraction
+                              }
+                              imageIndex={
+                                attractionId
+                                  ? imageIndexes[
+                                      attractionId
+                                    ] || 0
+                                  : 0
+                              }
+                              showFavoriteCount={
+                                true
+                              }
+                              showFeatured={
+                                true
+                              }
+                            />
+                          </div>
+                        </SwiperSlide>
+                      );
+                    },
+                  )}
+                </Swiper>
               </div>
             </section>
           )}
@@ -2125,6 +2154,8 @@ const Welcome: React.FC = () => {
         .welcome-display-title {
           color:
             #2D3195 !important;
+          font-size:
+            1.70rem;
         }
 
         .welcome-explore-section {
@@ -2354,7 +2385,7 @@ const Welcome: React.FC = () => {
           color:
             #2D3195 !important;
           font-size:
-            2.15rem;
+            1.70rem;
           line-height:
             1;
           letter-spacing:
@@ -2444,6 +2475,15 @@ const Welcome: React.FC = () => {
           margin-top: 2rem;
         }
 
+        .welcome-attractions-toolbar {
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          width: 100%;
+          margin:
+            -0.25rem 0 1.05rem;
+        }
+
         .welcome-view-more-button {
           display: inline-flex;
           align-items: center;
@@ -2497,7 +2537,7 @@ const Welcome: React.FC = () => {
           color:
             #2D3195 !important;
           font-size:
-            2.15rem;
+            1.70rem;
           line-height:
             1;
           letter-spacing:
@@ -2511,22 +2551,32 @@ const Welcome: React.FC = () => {
             #555555;
         }
 
-        .welcome-attractions-grid {
-          margin-left:
-            -12px;
-          margin-right:
-            -12px;
-          row-gap:
-            46px;
+        .welcome-attractions-carousel {
+          width: 100%;
+          overflow: hidden;
         }
 
-        .welcome-attraction-col {
-          padding-left:
-            12px;
-          padding-right:
-            12px;
-          display:
-            flex;
+        .welcome-attractions-swiper {
+          width: 100%;
+          overflow: visible;
+          padding:
+            0 0 6px;
+        }
+
+        .welcome-attraction-slide {
+          height: auto;
+          display: flex;
+          align-items: stretch;
+        }
+
+        .welcome-attraction-card-shell {
+          width: 100%;
+          min-width: 0;
+          display: flex;
+        }
+
+        .welcome-attraction-card-shell > * {
+          width: 100%;
         }
 
         /* =====================================================
@@ -2769,7 +2819,7 @@ const Welcome: React.FC = () => {
           color:
             #2D3195 !important;
           font-size:
-            2.15rem;
+            1.70rem;
           line-height:
             1;
           letter-spacing:
@@ -4011,35 +4061,31 @@ const Welcome: React.FC = () => {
           }
 
           .welcome-bunting {
-            width:
-              calc(100% + 24px);
-            height:
-              22px;
-            margin-left:
-              -12px;
-            margin-right:
-              -12px;
-            margin-bottom:
-              20px;
-            padding:
-              0;
+            width: min(88%, 300px);
+            height: 16px;
+            margin: 0 auto 14px;
+            padding: 0;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            overflow: hidden;
           }
 
           .bunting-flag {
             width:
               auto;
             height:
-              22px;
+              16px;
             flex:
               1 1 0;
             min-width:
-              16px;
+              0;
           }
 
           .welcome-mobile-bunting {
-            width: min(86%, 360px);
-            height: 18px;
-            margin: 0 auto 10px;
+            width: min(88%, 300px);
+            height: 16px;
+            margin: 0 auto 14px;
             padding: 0;
             display: flex;
             align-items: flex-start;
@@ -4049,7 +4095,7 @@ const Welcome: React.FC = () => {
 
           .welcome-mobile-bunting .bunting-flag {
             width: auto;
-            height: 18px;
+            height: 16px;
             flex: 1 1 0;
             min-width: 0;
           }
@@ -4070,7 +4116,6 @@ const Welcome: React.FC = () => {
 
           .welcome-display-title,
           .welcome-attractions-title,
-          .welcome-accommodations-title,
           .welcome-videos-title {
             font-size:
               1.70rem;
@@ -4119,9 +4164,26 @@ const Welcome: React.FC = () => {
               1.8rem;
           }
 
-          .welcome-attractions-grid {
-            row-gap:
-              36px;
+          .welcome-attractions-carousel {
+            margin-top:
+              0;
+          }
+
+          .welcome-attractions-swiper {
+            padding-bottom:
+              4px;
+            touch-action:
+              pan-y;
+          }
+
+          .welcome-attraction-slide {
+            min-width:
+              0;
+          }
+
+          .welcome-attractions-toolbar {
+            margin:
+              -0.15rem 0 0.9rem;
           }
 
           .welcome-accommodations-section {
@@ -4129,7 +4191,6 @@ const Welcome: React.FC = () => {
               65px;
           }
 
-          .welcome-accommodations-title,
           .welcome-videos-title {
             font-size:
               1.70rem;
@@ -4307,33 +4368,27 @@ const Welcome: React.FC = () => {
           }
 
           .welcome-bunting {
-            width:
-              calc(100% + 20px);
-            height:
-              19px;
-            margin-left:
-              -10px;
-            margin-right:
-              -10px;
-            margin-bottom:
-              17px;
+            width: min(88%, 300px);
+            height: 16px;
+            margin: 0 auto 14px;
+            padding: 0;
           }
 
           .bunting-flag {
             width:
               auto;
             height:
-              19px;
+              16px;
             flex:
               1 1 0;
             min-width:
-              13px;
+              0;
           }
 
           .welcome-mobile-bunting {
             width: min(88%, 300px);
             height: 16px;
-            margin-bottom: 9px;
+            margin: 0 auto 14px;
           }
 
           .welcome-mobile-bunting .bunting-flag {
@@ -4470,32 +4525,24 @@ const Welcome: React.FC = () => {
           }
 
           .welcome-bunting {
-            width:
-              calc(100% + 16px);
-            height:
-              18px;
-            margin-bottom:
-              16px;
-            margin-left:
-              -8px;
-            margin-right:
-              -8px;
+            width: min(90%, 280px);
+            height: 15px;
+            margin: 0 auto 12px;
           }
 
           .bunting-flag {
             width:
               auto;
             height:
-              18px;
+              15px;
             flex:
               1 1 0;
             min-width:
-              11px;
+              0;
           }
 
           .welcome-display-title,
           .welcome-attractions-title,
-          .welcome-accommodations-title,
           .welcome-videos-title {
             font-size:
               1.70rem;
@@ -4504,7 +4551,7 @@ const Welcome: React.FC = () => {
           .welcome-mobile-bunting {
             width: min(90%, 280px);
             height: 15px;
-            margin-bottom: 8px;
+            margin: 0 auto 12px;
           }
 
           .welcome-mobile-bunting .bunting-flag {
@@ -4516,6 +4563,11 @@ const Welcome: React.FC = () => {
               0.49rem;
             gap:
               6px;
+          }
+
+          .welcome-attractions-toolbar {
+            margin-bottom:
+              0.8rem;
           }
 
           .welcome-heading-line {
