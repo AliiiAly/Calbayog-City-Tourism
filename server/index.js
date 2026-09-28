@@ -47,9 +47,7 @@ app.use(
         return callback(null, true);
       }
 
-      return callback(
-        new Error("Not allowed by CORS")
-      );
+      return callback(new Error("Not allowed by CORS"));
     },
 
     credentials: true,
@@ -196,6 +194,15 @@ app.use(
 app.use(
   "/api/favorites",
   require("./src/routes/favorites")
+);
+
+/* =========================================================
+   USER ITINERARIES
+========================================================= */
+
+app.use(
+  "/api/itineraries",
+  require("./src/routes/itineraries")
 );
 
 /* =========================================================
