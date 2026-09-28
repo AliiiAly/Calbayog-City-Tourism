@@ -82,11 +82,13 @@ const BottomNav: React.FC<BottomNavProps> = () => {
         {`
           /* ==========================================================
              CALBAYOG CITY TOURISM FOOTER
+             FULL RESPONSIVE LAYOUT
           ========================================================== */
 
           .calbayog-footer {
             position: relative;
             width: 100%;
+            max-width: 100%;
             margin: 0;
             padding: 0;
 
@@ -102,12 +104,18 @@ const BottomNav: React.FC<BottomNavProps> = () => {
               sans-serif;
 
             box-sizing: border-box;
+
+            overflow: hidden;
           }
 
           .calbayog-footer *,
           .calbayog-footer *::before,
           .calbayog-footer *::after {
             box-sizing: border-box;
+          }
+
+          .calbayog-footer a {
+            -webkit-tap-highlight-color: transparent;
           }
 
           /* ==========================================================
@@ -124,9 +132,9 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             display: grid;
 
             grid-template-columns:
-              minmax(280px, 1.35fr)
-              minmax(250px, 1fr)
-              minmax(250px, 1fr);
+              minmax(0, 1.35fr)
+              minmax(0, 1fr)
+              minmax(0, 1fr);
 
             column-gap: 70px;
 
@@ -139,11 +147,14 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
           .calbayog-footer-brand {
             min-width: 0;
+            width: 100%;
           }
 
           .calbayog-footer-brand-link {
             display: inline-flex;
             align-items: center;
+
+            max-width: 100%;
 
             gap: 9px;
 
@@ -152,12 +163,11 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             text-decoration: none;
           }
 
-          /*
-           * SMALLER LOGO
-           */
           .calbayog-footer-logo {
             width: 34px;
             height: 34px;
+
+            max-width: 34px;
 
             object-fit: contain;
 
@@ -166,13 +176,10 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             display: block;
           }
 
-          /*
-           * SMALLER CALBAYOG CITY TOURISM
-           *
-           * This is the ONLY blue text in the footer.
-           */
           .calbayog-footer-brand-name {
             margin: 0;
+
+            min-width: 0;
 
             color: #2D3195;
 
@@ -189,9 +196,13 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             font-weight: 700;
 
             letter-spacing: 0.01em;
+
+            overflow-wrap: anywhere;
           }
 
           .calbayog-footer-description {
+            width: 100%;
+
             max-width: 390px;
 
             margin: 13px 0 0;
@@ -201,6 +212,8 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             font-size: 0.76rem;
 
             line-height: 1.7;
+
+            overflow-wrap: anywhere;
           }
 
           /* ==========================================================
@@ -229,6 +242,8 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             flex-direction: column;
 
             gap: 12px;
+
+            width: 100%;
           }
 
           .calbayog-footer-contact {
@@ -237,6 +252,10 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             align-items: flex-start;
 
             gap: 9px;
+
+            width: 100%;
+
+            min-width: 0;
 
             color: #000000;
 
@@ -269,7 +288,13 @@ const BottomNav: React.FC<BottomNavProps> = () => {
           .calbayog-footer-contact-text {
             min-width: 0;
 
+            flex: 1 1 auto;
+
             color: #000000;
+
+            overflow-wrap: anywhere;
+
+            word-break: break-word;
           }
 
           /* ==========================================================
@@ -277,9 +302,13 @@ const BottomNav: React.FC<BottomNavProps> = () => {
           ========================================================== */
 
           .calbayog-footer-facebook-link {
-            display: inline-flex;
+            display: flex;
 
             align-items: flex-start;
+
+            width: 100%;
+
+            max-width: 100%;
 
             gap: 10px;
 
@@ -310,6 +339,8 @@ const BottomNav: React.FC<BottomNavProps> = () => {
           .calbayog-footer-facebook-info {
             min-width: 0;
 
+            flex: 1 1 auto;
+
             padding-top: 0;
           }
 
@@ -323,6 +354,10 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             line-height: 1.5;
 
             font-weight: 600;
+
+            overflow-wrap: anywhere;
+
+            word-break: break-word;
           }
 
           .calbayog-footer-facebook-label {
@@ -335,6 +370,8 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             font-size: 0.66rem;
 
             line-height: 1.5;
+
+            overflow-wrap: anywhere;
           }
 
           .calbayog-footer-facebook-link:hover
@@ -344,8 +381,6 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
           /* ==========================================================
              COPYRIGHT AREA
-
-             The divider is limited to the same content width.
           ========================================================== */
 
           .calbayog-footer-bottom-wrapper {
@@ -363,6 +398,8 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
             margin: 0;
 
+            padding: 0;
+
             display: flex;
 
             align-items: center;
@@ -373,6 +410,8 @@ const BottomNav: React.FC<BottomNavProps> = () => {
           }
 
           .calbayog-footer-copyright {
+            min-width: 0;
+
             margin: 0;
 
             color: #000000;
@@ -380,6 +419,8 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             font-size: 0.66rem;
 
             line-height: 1.5;
+
+            overflow-wrap: anywhere;
           }
 
           .calbayog-footer-location {
@@ -388,6 +429,8 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             align-items: center;
 
             gap: 5px;
+
+            min-width: 0;
 
             color: #000000;
 
@@ -408,17 +451,62 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             justify-content: center;
 
             color: #000000;
+
+            flex: 0 0 auto;
           }
 
           /* ==========================================================
-             TABLET
+             LARGE DESKTOP
+          ========================================================== */
+
+          @media (min-width: 1400px) {
+            .calbayog-footer-main {
+              width: min(1240px, calc(100% - 80px));
+
+              column-gap: 90px;
+
+              padding-top: 52px;
+
+              padding-bottom: 44px;
+            }
+
+            .calbayog-footer-bottom-wrapper {
+              width: min(1240px, calc(100% - 80px));
+            }
+          }
+
+          /* ==========================================================
+             DESKTOP / LAPTOP
+          ========================================================== */
+
+          @media (max-width: 1199px) {
+            .calbayog-footer-main {
+              width: calc(100% - 60px);
+
+              column-gap: 45px;
+            }
+
+            .calbayog-footer-bottom-wrapper {
+              width: calc(100% - 60px);
+            }
+          }
+
+          /* ==========================================================
+             TABLET / SMALL LAPTOP
           ========================================================== */
 
           @media (max-width: 900px) {
             .calbayog-footer-main {
-              grid-template-columns: 1fr 1fr 1fr;
+              width: calc(100% - 48px);
+
+              grid-template-columns:
+                minmax(0, 1fr)
+                minmax(0, 1fr)
+                minmax(0, 1fr);
 
               column-gap: 30px;
+
+              row-gap: 32px;
 
               padding: 40px 0 36px;
             }
@@ -430,13 +518,63 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             .calbayog-footer-bottom-wrapper {
               width: calc(100% - 48px);
             }
+
+            .calbayog-footer-bottom {
+              gap: 18px;
+            }
+
+            .calbayog-footer-contact {
+              font-size: 0.72rem;
+            }
+
+            .calbayog-footer-facebook-name {
+              font-size: 0.71rem;
+            }
+          }
+
+          /* ==========================================================
+             TABLET PORTRAIT / LARGE PHONE
+          ========================================================== */
+
+          @media (max-width: 760px) {
+            .calbayog-footer-main {
+              width: calc(100% - 36px);
+
+              display: grid;
+
+              grid-template-columns:
+                minmax(0, 1fr)
+                minmax(0, 1fr);
+
+              column-gap: 28px;
+
+              row-gap: 30px;
+
+              padding: 38px 0 34px;
+            }
+
+            .calbayog-footer-brand {
+              grid-column: 1 / -1;
+            }
+
+            .calbayog-footer-description {
+              max-width: 620px;
+            }
+
+            .calbayog-footer-bottom-wrapper {
+              width: calc(100% - 36px);
+            }
           }
 
           /* ==========================================================
              MOBILE
           ========================================================== */
 
-          @media (max-width: 700px) {
+          @media (max-width: 600px) {
+            .calbayog-footer {
+              overflow-x: hidden;
+            }
+
             .calbayog-footer-main {
               width: calc(100% - 30px);
 
@@ -449,11 +587,20 @@ const BottomNav: React.FC<BottomNavProps> = () => {
               padding: 36px 0 32px;
             }
 
+            .calbayog-footer-brand,
+            .calbayog-footer-main > div {
+              width: 100%;
+
+              min-width: 0;
+            }
+
             .calbayog-footer-logo {
               width: 31px;
               height: 31px;
 
-              flex-basis: 31px;
+              max-width: 31px;
+
+              flex: 0 0 31px;
             }
 
             .calbayog-footer-brand-name {
@@ -461,6 +608,10 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             }
 
             .calbayog-footer-description {
+              width: 100%;
+
+              max-width: none;
+
               margin-top: 11px;
 
               font-size: 0.72rem;
@@ -474,8 +625,44 @@ const BottomNav: React.FC<BottomNavProps> = () => {
               font-size: 0.76rem;
             }
 
+            .calbayog-footer-contact-list {
+              gap: 11px;
+            }
+
             .calbayog-footer-contact {
               font-size: 0.72rem;
+
+              line-height: 1.55;
+            }
+
+            .calbayog-footer-contact-icon {
+              width: 18px;
+              height: 18px;
+
+              flex-basis: 18px;
+            }
+
+            .calbayog-footer-facebook-link {
+              gap: 9px;
+            }
+
+            .calbayog-footer-facebook-icon {
+              width: 29px;
+              height: 29px;
+
+              flex-basis: 29px;
+            }
+
+            .calbayog-footer-facebook-name {
+              font-size: 0.72rem;
+
+              line-height: 1.45;
+            }
+
+            .calbayog-footer-facebook-label {
+              font-size: 0.64rem;
+
+              line-height: 1.45;
             }
 
             .calbayog-footer-bottom-wrapper {
@@ -493,15 +680,21 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
               justify-content: center;
 
-              gap: 6px;
+              gap: 7px;
             }
 
             .calbayog-footer-copyright {
+              width: 100%;
+
               font-size: 0.62rem;
+
+              line-height: 1.55;
             }
 
             .calbayog-footer-location {
               font-size: 0.62rem;
+
+              white-space: normal;
             }
           }
 
@@ -509,11 +702,15 @@ const BottomNav: React.FC<BottomNavProps> = () => {
              SMALL PHONES
           ========================================================== */
 
-          @media (max-width: 380px) {
+          @media (max-width: 420px) {
             .calbayog-footer-main {
               width: calc(100% - 24px);
 
-              padding-top: 30px;
+              gap: 26px;
+
+              padding-top: 32px;
+
+              padding-bottom: 30px;
             }
 
             .calbayog-footer-bottom-wrapper {
@@ -524,19 +721,221 @@ const BottomNav: React.FC<BottomNavProps> = () => {
               width: 29px;
               height: 29px;
 
+              max-width: 29px;
+
               flex-basis: 29px;
+            }
+
+            .calbayog-footer-brand-link {
+              gap: 8px;
             }
 
             .calbayog-footer-brand-name {
               font-size: 0.78rem;
+
+              line-height: 1.3;
             }
 
             .calbayog-footer-description {
               font-size: 0.69rem;
+
+              line-height: 1.65;
+            }
+
+            .calbayog-footer-heading {
+              font-size: 0.74rem;
             }
 
             .calbayog-footer-contact {
               font-size: 0.69rem;
+
+              gap: 8px;
+            }
+
+            .calbayog-footer-contact-icon {
+              width: 17px;
+              height: 17px;
+
+              flex-basis: 17px;
+            }
+
+            .calbayog-footer-facebook-icon {
+              width: 28px;
+              height: 28px;
+
+              flex-basis: 28px;
+            }
+
+            .calbayog-footer-facebook-name {
+              font-size: 0.69rem;
+            }
+
+            .calbayog-footer-facebook-label {
+              font-size: 0.61rem;
+            }
+
+            .calbayog-footer-copyright {
+              font-size: 0.60rem;
+            }
+
+            .calbayog-footer-location {
+              font-size: 0.60rem;
+            }
+          }
+
+          /* ==========================================================
+             VERY SMALL PHONES
+             320px - 360px
+          ========================================================== */
+
+          @media (max-width: 360px) {
+            .calbayog-footer-main {
+              width: calc(100% - 20px);
+
+              gap: 24px;
+
+              padding-top: 28px;
+
+              padding-bottom: 28px;
+            }
+
+            .calbayog-footer-bottom-wrapper {
+              width: calc(100% - 20px);
+            }
+
+            .calbayog-footer-logo {
+              width: 27px;
+              height: 27px;
+
+              max-width: 27px;
+
+              flex-basis: 27px;
+            }
+
+            .calbayog-footer-brand-name {
+              font-size: 0.74rem;
+            }
+
+            .calbayog-footer-description {
+              font-size: 0.66rem;
+
+              line-height: 1.6;
+            }
+
+            .calbayog-footer-heading {
+              margin-bottom: 11px;
+
+              font-size: 0.72rem;
+            }
+
+            .calbayog-footer-contact-list {
+              gap: 10px;
+            }
+
+            .calbayog-footer-contact {
+              font-size: 0.66rem;
+
+              gap: 7px;
+            }
+
+            .calbayog-footer-contact-icon {
+              width: 16px;
+              height: 16px;
+
+              flex-basis: 16px;
+            }
+
+            .calbayog-footer-facebook-link {
+              gap: 8px;
+            }
+
+            .calbayog-footer-facebook-icon {
+              width: 26px;
+              height: 26px;
+
+              flex-basis: 26px;
+
+              border-radius: 7px;
+            }
+
+            .calbayog-footer-facebook-name {
+              font-size: 0.66rem;
+            }
+
+            .calbayog-footer-facebook-label {
+              font-size: 0.58rem;
+            }
+
+            .calbayog-footer-bottom {
+              padding: 14px 0 16px;
+
+              gap: 6px;
+            }
+
+            .calbayog-footer-copyright {
+              font-size: 0.57rem;
+            }
+
+            .calbayog-footer-location {
+              font-size: 0.57rem;
+            }
+          }
+
+          /* ==========================================================
+             EXTREMELY NARROW DEVICES
+             Prevents horizontal overflow on unusual screens.
+          ========================================================== */
+
+          @media (max-width: 320px) {
+            .calbayog-footer-main {
+              width: calc(100% - 16px);
+
+              padding-top: 25px;
+
+              padding-bottom: 25px;
+            }
+
+            .calbayog-footer-bottom-wrapper {
+              width: calc(100% - 16px);
+            }
+
+            .calbayog-footer-brand-link {
+              gap: 7px;
+            }
+
+            .calbayog-footer-brand-name {
+              font-size: 0.70rem;
+            }
+
+            .calbayog-footer-description {
+              font-size: 0.63rem;
+            }
+
+            .calbayog-footer-contact {
+              font-size: 0.63rem;
+            }
+
+            .calbayog-footer-facebook-name {
+              font-size: 0.63rem;
+            }
+
+            .calbayog-footer-facebook-label {
+              font-size: 0.56rem;
+            }
+
+            .calbayog-footer-copyright,
+            .calbayog-footer-location {
+              font-size: 0.55rem;
+            }
+          }
+
+          /* ==========================================================
+             REDUCED MOTION
+          ========================================================== */
+
+          @media (prefers-reduced-motion: reduce) {
+            .calbayog-footer a {
+              transition: none !important;
             }
           }
         `}
