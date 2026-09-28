@@ -1,522 +1,524 @@
-import React, {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-
-import { Link } from "react-router-dom";
-
-import {
-  Container,
-  Row,
-  Col,
-  Card,
-} from "react-bootstrap";
-
-import {
-  getAccommodations,
-  getAttractions,
-  getFeaturedVideos,
-  FeaturedVideo,
-} from "../services/api";
-
-import {
-  Destination,
-  Accommodation,
-} from "../types";
-
-import { useAuth } from "../context/AuthContext";
-
-import { useFavorites } from "../context/FavoritesContext";
-
-import AttractionCard from "../components/attractions/AttractionCard";
-
-import {
-  FerrisWheel,
-  Houses,
-  CalendarFold,
+import React, { 
+  useEffect, 
+  useRef, 
+  useState, 
+} from "react"; 
+ 
+import { Link } from "react-router-dom"; 
+ 
+import { 
+  Container, 
+  Row, 
+  Col, 
+  Card, 
+} from "react-bootstrap"; 
+ 
+import { 
+  getAccommodations, 
+  getAttractions, 
+  getFeaturedVideos, 
+  FeaturedVideo, 
+} from "../services/api"; 
+ 
+import { 
+  Destination, 
+  Accommodation, 
+} from "../types"; 
+ 
+import { useAuth } from "../context/AuthContext"; 
+ 
+import { useFavorites } from "../context/FavoritesContext"; 
+ 
+import AttractionCard from "../components/attractions/AttractionCard"; 
+ 
+import { 
+  Mountain,
+  Hotel,
+  CalendarDays,
   Compass,
   NotebookPen,
-  Car,
-  MapPin,
-  CalendarDays,
-  CloudSun,
-  ChevronLeft,
-  ChevronRight,
-  Play,
-} from "lucide-react";
-
-import {
-  Swiper,
-  SwiperSlide,
-} from "swiper/react";
-
-import {
-  EffectCoverflow,
-  Navigation,
-  Pagination,
-  A11y,
-} from "swiper/modules";
-
-import type {
-  Swiper as SwiperInstance,
-} from "swiper";
-
-import "swiper/css";
-import "swiper/css/effect-coverflow";
-import "swiper/css/navigation";
-import "swiper/css/pagination";
-
-/* =========================================================
-   BRAND COLOR
-========================================================= */
-
-const CALBAYOG_BLUE = "#2D3195";
-
-/* =========================================================
-   QUICK ACCESS CARDS
-========================================================= */
-
-const quickCards: Array<{
-  icon: React.ReactNode;
-  label: string;
-  to: string;
-  color: string;
-  bg: string;
-}> = [
-  {
-    icon: (
-      <FerrisWheel
-        size={22}
-        strokeWidth={2.2}
-        aria-hidden="true"
-      />
-    ),
-    label: "Attractions",
-    to: "/attractions",
-    color: "#0077B6",
-    bg: "#e0f2ff",
-  },
-
-  {
-    icon: (
-      <Houses
-        size={22}
-        strokeWidth={2.2}
-        aria-hidden="true"
-      />
-    ),
-    label: "Stays",
-    to: "/accommodations",
-    color: "#F4A226",
-    bg: "#fff8e6",
-  },
-
-  {
-    icon: (
-      <CalendarFold
-        size={22}
-        strokeWidth={2.2}
-        aria-hidden="true"
-      />
-    ),
-    label: "Events",
-    to: "/events",
-    color: "#e63946",
-    bg: "#ffe8ea",
-  },
-
-  {
-    icon: (
-      <Compass
-        size={22}
-        strokeWidth={2.2}
-        aria-hidden="true"
-      />
-    ),
-    label: "Guides",
-    to: "/guides",
-    color: "#2d6a4f",
-    bg: "#e8f5ee",
-  },
-
-  {
-    icon: (
-      <NotebookPen
-        size={22}
-        strokeWidth={2.2}
-        aria-hidden="true"
-      />
-    ),
-    label: "Plan Trip",
-    to: "/itinerary",
-    color: "#6d4c41",
-    bg: "#f0ebe6",
-  },
-
-  {
-    icon: (
-      <Car
-        size={22}
-        strokeWidth={2.2}
-        aria-hidden="true"
-      />
-    ),
-    label: "Getting There",
-    to: "/getting-there",
-    color: "#0077B6",
-    bg: "#e0f2ff",
-  },
-];
-
-/* =========================================================
-   HERO SLIDES
-========================================================= */
-
-const heroSlides = [
-  {
-    id: "calbayog-1",
-    image: "/calbayog1.jpg",
-    alt: "Calbayog City",
-  },
-
-  {
-    id: "calbayog-2",
-    image: "/calbayog2.jpeg",
-    alt: "Calbayog City",
-  },
-
-  {
-    id: "calbayog-3",
-    image: "/calbayog3.jpg",
-    alt: "Calbayog City",
-  },
-
-  {
-    id: "calbayogonair",
-    image: "/calbayogonair.webp",
-    alt: "Calbayog City",
-  },
-];
-
-/* =========================================================
-   WEATHER TYPES
-========================================================= */
-
-type WeatherState = {
-  temperature: number | null;
-  weatherCode: number | null;
-  isDay: boolean;
-  loading: boolean;
-  error: boolean;
-};
-
-/* =========================================================
-   WEATHER DESCRIPTION
-========================================================= */
-
-const getWeatherDescription = (
-  weatherCode: number | null,
-): string => {
-  if (weatherCode === null) {
-    return "Weather unavailable";
-  }
-
-  if (weatherCode === 0) {
-    return "Clear sky";
-  }
-
-  if (
-    weatherCode === 1 ||
-    weatherCode === 2
-  ) {
-    return "Partly cloudy";
-  }
-
-  if (weatherCode === 3) {
-    return "Overcast";
-  }
-
-  if (
-    weatherCode === 45 ||
-    weatherCode === 48
-  ) {
-    return "Foggy";
-  }
-
-  if (
-    weatherCode === 51 ||
-    weatherCode === 53 ||
-    weatherCode === 55
-  ) {
-    return "Drizzle";
-  }
-
-  if (
-    weatherCode === 56 ||
-    weatherCode === 57
-  ) {
-    return "Freezing drizzle";
-  }
-
-  if (
-    weatherCode === 61 ||
-    weatherCode === 63 ||
-    weatherCode === 65
-  ) {
-    return "Rain";
-  }
-
-  if (
-    weatherCode === 66 ||
-    weatherCode === 67
-  ) {
-    return "Freezing rain";
-  }
-
-  if (
-    weatherCode === 71 ||
-    weatherCode === 73 ||
-    weatherCode === 75
-  ) {
-    return "Snow";
-  }
-
-  if (weatherCode === 77) {
-    return "Snow grains";
-  }
-
-  if (
-    weatherCode === 80 ||
-    weatherCode === 81 ||
-    weatherCode === 82
-  ) {
-    return "Rain showers";
-  }
-
-  if (
-    weatherCode === 85 ||
-    weatherCode === 86
-  ) {
-    return "Snow showers";
-  }
-
-  if (weatherCode === 95) {
-    return "Thunderstorm";
-  }
-
-  if (
-    weatherCode === 96 ||
-    weatherCode === 99
-  ) {
-    return "Thunderstorm with hail";
-  }
-
-  return "Current weather";
-};
-
-/* =========================================================
-   WELCOME COMPONENT
-========================================================= */
-
-const Welcome: React.FC = () => {
-  const { user } = useAuth();
-
-  const {
-    setFavoriteCount,
-  } = useFavorites();
-
-  /* =========================================================
-     WELCOME DATA
-  ========================================================= */
-
-  const [
-    welcomeDestinations,
-    setWelcomeDestinations,
-  ] = useState<Destination[]>([]);
-
-  const [
-    welcomeAccommodations,
-    setWelcomeAccommodations,
-  ] = useState<Accommodation[]>([]);
-
-  const [
-    loadingDestinations,
-    setLoadingDestinations,
-  ] = useState(true);
-
-  const [
-    loadingAccommodations,
-    setLoadingAccommodations,
-  ] = useState(true);
-
-  /* =========================================================
-     IMAGE ROTATION
-  ========================================================= */
-
-  const [
-    imageIndexes,
-    setImageIndexes,
-  ] = useState<Record<string, number>>({});
-
-  /* =========================================================
-     HERO SLIDER STATE
-  ========================================================= */
-
-  const [
-    activeSlide,
-    setActiveSlide,
-  ] = useState(0);
-
-  /* =========================================================
-     HERO TOUCH / SWIPE
-  ========================================================= */
-
-  const touchStartX =
-    useRef<number | null>(null);
-
-  const touchEndX =
-    useRef<number | null>(null);
-
-  /* =========================================================
-     HERO MOUSE DRAG
-  ========================================================= */
-
-  const mouseStartX =
-    useRef<number | null>(null);
-
-  const isDragging =
-    useRef(false);
-
-  /* =========================================================
-     FEATURED VIDEO CAROUSEL
-  ========================================================= */
-
-  const [
-    featuredVideos,
-    setFeaturedVideos,
-  ] = useState<FeaturedVideo[]>([]);
-
-  const [
-    loadingFeaturedVideos,
-    setLoadingFeaturedVideos,
-  ] = useState(true);
-
-  const [
-    featuredVideosError,
-    setFeaturedVideosError,
-  ] = useState(false);
-
-  const [
-    activeVideo,
-    setActiveVideo,
-  ] = useState(0);
-
-  const [
-    videoSwiper,
-    setVideoSwiper,
+  MapPinned,
+  MapPin, 
+  CloudSun, 
+  ChevronLeft, 
+  ChevronRight, 
+  Play, 
+} from "lucide-react"; 
+ 
+import { 
+  Swiper, 
+  SwiperSlide, 
+} from "swiper/react"; 
+ 
+import { 
+  EffectCoverflow, 
+  Navigation, 
+  Pagination, 
+  A11y, 
+} from "swiper/modules"; 
+ 
+import type { 
+  Swiper as SwiperInstance, 
+} from "swiper"; 
+ 
+import "swiper/css"; 
+import "swiper/css/effect-coverflow"; 
+import "swiper/css/navigation"; 
+import "swiper/css/pagination"; 
+ 
+/* ========================================================= 
+   BRAND COLOR 
+========================================================= */ 
+ 
+const CALBAYOG_BLUE = "#2D3195"; 
+ 
+/* ========================================================= 
+   QUICK ACCESS CARDS 
+========================================================= */ 
+ 
+const quickCards: Array<{ 
+  icon: React.ReactNode; 
+  label: string; 
+  to: string; 
+  color: string; 
+  bg: string; 
+}> = [ 
+  { 
+    icon: ( 
+      <Mountain 
+        size={23} 
+        strokeWidth={2.15} 
+        aria-hidden="true" 
+      /> 
+    ), 
+    label: "Attractions", 
+    to: "/attractions", 
+    color: "#0077B6", 
+    bg: "#e0f2ff", 
+  }, 
+ 
+  { 
+    icon: ( 
+      <Hotel 
+        size={23} 
+        strokeWidth={2.15} 
+        aria-hidden="true" 
+      /> 
+    ), 
+    label: "Stays", 
+    to: "/accommodations", 
+    color: "#F4A226", 
+    bg: "#fff8e6", 
+  }, 
+ 
+  { 
+    icon: ( 
+      <CalendarDays 
+        size={23} 
+        strokeWidth={2.15} 
+        aria-hidden="true" 
+      /> 
+    ), 
+    label: "Events", 
+    to: "/events", 
+    color: "#e63946", 
+    bg: "#ffe8ea", 
+  }, 
+ 
+  { 
+    icon: ( 
+      <Compass 
+        size={22} 
+        strokeWidth={2.2} 
+        aria-hidden="true" 
+      /> 
+    ), 
+    label: "Guides", 
+    to: "/guides", 
+    color: "#2d6a4f", 
+    bg: "#e8f5ee", 
+  }, 
+ 
+  { 
+    icon: ( 
+      <NotebookPen 
+        size={22} 
+        strokeWidth={2.2} 
+        aria-hidden="true" 
+      /> 
+    ), 
+    label: "Plan Trip", 
+    to: "/itinerary", 
+    color: "#6d4c41", 
+    bg: "#f0ebe6", 
+  }, 
+ 
+  { 
+    icon: ( 
+      <MapPinned 
+        size={23} 
+        strokeWidth={2.15} 
+        aria-hidden="true" 
+      /> 
+    ), 
+    label: "Getting There", 
+    to: "/getting-there", 
+    color: "#0077B6", 
+    bg: "#e0f2ff", 
+  }, 
+]; 
+ 
+/* ========================================================= 
+   HERO SLIDES 
+========================================================= */ 
+ 
+const heroSlides = [ 
+  { 
+    id: "calbayog-1", 
+    image: "/calbayog1.jpg", 
+    alt: "Calbayog City", 
+  }, 
+ 
+  { 
+    id: "calbayog-2", 
+    image: "/calbayog2.jpeg", 
+    alt: "Calbayog City", 
+  }, 
+ 
+  { 
+    id: "calbayog-3", 
+    image: "/calbayog3.jpg", 
+    alt: "Calbayog City", 
+  }, 
+ 
+  { 
+    id: "calbayogonair", 
+    image: "/calbayogonair.webp", 
+    alt: "Calbayog City", 
+  }, 
+]; 
+ 
+/* ========================================================= 
+   WEATHER TYPES 
+========================================================= */ 
+ 
+type WeatherState = { 
+  temperature: number | null; 
+  weatherCode: number | null; 
+  isDay: boolean; 
+  loading: boolean; 
+  error: boolean; 
+}; 
+ 
+/* ========================================================= 
+   WEATHER DESCRIPTION 
+========================================================= */ 
+ 
+const getWeatherDescription = ( 
+  weatherCode: number | null, 
+): string => { 
+  if (weatherCode === null) { 
+    return "Weather unavailable"; 
+  } 
+ 
+  if (weatherCode === 0) { 
+    return "Clear sky"; 
+  } 
+ 
+  if ( 
+    weatherCode === 1 || 
+    weatherCode === 2 
+  ) { 
+    return "Partly cloudy"; 
+  } 
+ 
+  if (weatherCode === 3) { 
+    return "Overcast"; 
+  } 
+ 
+  if ( 
+    weatherCode === 45 || 
+    weatherCode === 48 
+  ) { 
+    return "Foggy"; 
+  } 
+ 
+  if ( 
+    weatherCode === 51 || 
+    weatherCode === 53 || 
+    weatherCode === 55 
+  ) { 
+    return "Drizzle"; 
+  } 
+ 
+  if ( 
+    weatherCode === 56 || 
+    weatherCode === 57 
+  ) { 
+    return "Freezing drizzle"; 
+  } 
+ 
+  if ( 
+    weatherCode === 61 || 
+    weatherCode === 63 || 
+    weatherCode === 65 
+  ) { 
+    return "Rain"; 
+  } 
+ 
+  if ( 
+    weatherCode === 66 || 
+    weatherCode === 67 
+  ) { 
+    return "Freezing rain"; 
+  } 
+ 
+  if ( 
+    weatherCode === 71 || 
+    weatherCode === 73 || 
+    weatherCode === 75 
+  ) { 
+    return "Snow"; 
+  } 
+ 
+  if (weatherCode === 77) { 
+    return "Snow grains"; 
+  } 
+ 
+  if ( 
+    weatherCode === 80 || 
+    weatherCode === 81 || 
+    weatherCode === 82 
+  ) { 
+    return "Rain showers"; 
+  } 
+ 
+  if ( 
+    weatherCode === 85 || 
+    weatherCode === 86 
+  ) { 
+    return "Snow showers"; 
+  } 
+ 
+  if (weatherCode === 95) { 
+    return "Thunderstorm"; 
+  } 
+ 
+  if ( 
+    weatherCode === 96 || 
+    weatherCode === 99 
+  ) { 
+    return "Thunderstorm with hail"; 
+  } 
+ 
+  return "Current weather"; 
+}; 
+ 
+/* ========================================================= 
+   WELCOME COMPONENT 
+========================================================= */ 
+ 
+const Welcome: React.FC = () => { 
+  const { user } = useAuth(); 
+ 
+  const { 
+    setFavoriteCount, 
+  } = useFavorites(); 
+ 
+  /* ========================================================= 
+     WELCOME DATA 
+  ========================================================= */ 
+ 
+  const [ 
+    welcomeDestinations, 
+    setWelcomeDestinations, 
+  ] = useState<Destination[]>([]); 
+ 
+  const [ 
+    welcomeAccommodations, 
+    setWelcomeAccommodations, 
+  ] = useState<Accommodation[]>([]); 
+ 
+  const [ 
+    loadingDestinations, 
+    setLoadingDestinations, 
+  ] = useState(true); 
+ 
+  const [ 
+    loadingAccommodations, 
+    setLoadingAccommodations, 
+  ] = useState(true); 
+ 
+  /* ========================================================= 
+     IMAGE ROTATION 
+  ========================================================= */ 
+ 
+  const [ 
+    imageIndexes, 
+    setImageIndexes, 
+  ] = useState<Record<string, number>>({}); 
+ 
+  /* ========================================================= 
+     HERO SLIDER STATE 
+  ========================================================= */ 
+ 
+  const [ 
+    activeSlide, 
+    setActiveSlide, 
+  ] = useState(0); 
+ 
+  /* ========================================================= 
+     HERO TOUCH / SWIPE 
+  ========================================================= */ 
+ 
+  const touchStartX = 
+    useRef<number | null>(null); 
+ 
+  const touchEndX = 
+    useRef<number | null>(null); 
+ 
+  /* ========================================================= 
+     HERO MOUSE DRAG 
+  ========================================================= */ 
+ 
+  const mouseStartX = 
+    useRef<number | null>(null); 
+ 
+  const isDragging = 
+    useRef(false); 
+ 
+  /* ========================================================= 
+     FEATURED VIDEO CAROUSEL 
+  ========================================================= */ 
+ 
+  const [ 
+    featuredVideos, 
+    setFeaturedVideos, 
+  ] = useState<FeaturedVideo[]>([]); 
+ 
+  const [ 
+    loadingFeaturedVideos, 
+    setLoadingFeaturedVideos, 
+  ] = useState(true); 
+ 
+  const [ 
+    featuredVideosError, 
+    setFeaturedVideosError, 
+  ] = useState(false); 
+ 
+  const [ 
+    activeVideo, 
+    setActiveVideo, 
+  ] = useState(0); 
+ 
+  const [ 
+    videoSwiper, 
+    setVideoSwiper, 
   ] = useState<SwiperInstance | null>(null);
 
-  /* =========================================================
-     DATE
-  ========================================================= */
-
-  const [
-    currentDate,
-    setCurrentDate,
-  ] = useState("");
-
-  /* =========================================================
-     WEATHER
-  ========================================================= */
-
-  const [
-    weather,
-    setWeather,
-  ] = useState<WeatherState>({
-    temperature: null,
-    weatherCode: null,
-    isDay: true,
-    loading: true,
-    error: false,
-  });
-
-  /* =========================================================
-     USER GREETING
-  ========================================================= */
-
-  const firstName = user?.name
-    ? user.name
-        .trim()
-        .split(/\s+/)[0]
-    : "";
-
-  const welcomeGreeting =
-    firstName
-      ? `MABUHAY, ${firstName.toUpperCase()}!`
-      : "MABUHAY!";
-
-  /* =========================================================
-     LOAD CURRENT DATE
-  ========================================================= */
-
-  useEffect(() => {
-    const updateDate = () => {
-      const now = new Date();
-
-      const formattedDate =
-        new Intl.DateTimeFormat(
-          "en-PH",
-          {
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-            timeZone:
-              "Asia/Manila",
-          },
-        ).format(now);
-
-      setCurrentDate(
-        formattedDate,
-      );
-    };
-
-    updateDate();
-
-    const interval =
-      window.setInterval(
-        updateDate,
-        60 * 1000,
-      );
-
-    return () => {
-      window.clearInterval(
-        interval,
-      );
-    };
-  }, []);
-
-  /* =========================================================
-     LOAD CURRENT CALBAYOG WEATHER
-  ========================================================= */
-
-  useEffect(() => {
-    const controller =
-      new AbortController();
-
-    const loadWeather =
-      async () => {
-        try {
-          setWeather(
-            (previous) => ({
-              ...previous,
-              loading: true,
-              error: false,
-            }),
-          );
-
-          const geocodingResponse =
-            await fetch(
+  const videoRefs =
+    useRef<Record<string, HTMLVideoElement | null>>({}); 
+ 
+  /* ========================================================= 
+     DATE 
+  ========================================================= */ 
+ 
+  const [ 
+    currentDate, 
+    setCurrentDate, 
+  ] = useState(""); 
+ 
+  /* ========================================================= 
+     WEATHER 
+  ========================================================= */ 
+ 
+  const [ 
+    weather, 
+    setWeather, 
+  ] = useState<WeatherState>({ 
+    temperature: null, 
+    weatherCode: null, 
+    isDay: true, 
+    loading: true, 
+    error: false, 
+  }); 
+ 
+  /* ========================================================= 
+     USER GREETING 
+  ========================================================= */ 
+ 
+  const firstName = user?.name 
+    ? user.name 
+        .trim() 
+        .split(/\s+/)[0] 
+    : ""; 
+ 
+  const welcomeGreeting = 
+    firstName 
+      ? `MABUHAY, ${firstName.toUpperCase()}!` 
+      : "MABUHAY!"; 
+ 
+  /* ========================================================= 
+     LOAD CURRENT DATE 
+  ========================================================= */ 
+ 
+  useEffect(() => { 
+    const updateDate = () => { 
+      const now = new Date(); 
+ 
+      const formattedDate = 
+        new Intl.DateTimeFormat( 
+          "en-PH", 
+          { 
+            month: "long", 
+            day: "numeric", 
+            year: "numeric", 
+            timeZone: 
+              "Asia/Manila", 
+          }, 
+        ).format(now); 
+ 
+      setCurrentDate( 
+        formattedDate, 
+      ); 
+    }; 
+ 
+    updateDate(); 
+ 
+    const interval = 
+      window.setInterval( 
+        updateDate, 
+        60 * 1000, 
+      ); 
+ 
+    return () => { 
+      window.clearInterval( 
+        interval, 
+      ); 
+    }; 
+  }, []); 
+ 
+  /* ========================================================= 
+     LOAD CURRENT CALBAYOG WEATHER 
+  ========================================================= */ 
+ 
+  useEffect(() => { 
+    const controller = 
+      new AbortController(); 
+ 
+    const loadWeather = 
+      async () => { 
+        try { 
+          setWeather( 
+            (previous) => ({ 
+              ...previous, 
+              loading: true, 
+              error: false, 
+            }), 
+          ); 
+ 
+          const geocodingResponse = 
+            await fetch( 
               "https://geocoding-api.open-meteo.com/v1/search?name=Calbayog&count=10&language=en&format=json",
               {
                 signal:
@@ -1154,6 +1156,20 @@ const Welcome: React.FC = () => {
   ]);
 
   /* =========================================================
+     STOP PREVIOUS VIDEO WHEN CAROUSEL CHANGES
+  ========================================================= */
+
+  useEffect(() => {
+    Object.values(videoRefs.current).forEach(
+      (videoElement) => {
+        if (videoElement) {
+          videoElement.pause();
+        }
+      },
+    );
+  }, [activeVideo]);
+
+  /* =========================================================
      CURRENT HERO
   ========================================================= */
 
@@ -1426,9 +1442,10 @@ const Welcome: React.FC = () => {
             {quickCards.map(
               (card) => (
                 <Col
-                  xs={3}
-                  sm={3}
+                  xs={4}
+                  sm={4}
                   md={3}
+                  lg={2}
                   key={card.to}
                 >
                   <Link
@@ -1534,6 +1551,20 @@ const Welcome: React.FC = () => {
                   },
                 )}
               </Row>
+            
+              <div className="welcome-view-more-wrap">
+                <Link
+                  to="/attractions"
+                  className="welcome-view-more-button"
+                >
+                  View more attractions
+                  <ChevronRight
+                    size={17}
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  />
+                </Link>
+              </div>
             </section>
           )}
 
@@ -1889,6 +1920,10 @@ const Welcome: React.FC = () => {
                       <div className="welcome-video-cinematic-card">
                         <div className="welcome-video-media">
                           <video
+                            ref={(element) => {
+                              videoRefs.current[String(video.id)] =
+                                element;
+                            }}
                             className="welcome-video-player"
                             controls={
                               activeVideo ===
@@ -1901,22 +1936,17 @@ const Welcome: React.FC = () => {
                                 ? "metadata"
                                 : "none"
                             }
-                          
                             onPlay={() => {
-                              if (
-                                videoSwiper
-                              ) {
-                                videoSwiper.allowTouchMove =
-                                  false;
-                              }
-                            }}
-                            onPause={() => {
-                              if (
-                                videoSwiper
-                              ) {
-                                videoSwiper.allowTouchMove =
-                                  true;
-                              }
+                              Object.entries(videoRefs.current).forEach(
+                                ([videoId, videoElement]) => {
+                                  if (
+                                    videoElement &&
+                                    videoId !== String(video.id)
+                                  ) {
+                                    videoElement.pause();
+                                  }
+                                },
+                              );
                             }}
                             onEnded={() => {
                               if (
@@ -1949,31 +1979,6 @@ const Welcome: React.FC = () => {
                                 2
                               }
                             />
-                          </div>
-
-                          <div className="welcome-video-number">
-                            {String(
-                              index + 1,
-                            ).padStart(
-                              2,
-                              "0",
-                            )}
-                          </div>
-
-                          <div className="welcome-video-caption">
-                            <h3>
-                              {
-                                video.title
-                              }
-                            </h3>
-
-                            {video.description && (
-                              <p>
-                                {
-                                  video.description
-                                }
-                              </p>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -2038,6 +2043,11 @@ const Welcome: React.FC = () => {
           font-family:
             "Inter",
             sans-serif;
+        }
+
+        .welcome-container {
+          width: 100%;
+          max-width: 1240px;
         }
 
         .barabara-display {
@@ -2307,6 +2317,79 @@ const Welcome: React.FC = () => {
         .quick-card-label {
           font-weight:
             600;
+        }
+
+        .welcome-quick-card {
+          background: transparent !important;
+          transition: transform 0.22s ease;
+        }
+
+        .welcome-quick-card:hover {
+          transform: translateY(-3px);
+        }
+
+        .welcome-quick-card .quick-card-body {
+          padding: 0.2rem 0.15rem;
+        }
+
+        .welcome-quick-card .quick-card-icon-wrap {
+          width: 54px;
+          height: 54px;
+          margin: 0 auto 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 17px;
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+          transition: transform 0.22s ease, box-shadow 0.22s ease;
+        }
+
+        .welcome-quick-card:hover .quick-card-icon-wrap {
+          transform: translateY(-2px);
+          box-shadow: 0 9px 20px rgba(0, 0, 0, 0.09);
+        }
+
+        .welcome-quick-card .quick-card-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .welcome-quick-card .quick-card-label {
+          font-size: 0.74rem;
+          line-height: 1.25;
+        }
+
+        .welcome-view-more-wrap {
+          display: flex;
+          justify-content: center;
+          margin-top: 2rem;
+        }
+
+        .welcome-view-more-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          min-height: 42px;
+          padding: 0.65rem 1rem;
+          border: 1px solid rgba(45, 49, 149, 0.22);
+          border-radius: 999px;
+          background: #ffffff;
+          color: #2D3195;
+          font-size: 0.78rem;
+          font-weight: 700;
+          text-decoration: none;
+          box-shadow: 0 5px 16px rgba(0, 0, 0, 0.06);
+          transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        .welcome-view-more-button:hover {
+          color: #2D3195;
+          background: #f8f8ff;
+          text-decoration: none;
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.09);
         }
 
         /* =====================================================
@@ -2787,7 +2870,7 @@ const Welcome: React.FC = () => {
                 0,
                 0,
                 0,
-                0.82
+                0.28
               ) 100%
             );
         }
@@ -2844,102 +2927,9 @@ const Welcome: React.FC = () => {
             none;
         }
 
-        .welcome-video-number {
-          position:
-            absolute;
-          top:
-            22px;
-          right:
-            24px;
-          color:
-            rgba(
-              255,
-              255,
-              255,
-              0.82
-            );
-          font-size:
-            0.72rem;
-          font-weight:
-            700;
-          letter-spacing:
-            0.18em;
-          pointer-events:
-            none;
-        }
 
-        .welcome-video-caption {
-          position:
-            absolute;
-          left:
-            32px;
-          right:
-            32px;
-          bottom:
-            28px;
-          color:
-            #ffffff;
-          pointer-events:
-            none;
-        }
 
-        .welcome-video-caption h3 {
-          margin:
-            0 0 7px;
-          color:
-            #ffffff;
-          font-family:
-            "Barabara",
-            "Arial Black",
-            Arial,
-            sans-serif;
-          font-size:
-            clamp(
-              1.45rem,
-              3vw,
-              2.25rem
-            );
-          font-weight:
-            400;
-          line-height:
-            1;
-          letter-spacing:
-            0.015em;
-          text-shadow:
-            0 3px 15px
-            rgba(
-              0,
-              0,
-              0,
-              0.35
-            );
-        }
 
-        .welcome-video-caption p {
-          max-width:
-            600px;
-          margin:
-            0;
-          color:
-            rgba(
-              255,
-              255,
-              255,
-              0.86
-            );
-          font-size:
-            0.78rem;
-          line-height:
-            1.55;
-          text-shadow:
-            0 2px 8px
-            rgba(
-              0,
-              0,
-              0,
-              0.35
-            );
-        }
 
         .welcome-video-arrow {
           position:
@@ -3699,6 +3689,10 @@ const Welcome: React.FC = () => {
         ===================================================== */
 
         @media (max-width: 991.98px) {
+          .welcome-container {
+            padding-left: 18px;
+            padding-right: 18px;
+          }
           .welcome-hero-slider {
             height:
               370px;
@@ -3803,21 +3797,16 @@ const Welcome: React.FC = () => {
             width:
               84% !important;
           }
-
-          .welcome-video-caption {
-            left:
-              25px;
-            right:
-              25px;
-            bottom:
-              24px;
-          }
         }
 
         @media (max-width: 767.98px) {
+          .welcome-container {
+            padding-left: 15px;
+            padding-right: 15px;
+          }
           .welcome-hero-slider {
             height:
-              430px;
+              315px;
             border-radius:
               20px;
           }
@@ -3854,13 +3843,13 @@ const Welcome: React.FC = () => {
 
           .welcome-hero-content {
             left:
-              26px;
+              24px;
             right:
-              26px;
+              24px;
             top:
               auto;
             bottom:
-              52px;
+              38px;
             transform:
               none;
             max-width:
@@ -3869,18 +3858,18 @@ const Welcome: React.FC = () => {
 
           .welcome-hero-title {
             font-size:
-              2.7rem;
+              2.15rem;
             margin-bottom:
-              17px;
+              13px;
           }
 
           .welcome-hero-detail {
             font-size:
-              0.94rem;
+              0.82rem;
             gap:
-              10px;
-            margin-bottom:
               8px;
+            margin-bottom:
+              6px;
           }
 
           .welcome-hero-detail-icon {
@@ -3959,20 +3948,20 @@ const Welcome: React.FC = () => {
             width:
               100%;
             height:
-              24px;
-            margin-bottom:
               22px;
+            margin-bottom:
+              20px;
             padding:
               0;
           }
 
           .bunting-flag {
             width:
-              30px;
+              28px;
             height:
-              24px;
+              22px;
             flex-basis:
-              30px;
+              28px;
           }
 
           .bunting-flag:nth-child(n + 13) {
@@ -3997,9 +3986,9 @@ const Welcome: React.FC = () => {
           .welcome-display-title {
             font-size:
               clamp(
-                1.8rem,
-                8vw,
-                2.55rem
+                1.7rem,
+                7vw,
+                2.25rem
               );
           }
 
@@ -4010,7 +3999,28 @@ const Welcome: React.FC = () => {
 
           .welcome-quick-grid {
             row-gap:
-              42px;
+              32px;
+          }
+
+          .welcome-quick-card .quick-card-icon-wrap {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 8px;
+            border-radius: 15px;
+          }
+
+          .welcome-quick-card .quick-card-label {
+            font-size: 0.67rem;
+          }
+
+          .welcome-view-more-wrap {
+            margin-top: 1.6rem;
+          }
+
+          .welcome-view-more-button {
+            min-height: 40px;
+            padding: 0.58rem 0.9rem;
+            font-size: 0.72rem;
           }
 
           .welcome-attractions-heading {
@@ -4087,38 +4097,6 @@ const Welcome: React.FC = () => {
               40px;
           }
 
-          .welcome-video-number {
-            top:
-              18px;
-            right:
-              17px;
-            font-size:
-              0.63rem;
-          }
-
-          .welcome-video-caption {
-            left:
-              19px;
-            right:
-              19px;
-            bottom:
-              19px;
-          }
-
-          .welcome-video-caption h3 {
-            font-size:
-              1.35rem;
-            margin-bottom:
-              5px;
-          }
-
-          .welcome-video-caption p {
-            font-size:
-              0.68rem;
-            line-height:
-              1.45;
-          }
-
           .welcome-video-arrow {
             width:
               38px;
@@ -4143,36 +4121,40 @@ const Welcome: React.FC = () => {
         }
 
         @media (max-width: 480px) {
+          .welcome-container {
+            padding-left: 12px;
+            padding-right: 12px;
+          }
           .welcome-hero-slider {
             height:
-              410px;
+              285px;
             border-radius:
               18px;
           }
 
           .welcome-hero-content {
             left:
-              21px;
+              19px;
             right:
-              21px;
+              19px;
             bottom:
-              48px;
+              34px;
           }
 
           .welcome-hero-title {
             font-size:
-              2.25rem;
+              1.9rem;
             margin-bottom:
-              15px;
+              11px;
           }
 
           .welcome-hero-detail {
             font-size:
-              0.79rem;
+              0.72rem;
             gap:
-              8px;
-            margin-bottom:
               7px;
+            margin-bottom:
+              5px;
           }
 
           .welcome-hero-detail-icon {
@@ -4235,18 +4217,18 @@ const Welcome: React.FC = () => {
 
           .welcome-bunting {
             height:
-              20px;
-            margin-bottom:
               18px;
+            margin-bottom:
+              17px;
           }
 
           .bunting-flag {
             width:
-              25px;
+              23px;
             height:
-              20px;
+              18px;
             flex-basis:
-              25px;
+              23px;
           }
 
           .bunting-flag:nth-child(n + 11) {
@@ -4270,7 +4252,7 @@ const Welcome: React.FC = () => {
 
           .welcome-display-title {
             font-size:
-              2rem;
+              1.85rem;
           }
 
           .welcome-main-heading {
@@ -4290,7 +4272,7 @@ const Welcome: React.FC = () => {
 
           .welcome-attractions-title {
             font-size:
-              2rem;
+              1.85rem;
           }
 
           .welcome-accommodations-section {
@@ -4322,14 +4304,14 @@ const Welcome: React.FC = () => {
 
           .welcome-video-carousel {
             min-height:
-              350px;
+              325px;
           }
 
           .welcome-featured-swiper {
             height:
-              300px;
+              285px;
             padding:
-              15px 0 20px;
+              12px 0 18px;
           }
 
           .welcome-featured-swiper-slide {
@@ -4340,16 +4322,6 @@ const Welcome: React.FC = () => {
           .welcome-video-cinematic-card {
             border-radius:
               17px;
-          }
-
-          .welcome-video-caption h3 {
-            font-size:
-              1.15rem;
-          }
-
-          .welcome-video-caption p {
-            font-size:
-              0.62rem;
           }
 
           .welcome-video-arrow {
@@ -4371,6 +4343,16 @@ const Welcome: React.FC = () => {
           .welcome-intro-eyebrow {
             font-size:
               0.48rem;
+          }
+
+          .welcome-quick-card .quick-card-icon-wrap {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+          }
+
+          .welcome-quick-card .quick-card-label {
+            font-size: 0.62rem;
           }
 
           .welcome-intro-text {
@@ -4413,32 +4395,13 @@ const Welcome: React.FC = () => {
 
           .welcome-attractions-title {
             font-size:
-              1.82rem;
+              1.72rem;
           }
 
           .welcome-accommodations-title,
           .welcome-videos-title {
             font-size:
               1.5rem;
-          }
-
-          .welcome-video-caption {
-            left:
-              15px;
-            right:
-              15px;
-            bottom:
-              15px;
-          }
-
-          .welcome-video-caption h3 {
-            font-size:
-              1rem;
-          }
-
-          .welcome-video-caption p {
-            font-size:
-              0.58rem;
           }
         }
       `}</style>
