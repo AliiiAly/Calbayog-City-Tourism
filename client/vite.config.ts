@@ -72,6 +72,19 @@ export default defineConfig({
 
           {
             urlPattern:
+              /^https?:\/\/calbayog-city-tourism\.onrender\.com\/api\/(destinations|events|accommodations|guides)/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'render-api-cache',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 86400,
+              },
+            },
+          },
+
+          {
+            urlPattern:
               /^https?:\/\/tile\.openstreetmap\.org\/.*/,
             handler: 'CacheFirst',
             options: {
