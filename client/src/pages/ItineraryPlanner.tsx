@@ -821,7 +821,7 @@ const ItineraryPlanner: React.FC =
     const {
       user,
       userToken,
-      authLoading,
+      loading: authLoading,
     } = useAuth();
 
     const [itineraryId, setItineraryId] =
@@ -2026,14 +2026,13 @@ const ItineraryPlanner: React.FC =
                   </p>
                 </div>
               </div>
-              <Button
-                as={Link}
+              <Link
                 to="/"
                 className="planner-primary-button"
               >
                 <ChevronRight size={16} strokeWidth={2} />
                 Return Home
-              </Button>
+              </Link>
             </section>
           </Container>
         </div>
