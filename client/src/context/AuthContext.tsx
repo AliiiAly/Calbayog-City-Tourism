@@ -18,7 +18,17 @@ interface User {
   username: string;
   name: string;
   is_active: boolean;
+  role: "user";
+  email_verified?: boolean;
 }
+
+/* =========================================================
+   ADMIN TYPE
+========================================================= */
+
+type AuthenticatedAdmin = AdminUser & {
+  role: "admin";
+};
 
 /* =========================================================
    AUTH CONTEXT TYPE
@@ -29,10 +39,14 @@ interface AuthContextType {
      ADMIN AUTH
   ------------------------- */
 
-  admin: AdminUser | null;
+  admin: AuthenticatedAdmin | null;
   token: string | null;
 
-  login: (token: string, admin: AdminUser) => void;
+  login: (
+    token: string,
+    admin: AdminUser | AuthenticatedAdmin
+  ) => void;
+
   logout: () => void;
 
   isAuthenticated: boolean;
@@ -44,7 +58,11 @@ interface AuthContextType {
   user: User | null;
   userToken: string | null;
 
-  userLogin: (userData: User, accessToken: string) => void;
+  userLogin: (
+    userData: User | Omit<User, "role">,
+    accessToken: string
+  ) => void;
+
   userLogout: () => Promise<void>;
 
   isUserAuthenticated: boolean;
@@ -78,9 +96,9 @@ const USER_TOKEN_KEYS = [
    CONTEXT
 ========================================================= */
 
-const AuthContext = createContext<AuthContextType | undefined>(
-  undefined
-);
+const AuthContext = createContext<
+  AuthContextType | undefined
+>(undefined);
 
 /* =========================================================
    TOKEN HELPERS
@@ -92,17 +110,24 @@ const AuthContext = createContext<AuthContextType | undefined>(
  *
  * The API interceptor adds "Bearer " itself.
  */
-const normalizeToken = (accessToken: string): string => {
-  if (!accessToken || typeof accessToken !== "string") {
+const normalizeToken = (
+  accessToken: string
+): string => {
+  if (
+    !accessToken ||
+    typeof accessToken !== "string"
+  ) {
     return "";
   }
 
-  let normalizedToken = accessToken.trim();
+  let normalizedToken =
+    accessToken.trim();
 
-  normalizedToken = normalizedToken.replace(
-    /^Bearer\s+/i,
-    ""
-  );
+  normalizedToken =
+    normalizedToken.replace(
+      /^Bearer\s+/i,
+      ""
+    );
 
   return normalizedToken.trim();
 };
@@ -115,14 +140,80 @@ const normalizeToken = (accessToken: string): string => {
  *
  * header.payload.signature
  */
-const isValidJwtFormat = (accessToken: string): boolean => {
+const isValidJwtFormat = (
+  accessToken: string
+): boolean => {
   if (!accessToken) {
     return false;
   }
 
-  const tokenParts = accessToken.split(".");
+  const tokenParts =
+    accessToken.split(".");
 
   return tokenParts.length === 3;
+};
+
+/* =========================================================
+   ADMIN STORAGE HELPERS
+========================================================= */
+
+/**
+ * Removes all admin authentication information.
+ */
+const clearAdminStorage = (): void => {
+  localStorage.removeItem(
+    ADMIN_TOKEN_KEY
+  );
+
+  localStorage.removeItem(
+    ADMIN_USER_KEY
+  );
+
+  sessionStorage.removeItem(
+    ADMIN_TOKEN_KEY
+  );
+
+  sessionStorage.removeItem(
+    ADMIN_USER_KEY
+  );
+};
+
+/**
+ * Saves admin authentication information.
+ */
+const saveAdminSession = (
+  accessToken: string,
+  adminUser: AuthenticatedAdmin
+): void => {
+  const normalizedToken =
+    normalizeToken(accessToken);
+
+  if (!normalizedToken) {
+    return;
+  }
+
+  const serializedAdmin =
+    JSON.stringify(adminUser);
+
+  localStorage.setItem(
+    ADMIN_TOKEN_KEY,
+    normalizedToken
+  );
+
+  localStorage.setItem(
+    ADMIN_USER_KEY,
+    serializedAdmin
+  );
+
+  sessionStorage.setItem(
+    ADMIN_TOKEN_KEY,
+    normalizedToken
+  );
+
+  sessionStorage.setItem(
+    ADMIN_USER_KEY,
+    serializedAdmin
+  );
 };
 
 /* =========================================================
@@ -133,39 +224,70 @@ const isValidJwtFormat = (accessToken: string): boolean => {
  * Removes all user authentication information.
  */
 const clearUserStorage = (): void => {
-  USER_TOKEN_KEYS.forEach((key) => {
-    localStorage.removeItem(key);
-    sessionStorage.removeItem(key);
-  });
+  USER_TOKEN_KEYS.forEach(
+    (key) => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    }
+  );
 
-  localStorage.removeItem(USER_DATA_KEY);
-  sessionStorage.removeItem(USER_DATA_KEY);
+  localStorage.removeItem(
+    USER_DATA_KEY
+  );
+
+  sessionStorage.removeItem(
+    USER_DATA_KEY
+  );
 };
 
 /**
- * Saves the user token to all supported storage keys.
+ * Saves the user token to all supported
+ * storage keys.
  */
-const saveUserToken = (accessToken: string): void => {
-  const normalizedToken = normalizeToken(accessToken);
+const saveUserToken = (
+  accessToken: string
+): void => {
+  const normalizedToken =
+    normalizeToken(accessToken);
 
   if (!normalizedToken) {
     return;
   }
 
-  USER_TOKEN_KEYS.forEach((key) => {
-    localStorage.setItem(key, normalizedToken);
-    sessionStorage.setItem(key, normalizedToken);
-  });
+  USER_TOKEN_KEYS.forEach(
+    (key) => {
+      localStorage.setItem(
+        key,
+        normalizedToken
+      );
+
+      sessionStorage.setItem(
+        key,
+        normalizedToken
+      );
+    }
+  );
 };
 
 /**
- * Saves user information to localStorage and sessionStorage.
+ * Saves user information to localStorage
+ * and sessionStorage.
  */
-const saveUserData = (userData: User): void => {
-  const serializedUser = JSON.stringify(userData);
+const saveUserData = (
+  userData: User
+): void => {
+  const serializedUser =
+    JSON.stringify(userData);
 
-  localStorage.setItem(USER_DATA_KEY, serializedUser);
-  sessionStorage.setItem(USER_DATA_KEY, serializedUser);
+  localStorage.setItem(
+    USER_DATA_KEY,
+    serializedUser
+  );
+
+  sessionStorage.setItem(
+    USER_DATA_KEY,
+    serializedUser
+  );
 };
 
 /**
@@ -173,16 +295,28 @@ const saveUserData = (userData: User): void => {
  */
 const getStoredUserToken = (): string | null => {
   for (const key of USER_TOKEN_KEYS) {
-    const localToken = localStorage.getItem(key);
+    const localToken =
+      localStorage.getItem(key);
 
-    if (localToken && localToken.trim()) {
-      return normalizeToken(localToken);
+    if (
+      localToken &&
+      localToken.trim()
+    ) {
+      return normalizeToken(
+        localToken
+      );
     }
 
-    const sessionToken = sessionStorage.getItem(key);
+    const sessionToken =
+      sessionStorage.getItem(key);
 
-    if (sessionToken && sessionToken.trim()) {
-      return normalizeToken(sessionToken);
+    if (
+      sessionToken &&
+      sessionToken.trim()
+    ) {
+      return normalizeToken(
+        sessionToken
+      );
     }
   }
 
@@ -193,13 +327,19 @@ const getStoredUserToken = (): string | null => {
  * Retrieves stored user data.
  */
 const getStoredUserData = (): string | null => {
-  const localUserData = localStorage.getItem(USER_DATA_KEY);
+  const localUserData =
+    localStorage.getItem(
+      USER_DATA_KEY
+    );
 
   if (localUserData) {
     return localUserData;
   }
 
-  const sessionUserData = sessionStorage.getItem(USER_DATA_KEY);
+  const sessionUserData =
+    sessionStorage.getItem(
+      USER_DATA_KEY
+    );
 
   if (sessionUserData) {
     return sessionUserData;
@@ -208,10 +348,21 @@ const getStoredUserData = (): string | null => {
   return null;
 };
 
+/* =========================================================
+   NORMALIZATION HELPERS
+========================================================= */
+
 /**
- * Converts incoming user data into a consistent format.
+ * Converts incoming user data into a
+ * consistent format.
  */
-const normalizeUserData = (userData: User): User | null => {
+const normalizeUserData = (
+  userData:
+    | User
+    | Omit<User, "role">
+    | null
+    | undefined
+): User | null => {
   if (!userData) {
     return null;
   }
@@ -226,17 +377,64 @@ const normalizeUserData = (userData: User): User | null => {
 
   const normalizedUser: User = {
     id: String(userData.id),
-    email: String(userData.email || ""),
+
+    email: String(
+      userData.email || ""
+    ),
+
     username: String(
       userData.username ||
         userData.email ||
         ""
     ),
-    name: String(userData.name || ""),
-    is_active: userData.is_active !== false,
+
+    name: String(
+      userData.name || ""
+    ),
+
+    is_active:
+      userData.is_active !== false,
+
+    role: "user",
+
+    email_verified:
+      "email_verified" in userData &&
+      typeof userData.email_verified ===
+        "boolean"
+        ? userData.email_verified
+        : undefined,
   };
 
   return normalizedUser;
+};
+
+/**
+ * Converts incoming admin data into
+ * a consistent authenticated format.
+ */
+const normalizeAdminData = (
+  adminUser:
+    | AdminUser
+    | AuthenticatedAdmin
+    | null
+    | undefined
+): AuthenticatedAdmin | null => {
+  if (!adminUser) {
+    return null;
+  }
+
+  if (
+    adminUser.id === undefined ||
+    adminUser.id === null ||
+    String(adminUser.id).trim() === ""
+  ) {
+    return null;
+  }
+
+  return {
+    ...adminUser,
+    role: "admin",
+  };
 };
 
 /* =========================================================
@@ -252,21 +450,46 @@ export const AuthProvider = ({
      ADMIN STATE
   ======================================================= */
 
-  const [admin, setAdmin] = useState<AdminUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [
+    admin,
+    setAdmin,
+  ] = useState<AuthenticatedAdmin | null>(
+    null
+  );
+
+  const [
+    token,
+    setToken,
+  ] = useState<string | null>(
+    null
+  );
 
   /* =======================================================
      USER STATE
   ======================================================= */
 
-  const [user, setUser] = useState<User | null>(null);
-  const [userToken, setUserToken] = useState<string | null>(null);
+  const [
+    user,
+    setUser,
+  ] = useState<User | null>(
+    null
+  );
+
+  const [
+    userToken,
+    setUserToken,
+  ] = useState<string | null>(
+    null
+  );
 
   /* =======================================================
      GLOBAL LOADING STATE
   ======================================================= */
 
-  const [loading, setLoading] = useState(true);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
   /* =======================================================
      INITIALIZE AUTHENTICATION
@@ -275,112 +498,190 @@ export const AuthProvider = ({
   useEffect(() => {
     let mounted = true;
 
-    const initializeAuth = (): void => {
-      try {
-        /* =================================================
-           RESTORE ADMIN SESSION
-        ================================================= */
+    const initializeAuth =
+      (): void => {
+        try {
+          /* =================================================
+             RESTORE ADMIN SESSION
+          ================================================= */
 
-        const storedAdminToken =
-          localStorage.getItem(ADMIN_TOKEN_KEY);
+          const storedAdminToken =
+            localStorage.getItem(
+              ADMIN_TOKEN_KEY
+            );
 
-        const storedAdmin =
-          localStorage.getItem(ADMIN_USER_KEY);
+          const storedAdmin =
+            localStorage.getItem(
+              ADMIN_USER_KEY
+            );
 
-        if (
-          storedAdminToken &&
-          storedAdmin &&
-          storedAdmin !== "undefined" &&
-          storedAdmin !== "null"
-        ) {
+          if (
+            storedAdminToken &&
+            storedAdmin &&
+            storedAdmin !==
+              "undefined" &&
+            storedAdmin !== "null"
+          ) {
+            if (
+              isValidJwtFormat(
+                storedAdminToken
+              )
+            ) {
+              try {
+                const parsedAdmin =
+                  JSON.parse(
+                    storedAdmin
+                  );
+
+                const normalizedAdmin =
+                  normalizeAdminData(
+                    parsedAdmin
+                  );
+
+                if (
+                  normalizedAdmin &&
+                  mounted
+                ) {
+                  const normalizedAdminToken =
+                    normalizeToken(
+                      storedAdminToken
+                    );
+
+                  saveAdminSession(
+                    normalizedAdminToken,
+                    normalizedAdmin
+                  );
+
+                  setToken(
+                    normalizedAdminToken
+                  );
+
+                  setAdmin(
+                    normalizedAdmin
+                  );
+                }
+              } catch (error) {
+                console.error(
+                  "Failed to parse stored admin user:",
+                  error
+                );
+
+                clearAdminStorage();
+              }
+            } else {
+              console.warn(
+                "Stored admin token has an invalid JWT format."
+              );
+
+              clearAdminStorage();
+            }
+          }
+
+          /* =================================================
+             RESTORE USER SESSION
+          ================================================= */
+
+          const storedUserToken =
+            getStoredUserToken();
+
+          const storedUserData =
+            getStoredUserData();
+
+          /*
+            It is completely valid to have
+            no user session.
+          */
+
+          if (
+            !storedUserToken ||
+            !storedUserData
+          ) {
+            return;
+          }
+
+          if (
+            storedUserData ===
+              "undefined" ||
+            storedUserData === "null"
+          ) {
+            clearUserStorage();
+            return;
+          }
+
+          if (
+            !isValidJwtFormat(
+              storedUserToken
+            )
+          ) {
+            console.warn(
+              "Stored user token has an invalid JWT format."
+            );
+
+            clearUserStorage();
+            return;
+          }
+
           try {
-            const parsedAdmin = JSON.parse(storedAdmin);
+            const parsedUserData =
+              JSON.parse(
+                storedUserData
+              );
+
+            const normalizedUser =
+              normalizeUserData(
+                parsedUserData
+              );
+
+            if (
+              !normalizedUser
+            ) {
+              clearUserStorage();
+              return;
+            }
+
+            if (
+              !normalizedUser.is_active
+            ) {
+              clearUserStorage();
+              return;
+            }
 
             if (mounted) {
-              setToken(storedAdminToken);
-              setAdmin(parsedAdmin);
+              saveUserToken(
+                storedUserToken
+              );
+
+              saveUserData(
+                normalizedUser
+              );
+
+              setUser(
+                normalizedUser
+              );
+
+              setUserToken(
+                storedUserToken
+              );
             }
           } catch (error) {
             console.error(
-              "Failed to parse stored admin user:",
+              "Failed to parse stored user data:",
               error
             );
 
-            localStorage.removeItem(ADMIN_TOKEN_KEY);
-            localStorage.removeItem(ADMIN_USER_KEY);
-          }
-        }
-
-        /* =================================================
-           RESTORE USER SESSION
-        ================================================= */
-
-        const storedToken = getStoredUserToken();
-        const storedUserData = getStoredUserData();
-
-        if (!storedToken || !storedUserData) {
-          return;
-        }
-
-        if (
-          storedUserData === "undefined" ||
-          storedUserData === "null"
-        ) {
-          clearUserStorage();
-          return;
-        }
-
-        if (!isValidJwtFormat(storedToken)) {
-          console.warn(
-            "Stored user token has an invalid JWT format."
-          );
-
-          clearUserStorage();
-          return;
-        }
-
-        try {
-          const parsedUserData = JSON.parse(storedUserData);
-
-          const normalizedUser =
-            normalizeUserData(parsedUserData);
-
-          if (!normalizedUser) {
             clearUserStorage();
-            return;
-          }
-
-          if (!normalizedUser.is_active) {
-            clearUserStorage();
-            return;
-          }
-
-          if (mounted) {
-            saveUserToken(storedToken);
-            saveUserData(normalizedUser);
-
-            setUser(normalizedUser);
-            setUserToken(storedToken);
           }
         } catch (error) {
           console.error(
-            "Failed to parse stored user data:",
+            "Authentication initialization error:",
             error
           );
-
-          clearUserStorage();
+        } finally {
+          if (mounted) {
+            setLoading(false);
+          }
         }
-      } catch (error) {
-        console.error(
-          "Authentication initialization error:",
-          error
-        );
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
+      };
 
     initializeAuth();
 
@@ -395,9 +696,12 @@ export const AuthProvider = ({
 
   const login = (
     newToken: string,
-    adminUser: AdminUser
+    adminUser:
+      | AdminUser
+      | AuthenticatedAdmin
   ): void => {
-    const normalizedToken = normalizeToken(newToken);
+    const normalizedToken =
+      normalizeToken(newToken);
 
     if (!normalizedToken) {
       console.error(
@@ -407,17 +711,72 @@ export const AuthProvider = ({
       return;
     }
 
-    setToken(normalizedToken);
-    setAdmin(adminUser);
+    if (
+      !isValidJwtFormat(
+        normalizedToken
+      )
+    ) {
+      console.error(
+        "Admin login failed: The access token does not have a valid JWT format."
+      );
 
-    localStorage.setItem(
-      ADMIN_TOKEN_KEY,
+      return;
+    }
+
+    const normalizedAdmin =
+      normalizeAdminData(
+        adminUser
+      );
+
+    if (!normalizedAdmin) {
+      console.error(
+        "Admin login failed: Invalid admin information."
+      );
+
+      return;
+    }
+
+    /*
+      Clear any old admin session first.
+    */
+
+    clearAdminStorage();
+
+    /*
+      Update React state.
+    */
+
+    setToken(
       normalizedToken
     );
 
-    localStorage.setItem(
-      ADMIN_USER_KEY,
-      JSON.stringify(adminUser)
+    setAdmin(
+      normalizedAdmin
+    );
+
+    /*
+      Save current admin session.
+    */
+
+    saveAdminSession(
+      normalizedToken,
+      normalizedAdmin
+    );
+
+    console.log(
+      "Admin login successful:",
+      {
+        adminId:
+          normalizedAdmin.id,
+        role:
+          normalizedAdmin.role,
+        hasToken:
+          Boolean(
+            normalizedToken
+          ),
+        tokenLength:
+          normalizedToken.length,
+      }
     );
   };
 
@@ -429,8 +788,7 @@ export const AuthProvider = ({
     setToken(null);
     setAdmin(null);
 
-    localStorage.removeItem(ADMIN_TOKEN_KEY);
-    localStorage.removeItem(ADMIN_USER_KEY);
+    clearAdminStorage();
   };
 
   /* =======================================================
@@ -438,10 +796,15 @@ export const AuthProvider = ({
   ======================================================= */
 
   const userLogin = (
-    userData: User,
+    userData:
+      | User
+      | Omit<User, "role">,
     accessToken: string
   ): void => {
-    const normalizedToken = normalizeToken(accessToken);
+    const normalizedToken =
+      normalizeToken(
+        accessToken
+      );
 
     /* ---------------------------------------------
        Validate access token
@@ -455,7 +818,11 @@ export const AuthProvider = ({
       return;
     }
 
-    if (!isValidJwtFormat(normalizedToken)) {
+    if (
+      !isValidJwtFormat(
+        normalizedToken
+      )
+    ) {
       console.error(
         "User login failed: The access token does not have a valid JWT format."
       );
@@ -467,7 +834,10 @@ export const AuthProvider = ({
        Validate user information
     --------------------------------------------- */
 
-    const normalizedUser = normalizeUserData(userData);
+    const normalizedUser =
+      normalizeUserData(
+        userData
+      );
 
     if (!normalizedUser) {
       console.error(
@@ -481,7 +851,9 @@ export const AuthProvider = ({
        Prevent inactive account login
     --------------------------------------------- */
 
-    if (!normalizedUser.is_active) {
+    if (
+      !normalizedUser.is_active
+    ) {
       console.error(
         "User login failed: The account is inactive."
       );
@@ -495,8 +867,8 @@ export const AuthProvider = ({
     }
 
     /*
-      Clear any old user session before saving
-      the new authenticated session.
+      Clear any old user session
+      before saving the new session.
     */
 
     clearUserStorage();
@@ -505,41 +877,65 @@ export const AuthProvider = ({
        Update React state
     --------------------------------------------- */
 
-    setUser(normalizedUser);
-    setUserToken(normalizedToken);
+    setUser(
+      normalizedUser
+    );
+
+    setUserToken(
+      normalizedToken
+    );
 
     /* ---------------------------------------------
        Save current session
     --------------------------------------------- */
 
-    saveUserToken(normalizedToken);
-    saveUserData(normalizedUser);
+    saveUserToken(
+      normalizedToken
+    );
 
-    console.log("User login successful:", {
-      userId: normalizedUser.id,
-      hasToken: Boolean(normalizedToken),
-      tokenLength: normalizedToken.length,
-      tokenPartCount: normalizedToken.split(".").length,
-    });
+    saveUserData(
+      normalizedUser
+    );
+
+    console.log(
+      "User login successful:",
+      {
+        userId:
+          normalizedUser.id,
+        role:
+          normalizedUser.role,
+        hasToken:
+          Boolean(
+            normalizedToken
+          ),
+        tokenLength:
+          normalizedToken.length,
+        tokenPartCount:
+          normalizedToken
+            .split(".")
+            .length,
+      }
+    );
   };
 
   /* =======================================================
      USER LOGOUT
   ======================================================= */
 
-  const userLogout = async (): Promise<void> => {
-    try {
-      setUser(null);
-      setUserToken(null);
+  const userLogout =
+    async (): Promise<void> => {
+      try {
+        setUser(null);
+        setUserToken(null);
 
-      clearUserStorage();
-    } catch (error) {
-      console.error(
-        "User logout error:",
-        error
-      );
-    }
-  };
+        clearUserStorage();
+      } catch (error) {
+        console.error(
+          "User logout error:",
+          error
+        );
+      }
+    };
 
   /* =======================================================
      CONTEXT VALUE
@@ -556,7 +952,9 @@ export const AuthProvider = ({
     login,
     logout,
 
-    isAuthenticated: Boolean(token),
+    isAuthenticated:
+      Boolean(token) &&
+      Boolean(admin),
 
     /* -------------------------
        USER
@@ -569,7 +967,8 @@ export const AuthProvider = ({
     userLogout,
 
     isUserAuthenticated:
-      Boolean(userToken) && Boolean(user),
+      Boolean(userToken) &&
+      Boolean(user),
 
     /* -------------------------
        GLOBAL
@@ -583,7 +982,9 @@ export const AuthProvider = ({
   ======================================================= */
 
   return (
-    <AuthContext.Provider value={contextValue}>
+    <AuthContext.Provider
+      value={contextValue}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -593,14 +994,18 @@ export const AuthProvider = ({
    USE AUTH HOOK
 ========================================================= */
 
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
+export const useAuth =
+  (): AuthContextType => {
+    const context =
+      useContext(
+        AuthContext
+      );
 
-  if (!context) {
-    throw new Error(
-      "useAuth must be used within AuthProvider"
-    );
-  }
+    if (!context) {
+      throw new Error(
+        "useAuth must be used within AuthProvider"
+      );
+    }
 
-  return context;
-};
+    return context;
+  };
