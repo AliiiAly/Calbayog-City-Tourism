@@ -34,6 +34,10 @@ const normalizeEmail = (email) => {
     .toLowerCase();
 };
 
+const normalizeLoginValue = (value) => {
+  return String(value || "").trim();
+};
+
 const isGmailAddress = (email) => {
   return /^[a-zA-Z0-9._%+-]+@gmail\.com$/i.test(email);
 };
@@ -75,70 +79,404 @@ const getJwtSecret = () => {
 };
 
 /* =========================================================
-   ADMIN AUTHENTICATION
+   JWT HELPERS
+========================================================= */
+
+/**
+ * Creates the unified authentication token.
+ *
+ * Both users and admins use the same JWT structure.
+ *
+ * role:
+ *   "user"
+ *   "admin"
+ */
+const createAuthToken = ({
+  id,
+  username,
+  email,
+  name,
+  role,
+}) => {
+  return jwt.sign(
+    {
+      id,
+      username,
+      email: email || "",
+      name: name || "",
+      role,
+    },
+    getJwtSecret(),
+    {
+      expiresIn: "8h",
+    }
+  );
+};
+
+/**
+ * Creates the unified account object returned
+ * to the frontend.
+ */
+const createAuthUser = ({
+  id,
+  username,
+  email,
+  name,
+  role,
+  is_active,
+  email_verified,
+}) => {
+  return {
+    id,
+    username: username || email || "",
+    email: email || username || "",
+    name: name || "",
+    role,
+    is_active:
+      typeof is_active === "boolean"
+        ? is_active
+        : true,
+    ...(typeof email_verified === "boolean"
+      ? {
+          email_verified,
+        }
+      : {}),
+  };
+};
+
+/* =========================================================
+   ADMIN ROLE PROTECTION
+========================================================= */
+
+/**
+ * The existing protect middleware verifies the JWT.
+ *
+ * This additional middleware makes sure that routes
+ * intended only for admins cannot be accessed using
+ * a normal user token.
+ */
+const requireAdmin = (req, res, next) => {
+  if (!req.auth) {
+    return res.status(401).json({
+      message: "Authentication required.",
+    });
+  }
+
+  if (req.auth.role !== "admin") {
+    return res.status(403).json({
+      message: "Admin access required.",
+    });
+  }
+
+  return next();
+};
+
+/* =========================================================
+   UNIFIED AUTHENTICATION
 ========================================================= */
 
 /*
   POST /api/auth/login
 
-  Admin login
+  ONE LOGIN ENDPOINT FOR BOTH USERS AND ADMINS.
 
-  IMPORTANT:
-  Existing admin accounts may use the mobile_pin
-  as the login credential.
+  Authentication order:
 
-  We therefore support BOTH:
+  1. Check the users table.
+  2. If no matching user is found, check admins.
+  3. If a valid user is found:
+       role = "user"
+  4. If a valid admin is found:
+       role = "admin"
 
-  1. bcrypt hashed admin.password
-  2. existing admin.mobile_pin
+  The two Supabase tables remain separate.
 
-  After successful authentication, this route always
-  returns a real JWT so protected admin routes work.
+  The frontend receives one consistent response:
+
+  {
+    token,
+    user: {
+      id,
+      username,
+      email,
+      name,
+      role,
+      is_active
+    }
+  }
+
+  For temporary compatibility with the existing
+  AdminLogin/api.ts code, admins also receive
+  an "admin" property.
 */
 router.post("/login", async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const loginValue =
+      normalizeLoginValue(
+        req.body.username ||
+          req.body.email
+      );
 
-    if (!username || !password) {
+    const password = String(
+      req.body.password || ""
+    );
+
+    if (!loginValue || !password) {
       return res.status(400).json({
         message:
-          "Username and password are required",
+          "Username and password are required.",
       });
     }
 
-    const response = await axios.get(
-      `${getSupabaseRestUrl(
-        "admins"
-      )}?username=eq.${encodeURIComponent(
-        username.trim()
-      )}&select=*`,
-      {
-        headers: supabaseHeaders,
-      }
-    );
+    /* =====================================================
+       STEP 1 — CHECK NORMAL USERS
+    ===================================================== */
 
-    const admin = response.data[0];
+    const normalizedEmail =
+      normalizeEmail(loginValue);
+
+    let user = null;
+
+    /*
+      Normal users are created with their Gmail
+      stored as both username and email.
+    */
+
+    if (isGmailAddress(normalizedEmail)) {
+      try {
+        const userResponse =
+          await axios.get(
+            `${getSupabaseRestUrl(
+              "users"
+            )}?username=eq.${encodeURIComponent(
+              normalizedEmail
+            )}&select=*`,
+            {
+              headers:
+                supabaseHeaders,
+            }
+          );
+
+        user =
+          userResponse.data?.[0] ||
+          null;
+      } catch (userLookupError) {
+        console.error(
+          "User lookup during unified login failed:",
+          userLookupError.response
+            ?.data ||
+            userLookupError.message
+        );
+
+        return res.status(500).json({
+          message:
+            "Login failed.",
+        });
+      }
+    }
+
+    /* =====================================================
+       USER FOUND
+    ===================================================== */
+
+    if (user) {
+      /* ---------------------------------------------------
+         CHECK ACTIVE ACCOUNT
+      --------------------------------------------------- */
+
+      if (!user.is_active) {
+        return res.status(403).json({
+          message:
+            "Account is deactivated.",
+        });
+      }
+
+      /* ---------------------------------------------------
+         CHECK PASSWORD
+      --------------------------------------------------- */
+
+      let validPassword = false;
+
+      try {
+        validPassword =
+          await bcrypt.compare(
+            password,
+            user.password
+          );
+      } catch (passwordError) {
+        console.error(
+          "User password comparison failed:",
+          passwordError.message
+        );
+
+        validPassword = false;
+      }
+
+      if (!validPassword) {
+        return res.status(401).json({
+          message:
+            "Invalid credentials.",
+        });
+      }
+
+      /* ---------------------------------------------------
+         CHECK EMAIL VERIFICATION
+      --------------------------------------------------- */
+
+      if (
+        user.email_verified !==
+        true
+      ) {
+        return res.status(403).json({
+          message:
+            "Please verify your Gmail address before logging in.",
+          requiresVerification:
+            true,
+          email:
+            user.email ||
+            user.username,
+        });
+      }
+
+      /* ---------------------------------------------------
+         CREATE USER JWT
+      --------------------------------------------------- */
+
+      const token =
+        createAuthToken({
+          id: user.id,
+          username:
+            user.username,
+          email:
+            user.email ||
+            user.username,
+          name:
+            user.name,
+          role: "user",
+        });
+
+      const authUser =
+        createAuthUser({
+          id: user.id,
+          username:
+            user.username,
+          email:
+            user.email ||
+            user.username,
+          name:
+            user.name,
+          role: "user",
+          is_active:
+            user.is_active,
+          email_verified: true,
+        });
+
+      return res.json({
+        token,
+        user: authUser,
+      });
+    }
+
+    /* =====================================================
+       STEP 2 — CHECK ADMINS
+    ===================================================== */
+
+    let admin = null;
+
+    try {
+      /*
+        Admins may log in using either:
+
+        - username
+        - email
+
+        We first try username.
+      */
+
+      const adminByUsernameResponse =
+        await axios.get(
+          `${getSupabaseRestUrl(
+            "admins"
+          )}?username=eq.${encodeURIComponent(
+            loginValue
+          )}&select=*`,
+          {
+            headers:
+              supabaseHeaders,
+          }
+        );
+
+      admin =
+        adminByUsernameResponse.data?.[0] ||
+        null;
+
+      /*
+        If username did not find an account,
+        try the admin email.
+      */
+
+      if (!admin) {
+        const adminByEmailResponse =
+          await axios.get(
+            `${getSupabaseRestUrl(
+              "admins"
+            )}?email=eq.${encodeURIComponent(
+              normalizedEmail
+            )}&select=*`,
+            {
+              headers:
+                supabaseHeaders,
+            }
+          );
+
+        admin =
+          adminByEmailResponse.data?.[0] ||
+          null;
+      }
+    } catch (adminLookupError) {
+      console.error(
+        "Admin lookup during unified login failed:",
+        adminLookupError.response
+          ?.data ||
+          adminLookupError.message
+      );
+
+      return res.status(500).json({
+        message:
+          "Login failed.",
+      });
+    }
+
+    /* =====================================================
+       NO USER OR ADMIN FOUND
+    ===================================================== */
 
     if (!admin) {
       return res.status(401).json({
-        message: "Invalid credentials",
+        message:
+          "Invalid credentials.",
       });
     }
 
-    /* -----------------------------------------------------
-       CHECK NORMAL HASHED PASSWORD
-    ----------------------------------------------------- */
+    /* =====================================================
+       CHECK ADMIN PASSWORD
+    ===================================================== */
 
-    let validPassword = false;
+    let validAdminPassword =
+      false;
+
+    /*
+      Normal bcrypt password.
+    */
 
     if (
       admin.password &&
       typeof admin.password === "string"
     ) {
       try {
-        validPassword =
+        validAdminPassword =
           await bcrypt.compare(
-            String(password),
+            password,
             admin.password
           );
       } catch (passwordError) {
@@ -147,85 +485,131 @@ router.post("/login", async (req, res) => {
           passwordError.message
         );
 
-        validPassword = false;
+        validAdminPassword =
+          false;
       }
     }
 
-    /* -----------------------------------------------------
-       CHECK EXISTING MOBILE PIN
+    /*
+      Existing mobile PIN compatibility.
 
-       This keeps compatibility with the existing
-       Admin Dashboard credentials.
-    ----------------------------------------------------- */
+      This allows existing admin accounts
+      that still use mobile_pin to continue
+      working.
+    */
 
     if (
-      !validPassword &&
+      !validAdminPassword &&
       admin.mobile_pin !== null &&
       admin.mobile_pin !== undefined &&
-      String(admin.mobile_pin).trim() !== ""
+      String(
+        admin.mobile_pin
+      ).trim() !== ""
     ) {
-      validPassword =
-        String(admin.mobile_pin) ===
+      validAdminPassword =
+        String(
+          admin.mobile_pin
+        ) ===
         String(password);
     }
 
-    /* -----------------------------------------------------
-       INVALID CREDENTIALS
-    ----------------------------------------------------- */
-
-    if (!validPassword) {
+    if (!validAdminPassword) {
       return res.status(401).json({
-        message: "Invalid credentials",
+        message:
+          "Invalid credentials.",
       });
     }
 
-    /* -----------------------------------------------------
-       CREATE REAL ADMIN JWT
-    ----------------------------------------------------- */
+    /* =====================================================
+       CREATE ADMIN JWT
+    ===================================================== */
 
-    const token = jwt.sign(
-      {
+    const token =
+      createAuthToken({
         id: admin.id,
-        username: admin.username,
-        name: admin.name,
-      },
-      getJwtSecret(),
-      {
-        expiresIn: "8h",
-      }
-    );
+        username:
+          admin.username,
+        email:
+          admin.email ||
+          "",
+        name:
+          admin.name,
+        role: "admin",
+      });
 
-    /* -----------------------------------------------------
-       SUCCESS
-    ----------------------------------------------------- */
+    const authUser =
+      createAuthUser({
+        id: admin.id,
+        username:
+          admin.username,
+        email:
+          admin.email ||
+          "",
+        name:
+          admin.name,
+        role: "admin",
+        is_active:
+          typeof admin.is_active ===
+          "boolean"
+            ? admin.is_active
+            : true,
+      });
+
+    /*
+      Return "user" as the unified account object.
+
+      "admin" is also returned temporarily so the
+      existing AdminLogin/api.ts code does not
+      immediately break while we transition the
+      frontend to the single LoginModal.
+    */
 
     return res.json({
       token,
+
+      user: authUser,
+
       admin: {
         id: admin.id,
-        username: admin.username,
-        name: admin.name,
-        email: admin.email,
+        username:
+          admin.username,
+        name:
+          admin.name,
+        email:
+          admin.email || "",
+        role: "admin",
+        is_active:
+          typeof admin.is_active ===
+          "boolean"
+            ? admin.is_active
+            : true,
       },
     });
   } catch (err) {
     console.error(
-      "Admin login error:",
-      err
+      "Unified login error:",
+      err.response?.data ||
+        err
     );
 
     return res.status(500).json({
       message:
+        err.response?.data
+          ?.message ||
         err.message ||
-        "Login failed",
+        "Login failed.",
     });
   }
 });
 
+/* =========================================================
+   ADMIN REGISTRATION
+========================================================= */
+
 /*
   POST /api/auth/register
 
-  First-time admin registration
+  First-time admin registration.
 */
 router.post("/register", async (req, res) => {
   try {
@@ -282,10 +666,16 @@ router.post("/register", async (req, res) => {
       await axios.post(
         getSupabaseRestUrl("admins"),
         {
-          username,
-          password: hashedPassword,
-          email,
-          name,
+          username:
+            String(username).trim(),
+          password:
+            hashedPassword,
+          email:
+            String(email)
+              .trim()
+              .toLowerCase(),
+          name:
+            String(name).trim(),
         },
         {
           headers: {
@@ -306,59 +696,142 @@ router.post("/register", async (req, res) => {
   } catch (err) {
     console.error(
       "Admin registration error:",
-      err
+      err.response?.data ||
+        err
     );
 
     return res.status(400).json({
       message:
+        err.response?.data
+          ?.message ||
         err.message ||
         "Failed to register admin",
     });
   }
 });
 
+/* =========================================================
+   AUTH ME
+========================================================= */
+
 /*
   GET /api/auth/me
+
+  Supports BOTH user and admin tokens.
+
+  The JWT role determines which table is queried.
 */
-router.get("/me", protect, async (req, res) => {
-  try {
-    const response = await axios.get(
-      `${getSupabaseRestUrl(
-        "admins"
-      )}?id=eq.${encodeURIComponent(
-        req.admin.id
-      )}&select=id,username,email,name,created_at,updated_at`,
-      {
-        headers: supabaseHeaders,
+router.get(
+  "/me",
+  protect,
+  async (req, res) => {
+    try {
+      const auth = req.auth;
+
+      if (!auth) {
+        return res.status(401).json({
+          message:
+            "Authentication required.",
+        });
       }
-    );
 
-    const admin =
-      response.data[0];
+      /* ===================================================
+         ADMIN PROFILE
+      =================================================== */
 
-    if (!admin) {
-      return res.status(404).json({
-        message: "Admin not found",
+      if (auth.role === "admin") {
+        const response =
+          await axios.get(
+            `${getSupabaseRestUrl(
+              "admins"
+            )}?id=eq.${encodeURIComponent(
+              auth.id
+            )}&select=id,username,email,name,created_at,updated_at`,
+            {
+              headers:
+                supabaseHeaders,
+            }
+          );
+
+        const admin =
+          response.data?.[0];
+
+        if (!admin) {
+          return res.status(404).json({
+            message:
+              "Admin not found",
+          });
+        }
+
+        return res.json({
+          ...admin,
+          role: "admin",
+          is_active:
+            typeof admin.is_active ===
+            "boolean"
+              ? admin.is_active
+              : true,
+        });
+      }
+
+      /* ===================================================
+         USER PROFILE
+      =================================================== */
+
+      if (auth.role === "user") {
+        const response =
+          await axios.get(
+            `${getSupabaseRestUrl(
+              "users"
+            )}?id=eq.${encodeURIComponent(
+              auth.id
+            )}&select=id,username,email,name,is_active,email_verified,created_at,updated_at`,
+            {
+              headers:
+                supabaseHeaders,
+            }
+          );
+
+        const user =
+          response.data?.[0];
+
+        if (!user) {
+          return res.status(404).json({
+            message:
+              "User not found",
+          });
+        }
+
+        return res.json({
+          ...user,
+          role: "user",
+        });
+      }
+
+      return res.status(403).json({
+        message:
+          "Invalid account role.",
+      });
+    } catch (err) {
+      console.error(
+        "Get authenticated profile error:",
+        err.response?.data ||
+          err
+      );
+
+      return res.status(500).json({
+        message:
+          err.response?.data
+            ?.message ||
+          err.message ||
+          "Failed to get profile.",
       });
     }
-
-    return res.json(admin);
-  } catch (err) {
-    console.error(
-      "Get admin profile error:",
-      err
-    );
-
-    return res.status(500).json({
-      message:
-        err.message ||
-        "Failed to get admin profile",
-    });
   }
-});
+);
 
 /* =========================================================
-   USER AUTHENTICATION
+   USER SIGNUP
 ========================================================= */
 
 /*
@@ -768,10 +1241,6 @@ router.post(
           emailError.message
         );
 
-        /* -----------------------------------------------
-           CLEAN UP USER IF EMAIL FAILS
-        ----------------------------------------------- */
-
         try {
           await axios.delete(
             `${getSupabaseRestUrl(
@@ -797,10 +1266,6 @@ router.post(
         });
       }
 
-      /* -----------------------------------------------------
-         SUCCESS
-      ----------------------------------------------------- */
-
       return res.status(201).json({
         message:
           "Account created successfully. Please check your Gmail inbox and verify your email before logging in.",
@@ -814,6 +1279,7 @@ router.post(
           name:
             user.name,
           email_verified: false,
+          role: "user",
         },
       });
     } catch (err) {
@@ -897,6 +1363,7 @@ router.get(
               user.username,
             name:
               user.name,
+            role: "user",
           },
         });
       }
@@ -960,6 +1427,7 @@ router.get(
           name:
             verifiedUser?.name ||
             user.name,
+          role: "user",
         },
       });
     } catch (err) {
@@ -1255,9 +1723,24 @@ router.post(
 );
 
 /* =========================================================
-   USER LOGIN
+   LEGACY USER LOGIN
 ========================================================= */
 
+/*
+  POST /api/auth/user/login
+
+  Kept temporarily for compatibility.
+
+  The application should eventually use:
+  
+    POST /api/auth/login
+
+  instead.
+
+  This endpoint still creates a unified JWT with:
+  
+    role: "user"
+*/
 router.post(
   "/user/login",
   async (req, res) => {
@@ -1343,19 +1826,18 @@ router.post(
         });
       }
 
-      const token = jwt.sign(
-        {
+      const token =
+        createAuthToken({
           id: user.id,
           username:
             user.username,
+          email:
+            user.email ||
+            user.username,
           name:
             user.name,
-        },
-        getJwtSecret(),
-        {
-          expiresIn: "8h",
-        }
-      );
+          role: "user",
+        });
 
       return res.json({
         token,
@@ -1368,13 +1850,16 @@ router.post(
             user.username,
           name:
             user.name,
+          is_active:
+            user.is_active !== false,
           email_verified:
             true,
+          role: "user",
         },
       });
     } catch (err) {
       console.error(
-        "User login error:",
+        "Legacy user login error:",
         err.response?.data ||
           err
       );
@@ -1792,9 +2277,21 @@ router.post(
    ADMIN USER MANAGEMENT
 ========================================================= */
 
+/*
+  These routes now require BOTH:
+
+  1. A valid JWT
+  2. role === "admin"
+*/
+
+/* ---------------------------------------------------------
+   GET ALL USERS
+--------------------------------------------------------- */
+
 router.get(
   "/admin/users",
   protect,
+  requireAdmin,
   async (req, res) => {
     try {
       const {
@@ -1832,9 +2329,14 @@ router.get(
   }
 );
 
+/* ---------------------------------------------------------
+   GET SINGLE USER
+--------------------------------------------------------- */
+
 router.get(
   "/admin/users/:id",
   protect,
+  requireAdmin,
   async (req, res) => {
     try {
       const {
@@ -1875,9 +2377,14 @@ router.get(
   }
 );
 
+/* ---------------------------------------------------------
+   UPDATE USER
+--------------------------------------------------------- */
+
 router.put(
   "/admin/users/:id",
   protect,
+  requireAdmin,
   async (req, res) => {
     try {
       const {
@@ -1922,9 +2429,14 @@ router.put(
   }
 );
 
+/* ---------------------------------------------------------
+   DELETE USER
+--------------------------------------------------------- */
+
 router.delete(
   "/admin/users/:id",
   protect,
+  requireAdmin,
   async (req, res) => {
     try {
       const {
