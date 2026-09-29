@@ -243,7 +243,9 @@ const EMPTY_FORM = {
   short_description: "",
 
   /* LOCATION / BASIC DETAILS */
-  location_address: "",
+location_address: "",
+location_lat: null,
+location_lng: null,
 
   /* IMAGES */
   images: "",
