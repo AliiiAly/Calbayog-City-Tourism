@@ -101,6 +101,7 @@ router.post("/", protectAdmin, async (req, res) => {
       .trim()
       .toLowerCase();
     const normalizedName = String(name).trim();
+    const normalizedPassword = String(password);
 
     /* -------------------------------------------------------
        Check username
@@ -151,12 +152,16 @@ router.post("/", protectAdmin, async (req, res) => {
     ------------------------------------------------------- */
 
     const hashedPassword = await bcrypt.hash(
-      String(password),
+      normalizedPassword,
       10
     );
 
     /* -------------------------------------------------------
        Insert admin
+       
+       IMPORTANT:
+       - Password is stored only as a bcrypt hash.
+       - mobile_pin is intentionally not populated.
     ------------------------------------------------------- */
 
     const insertResponse = await axios.post(
@@ -166,6 +171,7 @@ router.post("/", protectAdmin, async (req, res) => {
         password: hashedPassword,
         email: normalizedEmail,
         name: normalizedName,
+        mobile_pin: null,
       },
       {
         headers: {
@@ -200,11 +206,6 @@ router.post("/", protectAdmin, async (req, res) => {
     res.status(201).json(adminData);
   } catch (err) {
     console.error("Create admin error:", err);
-
-    /*
-      Handle Supabase duplicate/constraint errors
-      without exposing unnecessary database details.
-    */
 
     if (err.response?.data) {
       console.error(
@@ -289,15 +290,16 @@ router.put("/:id", protectAdmin, async (req, res) => {
       updateData.name = String(name).trim();
     }
 
-    /*
-      Password is optional during an update.
-
-      If no password is supplied, the existing password
-      remains unchanged.
-
-      If a new password is supplied, it is ALWAYS hashed
-      before being stored.
-    */
+    /* -------------------------------------------------------
+       Password update
+       
+       IMPORTANT:
+       Every new password is ALWAYS bcrypt-hashed.
+       
+       When a password is changed:
+       - replace password with bcrypt hash
+       - clear any legacy mobile_pin
+    ------------------------------------------------------- */
 
     if (
       password !== undefined &&
@@ -307,6 +309,12 @@ router.put("/:id", protectAdmin, async (req, res) => {
         String(password),
         10
       );
+
+      /*
+        Remove the old mobile_pin value so the account
+        no longer depends on a second password-like field.
+      */
+      updateData.mobile_pin = null;
     }
 
     /* -------------------------------------------------------
