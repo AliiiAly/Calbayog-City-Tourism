@@ -37,7 +37,6 @@ import UserLogin from "./pages/UserLogin";
 import VerifyEmail from "./components/VerifyEmail";
 
 // Admin Pages
-import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminAttractions from "./pages/admin/AdminAttractions";
 import AdminGettingThere from "./pages/admin/AdminGettingThere";
@@ -118,8 +117,6 @@ const App: React.FC = () => {
   /* =========================================================
      APP PROVIDERS
 
-     IMPORTANT:
-
      AuthProvider
        ↓
      FavoritesProvider
@@ -127,10 +124,6 @@ const App: React.FC = () => {
      DarkModeProvider
        ↓
      Router
-
-     This makes the same favorites state available
-     to Welcome, Attractions, AttractionDetail,
-     Accommodations, Events, etc.
   ========================================================= */
 
   return (
@@ -236,14 +229,31 @@ const AppContent: React.FC = () => {
               ADMIN ROUTES
           ================================================= */}
 
-          {/* Admin Login */}
+          {/*
+           * IMPORTANT:
+           * There is no separate AdminLogin authentication
+           * route anymore.
+           *
+           * The actual authentication is handled by the
+           * unified login system.
+           *
+           * This route is retained only as a compatibility
+           * entry point so old /admin/login links do not
+           * break.
+           */}
+
           <Route
             exact
             path="/admin/login"
-            component={AdminLogin}
+            render={() => (
+              <Redirect to="/" />
+            )}
           />
 
-          {/* Admin Dashboard */}
+          {/* =================================================
+              ADMIN DASHBOARD
+          ================================================= */}
+
           <Route
             exact
             path="/admin"
@@ -254,7 +264,10 @@ const AppContent: React.FC = () => {
             )}
           />
 
-          {/* Admin Attractions */}
+          {/* =================================================
+              ADMIN ATTRACTIONS
+          ================================================= */}
+
           <Route
             exact
             path="/admin/attractions"
@@ -265,7 +278,10 @@ const AppContent: React.FC = () => {
             )}
           />
 
-          {/* Admin Getting There */}
+          {/* =================================================
+              ADMIN GETTING THERE
+          ================================================= */}
+
           <Route
             exact
             path="/admin/getting-there"
@@ -276,7 +292,10 @@ const AppContent: React.FC = () => {
             )}
           />
 
-          {/* Admin Events */}
+          {/* =================================================
+              ADMIN EVENTS
+          ================================================= */}
+
           <Route
             exact
             path="/admin/events"
@@ -287,7 +306,10 @@ const AppContent: React.FC = () => {
             )}
           />
 
-          {/* Admin Accommodations */}
+          {/* =================================================
+              ADMIN ACCOMMODATIONS
+          ================================================= */}
+
           <Route
             exact
             path="/admin/accommodations"
@@ -298,7 +320,10 @@ const AppContent: React.FC = () => {
             )}
           />
 
-          {/* Admin Guides */}
+          {/* =================================================
+              ADMIN GUIDES
+          ================================================= */}
+
           <Route
             exact
             path="/admin/guides"
@@ -309,7 +334,10 @@ const AppContent: React.FC = () => {
             )}
           />
 
-          {/* Admin Requests */}
+          {/* =================================================
+              ADMIN REQUESTS
+          ================================================= */}
+
           <Route
             exact
             path="/admin/requests"
@@ -320,7 +348,10 @@ const AppContent: React.FC = () => {
             )}
           />
 
-          {/* Admin Users */}
+          {/* =================================================
+              ADMIN USERS
+          ================================================= */}
+
           <Route
             exact
             path="/admin/users"
@@ -331,7 +362,10 @@ const AppContent: React.FC = () => {
             )}
           />
 
-          {/* Admin Management */}
+          {/* =================================================
+              ADMIN MANAGEMENT
+          ================================================= */}
+
           <Route
             exact
             path="/admin/management"
@@ -342,7 +376,10 @@ const AppContent: React.FC = () => {
             )}
           />
 
-          {/* Admin Feedback */}
+          {/* =================================================
+              ADMIN FEEDBACK
+          ================================================= */}
+
           <Route
             exact
             path="/admin/feedback"
@@ -371,7 +408,10 @@ const AppContent: React.FC = () => {
               PUBLIC ROUTES
           ================================================= */}
 
-          {/* Home */}
+          {/* =================================================
+              HOME
+          ================================================= */}
+
           {!IS_ADMIN_BUILD && (
             <Route
               exact
@@ -391,7 +431,10 @@ const AppContent: React.FC = () => {
             />
           )}
 
-          {/* User Login */}
+          {/* =================================================
+              USER LOGIN
+          ================================================= */}
+
           {!IS_ADMIN_BUILD && (
             <Route
               exact
@@ -425,7 +468,10 @@ const AppContent: React.FC = () => {
             />
           )}
 
-          {/* Attraction Detail */}
+          {/* =================================================
+              ATTRACTION DETAIL
+          ================================================= */}
+
           {!IS_ADMIN_BUILD && (
             <Route
               exact
@@ -497,7 +543,10 @@ const AppContent: React.FC = () => {
             />
           )}
 
-          {/* Accommodation Detail */}
+          {/* =================================================
+              ACCOMMODATION DETAIL
+          ================================================= */}
+
           {!IS_ADMIN_BUILD && (
             <Route
               exact
@@ -569,7 +618,10 @@ const AppContent: React.FC = () => {
             />
           )}
 
-          {/* Request Itinerary */}
+          {/* =================================================
+              REQUEST ITINERARY
+          ================================================= */}
+
           {!IS_ADMIN_BUILD && (
             <Route
               exact
@@ -695,6 +747,7 @@ const PublicBottomNav: React.FC = () => {
    * - all admin routes
    * - login
    */
+
   if (
     isAdminRoute(pathname) ||
     pathname === "/login"
