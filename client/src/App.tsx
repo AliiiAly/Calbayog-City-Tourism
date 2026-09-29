@@ -237,16 +237,16 @@ const AppContent: React.FC = () => {
            * The actual authentication is handled by the
            * unified login system.
            *
-           * This route is retained only as a compatibility
-           * entry point so old /admin/login links do not
-           * break.
+           * If an old link sends the user to /admin/login,
+           * redirect them to the public home page and tell
+           * AppHeader to open the unified LoginModal.
            */}
 
           <Route
             exact
             path="/admin/login"
             render={() => (
-              <Redirect to="/" />
+              <Redirect to="/?openLogin=1" />
             )}
           />
 
