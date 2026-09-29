@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Container, Form, InputGroup } from "react-bootstrap";
-import { useHistory } from "react-router-dom";
+import {
+  useHistory,
+  useLocation,
+} from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
 
@@ -25,12 +28,28 @@ interface AppHeaderProps {
 }
 
 /* =========================================================
+   ANNOUNCEMENT
+========================================================= */
+
+interface Announcement {
+  id: number;
+  title: string;
+  description: string;
+  date: string;
+  icon: string;
+}
+
+/* =========================================================
    ICONS
 ========================================================= */
 
 type HeaderIconName =
   | "menu"
   | "search"
+  | "bell"
+  | "sun"
+  | "moon"
+  | "close"
   | "login"
   | "signup"
   | "user"
@@ -77,6 +96,48 @@ const HeaderIcon: React.FC<HeaderIconProps> = ({
         <svg {...commonProps}>
           <circle cx="11" cy="11" r="6.5" />
           <path d="m16 16 4.5 4.5" />
+        </svg>
+      );
+
+    case "bell":
+      return (
+        <svg {...commonProps}>
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+          <path d="M10 21h4" />
+        </svg>
+      );
+
+    case "sun":
+      return (
+        <svg {...commonProps}>
+          <circle cx="12" cy="12" r="4" />
+
+          <path d="M12 2v2" />
+          <path d="M12 20v2" />
+
+          <path d="m4.93 4.93 1.41 1.41" />
+          <path d="m17.66 17.66 1.41 1.41" />
+
+          <path d="M2 12h2" />
+          <path d="M20 12h2" />
+
+          <path d="m4.93 19.07 1.41-1.41" />
+          <path d="m17.66 6.34 1.41-1.41" />
+        </svg>
+      );
+
+    case "moon":
+      return (
+        <svg {...commonProps}>
+          <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5 8.5 8.5 0 1 0 20.5 14.5Z" />
+        </svg>
+      );
+
+    case "close":
+      return (
+        <svg {...commonProps}>
+          <path d="m6 6 12 12" />
+          <path d="m18 6-12 12" />
         </svg>
       );
 
@@ -146,42 +207,6 @@ const HeaderIcon: React.FC<HeaderIconProps> = ({
 };
 
 /* =========================================================
-   PWA INSTALL EVENT
-========================================================= */
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{
-    outcome: "accepted" | "dismissed";
-    platform: string;
-  }>;
-}
-
-/*
- * Chrome controls when this event becomes available.
- *
- * We keep the event outside the component so it is not lost
- * if Chrome fires it before AppHeader finishes mounting.
- */
-let pendingPwaInstallPrompt: BeforeInstallPromptEvent | null = null;
-
-if (typeof window !== "undefined") {
-  window.addEventListener("beforeinstallprompt", (event: Event) => {
-    event.preventDefault();
-
-    pendingPwaInstallPrompt = event as BeforeInstallPromptEvent;
-
-    window.dispatchEvent(
-      new Event("calbayog-pwa-install-ready"),
-    );
-  });
-
-  window.addEventListener("appinstalled", () => {
-    pendingPwaInstallPrompt = null;
-  });
-}
-
-/* =========================================================
    STYLES
 ========================================================= */
 
@@ -204,6 +229,17 @@ const AppHeaderStyles: React.FC = () => (
 
       --header-shadow:
         0 8px 30px rgba(17, 24, 39, 0.06);
+    }
+
+    html.dark-mode {
+      --header-text: #f5f8fc;
+      --header-muted: #9aa8ba;
+
+      --glass-border:
+        rgba(255, 255, 255, 0.09);
+
+      --header-shadow:
+        0 10px 34px rgba(0, 0, 0, 0.22);
     }
 
     /* =====================================================
@@ -253,6 +289,18 @@ const AppHeaderStyles: React.FC = () => (
         opacity: 1;
         transform: translateY(0);
       }
+    }
+
+    html.dark-mode .sticky-search-header {
+      background:
+        linear-gradient(
+          180deg,
+          rgba(10, 20, 34, 0.74) 0%,
+          rgba(10, 20, 34, 0.54) 100%
+        );
+
+      border-bottom:
+        1px solid rgba(255, 255, 255, 0.07);
     }
 
     .app-header-container {
@@ -469,6 +517,14 @@ const AppHeaderStyles: React.FC = () => (
         transform 0.24s cubic-bezier(.2,.8,.2,1);
     }
 
+    html.dark-mode .search-input-wrapper {
+      border-color:
+        rgba(255, 255, 255, 0.08) !important;
+
+      background:
+        rgba(255, 255, 255, 0.045) !important;
+    }
+
     .search-input-wrapper:hover {
       border-color:
         rgba(45, 49, 149, 0.18) !important;
@@ -488,18 +544,13 @@ const AppHeaderStyles: React.FC = () => (
         translateY(-1px);
     }
 
-    /*
-     * LEFT SEARCH ICON
-     *
-     * This is now the actual submit button.
-     *
-     * Desktop:
-     * It remains on the left as the search trigger.
-     */
+    html.dark-mode .search-input-wrapper:focus-within {
+      background:
+        rgba(255, 255, 255, 0.075) !important;
+    }
+
     .search-icon {
       width: 44px;
-
-      height: 44px;
 
       padding:
         0 0 0 14px !important;
@@ -516,29 +567,9 @@ const AppHeaderStyles: React.FC = () => (
       color:
         var(--header-muted) !important;
 
-      cursor: pointer;
-
-      flex-shrink: 0;
-
       transition:
         color 0.2s ease,
         transform 0.2s ease;
-    }
-
-    .search-icon:hover {
-      color:
-        var(--calbayog-blue) !important;
-    }
-
-    .search-icon:focus-visible {
-      outline:
-        2px solid rgba(45, 49, 149, 0.35);
-
-      outline-offset:
-        -2px;
-
-      border-radius:
-        10px;
     }
 
     .search-input-wrapper:focus-within .search-icon {
@@ -584,12 +615,6 @@ const AppHeaderStyles: React.FC = () => (
       opacity: 0.58;
     }
 
-    /*
-     * DESKTOP / LAPTOP SEARCH BUTTON
-     *
-     * This stays visible on desktop/tablet.
-     * It is hidden ONLY on mobile.
-     */
     .search-submit-btn {
       width: 36px;
       height: 36px;
@@ -897,39 +922,182 @@ const AppHeaderStyles: React.FC = () => (
 
     .header-profile-btn {
       min-height: 42px;
-
-      padding:
-        0 10px 0 7px;
-
+      padding: 0 10px 0 7px;
       display: inline-flex;
-
       align-items: center;
       justify-content: center;
-
       gap: 7px;
-
-      border:
-        1px solid rgba(45, 49, 149, 0.14);
-
+      border: 1px solid rgba(45, 49, 149, 0.14);
       border-radius: 13px;
-
-      background:
-        rgba(255, 255, 255, 0.34);
-
-      color:
-        var(--header-text);
-
+      background: rgba(255, 255, 255, 0.34);
+      color: var(--header-text);
       cursor: pointer;
-
-      transition:
-        background 0.22s ease,
-        border-color 0.22s ease,
-        transform 0.22s ease,
-        box-shadow 0.22s ease;
+      transition: background 0.22s ease, border-color 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease;
     }
 
     .header-profile-btn:hover,
     .header-profile-btn.is-open {
+      color: var(--calbayog-blue);
+      background: var(--calbayog-blue-soft);
+      border-color: var(--calbayog-blue-border);
+      transform: translateY(-1px);
+      box-shadow: 0 5px 15px rgba(45, 49, 149, 0.08);
+    }
+
+    .header-profile-avatar {
+      width: 31px;
+      height: 31px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(145deg, var(--calbayog-blue), var(--calbayog-blue-dark));
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(45, 49, 149, 0.18);
+    }
+
+    .header-profile-name {
+      max-width: 118px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.78rem;
+      font-weight: 750;
+    }
+
+    .header-profile-chevron {
+      display: inline-flex;
+      transition: transform 0.2s ease;
+    }
+
+    .header-profile-btn.is-open .header-profile-chevron {
+      transform: rotate(180deg);
+    }
+
+    .header-profile-dropdown {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      width: min(260px, calc(100vw - 28px));
+      padding: 7px;
+      overflow: hidden;
+      border: 1px solid rgba(45, 49, 149, 0.12);
+      border-radius: 17px;
+      background: rgba(255, 255, 255, 0.84);
+      backdrop-filter: blur(25px) saturate(170%);
+      -webkit-backdrop-filter: blur(25px) saturate(170%);
+      box-shadow: 0 22px 55px rgba(15, 23, 42, 0.16);
+      animation: profileOpen 0.2s cubic-bezier(.2,.8,.2,1) both;
+      z-index: 1200;
+    }
+
+    html.dark-mode .header-profile-dropdown {
+      background: rgba(12, 22, 36, 0.88);
+      border-color: rgba(255, 255, 255, 0.09);
+      box-shadow: 0 22px 55px rgba(0, 0, 0, 0.32);
+    }
+
+    @keyframes profileOpen {
+      from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .header-profile-summary {
+      padding: 11px 12px 12px;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.07);
+    }
+
+    html.dark-mode .header-profile-summary {
+      border-bottom-color: rgba(255, 255, 255, 0.07);
+    }
+
+    .header-profile-summary-name {
+      color: var(--header-text);
+      font-size: 0.82rem;
+      font-weight: 800;
+      line-height: 1.3;
+    }
+
+    .header-profile-summary-email {
+      margin-top: 3px;
+      color: var(--header-muted);
+      font-size: 0.7rem;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .header-profile-role {
+      display: inline-flex;
+      margin-top: 7px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--calbayog-blue-soft);
+      color: var(--calbayog-blue);
+      font-size: 0.62rem;
+      font-weight: 800;
+    }
+
+    .header-profile-menu-item {
+      width: 100%;
+      min-height: 42px;
+      padding: 0 11px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      border: 0;
+      border-radius: 11px;
+      background: transparent;
+      color: var(--header-text);
+      text-align: left;
+      cursor: pointer;
+      font-size: 0.77rem;
+      font-weight: 700;
+      transition: background 0.18s ease, color 0.18s ease;
+    }
+
+    .header-profile-menu-item:hover {
+      background: var(--calbayog-blue-soft);
+      color: var(--calbayog-blue);
+    }
+
+    .header-profile-menu-item.logout {
+      color: #c7473c;
+    }
+
+    .header-profile-menu-item.logout:hover {
+      background: rgba(199, 71, 60, 0.07);
+      color: #b53d33;
+    }
+
+    .header-profile-notice {
+      margin: 4px 6px 5px;
+      padding: 8px 9px;
+      border-radius: 10px;
+      background: var(--calbayog-yellow-soft);
+      border: 1px solid var(--calbayog-yellow-border);
+      color: var(--header-text);
+      font-size: 0.66rem;
+      line-height: 1.4;
+    }
+
+    /* =====================================================
+       ANNOUNCEMENTS
+    ===================================================== */
+
+    .announcement-wrapper {
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .announcement-btn {
+      color:
+        var(--header-text);
+    }
+
+    .announcement-btn.is-active {
       color:
         var(--calbayog-blue);
 
@@ -939,92 +1107,119 @@ const AppHeaderStyles: React.FC = () => (
       border-color:
         var(--calbayog-blue-border);
 
-      transform:
-        translateY(-1px);
-
       box-shadow:
-        0 5px 15px rgba(45, 49, 149, 0.08);
+        0 4px 14px rgba(45, 49, 149, 0.08);
     }
 
-    .header-profile-avatar {
-      width: 31px;
-      height: 31px;
+    .announcement-btn.is-active svg {
+      animation:
+        bellPulse 0.42s ease;
+    }
 
-      border-radius: 10px;
+    @keyframes bellPulse {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      35% {
+        transform: rotate(-7deg);
+      }
+
+      65% {
+        transform: rotate(7deg);
+      }
+
+      100% {
+        transform: rotate(0deg);
+      }
+    }
+
+    .announcement-badge {
+      position: absolute;
+
+      top: 2px;
+      right: 1px;
+
+      min-width: 17px;
+      height: 17px;
+
+      padding:
+        0 4px;
 
       display: inline-flex;
 
       align-items: center;
       justify-content: center;
 
+      border:
+        2px solid rgba(255, 255, 255, 0.7);
+
+      border-radius: 999px;
+
       background:
-        linear-gradient(
-          145deg,
-          var(--calbayog-blue),
-          var(--calbayog-blue-dark)
-        );
+        var(--calbayog-yellow);
 
-      color: #fff;
+      color:
+        #1f2430;
 
-      font-size: 0.72rem;
+      font-size: 0.6rem;
 
       font-weight: 800;
 
-      flex-shrink: 0;
+      line-height: 1;
 
       box-shadow:
-        0 4px 12px rgba(45, 49, 149, 0.18);
+        0 2px 7px rgba(255, 183, 27, 0.25);
+
+      animation:
+        badgePop 0.4s cubic-bezier(.2,.8,.2,1) both;
     }
 
-    .header-profile-name {
-      max-width: 118px;
+    @keyframes badgePop {
+      from {
+        opacity: 0;
+        transform:
+          scale(0.55)
+          translateY(-2px);
+      }
 
-      overflow: hidden;
+      70% {
+        transform:
+          scale(1.08)
+          translateY(0);
+      }
 
-      text-overflow: ellipsis;
-
-      white-space: nowrap;
-
-      font-size: 0.78rem;
-
-      font-weight: 750;
+      to {
+        opacity: 1;
+        transform:
+          scale(1);
+      }
     }
 
-    .header-profile-chevron {
-      display: inline-flex;
+    /* =====================================================
+       ANNOUNCEMENT DROPDOWN
+    ===================================================== */
 
-      transition:
-        transform 0.2s ease;
-    }
-
-    .header-profile-btn.is-open
-    .header-profile-chevron {
-      transform:
-        rotate(180deg);
-    }
-
-    .header-profile-dropdown {
+    .announcement-dropdown {
       position: absolute;
 
       top:
-        calc(100% + 10px);
+        calc(100% + 11px);
 
       right: 0;
 
       width:
-        min(260px, calc(100vw - 28px));
-
-      padding: 7px;
+        min(390px, calc(100vw - 28px));
 
       overflow: hidden;
 
       border:
         1px solid rgba(45, 49, 149, 0.12);
 
-      border-radius: 17px;
+      border-radius: 18px;
 
       background:
-        rgba(255, 255, 255, 0.90);
+        rgba(255, 255, 255, 0.78);
 
       backdrop-filter:
         blur(25px)
@@ -1037,21 +1232,22 @@ const AppHeaderStyles: React.FC = () => (
       box-shadow:
         0 22px 55px rgba(15, 23, 42, 0.16);
 
+      transform-origin:
+        top right;
+
       animation:
-        profileOpen
-        0.2s
+        announcementOpen
+        0.22s
         cubic-bezier(.2,.8,.2,1)
         both;
-
-      z-index: 1200;
     }
 
-    @keyframes profileOpen {
+    @keyframes announcementOpen {
       from {
         opacity: 0;
         transform:
-          translateY(-6px)
-          scale(0.98);
+          translateY(-7px)
+          scale(0.97);
       }
 
       to {
@@ -1062,125 +1258,141 @@ const AppHeaderStyles: React.FC = () => (
       }
     }
 
-    .header-profile-summary {
+    html.dark-mode .announcement-dropdown {
+      background:
+        rgba(12, 22, 36, 0.84);
+
+      border-color:
+        rgba(255, 255, 255, 0.09);
+
+      box-shadow:
+        0 22px 55px rgba(0, 0, 0, 0.32);
+    }
+
+    .announcement-header {
+      display: flex;
+
+      align-items: center;
+      justify-content: space-between;
+
+      gap: 12px;
+
       padding:
-        11px 12px 12px;
+        16px 17px;
 
       border-bottom:
         1px solid rgba(15, 23, 42, 0.07);
     }
 
-    .header-profile-summary-name {
+    html.dark-mode .announcement-header {
+      border-bottom-color:
+        rgba(255, 255, 255, 0.07);
+    }
+
+    .announcement-heading {
+      min-width: 0;
+    }
+
+    .announcement-title {
       color:
         var(--header-text);
 
-      font-size: 0.82rem;
+      font-size: 0.96rem;
 
       font-weight: 800;
-
-      line-height: 1.3;
     }
 
-    .header-profile-summary-email {
+    .announcement-subtitle {
       margin-top: 3px;
 
       color:
         var(--header-muted);
 
-      font-size: 0.7rem;
-
-      line-height: 1.35;
-
-      word-break: break-word;
+      font-size: 0.75rem;
     }
 
-    .header-profile-role {
+    .announcement-close {
+      width: 33px;
+      height: 33px;
+
       display: inline-flex;
 
-      margin-top: 7px;
-
-      padding:
-        4px 8px;
-
-      border-radius: 999px;
-
-      background:
-        var(--calbayog-blue-soft);
-
-      color:
-        var(--calbayog-blue);
-
-      font-size: 0.62rem;
-
-      font-weight: 800;
-    }
-
-    .header-profile-menu-item {
-      width: 100%;
-
-      min-height: 42px;
-
-      padding:
-        0 11px;
-
-      display: flex;
-
       align-items: center;
+      justify-content: center;
 
-      gap: 9px;
+      padding: 0;
 
-      border: 0;
+      border:
+        1px solid rgba(15, 23, 42, 0.08);
 
-      border-radius: 11px;
+      border-radius: 9px;
 
       background: transparent;
 
       color:
-        var(--header-text);
-
-      text-align: left;
+        var(--header-muted);
 
       cursor: pointer;
 
-      font-size: 0.77rem;
-
-      font-weight: 700;
-
       transition:
         background 0.18s ease,
-        color 0.18s ease;
+        color 0.18s ease,
+        transform 0.18s ease;
     }
 
-    .header-profile-menu-item:hover {
+    .announcement-close:hover {
       background:
         var(--calbayog-blue-soft);
 
       color:
         var(--calbayog-blue);
+
+      transform:
+        rotate(3deg);
     }
 
-    .header-profile-menu-item.logout {
-      color:
-        #c7473c;
+    .announcement-list {
+      max-height: 360px;
+
+      overflow-y: auto;
+
+      padding: 7px;
     }
 
-    .header-profile-menu-item.logout:hover {
+    .announcement-item {
+      display: flex;
+
+      gap: 11px;
+
+      padding: 12px;
+
+      border-radius: 13px;
+
+      transition:
+        background 0.18s ease,
+        transform 0.18s cubic-bezier(.2,.8,.2,1);
+    }
+
+    .announcement-item:hover {
       background:
-        rgba(199, 71, 60, 0.07);
+        var(--calbayog-blue-soft);
 
-      color:
-        #b53d33;
+      transform:
+        translateX(2px);
     }
 
-    .header-profile-notice {
-      margin:
-        4px 6px 5px;
+    .announcement-item-icon {
+      width: 41px;
+      height: 41px;
 
-      padding:
-        8px 9px;
+      display: flex;
 
-      border-radius:
-        10px;
+      align-items: center;
+      justify-content: center;
+
+      flex-shrink: 0;
+
+      border-radius: 12px;
 
       background:
         var(--calbayog-yellow-soft);
@@ -1188,18 +1400,71 @@ const AppHeaderStyles: React.FC = () => (
       border:
         1px solid var(--calbayog-yellow-border);
 
+      font-size: 1.18rem;
+
+      transition:
+        transform 0.2s cubic-bezier(.2,.8,.2,1);
+    }
+
+    .announcement-item:hover
+    .announcement-item-icon {
+      transform:
+        scale(1.05)
+        rotate(-2deg);
+    }
+
+    .announcement-item-content {
+      min-width: 0;
+    }
+
+    .announcement-item-title {
       color:
         var(--header-text);
 
-      font-size:
-        0.66rem;
+      font-size: 0.85rem;
 
-      line-height:
-        1.4;
+      font-weight: 800;
+    }
+
+    .announcement-item-description {
+      margin-top: 4px;
+
+      color:
+        var(--header-muted);
+
+      font-size: 0.75rem;
+
+      line-height: 1.48;
+    }
+
+    .announcement-item-date {
+      margin-top: 6px;
+
+      color:
+        var(--calbayog-blue);
+
+      font-size: 0.68rem;
+
+      font-weight: 700;
+    }
+
+    .announcement-footer {
+      padding:
+        11px 16px;
+
+      border-top:
+        1px solid rgba(15, 23, 42, 0.07);
+
+      color:
+        var(--header-muted);
+
+      font-size: 0.69rem;
+
+      text-align: center;
     }
 
     /* =====================================================
-       TABLET
+       RESPONSIVE
     ===================================================== */
 
     @media (max-width: 1199.98px) {
@@ -1227,38 +1492,27 @@ const AppHeaderStyles: React.FC = () => (
       }
     }
 
-    /* =====================================================
-       SMALL TABLET
-    ===================================================== */
-
     @media (max-width: 991.98px) {
       .app-header-inner {
-        min-height: 60px;
-      }
+        flex-wrap: wrap;
 
-      .header-brand-mark {
-        width: 45px;
-        height: 45px;
+        min-height: auto;
+
+        padding:
+          8px 0;
       }
 
       .header-search-container {
-        margin-left: 6px;
-      }
+        order: 3;
 
-      .search-input-wrapper,
-      .search-input {
-        min-height: 42px;
-        height: 42px;
-      }
+        flex-basis: 100%;
 
-      .search-icon {
-        height: 42px;
+        margin:
+          3px 0 0;
+
+        max-width: none;
       }
     }
-
-    /* =====================================================
-       MOBILE
-    ===================================================== */
 
     @media (max-width: 767.98px) {
       .sticky-search-header {
@@ -1267,435 +1521,105 @@ const AppHeaderStyles: React.FC = () => (
       }
 
       .app-header-container.container {
-        padding-left:
-          10px;
-
-        padding-right:
-          10px;
+        padding-left: 11px;
+        padding-right: 11px;
       }
 
       .app-header-inner {
-        width: 100%;
-
-        min-height: 50px;
-
-        display: flex;
-
-        flex-wrap: nowrap;
-
-        align-items: center;
-
-        gap: 5px;
-
         padding:
           5px 0;
-      }
 
-      /* -----------------------------------------------------
-         MOBILE MENU
-      ----------------------------------------------------- */
-
-      .menu-btn {
-        width: 38px;
-        height: 38px;
-
-        min-width: 38px;
-
-        flex-shrink: 0;
-      }
-
-      /* -----------------------------------------------------
-         MOBILE LOGO
-         
-         IMPORTANT:
-         The logo is NOT hidden.
-         It remains the same /logo2.png.
-      ----------------------------------------------------- */
-
-      .header-brand {
-        display: flex;
-
-        width: 39px;
-
-        margin-right: 0;
-
-        flex-shrink: 0;
-
-        animation: none;
+        gap: 6px;
       }
 
       .header-brand-mark {
-        width: 39px;
-        height: 39px;
+        width: 43px;
+        height: 43px;
       }
 
-      /* -----------------------------------------------------
-         MOBILE SEARCH
-         
-         The search is intentionally smaller so it does not
-         feel cramped beside Install and Sign In.
-      ----------------------------------------------------- */
+      .header-icon-btn {
+        width: 40px;
+        height: 40px;
 
-      .header-search-container {
-        order: 1;
+        min-width: 40px;
 
-        flex:
-          1 1 0;
-
-        min-width: 0;
-
-        max-width: 190px;
-
-        margin:
-          0 0 0 2px;
-
-        animation:
-          none;
+        border-radius: 12px;
       }
 
-      .header-search-form {
-        width: 100%;
+      .header-login-btn,
+      .header-signup-btn {
+        width: 40px;
+        height: 40px;
+
+        min-width: 40px;
+        min-height: 40px;
+
+        padding: 0;
+
+        border-radius: 12px;
       }
 
-      .search-input-wrapper {
-        width: 100%;
-
-        min-height: 38px;
-        height: 38px;
-
-        border-radius:
-          11px !important;
-      }
-
-      .search-input {
-        min-height: 38px;
-        height: 38px;
-
-        padding:
-          0 4px !important;
-
-        font-size:
-          0.75rem;
-      }
-
-      .search-input::placeholder {
-        font-size:
-          0.68rem;
-      }
-
-      /*
-       * Mobile left search icon remains visible
-       * and is the actual submit button.
-       */
-      .search-icon {
-        width: 31px;
-
-        height: 38px;
-
-        padding:
-          0 !important;
-      }
-
-      /*
-       * IMPORTANT:
-       * Hide ONLY the right-side blue search button
-       * on mobile.
-       *
-       * Desktop/tablet keeps it.
-       */
-      .search-submit-btn {
-        display:
-          none !important;
-      }
-
-      /* -----------------------------------------------------
-         MOBILE ACTIONS
-         
-         Search = left
-         Install + Sign In = right
-      ----------------------------------------------------- */
-
-      .header-actions {
-        order: 2;
-
-        margin-left:
-          auto;
-
-        gap:
-          4px;
-
-        flex-shrink:
-          0;
-
-        animation:
-          none;
-      }
-
-      .header-extra-actions {
-        display:
-          none;
-      }
-
-      /* -----------------------------------------------------
-         MOBILE INSTALL
-      ----------------------------------------------------- */
-
+      /* Keep the Install App action visible on mobile. */
       .header-install-btn {
-        width:
-          38px;
+        width: auto;
+        min-width: 40px;
+        height: 40px;
+        min-height: 40px;
 
-        min-width:
-          38px;
+        padding: 0 10px;
 
-        height:
-          38px;
-
-        min-height:
-          38px;
-
-        padding:
-          0;
-
-        border-radius:
-          11px;
-
-        gap:
-          0;
+        border-radius: 12px;
       }
 
       .header-install-btn span {
-        display:
-          none;
+        display: inline;
       }
 
-      /* -----------------------------------------------------
-         MOBILE SIGN IN
-      ----------------------------------------------------- */
-
-      .header-login-btn {
-        width:
-          38px;
-
-        min-width:
-          38px;
-
-        height:
-          38px;
-
-        min-height:
-          38px;
-
-        padding:
-          0;
-
-        border-radius:
-          11px;
-
-        gap:
-          0;
-      }
-
-      .header-login-btn span {
-        display:
-          none;
-      }
-
-      /* -----------------------------------------------------
-         SIGNUP HIDDEN ON MOBILE
-         
-         The SignupModal itself is NOT removed.
-         Users can still access signup through LoginModal.
-      ----------------------------------------------------- */
-
-      .header-signup-btn {
-        display:
-          none;
-      }
-
-      /* -----------------------------------------------------
-         PROFILE
-      ----------------------------------------------------- */
-
-      .header-profile-btn {
-        width:
-          38px;
-
-        min-width:
-          38px;
-
-        height:
-          38px;
-
-        min-height:
-          38px;
-
-        padding:
-          0;
-
-        border-radius:
-          11px;
-      }
-
-      .header-profile-name,
-      .header-profile-chevron {
-        display:
-          none;
-      }
-
-      .header-profile-avatar {
-        width:
-          28px;
-
-        height:
-          28px;
-
-        border-radius:
-          8px;
+      .search-input-wrapper,
+      .search-input {
+        min-height: 43px;
+        height: 43px;
       }
     }
-
-    /* =====================================================
-       VERY SMALL PHONES
-    ===================================================== */
 
     @media (max-width: 390px) {
-      .app-header-container.container {
-        padding-left:
-          6px;
-
-        padding-right:
-          6px;
+      .header-install-btn {
+        width: 40px;
+        min-width: 40px;
+        padding: 0;
       }
 
-      .app-header-inner {
-        gap:
-          3px;
+      .header-install-btn span {
+        display: none;
       }
+    }
 
-      .menu-btn {
-        width:
-          36px;
+    @media (max-width: 480px) {
+      .announcement-dropdown {
+        position: fixed;
 
-        height:
-          36px;
+        top: 70px;
 
-        min-width:
-          36px;
-      }
+        left: 12px;
+        right: 12px;
 
-      .header-brand {
-        width:
-          36px;
-      }
-
-      .header-brand-mark {
-        width:
-          36px;
-
-        height:
-          36px;
-      }
-
-      .header-actions {
-        gap:
-          3px;
-      }
-
-      .header-install-btn,
-      .header-login-btn {
-        width:
-          36px;
-
-        min-width:
-          36px;
-
-        height:
-          36px;
-
-        min-height:
-          36px;
-      }
-
-      /*
-       * Even narrower search on very small phones.
-       */
-      .header-search-container {
-        max-width:
-          155px;
-
-        margin-left:
-          1px;
-      }
-
-      .search-input-wrapper {
-        min-height:
-          36px;
-
-        height:
-          36px;
-
-        border-radius:
-          10px !important;
-      }
-
-      .search-input {
-        min-height:
-          36px;
-
-        height:
-          36px;
-
-        font-size:
-          0.70rem;
-      }
-
-      .search-input::placeholder {
-        font-size:
-          0.62rem;
-      }
-
-      .search-icon {
-        width:
-          29px;
-
-        height:
-          36px;
-      }
-
-      .header-profile-btn {
-        width:
-          36px;
-
-        min-width:
-          36px;
-
-        height:
-          36px;
-
-        min-height:
-          36px;
-      }
-
-      .header-profile-avatar {
-        width:
-          26px;
-
-        height:
-          26px;
+        width: auto;
       }
     }
 
     /* =====================================================
-       ACCESSIBILITY / REDUCED MOTION
+       REDUCED MOTION
     ===================================================== */
 
     @media (prefers-reduced-motion: reduce) {
       .sticky-search-header,
       .header-brand,
       .header-search-container,
-      .header-actions {
-        animation:
-          none !important;
+      .header-actions,
+      .announcement-badge,
+      .announcement-dropdown,
+      .announcement-btn.is-active svg {
+        animation: none !important;
       }
 
       .header-icon-btn,
@@ -1703,14 +1627,13 @@ const AppHeaderStyles: React.FC = () => (
       .header-brand-mark img,
       .search-input-wrapper,
       .search-submit-btn,
-      .search-icon,
       .header-login-btn,
       .header-signup-btn,
       .header-install-btn,
-      .header-profile-btn,
-      .header-profile-menu-item {
-        transition:
-          none !important;
+      .announcement-close,
+      .announcement-item,
+      .announcement-item-icon {
+        transition: none !important;
       }
     }
   `}</style>
@@ -1720,145 +1643,100 @@ const AppHeaderStyles: React.FC = () => (
    APP HEADER
 ========================================================= */
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{
+    outcome: "accepted" | "dismissed";
+    platform: string;
+  }>;
+}
+
 const AppHeader: React.FC<AppHeaderProps> = ({
   onMenuClick,
   onSearch,
   showSearch = true,
   searchPath = "/destinations",
   searchPlaceholder = "Search destinations, events, guides...",
+  showAnnouncements = true,
   extraActions,
   isAdmin = false,
 }) => {
   const history = useHistory();
+  const location = useLocation();
   const auth = useAuth();
 
-  /* =========================================================
-     USER AUTH
-  ========================================================= */
-
   const isUserAuthenticated = Boolean(
-    (auth as any)?.isUserAuthenticated &&
-      (auth as any)?.user,
+    (auth as any)?.isUserAuthenticated && (auth as any)?.user,
   );
-
-  const currentUser =
-    (auth as any)?.user || null;
-
-  const userLogout =
-    (auth as any)?.userLogout;
-
-  /* =========================================================
-     ADMIN AUTH
-  ========================================================= */
-
+  const currentUser = (auth as any)?.user || null;
+  const userLogout = (auth as any)?.userLogout;
   const storedAdmin = (() => {
     try {
-      const raw =
-        localStorage.getItem("admin_user");
+      const raw = localStorage.getItem("admin_user");
 
       if (!raw) {
         return null;
       }
 
-      const parsed =
-        JSON.parse(raw);
+      const parsed = JSON.parse(raw);
 
-      return parsed &&
-        typeof parsed === "object"
-        ? parsed
-        : null;
+      return parsed && typeof parsed === "object" ? parsed : null;
     } catch {
       return null;
     }
   })();
 
   const currentAdmin =
-    (auth as any)?.adminUser ||
-    (auth as any)?.admin ||
-    storedAdmin ||
-    null;
-
+    (auth as any)?.adminUser || (auth as any)?.admin || storedAdmin || null;
   const adminLogout =
     (auth as any)?.adminLogout ||
     (auth as any)?.logout ||
     (auth as any)?.adminLogoutUser;
 
-  /* =========================================================
-     STATE
-  ========================================================= */
+  const [search, setSearch] = useState("");
 
-  const [search, setSearch] =
-    useState("");
+  const [showAnnouncementsMenu, setShowAnnouncementsMenu] = useState(false);
 
-  const [showLoginModal, setShowLoginModal] =
-    useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
-  const [showSignupModal, setShowSignupModal] =
-    useState(false);
+  const [showSignupModal, setShowSignupModal] = useState(false);
 
-  const [showProfileMenu, setShowProfileMenu] =
-    useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
-  const [profileNotice, setProfileNotice] =
-    useState("");
+  const [profileNotice, setProfileNotice] = useState("");
 
-  const profileRef =
-    useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
-  const [
-    deferredInstallPrompt,
-    setDeferredInstallPrompt,
-  ] =
-    useState<BeforeInstallPromptEvent | null>(
-      null,
-    );
+  const announcementRef = useRef<HTMLDivElement>(null);
 
-  const [
-    canInstallApp,
-    setCanInstallApp,
-  ] = useState(false);
+  const [deferredInstallPrompt, setDeferredInstallPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
 
-  const [
-    isStandalone,
-    setIsStandalone,
-  ] = useState(false);
+  const [canInstallApp, setCanInstallApp] = useState(false);
 
-  const isLoggedInHeader =
-    isAdmin
-      ? true
-      : isUserAuthenticated;
+  const [isMobileInstallDevice, setIsMobileInstallDevice] = useState(false);
 
-  /* =========================================================
-     PROFILE INFORMATION
-  ========================================================= */
+  const [isStandalone, setIsStandalone] = useState(false);
 
-  const profileDisplayName =
-    isAdmin
-      ? String(
-          currentAdmin?.name ||
-            currentAdmin?.username ||
-            currentAdmin?.email ||
-            "Administrator",
-        )
-      : String(
-          currentUser?.name ||
-            currentUser?.username ||
-            currentUser?.email ||
-            "User",
-        );
+  const isLoggedInHeader = isAdmin ? true : isUserAuthenticated;
 
-  const profileEmail =
-    isAdmin
-      ? String(
+  const profileDisplayName = isAdmin
+    ? String(
+        currentAdmin?.name ||
+          currentAdmin?.username ||
           currentAdmin?.email ||
-            currentAdmin?.username ||
-            "Administrator",
-        )
-      : String(
+          "Administrator",
+      )
+    : String(
+        currentUser?.name ||
+          currentUser?.username ||
           currentUser?.email ||
-            currentUser?.username ||
-            "",
-        );
+          "User",
+      );
+
+  const profileEmail = isAdmin
+    ? String(currentAdmin?.email || currentAdmin?.username || "Administrator")
+    : String(currentUser?.email || currentUser?.username || "");
 
   const profileInitials =
     profileDisplayName
@@ -1866,181 +1744,185 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       .split(/\s+/)
       .filter(Boolean)
       .slice(0, 2)
-      .map(
-        (part: string) =>
-          part.charAt(0).toUpperCase(),
-      )
-      .join("") ||
-    (isAdmin ? "A" : "U");
+      .map((part: string) => part.charAt(0).toUpperCase())
+      .join("") || (isAdmin ? "A" : "U");
+
+  /* =========================================================
+     ANNOUNCEMENTS
+  ========================================================= */
+
+  const announcements: Announcement[] = [
+    {
+      id: 1,
+      title: "Welcome to Calbayog City Tourism",
+      description:
+        "Discover destinations, events, accommodations, and travel information around Calbayog City.",
+      date: "Latest",
+      icon: "🌴",
+    },
+    {
+      id: 2,
+      title: "Explore Calbayog",
+      description:
+        "Discover beautiful natural attractions and cultural destinations around the city.",
+      date: "Tourism Update",
+      icon: "🌿",
+    },
+  ];
+
+  /* =========================================================
+     DARK MODE
+  ========================================================= */
+
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    const savedTheme = localStorage.getItem("calbayog-theme");
+
+    if (savedTheme === "dark") {
+      return true;
+    }
+
+    if (savedTheme === "light") {
+      return false;
+    }
+
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches || false;
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+
+    if (darkMode) {
+      root.setAttribute("data-theme", "dark");
+
+      root.classList.add("dark-mode");
+
+      localStorage.setItem("calbayog-theme", "dark");
+    } else {
+      root.setAttribute("data-theme", "light");
+
+      root.classList.remove("dark-mode");
+
+      localStorage.setItem("calbayog-theme", "light");
+    }
+  }, [darkMode]);
 
   /* =========================================================
      SEARCH
   ========================================================= */
 
-  const handleSearch = (
-    event: React.FormEvent,
-  ) => {
+  const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
 
-    const query =
-      search.trim();
+    const query = search.trim();
 
     if (!query) {
       return;
     }
 
-    /*
-     * If the parent provides onSearch, let the parent
-     * decide where the search should go.
-     *
-     * This is important because the AppHeader can be
-     * reused by Attractions, Accommodations, Events,
-     * etc.
-     */
     if (onSearch) {
       onSearch(query);
-    } else {
-      /*
-       * Only use searchPath as a fallback when no
-       * onSearch handler was provided.
-       */
-      const separator =
-        searchPath.includes("?")
-          ? "&"
-          : "?";
-
-      history.replace(
-        `${searchPath}${separator}search=${encodeURIComponent(
-          query,
-        )}`,
-      );
     }
+
+    const separator = searchPath.includes("?") ? "&" : "?";
+
+    history.replace(
+      `${searchPath}${separator}search=${encodeURIComponent(query)}`,
+    );
 
     setSearch("");
   };
+
+  /* =========================================================
+     ANNOUNCEMENT OUTSIDE CLICK
+  ========================================================= */
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        announcementRef.current &&
+        !announcementRef.current.contains(event.target as Node)
+      ) {
+        setShowAnnouncementsMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  /* =========================================================
+     ANNOUNCEMENT ESCAPE
+  ========================================================= */
+
+  useEffect(() => {
+    if (!showAnnouncementsMenu) {
+      return;
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowAnnouncementsMenu(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [showAnnouncementsMenu]);
 
   /* =========================================================
      PWA INSTALL
   ========================================================= */
 
   useEffect(() => {
-    const updateInstallState = () => {
-      const standalone =
-        window.matchMedia?.(
-          "(display-mode: standalone)",
-        ).matches ||
-        (window.navigator as Navigator & {
-          standalone?: boolean;
-        }).standalone === true;
+    const standalone =
+      window.matchMedia?.("(display-mode: standalone)").matches ||
+      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
 
-      setIsStandalone(
-        standalone,
-      );
+    const mobileDevice =
+      /Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent) ||
+      window.navigator.maxTouchPoints > 1;
 
-      /*
-       * If the site is already running as an installed
-       * PWA, the Install button must disappear.
-       */
-      if (standalone) {
-        setDeferredInstallPrompt(null);
-        setCanInstallApp(false);
+    setIsStandalone(standalone);
+    setIsMobileInstallDevice(mobileDevice);
 
-        return;
-      }
+    if (standalone) {
+      setDeferredInstallPrompt(null);
+      setCanInstallApp(false);
+      return;
+    }
 
-      /*
-       * Only show the Install button when Chrome has
-       * actually supplied the native installation prompt.
-       *
-       * We do NOT show a fake fallback button.
-       * We do NOT show "Chrome has not provided..."
-       */
-      if (pendingPwaInstallPrompt) {
-        setDeferredInstallPrompt(
-          pendingPwaInstallPrompt,
-        );
+    // On mobile devices, keep the Install App button visible even before
+    // Chrome sends beforeinstallprompt. If the browser supports the native
+    // prompt, the event below will replace the fallback with the real prompt.
+    if (mobileDevice) {
+      setCanInstallApp(true);
+    }
 
-        setCanInstallApp(true);
-      } else {
-        setDeferredInstallPrompt(null);
-        setCanInstallApp(false);
-      }
-    };
-
-    updateInstallState();
-
-    const handleBeforeInstallPrompt = (
-      event: Event,
-    ) => {
+    const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
 
-      const installEvent =
-        event as BeforeInstallPromptEvent;
-
-      pendingPwaInstallPrompt =
-        installEvent;
-
-      setDeferredInstallPrompt(
-        installEvent,
-      );
-
+      setDeferredInstallPrompt(event as BeforeInstallPromptEvent);
       setCanInstallApp(true);
     };
 
-    const handleInstallReady = () => {
-      if (
-        pendingPwaInstallPrompt
-      ) {
-        setDeferredInstallPrompt(
-          pendingPwaInstallPrompt,
-        );
-
-        setCanInstallApp(true);
-      }
-    };
-
     const handleAppInstalled = () => {
-      pendingPwaInstallPrompt =
-        null;
-
-      setDeferredInstallPrompt(
-        null,
-      );
-
+      setDeferredInstallPrompt(null);
       setCanInstallApp(false);
-
       setIsStandalone(true);
     };
-
-    const handleVisibilityChange =
-      () => {
-        if (
-          document.visibilityState ===
-          "visible"
-        ) {
-          updateInstallState();
-        }
-      };
 
     window.addEventListener(
       "beforeinstallprompt",
       handleBeforeInstallPrompt,
     );
 
-    window.addEventListener(
-      "calbayog-pwa-install-ready",
-      handleInstallReady,
-    );
-
-    window.addEventListener(
-      "appinstalled",
-      handleAppInstalled,
-    );
-
-    document.addEventListener(
-      "visibilitychange",
-      handleVisibilityChange,
-    );
+    window.addEventListener("appinstalled", handleAppInstalled);
 
     return () => {
       window.removeEventListener(
@@ -2048,119 +1930,67 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         handleBeforeInstallPrompt,
       );
 
-      window.removeEventListener(
-        "calbayog-pwa-install-ready",
-        handleInstallReady,
-      );
-
-      window.removeEventListener(
-        "appinstalled",
-        handleAppInstalled,
-      );
-
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibilityChange,
-      );
+      window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);
 
-  /* =========================================================
-     INSTALL BUTTON
-  ========================================================= */
+  const handleInstallApp = async () => {
+    if (!deferredInstallPrompt) {
+      const isIOS =
+        /iPad|iPhone|iPod/i.test(window.navigator.userAgent) ||
+        (window.navigator.platform === "MacIntel" &&
+          window.navigator.maxTouchPoints > 1);
 
-  const handleInstallApp =
-    async () => {
-      const installPrompt =
-        deferredInstallPrompt ||
-        pendingPwaInstallPrompt;
+      window.alert(
+        isIOS
+          ? 'To install Calbayog City Tourism, tap the Share button in your browser and choose "Add to Home Screen".'
+          : 'To install Calbayog City Tourism, open your browser menu (⋮) and choose "Install app" or "Add to Home screen".',
+      );
 
-      /*
-       * Only attempt installation when the browser
-       * has provided a real native install prompt.
-       */
-      if (!installPrompt) {
-        return;
-      }
+      return;
+    }
 
-      try {
-        await installPrompt.prompt();
+    try {
+      await deferredInstallPrompt.prompt();
 
-        const choice =
-          await installPrompt.userChoice;
+      const choice = await deferredInstallPrompt.userChoice;
 
-        /*
-         * The event is one-use.
-         */
-        pendingPwaInstallPrompt =
-          null;
+      // beforeinstallprompt events are one-use events. If the user dismisses
+      // the native prompt, keep the button visible so they can try again or
+      // follow the browser's manual installation instructions.
+      setDeferredInstallPrompt(null);
 
-        setDeferredInstallPrompt(
-          null,
-        );
-
-        if (
-          choice.outcome ===
-          "accepted"
-        ) {
-          setCanInstallApp(false);
-        } else {
-          /*
-           * Do not show any fallback message.
-           * Chrome may provide another prompt later.
-           */
-          setCanInstallApp(false);
-        }
-      } catch (error) {
-        console.error(
-          "PWA install prompt failed:",
-          error,
-        );
-
-        pendingPwaInstallPrompt =
-          null;
-
-        setDeferredInstallPrompt(
-          null,
-        );
-
-        /*
-         * No fallback message.
-         * No manual-install instruction.
-         */
+      if (choice.outcome === "accepted") {
         setCanInstallApp(false);
+      } else {
+        setCanInstallApp(!isStandalone);
       }
-    };
+    } catch (error) {
+      console.error("PWA install prompt failed:", error);
+
+      setDeferredInstallPrompt(null);
+      setCanInstallApp(!isStandalone && isMobileInstallDevice);
+    }
+  };
 
   /* =========================================================
      PROFILE OUTSIDE CLICK
   ========================================================= */
 
   useEffect(() => {
-    const handleClickOutside =
-      (event: MouseEvent) => {
-        if (
-          profileRef.current &&
-          !profileRef.current.contains(
-            event.target as Node,
-          )
-        ) {
-          setShowProfileMenu(
-            false,
-          );
-        }
-      };
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(event.target as Node)
+      ) {
+        setShowProfileMenu(false);
+      }
+    };
 
-    document.addEventListener(
-      "mousedown",
-      handleClickOutside,
-    );
+    document.addEventListener("mousedown", handleClickOutside);
 
     return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside,
-      );
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
@@ -2169,223 +1999,183 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   ========================================================= */
 
   useEffect(() => {
-    if (!showProfileMenu) {
-      return;
-    }
+    if (!showProfileMenu) return;
 
-    const handleEscape =
-      (event: KeyboardEvent) => {
-        if (
-          event.key ===
-          "Escape"
-        ) {
-          setShowProfileMenu(
-            false,
-          );
-        }
-      };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowProfileMenu(false);
+      }
+    };
 
-    document.addEventListener(
-      "keydown",
-      handleEscape,
-    );
+    document.addEventListener("keydown", handleEscape);
 
     return () => {
-      document.removeEventListener(
-        "keydown",
-        handleEscape,
-      );
+      document.removeEventListener("keydown", handleEscape);
     };
   }, [showProfileMenu]);
 
   /* =========================================================
      CHANGE PASSWORD
+
+     Uses the existing secure Gmail password-reset flow.
+     No new password endpoint is invented here.
   ========================================================= */
 
-  const handleChangePassword =
-    async () => {
-      const email = String(
-        currentUser?.email ||
-          currentUser?.username ||
-          "",
-      ).trim();
+  const handleChangePassword = async () => {
+    const email = String(
+      currentUser?.email || currentUser?.username || "",
+    ).trim();
 
-      setProfileNotice("");
+    setProfileNotice("");
 
-      if (!email) {
-        setProfileNotice(
-          "Your account email could not be found.",
-        );
+    if (!email) {
+      setProfileNotice("Your account email could not be found.");
+      return;
+    }
 
-        return;
-      }
+    try {
+      const apiUrl = (
+        (import.meta as any).env?.VITE_API_URL || "http://localhost:5000/api"
+      ).replace(/\/$/, "");
 
-      try {
-        const apiUrl = (
-          (import.meta as any).env
-            ?.VITE_API_URL ||
-          "http://localhost:5000/api"
-        ).replace(/\/$/, "");
+      const response = await fetch(`${apiUrl}/auth/user/forgot-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ username: email }),
+      });
 
-        const response =
-          await fetch(
-            `${apiUrl}/auth/user/forgot-password`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type":
-                  "application/json",
-                Accept:
-                  "application/json",
-              },
-              body: JSON.stringify({
-                username: email,
-              }),
-            },
-          );
+      const data = await response.json().catch(() => ({}));
 
-        const data =
-          await response
-            .json()
-            .catch(
-              () => ({}),
-            );
-
-        if (!response.ok) {
-          throw new Error(
-            data?.message ||
-              "Unable to send the password reset email.",
-          );
-        }
-
-        setProfileNotice(
-          `A password reset link was sent to ${email}.`,
-        );
-      } catch (error: any) {
-        console.error(
-          "Change password request failed:",
-          error,
-        );
-
-        setProfileNotice(
-          error?.message ||
-            "Unable to start the password change process.",
+      if (!response.ok) {
+        throw new Error(
+          data?.message || "Unable to send the password reset email.",
         );
       }
-    };
 
-  /* =========================================================
-     PROFILE LOGOUT
-  ========================================================= */
-
-  const handleProfileLogout =
-    () => {
-      setShowProfileMenu(
-        false,
+      setProfileNotice(`A password reset link was sent to ${email}.`);
+    } catch (error: any) {
+      console.error("Change password request failed:", error);
+      setProfileNotice(
+        error?.message || "Unable to start the password change process.",
       );
+    }
+  };
 
-      setProfileNotice("");
+  const handleProfileLogout = () => {
+    setShowProfileMenu(false);
+    setProfileNotice("");
 
-      try {
-        if (isAdmin) {
-          if (
-            typeof adminLogout ===
-            "function"
-          ) {
-            adminLogout();
-          } else {
-            localStorage.removeItem(
-              "token",
-            );
-
-            localStorage.removeItem(
-              "admin_token",
-            );
-
-            localStorage.removeItem(
-              "admin_user",
-            );
-          }
-        } else if (
-          typeof userLogout ===
-          "function"
-        ) {
-          userLogout();
+    try {
+      if (isAdmin) {
+        if (typeof adminLogout === "function") {
+          adminLogout();
+        } else {
+          localStorage.removeItem("token");
+          localStorage.removeItem("admin_token");
+          localStorage.removeItem("admin_user");
         }
-      } catch (error) {
-        console.error(
-          "Logout failed:",
-          error,
-        );
+      } else if (typeof userLogout === "function") {
+        userLogout();
       }
-    };
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   /* =========================================================
      AUTH MODAL HANDLERS
   ========================================================= */
 
   const openLogin = () => {
-    setShowSignupModal(
-      false,
-    );
+    setShowSignupModal(false);
 
-    requestAnimationFrame(
-      () => {
-        setShowLoginModal(
-          true,
-        );
-      },
-    );
+    requestAnimationFrame(() => {
+      setShowLoginModal(true);
+    });
   };
 
   const openSignup = () => {
-    setShowLoginModal(
-      false,
-    );
+    setShowLoginModal(false);
 
-    requestAnimationFrame(
-      () => {
-        setShowSignupModal(
-          true,
-        );
-      },
-    );
+    requestAnimationFrame(() => {
+      setShowSignupModal(true);
+    });
+  };
+
+  const closeAuthModals = () => {
+    setShowLoginModal(false);
+    setShowSignupModal(false);
   };
 
   /* =========================================================
-     VERIFY EMAIL → LOGIN MODAL
+     ADMIN LOGIN → UNIFIED LOGIN MODAL
+
+     /admin/login redirects to:
+
+       /?openLogin=1
+
+     This opens the SAME LoginModal used by normal users,
+     then removes the temporary query parameter from the URL.
   ========================================================= */
 
   useEffect(() => {
-    const handleOpenLoginModal =
-      () => {
-        if (isAdmin) {
-          return;
-        }
+    const params = new URLSearchParams(location.search);
 
-        setShowSignupModal(
-          false,
-        );
+    if (params.get("openLogin") !== "1") {
+      return;
+    }
 
-        requestAnimationFrame(
-          () => {
-            setShowLoginModal(
-              true,
-            );
-          },
-        );
-      };
+    setShowSignupModal(false);
+    setShowLoginModal(true);
 
-    window.addEventListener(
-      "open-login-modal",
-      handleOpenLoginModal,
-    );
+    params.delete("openLogin");
+
+    const cleanSearch = params.toString();
+
+    history.replace({
+      pathname: location.pathname,
+      search: cleanSearch ? `?${cleanSearch}` : "",
+    });
+  }, [
+    location.pathname,
+    location.search,
+    history,
+  ]);
+
+  /* =========================================================
+     VERIFY EMAIL → LOGIN MODAL BRIDGE
+
+     VerifyEmail.tsx dispatches:
+
+       new Event("open-login-modal")
+
+     This listener opens the same LoginModal used by
+     the header.
+
+     IMPORTANT:
+     This listener does NOT run in admin mode.
+  ========================================================= */
+
+  useEffect(() => {
+    const handleOpenLoginModal = () => {
+      if (isAdmin) {
+        return;
+      }
+
+      setShowSignupModal(false);
+
+      requestAnimationFrame(() => {
+        setShowLoginModal(true);
+      });
+    };
+
+    window.addEventListener("open-login-modal", handleOpenLoginModal);
 
     return () => {
-      window.removeEventListener(
-        "open-login-modal",
-        handleOpenLoginModal,
-      );
+      window.removeEventListener("open-login-modal", handleOpenLoginModal);
     };
   }, [isAdmin]);
 
@@ -2400,7 +2190,6 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       <header className="sticky-search-header">
         <Container className="app-header-container">
           <div className="app-header-inner">
-
             {/* =================================================
                MENU
             ================================================= */}
@@ -2412,30 +2201,16 @@ const AppHeader: React.FC<AppHeaderProps> = ({
               aria-label="Open navigation menu"
               title="Open menu"
             >
-              <HeaderIcon
-                name="menu"
-                size={22}
-                strokeWidth={1.9}
-              />
+              <HeaderIcon name="menu" size={22} strokeWidth={1.9} />
             </button>
 
             {/* =================================================
                LOGO
-
-               IMPORTANT:
-               This logo remains on mobile.
-               Nothing about the logo image itself was changed.
             ================================================= */}
 
-            <div
-              className="header-brand"
-              aria-label="Calbayog City Tourism"
-            >
+            <div className="header-brand" aria-label="Calbayog City Tourism">
               <div className="header-brand-mark">
-                <img
-                  src="/logo2.png"
-                  alt="Calbayog City Tourism"
-                />
+                <img src="/logo2.png" alt="Calbayog City Tourism" />
               </div>
             </div>
 
@@ -2446,58 +2221,23 @@ const AppHeader: React.FC<AppHeaderProps> = ({
             {showSearch && (
               <div className="header-search-container">
                 <Form
-                  onSubmit={
-                    handleSearch
-                  }
+                  onSubmit={handleSearch}
                   role="search"
                   className="header-search-form"
                 >
                   <InputGroup className="search-input-wrapper">
-
-                    {/* =================================================
-                       LEFT SEARCH ICON
-
-                       This is now the clickable submit button.
-                    ================================================= */}
-
-                    <button
-                      type="submit"
-                      className="search-icon"
-                      aria-label="Submit search"
-                      title="Search"
-                    >
-                      <HeaderIcon
-                        name="search"
-                        size={18}
-                        strokeWidth={1.8}
-                      />
-                    </button>
+                    <InputGroup.Text className="search-icon">
+                      <HeaderIcon name="search" size={18} strokeWidth={1.8} />
+                    </InputGroup.Text>
 
                     <Form.Control
                       type="search"
-                      placeholder={
-                        searchPlaceholder
-                      }
+                      placeholder={searchPlaceholder}
                       value={search}
-                      onChange={(event) =>
-                        setSearch(
-                          event.target
-                            .value,
-                        )
-                      }
+                      onChange={(event) => setSearch(event.target.value)}
                       className="search-input"
                       aria-label="Search tourism information"
                     />
-
-                    {/* =================================================
-                       RIGHT BLUE SEARCH BUTTON
-
-                       Desktop / laptop:
-                       VISIBLE
-
-                       Mobile:
-                       HIDDEN USING CSS
-                    ================================================= */}
 
                     <button
                       type="submit"
@@ -2505,13 +2245,8 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                       aria-label="Submit search"
                       title="Search"
                     >
-                      <HeaderIcon
-                        name="search"
-                        size={17}
-                        strokeWidth={1.9}
-                      />
+                      <HeaderIcon name="search" size={17} strokeWidth={1.9} />
                     </button>
-
                   </InputGroup>
                 </Form>
               </div>
@@ -2522,34 +2257,114 @@ const AppHeader: React.FC<AppHeaderProps> = ({
             ================================================= */}
 
             <div className="header-actions">
-
-              {/* =================================================
-                 EXTRA ACTIONS
-              ================================================= */}
+              {/* EXTRA ACTIONS */}
 
               {extraActions && (
-                <div className="header-extra-actions">
-                  {extraActions}
+                <div className="header-extra-actions">{extraActions}</div>
+              )}
+
+              {/* =================================================
+                 ANNOUNCEMENTS / NOTIFICATIONS
+              ================================================= */}
+
+              {showAnnouncements && !isAdmin && (
+                <div className="announcement-wrapper" ref={announcementRef}>
+                  <button
+                    type="button"
+                    className={`header-icon-btn announcement-btn ${
+                      showAnnouncementsMenu ? "is-active" : ""
+                    }`}
+                    onClick={() =>
+                      setShowAnnouncementsMenu((previous) => !previous)
+                    }
+                    aria-label="View announcements"
+                    title="Announcements"
+                    aria-expanded={showAnnouncementsMenu}
+                    aria-haspopup="dialog"
+                  >
+                    <HeaderIcon name="bell" size={20} strokeWidth={1.8} />
+
+                    {announcements.length > 0 && (
+                      <span
+                        className="announcement-badge"
+                        aria-label={`${announcements.length} announcements`}
+                      >
+                        {announcements.length}
+                      </span>
+                    )}
+                  </button>
+
+                  {showAnnouncementsMenu && (
+                    <div
+                      className="announcement-dropdown"
+                      role="dialog"
+                      aria-label="Announcements"
+                    >
+                      <div className="announcement-header">
+                        <div className="announcement-heading">
+                          <div className="announcement-title">
+                            Announcements
+                          </div>
+
+                          <div className="announcement-subtitle">
+                            Latest tourism updates
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="announcement-close"
+                          onClick={() => setShowAnnouncementsMenu(false)}
+                          aria-label="Close announcements"
+                        >
+                          <HeaderIcon name="close" size={16} />
+                        </button>
+                      </div>
+
+                      <div className="announcement-list">
+                        {announcements.map((announcement) => (
+                          <div
+                            key={announcement.id}
+                            className="announcement-item"
+                          >
+                            <div className="announcement-item-icon">
+                              {announcement.icon}
+                            </div>
+
+                            <div className="announcement-item-content">
+                              <div className="announcement-item-title">
+                                {announcement.title}
+                              </div>
+
+                              <div className="announcement-item-description">
+                                {announcement.description}
+                              </div>
+
+                              <div className="announcement-item-date">
+                                {announcement.date}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="announcement-footer">
+                        Calbayog City Tourism Office
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* =================================================
                  INSTALL APP
-
-                 IMPORTANT:
-                 This appears ONLY when Chrome provides the
-                 real native beforeinstallprompt event.
-
-                 No fallback message is shown.
               ================================================= */}
 
               {canInstallApp && (
                 <button
                   type="button"
                   className="header-install-btn"
-                  onClick={
-                    handleInstallApp
-                  }
+                  onClick={handleInstallApp}
                   aria-label="Install Calbayog City Tourism app"
                   title="Install Calbayog City Tourism"
                 >
@@ -2558,102 +2373,74 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                     size={18}
                     strokeWidth={1.9}
                   />
-
-                  <span>
-                    Install App
-                  </span>
+                  <span>Install App</span>
                 </button>
               )}
 
               {/* =================================================
-                 AUTH
+                 DARK MODE
+              ================================================= */}
+
+              <button
+                type="button"
+                className="header-icon-btn"
+                onClick={() => setDarkMode((previous) => !previous)}
+                aria-label={
+                  darkMode ? "Switch to light mode" : "Switch to dark mode"
+                }
+                title={darkMode ? "Light mode" : "Dark mode"}
+              >
+                <HeaderIcon
+                  name={darkMode ? "sun" : "moon"}
+                  size={19}
+                  strokeWidth={1.8}
+                />
+              </button>
+
+              {/* =================================================
+                 AUTH / PROFILE
               ================================================= */}
 
               {!isLoggedInHeader ? (
                 <>
-                  {/* -------------------------------------------------
-                     SIGN IN
-                  ------------------------------------------------- */}
-
                   <button
                     type="button"
                     className="header-login-btn"
-                    onClick={
-                      openLogin
-                    }
-                    aria-label="Sign in"
-                    title="Sign in"
+                    onClick={openLogin}
+                    aria-label="Log in"
+                    title="Log in"
                   >
-                    <HeaderIcon
-                      name="login"
-                      size={18}
-                      strokeWidth={1.9}
-                    />
+                    <HeaderIcon name="login" size={18} strokeWidth={1.9} />
 
-                    <span>
-                      Sign in
-                    </span>
+                    <span>Log in</span>
                   </button>
-
-                  {/* -------------------------------------------------
-                     SIGN UP
-
-                     Hidden by CSS on mobile.
-
-                     SignupModal still exists below.
-                  ------------------------------------------------- */}
 
                   <button
                     type="button"
                     className="header-signup-btn"
-                    onClick={
-                      openSignup
-                    }
+                    onClick={openSignup}
                     aria-label="Sign up"
                     title="Sign up"
                   >
-                    <HeaderIcon
-                      name="signup"
-                      size={18}
-                      strokeWidth={1.9}
-                    />
+                    <HeaderIcon name="signup" size={18} strokeWidth={1.9} />
 
-                    <span>
-                      Sign up
-                    </span>
+                    <span>Sign up</span>
                   </button>
                 </>
               ) : (
-                /* =================================================
-                   PROFILE
-                ================================================= */
-
-                <div
-                  className="header-profile-wrapper"
-                  ref={profileRef}
-                >
+                <div className="header-profile-wrapper" ref={profileRef}>
                   <button
                     type="button"
                     className={`header-profile-btn ${
-                      showProfileMenu
-                        ? "is-open"
-                        : ""
+                      showProfileMenu ? "is-open" : ""
                     }`}
                     onClick={() => {
                       setProfileNotice("");
-
-                      setShowProfileMenu(
-                        (previous) =>
-                          !previous,
-                      );
+                      setShowProfileMenu((previous) => !previous);
                     }}
                     aria-label="Open profile menu"
-                    title={
-                      profileDisplayName
-                    }
-                    aria-expanded={
-                      showProfileMenu
-                    }
+                    title={profileDisplayName}
+                    aria-expanded={showProfileMenu}
                     aria-haspopup="menu"
                   >
                     <span className="header-profile-avatar">
@@ -2661,17 +2448,11 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                     </span>
 
                     <span className="header-profile-name">
-                      {
-                        profileDisplayName
-                      }
+                      {profileDisplayName}
                     </span>
 
                     <span className="header-profile-chevron">
-                      <HeaderIcon
-                        name="chevron"
-                        size={15}
-                        strokeWidth={1.9}
-                      />
+                      <HeaderIcon name="chevron" size={15} strokeWidth={1.9} />
                     </span>
                   </button>
 
@@ -2683,70 +2464,43 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                     >
                       <div className="header-profile-summary">
                         <div className="header-profile-summary-name">
-                          {
-                            profileDisplayName
-                          }
+                          {profileDisplayName}
                         </div>
 
                         <div className="header-profile-summary-email">
-                          {
-                            profileEmail
-                          }
+                          {profileEmail}
                         </div>
 
                         <span className="header-profile-role">
-                          {isAdmin
-                            ? "Administrator"
-                            : "Traveler"}
+                          {isAdmin ? "Administrator" : "Traveler"}
                         </span>
                       </div>
-
                       {!isAdmin && (
                         <button
                           type="button"
                           className="header-profile-menu-item"
-                          onClick={
-                            handleChangePassword
-                          }
+                          onClick={handleChangePassword}
                           role="menuitem"
                         >
-                          <HeaderIcon
-                            name="lock"
-                            size={17}
-                            strokeWidth={1.8}
-                          />
-
-                          <span>
-                            Change Password
-                          </span>
+                          <HeaderIcon name="lock" size={17} strokeWidth={1.8} />
+                          <span>Change Password</span>
                         </button>
                       )}
 
                       {profileNotice && (
                         <div className="header-profile-notice">
-                          {
-                            profileNotice
-                          }
+                          {profileNotice}
                         </div>
                       )}
 
                       <button
                         type="button"
                         className="header-profile-menu-item logout"
-                        onClick={
-                          handleProfileLogout
-                        }
+                        onClick={handleProfileLogout}
                         role="menuitem"
                       >
-                        <HeaderIcon
-                          name="logout"
-                          size={17}
-                          strokeWidth={1.8}
-                        />
-
-                        <span>
-                          Log Out
-                        </span>
+                        <HeaderIcon name="logout" size={17} strokeWidth={1.8} />
+                        <span>Log Out</span>
                       </button>
                     </div>
                   )}
@@ -2757,64 +2511,55 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         </Container>
       </header>
 
-      {/* =========================================================
+      {/* =======================================================
           LOGIN MODAL
-      ========================================================= */}
+          
+          Login CAN close after successful login.
+      ======================================================= */}
 
       <LoginModal
-        show={
-          showLoginModal
-        }
+        show={showLoginModal}
         onClose={() => {
-          setShowLoginModal(
-            false,
-          );
+          setShowLoginModal(false);
         }}
         onSwitchToSignup={() => {
-          setShowLoginModal(
-            false,
-          );
+          setShowLoginModal(false);
 
-          requestAnimationFrame(
-            () => {
-              setShowSignupModal(
-                true,
-              );
-            },
-          );
+          requestAnimationFrame(() => {
+            setShowSignupModal(true);
+          });
         }}
         onSuccess={() => {
-          setShowLoginModal(
-            false,
-          );
+          /*
+           * Successful login:
+           * close the login modal and return to the page.
+           */
+          setShowLoginModal(false);
         }}
       />
 
-      {/* =========================================================
+      {/* =======================================================
           SIGNUP MODAL
-      ========================================================= */}
+
+          IMPORTANT:
+          DO NOT PASS onSuccess THAT CLOSES THE MODAL.
+
+          SignupModal itself handles the successful signup
+          state and displays the "Verify your email" message
+          inside this same modal.
+      ======================================================= */}
 
       <SignupModal
-        show={
-          showSignupModal
-        }
+        show={showSignupModal}
         onClose={() => {
-          setShowSignupModal(
-            false,
-          );
+          setShowSignupModal(false);
         }}
         onSwitchToLogin={() => {
-          setShowSignupModal(
-            false,
-          );
+          setShowSignupModal(false);
 
-          requestAnimationFrame(
-            () => {
-              setShowLoginModal(
-                true,
-              );
-            },
-          );
+          requestAnimationFrame(() => {
+            setShowLoginModal(true);
+          });
         }}
       />
     </>
