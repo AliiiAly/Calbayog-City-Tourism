@@ -31,7 +31,7 @@ const getTokenFromRequest = (req) => {
     return null;
   }
 
-     console.log("[AUTH DEBUG]", {
+  console.log("[AUTH DEBUG]", {
     method: req.method,
     path: req.originalUrl,
     hasAuthorization: Boolean(
@@ -161,6 +161,7 @@ const createUserObject = (decoded) => {
       decoded.fullName ||
       null,
     email: decoded.email || null,
+    role: decoded.role || null,
   };
 };
 
@@ -203,8 +204,20 @@ const verifyToken = (req, res, next) => {
 };
 
 /* =========================================================
-   ADMIN PROTECTION
+   GENERAL AUTHENTICATION PROTECTION
 ========================================================= */
+
+/*
+  This middleware verifies that the request contains
+  a valid JWT.
+
+  IMPORTANT:
+  This middleware intentionally does NOT require
+  role === "admin".
+
+  It can therefore be used by routes that allow any
+  authenticated account.
+*/
 
 const protect = (req, res, next) => {
   const token = getTokenFromRequest(req);
@@ -213,7 +226,7 @@ const protect = (req, res, next) => {
     return res.status(401).json({
       success: false,
       message:
-        "Unauthorized - no admin token provided.",
+        "Unauthorized - no token provided.",
     });
   }
 
@@ -223,14 +236,63 @@ const protect = (req, res, next) => {
       getJwtSecret()
     );
 
-    /*
-      Store the decoded token information.
+    req.admin = decoded;
+    req.auth = decoded;
 
-      Existing admin routes can use:
+    next();
+  } catch (error) {
+    console.error(
+      "JWT verification error:",
+      error.name,
+      error.message
+    );
 
-      req.admin
-      req.auth
-    */
+    return res.status(401).json({
+      success: false,
+      message:
+        "Unauthorized - invalid or expired token.",
+    });
+  }
+};
+
+/* =========================================================
+   ADMIN PROTECTION
+========================================================= */
+
+/*
+  This middleware requires:
+
+  1. A valid JWT
+  2. role === "admin"
+
+  Use this for routes that must only be accessible
+  by administrators.
+*/
+
+const protectAdmin = (req, res, next) => {
+  const token = getTokenFromRequest(req);
+
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      message:
+        "Unauthorized - no token provided.",
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(
+      token,
+      getJwtSecret()
+    );
+
+    if (decoded.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Forbidden - administrator access required.",
+      });
+    }
 
     req.admin = decoded;
     req.auth = decoded;
@@ -246,7 +308,7 @@ const protect = (req, res, next) => {
     return res.status(401).json({
       success: false,
       message:
-        "Unauthorized - invalid or expired admin token.",
+        "Unauthorized - invalid or expired token.",
     });
   }
 };
@@ -271,6 +333,21 @@ const protectUser = (req, res, next) => {
       token,
       getJwtSecret()
     );
+
+    /*
+      Explicitly require a user JWT.
+
+      This prevents an administrator JWT from being
+      accepted by user-only routes.
+    */
+
+    if (decoded.role !== "user") {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Forbidden - user access required.",
+      });
+    }
 
     const user = createUserObject(decoded);
 
@@ -337,7 +414,7 @@ const protectUser = (req, res, next) => {
   This middleware allows both authenticated and
   unauthenticated requests.
 
-  If a valid token exists:
+  If a valid USER token exists:
     req.user is populated.
 
   If no token exists:
@@ -345,9 +422,6 @@ const protectUser = (req, res, next) => {
 
   If the token is invalid or expired:
     the request continues as unauthenticated.
-
-  This is useful for public routes that may display
-  additional information for logged-in users.
 */
 
 const optionalUser = (req, res, next) => {
@@ -365,6 +439,20 @@ const optionalUser = (req, res, next) => {
       token,
       getJwtSecret()
     );
+
+    /*
+      Only treat a role === "user" token as a user
+      for optional user authentication.
+
+      Admin tokens should not populate req.user.
+    */
+
+    if (decoded.role !== "user") {
+      req.user = null;
+      req.auth = decoded;
+
+      return next();
+    }
 
     const user = createUserObject(decoded);
 
@@ -396,6 +484,7 @@ const optionalUser = (req, res, next) => {
 
 module.exports = {
   protect,
+  protectAdmin,
   protectUser,
   optionalUser,
   verifyToken,
