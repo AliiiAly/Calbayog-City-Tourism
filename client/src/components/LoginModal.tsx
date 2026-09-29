@@ -3,7 +3,13 @@ import React, {
   useState,
 } from "react";
 
+import {
+  useHistory,
+} from "react-router-dom";
+
 import { useAuth } from "../context/AuthContext";
+
+import { AdminUser } from "../types";
 
 interface LoginModalProps {
   show: boolean;
@@ -30,8 +36,12 @@ const LoginModal: React.FC<LoginModalProps> = ({
   onSwitchToSignup,
   onSuccess,
 }) => {
-  const { userLogin } =
-    useAuth();
+  const history = useHistory();
+
+  const {
+    userLogin,
+    login,
+  } = useAuth();
 
   const [view, setView] =
     useState<LoginView>("login");
@@ -120,6 +130,16 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
   /* =====================================================
      GMAIL VALIDATION
+     
+     Used ONLY for:
+     - Forgot password
+     - Email verification
+     - User account recovery
+     
+     Normal LOGIN accepts either:
+     - Gmail address
+     - Admin username
+     - Admin email
   ===================================================== */
 
   const isGmail = (
@@ -146,28 +166,18 @@ const LoginModal: React.FC<LoginModalProps> = ({
     setError("");
     setSuccess("");
 
-    const normalizedEmail =
-      email.trim().toLowerCase();
+    const normalizedLogin =
+      email.trim();
 
     /* -----------------------------------------------
-       EMAIL
+       LOGIN IDENTIFIER
     ----------------------------------------------- */
 
-    if (!normalizedEmail) {
+    if (!normalizedLogin) {
       setError(
-        "Please enter your Gmail address."
+        "Please enter your Gmail address, email, or username."
       );
-      return;
-    }
 
-    if (
-      !isGmail(
-        normalizedEmail
-      )
-    ) {
-      setError(
-        "Please use a valid Gmail address ending in @gmail.com."
-      );
       return;
     }
 
@@ -179,15 +189,23 @@ const LoginModal: React.FC<LoginModalProps> = ({
       setError(
         "Please enter your password."
       );
+
       return;
     }
 
     setLoading(true);
 
     try {
+      /* =================================================
+         IMPORTANT
+         
+         This is now the SINGLE login endpoint
+         for both users and admins.
+      ================================================= */
+
       const response =
         await fetch(
-          `${API_URL}/auth/user/login`,
+          `${API_URL}/auth/login`,
           {
             method: "POST",
 
@@ -198,7 +216,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
             body: JSON.stringify({
               username:
-                normalizedEmail,
+                normalizedLogin,
 
               password,
             }),
@@ -211,12 +229,12 @@ const LoginModal: React.FC<LoginModalProps> = ({
           .catch(() => ({}));
 
       console.log(
-        "Login response:",
+        "Unified login response:",
         data
       );
 
       /* -----------------------------------------------
-         UNVERIFIED ACCOUNT
+         UNVERIFIED USER ACCOUNT
       ----------------------------------------------- */
 
       if (!response.ok) {
@@ -226,7 +244,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
         ) {
           setVerificationEmail(
             data?.email ||
-              normalizedEmail
+              normalizedLogin
           );
 
           setView(
@@ -243,7 +261,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
         throw new Error(
           data?.message ||
-            "Unable to log in. Please check your Gmail and password."
+            "Unable to log in. Please check your login information and password."
         );
       }
 
@@ -261,17 +279,98 @@ const LoginModal: React.FC<LoginModalProps> = ({
       }
 
       /* =================================================
-         IMPORTANT AUTHCONTEXT FIX
+         DETERMINE ACCOUNT ROLE
+      ================================================= */
 
-         Your corrected AuthContext expects:
+      const role =
+        data.user.role ===
+        "admin"
+          ? "admin"
+          : "user";
 
-           userLogin(userData, accessToken)
+      /* =================================================
+         ADMIN LOGIN
+      ================================================= */
 
-         NOT:
+      if (role === "admin") {
+        /*
+          The unified backend returns the admin
+          account in data.admin.
 
-           userLogin(userData, session)
+          We prefer data.admin when available,
+          then fall back to data.user.
+        */
 
-         and NOT a fake Supabase Session object.
+        const adminSource =
+          data.admin ||
+          data.user;
+
+        const mappedAdmin = {
+          id:
+            adminSource.id,
+
+          username:
+            adminSource.username ||
+            adminSource.email ||
+            "",
+
+          name:
+            adminSource.name ||
+            "",
+
+          email:
+            adminSource.email ||
+            "",
+
+          is_active:
+            typeof adminSource.is_active ===
+            "boolean"
+              ? adminSource.is_active
+              : true,
+
+          role: "admin",
+        } as AdminUser;
+
+        /*
+          Store the admin session using the
+          existing Admin AuthContext system.
+
+          This means the existing admin API
+          interceptor can continue using
+          admin_token.
+        */
+
+        login(
+          data.token,
+          mappedAdmin
+        );
+
+        setSuccess(
+          "Admin login successful!"
+        );
+
+        /*
+          Give the success message a short
+          moment before moving to dashboard.
+        */
+
+        window.setTimeout(() => {
+          onClose();
+
+          if (onSuccess) {
+            onSuccess();
+          }
+
+          history.push(
+            "/admin"
+          );
+        }, 500);
+
+        return;
+      }
+
+      /* =================================================
+         USER LOGIN
       ================================================= */
 
       const mappedUser = {
@@ -297,7 +396,22 @@ const LoginModal: React.FC<LoginModalProps> = ({
           "boolean"
             ? data.user.is_active
             : true,
+
+        role: "user" as const,
+
+        email_verified:
+          typeof data.user.email_verified ===
+          "boolean"
+            ? data.user.email_verified
+            : undefined,
       };
+
+      /*
+        Store the user session.
+
+        AuthContext will keep this in the
+        existing user_token/user_data storage.
+      */
 
       userLogin(
         mappedUser,
@@ -312,6 +426,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
        * Give the success state a short
        * moment before closing.
        */
+
       window.setTimeout(() => {
         onClose();
 
@@ -336,6 +451,8 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
   /* =====================================================
      FORGOT PASSWORD
+     
+     USER ONLY
   ===================================================== */
 
   const handleForgotPassword =
@@ -358,6 +475,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
         setError(
           "Please enter your Gmail address."
         );
+
         return;
       }
 
@@ -369,6 +487,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
         setError(
           "Only Gmail addresses ending in @gmail.com are accepted."
         );
+
         return;
       }
 
@@ -451,6 +570,8 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
   /* =====================================================
      RESEND VERIFICATION
+     
+     USER ONLY
   ===================================================== */
 
   const handleResendVerification =
@@ -471,6 +592,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
         setError(
           "Please enter your Gmail address."
         );
+
         return;
       }
 
@@ -482,6 +604,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
         setError(
           "Only Gmail addresses ending in @gmail.com are accepted."
         );
+
         return;
       }
 
@@ -661,9 +784,10 @@ const LoginModal: React.FC<LoginModalProps> = ({
                 </h2>
 
                 <p className="login-modal-subtitle">
-                  Sign in with your Gmail
-                  address to continue
-                  exploring Calbayog City.
+                  Sign in to continue
+                  exploring Calbayog City,
+                  planning your trip, and
+                  saving your memories.
                 </p>
 
                 {error && (
@@ -689,29 +813,30 @@ const LoginModal: React.FC<LoginModalProps> = ({
                     handleLogin
                   }
                 >
-                  {/* EMAIL */}
+                  {/* LOGIN IDENTIFIER */}
 
                   <div className="login-form-group">
                     <label
                       htmlFor="login-email"
                       className="login-form-label"
                     >
-                      Gmail Address
+                      Email or Username
                     </label>
 
                     <input
                       id="login-email"
-                      type="email"
+                      type="text"
                       className="login-input"
-                      placeholder="you@gmail.com"
+                      placeholder="you@gmail.com or admin username"
                       value={email}
                       onChange={(event) => {
                         setEmail(
                           event.target.value
                         );
+
                         setError("");
                       }}
-                      autoComplete="email"
+                      autoComplete="username"
                       disabled={loading}
                       required
                     />
@@ -742,6 +867,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
                           setPassword(
                             event.target.value
                           );
+
                           setError("");
                         }}
                         autoComplete="current-password"
@@ -824,10 +950,11 @@ const LoginModal: React.FC<LoginModalProps> = ({
                 </div>
 
                 <div className="login-security-note">
-                  Your account is protected
-                  by Gmail verification and
-                  secure password
-                  authentication.
+                  User accounts use Gmail
+                  verification and secure
+                  password authentication.
+                  Admin accounts use their
+                  registered admin credentials.
                 </div>
               </div>
             )}
