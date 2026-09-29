@@ -49,6 +49,7 @@ import {
 } from "lucide-react";
 
 import AdminLayout from "../../components/admin/AdminLayout";
+import LocationPicker from "../../components/LocationPicker";
 
 import {
   getAttractions,
@@ -1881,6 +1882,8 @@ const AdminAttractions: React.FC = () => {
 
       /* LOCATION / BASIC DETAILS */
       location_address: d.location_address || "",
+      location_lat: d.location_lat ?? null,
+      location_lng: d.location_lng ?? null,
 
       /* IMAGES */
       images: Array.isArray(d.images) ? d.images.join(", ") : d.images || "",
@@ -2052,6 +2055,8 @@ const AdminAttractions: React.FC = () => {
 
         /* LOCATION / BASIC DETAILS */
         location_address: form.location_address?.trim() || "",
+        location_lat: form.location_lat,
+        location_lng: form.location_lng,
 
         /* IMAGES */
         images: imageUrls,
@@ -2876,6 +2881,21 @@ const AdminAttractions: React.FC = () => {
                   onChange={(e) => fc("location_address", e.target.value)}
                   placeholder="Enter attraction address"
                 />
+
+                <div className="mt-3">
+                  <Form.Label className="fw-semibold">
+                    Pin Location on Map
+                  </Form.Label>
+
+                  <LocationPicker
+                    latitude={form.location_lat}
+                    longitude={form.location_lng}
+                    onChange={({ latitude, longitude }) => {
+                      fc("location_lat", latitude);
+                      fc("location_lng", longitude);
+                    }}
+                  />
+                </div>
               </Col>
 
               <Col xs={12} md={4}>
