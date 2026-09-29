@@ -1,196 +1,449 @@
-const express = require('express');
-const bcrypt = require('bcrypt');
-const { protect } = require('../middleware/auth');
+const express = require("express");
+const bcrypt = require("bcrypt");
+const { protectAdmin } = require("../middleware/auth");
 
 const router = express.Router();
 
-// GET /api/admin-management - Get all admins
-router.get('/', protect, async (req, res) => {
+/* =========================================================
+   SUPABASE ADMIN HEADERS
+========================================================= */
+
+const getSupabaseHeaders = () => ({
+  apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+});
+
+/* =========================================================
+   GET /api/admin-management
+   Get all admins
+========================================================= */
+
+router.get("/", protectAdmin, async (req, res) => {
   try {
-    const axios = require('axios');
-    const response = await axios.get(`${process.env.SUPABASE_URL}/rest/v1/admins?select=id,username,email,name,created_at,updated_at&order=created_at.desc`, {
-      headers: {
-        'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+    const axios = require("axios");
+
+    const response = await axios.get(
+      `${process.env.SUPABASE_URL}/rest/v1/admins?select=id,username,email,name,created_at,updated_at&order=created_at.desc`,
+      {
+        headers: getSupabaseHeaders(),
       }
-    });
+    );
+
     res.json(response.data);
   } catch (err) {
-    console.error('Get admins error:', err);
-    res.status(500).json({ message: err.message });
+    console.error("Get admins error:", err);
+
+    res.status(500).json({
+      message: err.message || "Failed to get admins.",
+    });
   }
 });
 
-// GET /api/admin-management/:id - Get single admin
-router.get('/:id', protect, async (req, res) => {
-  try {
-    const axios = require('axios');
-    const response = await axios.get(`${process.env.SUPABASE_URL}/rest/v1/admins?id=eq.${req.params.id}&select=id,username,email,name,created_at,updated_at`, {
-      headers: {
-        'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
-      }
-    });
+/* =========================================================
+   GET /api/admin-management/:id
+   Get single admin
+========================================================= */
 
-    if (response.data.length === 0) {
-      return res.status(404).json({ message: 'Admin not found' });
+router.get("/:id", protectAdmin, async (req, res) => {
+  try {
+    const axios = require("axios");
+
+    const response = await axios.get(
+      `${process.env.SUPABASE_URL}/rest/v1/admins?id=eq.${encodeURIComponent(
+        req.params.id
+      )}&select=id,username,email,name,created_at,updated_at`,
+      {
+        headers: getSupabaseHeaders(),
+      }
+    );
+
+    if (!response.data || response.data.length === 0) {
+      return res.status(404).json({
+        message: "Admin not found",
+      });
     }
 
     res.json(response.data[0]);
   } catch (err) {
-    console.error('Get admin error:', err);
-    res.status(500).json({ message: err.message });
+    console.error("Get admin error:", err);
+
+    res.status(500).json({
+      message: err.message || "Failed to get admin.",
+    });
   }
 });
 
-// POST /api/admin-management - Create new admin
-router.post('/', protect, async (req, res) => {
+/* =========================================================
+   POST /api/admin-management
+   Create new admin
+========================================================= */
+
+router.post("/", protectAdmin, async (req, res) => {
   try {
-    const { username, password, email, name, mobile_pin } = req.body;
+    const {
+      username,
+      password,
+      email,
+      name,
+    } = req.body;
 
     if (!username || !password || !email || !name) {
-      return res.status(400).json({ message: 'Username, password, email, and name are required' });
+      return res.status(400).json({
+        message:
+          "Username, password, email, and name are required",
+      });
     }
 
-    const axios = require('axios');
+    const axios = require("axios");
 
-    // Check if username already exists
-    const existingUsername = await axios.get(`${process.env.SUPABASE_URL}/rest/v1/admins?username=eq.${username}&select=id`, {
-      headers: {
-        'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+    const normalizedUsername = String(username).trim();
+    const normalizedEmail = String(email)
+      .trim()
+      .toLowerCase();
+    const normalizedName = String(name).trim();
+
+    /* -------------------------------------------------------
+       Check username
+    ------------------------------------------------------- */
+
+    const existingUsername = await axios.get(
+      `${process.env.SUPABASE_URL}/rest/v1/admins?username=eq.${encodeURIComponent(
+        normalizedUsername
+      )}&select=id`,
+      {
+        headers: getSupabaseHeaders(),
       }
-    });
+    );
 
-    if (existingUsername.data.length > 0) {
-      return res.status(400).json({ message: 'Username already exists' });
+    if (
+      existingUsername.data &&
+      existingUsername.data.length > 0
+    ) {
+      return res.status(400).json({
+        message: "Username already exists",
+      });
     }
 
-    // Check if email already exists
-    const existingEmail = await axios.get(`${process.env.SUPABASE_URL}/rest/v1/admins?email=eq.${email}&select=id`, {
-      headers: {
-        'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+    /* -------------------------------------------------------
+       Check email
+    ------------------------------------------------------- */
+
+    const existingEmail = await axios.get(
+      `${process.env.SUPABASE_URL}/rest/v1/admins?email=eq.${encodeURIComponent(
+        normalizedEmail
+      )}&select=id`,
+      {
+        headers: getSupabaseHeaders(),
       }
-    });
+    );
 
-    if (existingEmail.data.length > 0) {
-      return res.status(400).json({ message: 'Email already exists' });
+    if (
+      existingEmail.data &&
+      existingEmail.data.length > 0
+    ) {
+      return res.status(400).json({
+        message: "Email already exists",
+      });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const hashedMobilePin = mobile_pin ? await bcrypt.hash(mobile_pin, 10) : null;
+    /* -------------------------------------------------------
+       Hash password
+    ------------------------------------------------------- */
 
-    const insertResponse = await axios.post(`${process.env.SUPABASE_URL}/rest/v1/admins`, 
-      { 
-        username, 
-        password: hashedPassword, 
-        email, 
-        name,
-        mobile_pin: hashedMobilePin
+    const hashedPassword = await bcrypt.hash(
+      String(password),
+      10
+    );
+
+    /* -------------------------------------------------------
+       Insert admin
+    ------------------------------------------------------- */
+
+    const insertResponse = await axios.post(
+      `${process.env.SUPABASE_URL}/rest/v1/admins`,
+      {
+        username: normalizedUsername,
+        password: hashedPassword,
+        email: normalizedEmail,
+        name: normalizedName,
       },
       {
         headers: {
-          'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
-          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        }
+          ...getSupabaseHeaders(),
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
       }
     );
 
+    if (
+      !insertResponse.data ||
+      insertResponse.data.length === 0
+    ) {
+      return res.status(500).json({
+        message: "Admin was not created.",
+      });
+    }
+
     const admin = insertResponse.data[0];
-    // Don't return password in response
-    const { password: _, mobile_pin: __, ...adminData } = admin;
-    
+
+    /*
+      Never return password or mobile_pin.
+    */
+
+    const {
+      password: _password,
+      mobile_pin: _mobilePin,
+      ...adminData
+    } = admin;
+
     res.status(201).json(adminData);
   } catch (err) {
-    console.error('Create admin error:', err);
-    res.status(500).json({ message: err.message });
+    console.error("Create admin error:", err);
+
+    /*
+      Handle Supabase duplicate/constraint errors
+      without exposing unnecessary database details.
+    */
+
+    if (err.response?.data) {
+      console.error(
+        "Supabase create admin response:",
+        err.response.data
+      );
+    }
+
+    res.status(500).json({
+      message:
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to create admin.",
+    });
   }
 });
 
-// PUT /api/admin-management/:id - Update admin
-router.put('/:id', protect, async (req, res) => {
+/* =========================================================
+   PUT /api/admin-management/:id
+   Update admin
+========================================================= */
+
+router.put("/:id", protectAdmin, async (req, res) => {
   try {
-    const { username, password, email, name, mobile_pin } = req.body;
-    const axios = require('axios');
+    const {
+      username,
+      password,
+      email,
+      name,
+    } = req.body;
 
-    // Check if admin exists
-    const existingAdmin = await axios.get(`${process.env.SUPABASE_URL}/rest/v1/admins?id=eq.${req.params.id}&select=id`, {
-      headers: {
-        'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+    const axios = require("axios");
+
+    /* -------------------------------------------------------
+       Check if admin exists
+    ------------------------------------------------------- */
+
+    const existingAdmin = await axios.get(
+      `${process.env.SUPABASE_URL}/rest/v1/admins?id=eq.${encodeURIComponent(
+        req.params.id
+      )}&select=id,username,email,name`,
+      {
+        headers: getSupabaseHeaders(),
       }
-    });
+    );
 
-    if (existingAdmin.data.length === 0) {
-      return res.status(404).json({ message: 'Admin not found' });
+    if (
+      !existingAdmin.data ||
+      existingAdmin.data.length === 0
+    ) {
+      return res.status(404).json({
+        message: "Admin not found",
+      });
     }
 
-    const updateData = {};
-    if (username) updateData.username = username;
-    if (email) updateData.email = email;
-    if (name) updateData.name = name;
-    if (password) updateData.password = await bcrypt.hash(password, 10);
-    if (mobile_pin) updateData.mobile_pin = await bcrypt.hash(mobile_pin, 10);
+    /* -------------------------------------------------------
+       Build update data
+    ------------------------------------------------------- */
 
-    const updateResponse = await axios.patch(`${process.env.SUPABASE_URL}/rest/v1/admins?id=eq.${req.params.id}`, 
+    const updateData = {};
+
+    if (
+      username !== undefined &&
+      String(username).trim() !== ""
+    ) {
+      updateData.username = String(username).trim();
+    }
+
+    if (
+      email !== undefined &&
+      String(email).trim() !== ""
+    ) {
+      updateData.email = String(email)
+        .trim()
+        .toLowerCase();
+    }
+
+    if (
+      name !== undefined &&
+      String(name).trim() !== ""
+    ) {
+      updateData.name = String(name).trim();
+    }
+
+    /*
+      Password is optional during an update.
+
+      If no password is supplied, the existing password
+      remains unchanged.
+
+      If a new password is supplied, it is ALWAYS hashed
+      before being stored.
+    */
+
+    if (
+      password !== undefined &&
+      String(password).trim() !== ""
+    ) {
+      updateData.password = await bcrypt.hash(
+        String(password),
+        10
+      );
+    }
+
+    /* -------------------------------------------------------
+       Nothing to update
+    ------------------------------------------------------- */
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        message: "No changes were provided.",
+      });
+    }
+
+    /* -------------------------------------------------------
+       Update admin
+    ------------------------------------------------------- */
+
+    const updateResponse = await axios.patch(
+      `${process.env.SUPABASE_URL}/rest/v1/admins?id=eq.${encodeURIComponent(
+        req.params.id
+      )}`,
       updateData,
       {
         headers: {
-          'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
-          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        }
+          ...getSupabaseHeaders(),
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
       }
     );
 
+    if (
+      !updateResponse.data ||
+      updateResponse.data.length === 0
+    ) {
+      return res.status(500).json({
+        message: "Admin was not updated.",
+      });
+    }
+
     const admin = updateResponse.data[0];
-    // Don't return password in response
-    const { password: _, mobile_pin: __, ...adminData } = admin;
-    
+
+    /*
+      Never return password or mobile_pin.
+    */
+
+    const {
+      password: _password,
+      mobile_pin: _mobilePin,
+      ...adminData
+    } = admin;
+
     res.json(adminData);
   } catch (err) {
-    console.error('Update admin error:', err);
-    res.status(500).json({ message: err.message });
+    console.error("Update admin error:", err);
+
+    if (err.response?.data) {
+      console.error(
+        "Supabase update admin response:",
+        err.response.data
+      );
+    }
+
+    res.status(500).json({
+      message:
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to update admin.",
+    });
   }
 });
 
-// DELETE /api/admin-management/:id - Delete admin
-router.delete('/:id', protect, async (req, res) => {
+/* =========================================================
+   DELETE /api/admin-management/:id
+   Delete admin
+========================================================= */
+
+router.delete("/:id", protectAdmin, async (req, res) => {
   try {
-    // Prevent deleting yourself
-    if (req.params.id === req.admin.id) {
-      return res.status(400).json({ message: 'Cannot delete your own account' });
+    /*
+      Prevent deleting yourself.
+    */
+
+    if (String(req.params.id) === String(req.admin.id)) {
+      return res.status(400).json({
+        message: "Cannot delete your own account",
+      });
     }
 
-    const axios = require('axios');
+    const axios = require("axios");
 
-    // Check if admin exists
-    const existingAdmin = await axios.get(`${process.env.SUPABASE_URL}/rest/v1/admins?id=eq.${req.params.id}&select=id`, {
-      headers: {
-        'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+    /* -------------------------------------------------------
+       Check if admin exists
+    ------------------------------------------------------- */
+
+    const existingAdmin = await axios.get(
+      `${process.env.SUPABASE_URL}/rest/v1/admins?id=eq.${encodeURIComponent(
+        req.params.id
+      )}&select=id`,
+      {
+        headers: getSupabaseHeaders(),
       }
-    });
+    );
 
-    if (existingAdmin.data.length === 0) {
-      return res.status(404).json({ message: 'Admin not found' });
+    if (
+      !existingAdmin.data ||
+      existingAdmin.data.length === 0
+    ) {
+      return res.status(404).json({
+        message: "Admin not found",
+      });
     }
 
-    await axios.delete(`${process.env.SUPABASE_URL}/rest/v1/admins?id=eq.${req.params.id}`, {
-      headers: {
-        'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
-      }
-    });
+    /* -------------------------------------------------------
+       Delete admin
+    ------------------------------------------------------- */
 
-    res.json({ message: 'Admin deleted successfully' });
+    await axios.delete(
+      `${process.env.SUPABASE_URL}/rest/v1/admins?id=eq.${encodeURIComponent(
+        req.params.id
+      )}`,
+      {
+        headers: getSupabaseHeaders(),
+      }
+    );
+
+    res.json({
+      message: "Admin deleted successfully",
+    });
   } catch (err) {
-    console.error('Delete admin error:', err);
-    res.status(500).json({ message: err.message });
+    console.error("Delete admin error:", err);
+
+    res.status(500).json({
+      message:
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to delete admin.",
+    });
   }
 });
 
