@@ -1243,6 +1243,20 @@ const ADMIN_ATTRACTIONS_STYLES = `
      RESPONSIVE
   -------------------------------- */
 
+  .admin-location-picker-heading {
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    margin-bottom:9px;
+    padding:11px 13px;
+    border:1px solid rgba(45,49,149,.10);
+    border-radius:12px;
+    background:#f7f8ff;
+  }
+  .admin-location-helper { color:#7a808e; font-size:.62rem; font-weight:600; line-height:1.45; }
+  .admin-location-ready-badge { background:#eaf8f1 !important; color:#167447 !important; border:1px solid #cbead9; white-space:nowrap; }
+  .admin-attractions-dark .admin-location-picker-heading { background:#202436; border-color:#343A4F; }
+  .admin-attractions-dark .admin-location-helper { color:#a8afbf; }
+  .admin-attractions-dark .admin-location-ready-badge { background:#19372a !important; color:#8fe0b5 !important; border-color:#2f624c; }
+
   @media (max-width: 991.98px) {
     .admin-attractions-page {
       padding: 24px 20px 48px;
@@ -1882,8 +1896,8 @@ const AdminAttractions: React.FC = () => {
 
       /* LOCATION / BASIC DETAILS */
       location_address: d.location_address || "",
-      location_lat: d.location_lat ?? null,
-      location_lng: d.location_lng ?? null,
+location_lat: d.location_lat ?? null,
+location_lng: d.location_lng ?? null,
 
       /* IMAGES */
       images: Array.isArray(d.images) ? d.images.join(", ") : d.images || "",
@@ -2054,9 +2068,9 @@ const AdminAttractions: React.FC = () => {
         description: form.description.trim(),
 
         /* LOCATION / BASIC DETAILS */
-        location_address: form.location_address?.trim() || "",
-        location_lat: form.location_lat,
-        location_lng: form.location_lng,
+location_address: form.location_address?.trim() || "",
+location_lat: form.location_lat,
+location_lng: form.location_lng,
 
         /* IMAGES */
         images: imageUrls,
@@ -2873,29 +2887,41 @@ const AdminAttractions: React.FC = () => {
             </div>
 
             <Row className="g-3">
-              <Col xs={12} md={8}>
-                <Form.Label className="fw-semibold">Address</Form.Label>
+              <Col xs={12}>
+                <div className="admin-location-picker-heading">
+                  <div>
+                    <Form.Label className="fw-semibold mb-1">Set Attraction Location</Form.Label>
+                    <div className="admin-location-helper">Search the attraction or address, choose a result, then drag/click the pin to fine-tune it.</div>
+                  </div>
+                  {typeof form.location_lat === "number" && typeof form.location_lng === "number" && (
+                    <Badge className="admin-location-ready-badge">Location set</Badge>
+                  )}
+                </div>
 
+                <LocationPicker
+                  latitude={form.location_lat}
+                  longitude={form.location_lng}
+                  address={form.location_address}
+                  searchablePlaces={items.map((item: any) => ({
+                    id: item.id,
+                    name: item.name,
+                    address: item.location_address,
+                    latitude: item.location_lat,
+                    longitude: item.location_lng,
+                  }))}
+                  onChange={({ latitude, longitude, address }) => {
+                    fc("location_lat", latitude);
+                    fc("location_lng", longitude);
+                    if (address) fc("location_address", address);
+                  }}
+                />
+
+                <Form.Label className="fw-semibold mt-3">Address</Form.Label>
                 <Form.Control
                   value={form.location_address}
                   onChange={(e) => fc("location_address", e.target.value)}
-                  placeholder="Enter attraction address"
+                  placeholder="Address will be filled from the selected location, or enter it manually"
                 />
-
-                <div className="mt-3">
-                  <Form.Label className="fw-semibold">
-                    Pin Location on Map
-                  </Form.Label>
-
-                  <LocationPicker
-                    latitude={form.location_lat}
-                    longitude={form.location_lng}
-                    onChange={({ latitude, longitude }) => {
-                      fc("location_lat", latitude);
-                      fc("location_lng", longitude);
-                    }}
-                  />
-                </div>
               </Col>
 
               <Col xs={12} md={4}>
