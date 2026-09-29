@@ -467,9 +467,6 @@ api.interceptors.request.use(
     /*
      * FEATURED VIDEOS:
      * Always request the latest list from the backend.
-     *
-     * This prevents an old cached [] response from
-     * remaining visible after a successful upload.
      */
     if (
       (config.url || "").includes(
@@ -1371,25 +1368,41 @@ export const updateItineraryRequest = (
 // ADMIN MANAGEMENT
 // =========================================================
 
+/*
+ * IMPORTANT:
+ *
+ * Admin management MUST use the backend route.
+ *
+ * Do NOT use supabaseApi here because that would bypass
+ * server-side password hashing and the admin authentication
+ * middleware.
+ *
+ * The "api" Axios instance automatically attaches:
+ *
+ * Authorization: Bearer <admin_token>
+ *
+ * through the ADMIN TOKEN interceptor above.
+ */
+
 export const getAdmins = () =>
-  supabaseApi.get(
-    "/admins?select=*&order=created_at.desc",
+  api.get(
+    "/admin-management",
   );
 
 export const getAdmin = (
   id: string,
 ) =>
-  supabaseApi.get(
-    `/admins?id=eq.${encodeURIComponent(
+  api.get(
+    `/admin-management/${encodeURIComponent(
       id,
-    )}&select=*`,
+    )}`,
   );
 
 export const createAdmin = (
   data: object,
 ) =>
-  supabaseApi.post(
-    "/admins",
+  api.post(
+    "/admin-management",
     data,
   );
 
@@ -1397,8 +1410,8 @@ export const updateAdmin = (
   id: string,
   data: object,
 ) =>
-  supabaseApi.patch(
-    `/admins?id=eq.${encodeURIComponent(
+  api.put(
+    `/admin-management/${encodeURIComponent(
       id,
     )}`,
     data,
@@ -1407,8 +1420,8 @@ export const updateAdmin = (
 export const deleteAdmin = (
   id: string,
 ) =>
-  supabaseApi.delete(
-    `/admins?id=eq.${encodeURIComponent(
+  api.delete(
+    `/admin-management/${encodeURIComponent(
       id,
     )}`,
   );
