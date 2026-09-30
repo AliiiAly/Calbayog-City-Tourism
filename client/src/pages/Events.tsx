@@ -42,19 +42,11 @@ const styles = `
   font-display: swap;
 }
 
-/* =========================================================
-   PAGE
-========================================================= */
-
 .events-page {
   min-height: 100vh;
   background: #ffffff;
   color: #171a18;
 }
-
-/* =========================================================
-   HEADER
-========================================================= */
 
 .events-header {
   width: 100%;
@@ -88,20 +80,12 @@ const styles = `
   color: #737b76;
 }
 
-/* =========================================================
-   CONTAINER
-========================================================= */
-
 .events-container {
   width: 100%;
   max-width: 1240px;
   padding: 0 20px 60px;
   margin: 0 auto;
 }
-
-/* =========================================================
-   CATEGORY PILLS
-========================================================= */
 
 .events-category-pills {
   display: flex;
@@ -165,10 +149,6 @@ const styles = `
   background: var(--pill-background);
   box-shadow: 0 5px 16px rgba(20, 30, 24, 0.07);
 }
-
-/* =========================================================
-   FILTER AREA
-========================================================= */
 
 .events-filter-section {
   margin: 3px 0 25px;
@@ -243,10 +223,6 @@ const styles = `
   background: var(--filter-background);
   color: var(--filter-color);
 }
-
-/* =========================================================
-   CALENDAR
-========================================================= */
 
 .events-calendar-wrapper {
   margin: 3px 0 25px;
@@ -397,10 +373,6 @@ const styles = `
   background: #ffffff;
 }
 
-/* =========================================================
-   RESULTS BAR
-========================================================= */
-
 .events-results-bar {
   display: flex;
   align-items: center;
@@ -475,10 +447,6 @@ const styles = `
   font-weight: 800 !important;
 }
 
-/* =========================================================
-   EVENT GRID
-========================================================= */
-
 .events-grid {
   row-gap: 46px !important;
   margin-left: -12px;
@@ -491,10 +459,6 @@ const styles = `
 
   display: flex;
 }
-
-/* =========================================================
-   LOADING
-========================================================= */
 
 .events-loading {
   min-height: 360px;
@@ -543,10 +507,6 @@ const styles = `
 
   color: #8b938e;
 }
-
-/* =========================================================
-   EMPTY
-========================================================= */
 
 .events-empty {
   padding: 65px 20px;
@@ -597,46 +557,26 @@ const styles = `
   color: #7b857f;
 }
 
-/* =========================================================
-   MODAL
-========================================================= */
-
 .events-modal-image {
   width: 100%;
-
-  height: clamp(
-    190px,
-    35vw,
-    320px
-  );
-
+  height: clamp(190px, 35vw, 320px);
   object-fit: cover;
-
   border-radius: 15px;
-
   margin-bottom: 18px;
 }
 
 .events-modal-title {
-  font-family:
-    "Poppins",
-    "Nunito",
-    sans-serif;
-
+  font-family: "Poppins", "Nunito", sans-serif;
   font-size: 1.2rem;
   font-weight: 700;
-
   color: #171b18;
 }
 
 .events-modal-details {
   padding: 14px 16px;
-
   margin-bottom: 18px;
-
   border: 1px solid #edf0ed;
   border-radius: 14px;
-
   background: #f8faf9;
 }
 
@@ -676,22 +616,13 @@ const styles = `
   color: #707973;
 }
 
-/* =========================================================
-   RESPONSIVE
-========================================================= */
-
 @media (max-width: 991.98px) {
   .events-header {
     padding: 28px 20px 18px;
   }
 
   .events-title {
-    font-size:
-      clamp(
-        1.65rem,
-        4.5vw,
-        2.25rem
-      );
+    font-size: clamp(1.65rem, 4.5vw, 2.25rem);
   }
 
   .events-grid {
@@ -1033,10 +964,7 @@ const CATEGORIES = [
    CATEGORY COLORS
 ========================================================= */
 
-const categoryColors: Record<
-  string,
-  string
-> = {
+const categoryColors: Record<string, string> = {
   Festival: "#e63946",
   Cultural: "#1A7A4A",
   Sports: "#0077B6",
@@ -1051,10 +979,7 @@ const categoryColors: Record<
    CATEGORY ICONS
 ========================================================= */
 
-const categoryIcons: Record<
-  string,
-  string
-> = {
+const categoryIcons: Record<string, string> = {
   All: "🌐",
   Festival: "🎉",
   Cultural: "🏛️",
@@ -1074,19 +999,16 @@ const Events: React.FC = () => {
   const location = useLocation();
 
   const highlightId =
-    (location.state as any)
-      ?.highlightId;
+    (location.state as any)?.highlightId;
 
-  const [events, setEvents] =
-    useState<Event[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
 
   const [
     calendarEvents,
     setCalendarEvents,
   ] = useState<Event[]>([]);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
 
   const [
     activeCategory,
@@ -1108,8 +1030,7 @@ const Events: React.FC = () => {
     setSelected,
   ] = useState<Event | null>(null);
 
-  const didAutoOpen =
-    useRef(false);
+  const didAutoOpen = useRef(false);
 
   /* =========================================================
      FETCH EVENTS
@@ -1119,63 +1040,39 @@ const Events: React.FC = () => {
     setLoading(true);
 
     try {
-      const params: Record<
-        string,
-        string
-      > = {};
+      const params: Record<string, string> = {};
 
-      if (
-        activeCategory !==
-        "All"
-      ) {
-        params.category =
-          activeCategory;
+      if (activeCategory !== "All") {
+        params.category = activeCategory;
       }
 
       if (upcomingOnly) {
         params.upcoming = "true";
       }
 
-      const response =
-        await getEvents(params);
+      const response = await getEvents(params);
 
-      const fetched =
-        Array.isArray(
-          response?.data,
-        )
-          ? response.data
-          : [];
+      const fetched: Event[] = Array.isArray(response?.data)
+        ? response.data
+        : [];
 
       let filtered = fetched;
 
       if (selectedDate) {
-        filtered =
-          fetched.filter(
-            (event) => {
-              if (
-                !event.startDate
-              ) {
-                return false;
-              }
+        filtered = fetched.filter((event) => {
+          if (!event.startDate) {
+            return false;
+          }
 
-              const start =
-                new Date(
-                  event.startDate,
-                );
+          const start = new Date(event.startDate);
 
-              return (
-                !Number.isNaN(
-                  start.getTime(),
-                ) &&
-                start.getDate() ===
-                  selectedDate.getDate() &&
-                start.getMonth() ===
-                  selectedDate.getMonth() &&
-                start.getFullYear() ===
-                  selectedDate.getFullYear()
-              );
-            },
+          return (
+            !Number.isNaN(start.getTime()) &&
+            start.getDate() === selectedDate.getDate() &&
+            start.getMonth() === selectedDate.getMonth() &&
+            start.getFullYear() === selectedDate.getFullYear()
           );
+        });
       }
 
       setEvents(filtered);
@@ -1184,22 +1081,14 @@ const Events: React.FC = () => {
          AUTO OPEN EVENT
       ===================================================== */
 
-      if (
-        highlightId &&
-        !didAutoOpen.current
-      ) {
-        const match =
-          fetched.find(
-            (event) =>
-              (event._id ||
-                event.id) ===
-              highlightId,
-          );
+      if (highlightId && !didAutoOpen.current) {
+        const match = fetched.find(
+          (event) => event._id === highlightId,
+        );
 
         if (match) {
           setSelected(match);
-          didAutoOpen.current =
-            true;
+          didAutoOpen.current = true;
         }
       }
     } catch (error) {
@@ -1234,9 +1123,7 @@ const Events: React.FC = () => {
     getEvents({})
       .then((response) => {
         setCalendarEvents(
-          Array.isArray(
-            response?.data,
-          )
+          Array.isArray(response?.data)
             ? response.data
             : [],
         );
@@ -1257,9 +1144,7 @@ const Events: React.FC = () => {
       getEvents({})
         .then((response) => {
           setCalendarEvents(
-            Array.isArray(
-              response?.data,
-            )
+            Array.isArray(response?.data)
               ? response.data
               : [],
           );
@@ -1280,32 +1165,22 @@ const Events: React.FC = () => {
      HELPERS
   ========================================================= */
 
-  const formatDate = (
-    date: string,
-  ) => {
+  const formatDate = (date: string) => {
     if (!date) {
       return "Date TBA";
     }
 
-    const parsed =
-      new Date(date);
+    const parsed = new Date(date);
 
-    if (
-      Number.isNaN(
-        parsed.getTime(),
-      )
-    ) {
+    if (Number.isNaN(parsed.getTime())) {
       return "Date TBA";
     }
 
-    return parsed.toLocaleDateString(
-      "en-PH",
-      {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      },
-    );
+    return parsed.toLocaleDateString("en-PH", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   const formatDateRange = (
@@ -1318,42 +1193,26 @@ const Events: React.FC = () => {
 
     if (
       !endDate ||
-      new Date(
-        startDate,
-      ).toDateString() ===
-        new Date(
-          endDate,
-        ).toDateString()
+      new Date(startDate).toDateString() ===
+        new Date(endDate).toDateString()
     ) {
-      return formatDate(
-        startDate,
-      );
+      return formatDate(startDate);
     }
 
-    return `${formatDate(
-      startDate,
-    )} – ${formatDate(
-      endDate,
-    )}`;
+    return `${formatDate(startDate)} – ${formatDate(endDate)}`;
   };
 
-  const getCategoryColor = (
-    category: string,
-  ) => {
+  const getCategoryColor = (category: string) => {
     return (
-      categoryColors[
-        category
-      ] || "#1A7A4A"
+      categoryColors[category] ||
+      "#1A7A4A"
     );
   };
 
-  const getCategoryIcon = (
-    category: string,
-  ) => {
+  const getCategoryIcon = (category: string) => {
     return (
-      categoryIcons[
-        category
-      ] || "📍"
+      categoryIcons[category] ||
+      "📍"
     );
   };
 
@@ -1363,12 +1222,9 @@ const Events: React.FC = () => {
     setSelectedDate(null);
   };
 
-  const selectedColor =
-    selected
-      ? getCategoryColor(
-          selected.category,
-        )
-      : "#1A7A4A";
+  const selectedColor = selected
+    ? getCategoryColor(selected.category)
+    : "#1A7A4A";
 
   /* =========================================================
      CONVERT EVENT FOR REUSABLE EVENT CARD
@@ -1378,7 +1234,6 @@ const Events: React.FC = () => {
     event: Event,
   ): EventCardItem => {
     return {
-      id: event.id,
       _id: event._id,
       title: event.title,
       image: event.image,
@@ -1387,14 +1242,11 @@ const Events: React.FC = () => {
       startDate: event.startDate,
       endDate: event.endDate,
       venue: event.venue,
-      description:
-        event.description,
+      description: event.description,
       organizer: event.organizer,
       isFree: event.isFree,
-      ticketPrice:
-        event.ticketPrice,
-      facebook:
-        event.contact?.facebook,
+      ticketPrice: event.ticketPrice,
+      facebook: event.contact?.facebook,
     };
   };
 
@@ -1404,9 +1256,7 @@ const Events: React.FC = () => {
 
   return (
     <>
-      <style>
-        {styles}
-      </style>
+      <style>{styles}</style>
 
       <div className="page-enter events-page">
 
@@ -1421,11 +1271,10 @@ const Events: React.FC = () => {
             </h1>
 
             <p className="events-subtitle">
-              Experience Calbayog's
-              vibrant celebrations,
-              cultural traditions,
-              community gatherings,
-              and memorable events.
+              Experience Calbayog's vibrant
+              celebrations, cultural traditions,
+              community gatherings, and memorable
+              events.
             </p>
           </div>
         </section>
@@ -1441,64 +1290,46 @@ const Events: React.FC = () => {
           ================================================= */}
 
           <div className="events-category-pills">
-            {CATEGORIES.map(
-              (category) => {
-                const isActive =
-                  activeCategory ===
-                  category;
+            {CATEGORIES.map((category) => {
+              const isActive =
+                activeCategory === category;
 
-                const color =
-                  category ===
-                  "All"
-                    ? "#1A7A4A"
-                    : getCategoryColor(
-                        category,
-                      );
+              const color =
+                category === "All"
+                  ? "#1A7A4A"
+                  : getCategoryColor(category);
 
-                return (
-                  <button
-                    key={category}
-                    type="button"
-                    className={[
-                      "events-category-pill",
-                      isActive
-                        ? "events-category-pill-active"
-                        : "",
-                    ]
-                      .filter(
-                        Boolean,
-                      )
-                      .join(" ")}
-                    style={
-                      {
-                        "--pill-color":
-                          color,
-                        "--pill-background": `${color}15`,
-                      } as React.CSSProperties
-                    }
-                    onClick={() => {
-                      setActiveCategory(
-                        category,
-                      );
+              return (
+                <button
+                  key={category}
+                  type="button"
+                  className={[
+                    "events-category-pill",
+                    isActive
+                      ? "events-category-pill-active"
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  style={
+                    {
+                      "--pill-color": color,
+                      "--pill-background": `${color}15`,
+                    } as React.CSSProperties
+                  }
+                  onClick={() => {
+                    setActiveCategory(category);
+                    setSelectedDate(null);
+                  }}
+                >
+                  <span>
+                    {getCategoryIcon(category)}
+                  </span>
 
-                      setSelectedDate(
-                        null,
-                      );
-                    }}
-                  >
-                    <span>
-                      {getCategoryIcon(
-                        category,
-                      )}
-                    </span>
-
-                    <span>
-                      {category}
-                    </span>
-                  </button>
-                );
-              },
-            )}
+                  <span>{category}</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* =================================================
@@ -1523,24 +1354,17 @@ const Events: React.FC = () => {
                 ].join(" ")}
                 style={
                   {
-                    "--filter-color":
-                      "#D99A1A",
-                    "--filter-background":
-                      "#FFF7E7",
+                    "--filter-color": "#D99A1A",
+                    "--filter-background": "#FFF7E7",
                   } as React.CSSProperties
                 }
                 onClick={() => {
                   setUpcomingOnly(
-                    (current) =>
-                      !current,
+                    (current) => !current,
                   );
 
-                  if (
-                    upcomingOnly
-                  ) {
-                    setSelectedDate(
-                      null,
-                    );
+                  if (upcomingOnly) {
+                    setSelectedDate(null);
                   }
                 }}
               >
@@ -1558,16 +1382,12 @@ const Events: React.FC = () => {
                   className="events-filter-pill events-filter-pill-active"
                   style={
                     {
-                      "--filter-color":
-                        "#1A7A4A",
-                      "--filter-background":
-                        "#EEF8F2",
+                      "--filter-color": "#1A7A4A",
+                      "--filter-background": "#EEF8F2",
                     } as React.CSSProperties
                   }
                   onClick={() =>
-                    setSelectedDate(
-                      null,
-                    )
+                    setSelectedDate(null)
                   }
                 >
                   <CalendarDays
@@ -1578,27 +1398,21 @@ const Events: React.FC = () => {
                   {selectedDate.toLocaleDateString(
                     "en-PH",
                     {
-                      month:
-                        "short",
-                      day:
-                        "numeric",
-                      year:
-                        "numeric",
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
                     },
                   )}
                 </button>
               )}
 
-              {(activeCategory !==
-                "All" ||
+              {(activeCategory !== "All" ||
                 upcomingOnly ||
                 selectedDate) && (
                 <button
                   type="button"
                   className="events-filter-pill"
-                  onClick={
-                    clearFilters
-                  }
+                  onClick={clearFilters}
                 >
                   Clear filters
                 </button>
@@ -1613,15 +1427,9 @@ const Events: React.FC = () => {
           {upcomingOnly && (
             <div className="events-calendar-wrapper">
               <Calendar
-                events={
-                  calendarEvents
-                }
-                selectedDate={
-                  selectedDate
-                }
-                onSelectDate={
-                  setSelectedDate
-                }
+                events={calendarEvents}
+                selectedDate={selectedDate}
+                onSelectDate={setSelectedDate}
               />
             </div>
           )}
@@ -1648,10 +1456,8 @@ const Events: React.FC = () => {
                   </div>
 
                   <div className="events-results-count">
-                    {events.length}{" "}
-                    event
-                    {events.length !==
-                    1
+                    {events.length} event
+                    {events.length !== 1
                       ? "s"
                       : ""}
                   </div>
@@ -1665,33 +1471,26 @@ const Events: React.FC = () => {
                     ? selectedDate.toLocaleDateString(
                         "en-PH",
                         {
-                          month:
-                            "short",
-                          day:
-                            "numeric",
-                          year:
-                            "numeric",
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
                         },
                       )
                     : upcomingOnly
                       ? "Upcoming events"
-                      : activeCategory ===
-                          "All"
+                      : activeCategory === "All"
                         ? "All events"
                         : activeCategory}
                 </span>
 
-                {(activeCategory !==
-                  "All" ||
+                {(activeCategory !== "All" ||
                   upcomingOnly ||
                   selectedDate) && (
                   <Button
                     variant="outline-secondary"
                     size="sm"
                     className="events-clear-button"
-                    onClick={
-                      clearFilters
-                    }
+                    onClick={clearFilters}
                   >
                     Clear
                   </Button>
@@ -1721,13 +1520,11 @@ const Events: React.FC = () => {
                 </div>
 
                 <p className="events-loading-text">
-                  Please wait a
-                  moment.
+                  Please wait a moment.
                 </p>
               </div>
             </div>
-          ) : events.length ===
-            0 ? (
+          ) : events.length === 0 ? (
 
             /* ===============================================
                EMPTY
@@ -1756,17 +1553,13 @@ const Events: React.FC = () => {
 
               <Button
                 variant="outline-success"
-                onClick={
-                  clearFilters
-                }
+                onClick={clearFilters}
                 style={{
                   borderRadius: 999,
-                  padding:
-                    "7px 14px",
+                  padding: "7px 14px",
                   fontFamily:
                     "Nunito, sans-serif",
-                  fontSize:
-                    "0.7rem",
+                  fontSize: "0.7rem",
                   fontWeight: 800,
                 }}
               >
@@ -1782,41 +1575,33 @@ const Events: React.FC = () => {
 
             <Row className="events-grid">
 
-              {events.map(
-                (
-                  event,
-                  index,
-                ) => {
-                  const eventId =
-                    event._id ||
-                    event.id ||
-                    `event-${index}`;
+              {events.map((event, index) => {
+                /*
+                 * Your Event type uses `_id`, not `id`.
+                 * Keep `_id` as the source of truth.
+                 */
+                const eventId =
+                  event._id ||
+                  `event-${index}`;
 
-                  return (
-                    <Col
-                      xs={12}
-                      sm={6}
-                      lg={4}
-                      key={eventId}
-                      className="event-col"
-                    >
-                      <EventCard
-                        event={toEventCardItem(
-                          event,
-                        )}
-                        showFeatured={
-                          true
-                        }
-                        onClick={() =>
-                          setSelected(
-                            event,
-                          )
-                        }
-                      />
-                    </Col>
-                  );
-                },
-              )}
+                return (
+                  <Col
+                    xs={12}
+                    sm={6}
+                    lg={4}
+                    key={eventId}
+                    className="event-col"
+                  >
+                    <EventCard
+                      event={toEventCardItem(event)}
+                      showFeatured={true}
+                      onClick={() =>
+                        setSelected(event)
+                      }
+                    />
+                  </Col>
+                );
+              })}
             </Row>
           )}
         </Container>
@@ -1827,9 +1612,7 @@ const Events: React.FC = () => {
 
         <Modal
           show={!!selected}
-          onHide={() =>
-            setSelected(null)
-          }
+          onHide={() => setSelected(null)}
           centered
           size="lg"
         >
@@ -1840,8 +1623,7 @@ const Events: React.FC = () => {
                 style={{
                   borderBottom:
                     "1px solid #edf0ed",
-                  padding:
-                    "15px 20px",
+                  padding: "15px 20px",
                 }}
               >
                 <Modal.Title className="events-modal-title">
@@ -1859,24 +1641,17 @@ const Events: React.FC = () => {
 
                 {selected.image ? (
                   <img
-                    src={
-                      selected.image
-                    }
-                    alt={
-                      selected.title
-                    }
+                    src={selected.image}
+                    alt={selected.title}
                     className="events-modal-image"
                   />
                 ) : (
                   <div
                     className="events-modal-image d-flex align-items-center justify-content-center"
                     style={{
-                      background:
-                        "#f3f7f4",
-                      color:
-                        selectedColor,
-                      fontSize:
-                        "3rem",
+                      background: "#f3f7f4",
+                      color: selectedColor,
+                      fontSize: "3rem",
                     }}
                   >
                     {getCategoryIcon(
@@ -1891,18 +1666,13 @@ const Events: React.FC = () => {
 
                   <Badge
                     style={{
-                      background:
-                        selectedColor,
+                      background: selectedColor,
                       fontFamily:
                         "Nunito, sans-serif",
-                      fontSize:
-                        "0.67rem",
-                      fontWeight:
-                        800,
-                      padding:
-                        "6px 9px",
-                      borderRadius:
-                        999,
+                      fontSize: "0.67rem",
+                      fontWeight: 800,
+                      padding: "6px 9px",
+                      borderRadius: 999,
                     }}
                   >
                     {getCategoryIcon(
@@ -1924,14 +1694,10 @@ const Events: React.FC = () => {
                           : "#A86400",
                       fontFamily:
                         "Nunito, sans-serif",
-                      fontSize:
-                        "0.67rem",
-                      fontWeight:
-                        800,
-                      padding:
-                        "6px 9px",
-                      borderRadius:
-                        999,
+                      fontSize: "0.67rem",
+                      fontWeight: 800,
+                      padding: "6px 9px",
+                      borderRadius: 999,
                     }}
                   >
                     {selected.isFree
@@ -1945,20 +1711,14 @@ const Events: React.FC = () => {
                   {selected.featured && (
                     <Badge
                       style={{
-                        background:
-                          "#FFF7E7",
-                        color:
-                          "#A86400",
+                        background: "#FFF7E7",
+                        color: "#A86400",
                         fontFamily:
                           "Nunito, sans-serif",
-                        fontSize:
-                          "0.67rem",
-                        fontWeight:
-                          800,
-                        padding:
-                          "6px 9px",
-                        borderRadius:
-                          999,
+                        fontSize: "0.67rem",
+                        fontWeight: 800,
+                        padding: "6px 9px",
+                        borderRadius: 999,
                       }}
                     >
                       <Star
@@ -1980,11 +1740,9 @@ const Events: React.FC = () => {
                       size={15}
                       strokeWidth={2}
                       style={{
-                        color:
-                          selectedColor,
+                        color: selectedColor,
                         marginTop: 1,
-                        flex:
-                          "0 0 auto",
+                        flex: "0 0 auto",
                       }}
                     />
 
@@ -2004,11 +1762,9 @@ const Events: React.FC = () => {
                       size={15}
                       strokeWidth={2}
                       style={{
-                        color:
-                          selectedColor,
+                        color: selectedColor,
                         marginTop: 1,
-                        flex:
-                          "0 0 auto",
+                        flex: "0 0 auto",
                       }}
                     />
 
@@ -2027,11 +1783,9 @@ const Events: React.FC = () => {
                         size={15}
                         strokeWidth={2}
                         style={{
-                          color:
-                            selectedColor,
+                          color: selectedColor,
                           marginTop: 1,
-                          flex:
-                            "0 0 auto",
+                          flex: "0 0 auto",
                         }}
                       />
 
@@ -2039,9 +1793,7 @@ const Events: React.FC = () => {
                         <strong>
                           Organizer:
                         </strong>{" "}
-                        {
-                          selected.organizer
-                        }
+                        {selected.organizer}
                       </span>
                     </div>
                   )}
@@ -2060,30 +1812,23 @@ const Events: React.FC = () => {
 
                 {/* FACEBOOK */}
 
-                {selected.contact
-                  ?.facebook && (
+                {selected.contact?.facebook && (
                   <a
                     href={
-                      selected.contact
-                        .facebook
+                      selected.contact.facebook
                     }
                     target="_blank"
                     rel="noreferrer"
                     className="btn btn-outline-success btn-sm"
                     style={{
-                      display:
-                        "inline-flex",
-                      alignItems:
-                        "center",
+                      display: "inline-flex",
+                      alignItems: "center",
                       gap: 6,
-                      borderRadius:
-                        999,
+                      borderRadius: 999,
                       fontFamily:
                         "Nunito, sans-serif",
-                      fontSize:
-                        "0.7rem",
-                      fontWeight:
-                        800,
+                      fontSize: "0.7rem",
+                      fontWeight: 800,
                     }}
                   >
                     Facebook Page
@@ -2095,25 +1840,20 @@ const Events: React.FC = () => {
                 style={{
                   borderTop:
                     "1px solid #edf0ed",
-                  padding:
-                    "12px 20px",
+                  padding: "12px 20px",
                 }}
               >
                 <Button
                   variant="outline-secondary"
                   onClick={() =>
-                    setSelected(
-                      null,
-                    )
+                    setSelected(null)
                   }
                   style={{
                     borderRadius: 999,
-                    padding:
-                      "6px 14px",
+                    padding: "6px 14px",
                     fontFamily:
                       "Nunito, sans-serif",
-                    fontSize:
-                      "0.7rem",
+                    fontSize: "0.7rem",
                     fontWeight: 800,
                   }}
                 >
