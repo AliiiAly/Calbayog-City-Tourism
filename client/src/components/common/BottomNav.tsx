@@ -185,8 +185,10 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
             color: #000000;
 
-            font-size: 0.76rem;
+            font-family: "Poppins", "Inter", sans-serif;
+            font-size: 0.78rem;
             line-height: 1.7;
+            font-weight: 400;
 
             overflow-wrap: anywhere;
           }
@@ -200,7 +202,8 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
             color: #000000;
 
-            font-size: 0.78rem;
+            font-family: "Poppins", "Inter", sans-serif;
+            font-size: 0.80rem;
             line-height: 1.4;
             font-weight: 700;
           }
@@ -226,8 +229,10 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
             color: #000000;
 
-            font-size: 0.73rem;
+            font-family: "Poppins", "Inter", sans-serif;
+            font-size: 0.75rem;
             line-height: 1.5;
+            font-weight: 400;
             text-decoration: none;
           }
 
@@ -248,7 +253,10 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             min-width: 0;
             flex: 1 1 auto;
 
-            color: #000000;
+            color: inherit;
+
+            font-family: "Poppins", "Inter", sans-serif;
+            font-weight: 400;
 
             overflow-wrap: anywhere;
             word-break: break-word;
@@ -256,7 +264,7 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
           /* ==========================================================
              CLICKABLE CONTACT LINKS
-             ========================================================== */
+          ========================================================== */
 
           .calbayog-footer-email-link,
           .calbayog-footer-address-link,
@@ -278,22 +286,55 @@ const BottomNav: React.FC<BottomNavProps> = () => {
               opacity 0.2s ease;
           }
 
-          .calbayog-footer-email-link {
+          .calbayog-footer-email-link,
+          .calbayog-footer-address-link {
             gap: 9px;
           }
 
-          .calbayog-footer-address-link {
+          /* ==========================================================
+             PHONE
+             
+             Desktop:
+             - Plain text only
+             - No link
+             - No pointer cursor
+             - No clickable indication
+
+             Mobile/tablet:
+             - Clickable tel: link
+          ========================================================== */
+
+          .calbayog-footer-phone-mobile {
+            display: none;
+          }
+
+          .calbayog-footer-phone-desktop {
+            display: flex;
+            align-items: flex-start;
             gap: 9px;
+
+            width: 100%;
+            min-width: 0;
+
+            color: #000000;
+
+            font-family: "Poppins", "Inter", sans-serif;
+            font-size: 0.75rem;
+            line-height: 1.5;
+            font-weight: 400;
           }
 
           .calbayog-footer-phone-link {
             gap: 9px;
           }
 
+          /* ==========================================================
+             LINK HOVER / FOCUS
+          ========================================================== */
+
           .calbayog-footer-email-link:hover,
           .calbayog-footer-address-link:hover,
-          .calbayog-footer-phone-link:hover,
-          .calbayog-footer-facebook-link:hover {
+          .calbayog-footer-phone-link:hover {
             color: #2D3195;
           }
 
@@ -328,14 +369,22 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
             border-radius: 8px;
 
-            background: #f1f3f2;
-            color: #000000;
+            background: #1877F2;
+            color: #ffffff;
+
+            transition:
+              background 0.2s ease,
+              transform 0.2s ease;
+          }
+
+          .calbayog-footer-facebook-link:hover {
+            color: #1877F2;
           }
 
           .calbayog-footer-facebook-link:hover
           .calbayog-footer-facebook-icon {
-            background: #2D3195;
-            color: #ffffff;
+            background: #166FE5;
+            transform: translateY(-1px);
           }
 
           .calbayog-footer-facebook-info {
@@ -347,9 +396,10 @@ const BottomNav: React.FC<BottomNavProps> = () => {
           .calbayog-footer-facebook-name {
             display: block;
 
-            color: inherit;
+            color: #1877F2;
 
-            font-size: 0.74rem;
+            font-family: "Poppins", "Inter", sans-serif;
+            font-size: 0.75rem;
             line-height: 1.5;
             font-weight: 600;
 
@@ -362,10 +412,12 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
             margin-top: 1px;
 
-            color: inherit;
+            color: #1877F2;
 
-            font-size: 0.66rem;
+            font-family: "Poppins", "Inter", sans-serif;
+            font-size: 0.68rem;
             line-height: 1.5;
+            font-weight: 400;
 
             overflow-wrap: anywhere;
           }
@@ -401,8 +453,10 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
             color: #000000;
 
-            font-size: 0.66rem;
+            font-family: "Poppins", "Inter", sans-serif;
+            font-size: 0.68rem;
             line-height: 1.5;
+            font-weight: 400;
 
             overflow-wrap: anywhere;
           }
@@ -417,7 +471,8 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
             color: #000000;
 
-            font-size: 0.66rem;
+            font-family: "Poppins", "Inter", sans-serif;
+            font-size: 0.68rem;
             line-height: 1.5;
             font-weight: 600;
 
@@ -471,26 +526,27 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             }
 
             .calbayog-footer-description {
-              font-size: 0.72rem;
+              font-size: 0.75rem;
             }
 
             .calbayog-footer-heading {
-              font-size: 0.75rem;
+              font-size: 0.76rem;
             }
 
             .calbayog-footer-contact,
             .calbayog-footer-email-link,
             .calbayog-footer-address-link,
+            .calbayog-footer-phone-desktop,
             .calbayog-footer-phone-link {
-              font-size: 0.69rem;
+              font-size: 0.72rem;
             }
 
             .calbayog-footer-facebook-name {
-              font-size: 0.70rem;
+              font-size: 0.72rem;
             }
 
             .calbayog-footer-facebook-label {
-              font-size: 0.63rem;
+              font-size: 0.66rem;
             }
           }
 
@@ -532,13 +588,13 @@ const BottomNav: React.FC<BottomNavProps> = () => {
               max-width: 100%;
               margin-top: 10px;
 
-              font-size: 0.64rem;
+              font-size: 0.68rem;
               line-height: 1.6;
             }
 
             .calbayog-footer-heading {
               margin-bottom: 11px;
-              font-size: 0.68rem;
+              font-size: 0.70rem;
             }
 
             .calbayog-footer-contact-list {
@@ -548,9 +604,10 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             .calbayog-footer-contact,
             .calbayog-footer-email-link,
             .calbayog-footer-address-link,
+            .calbayog-footer-phone-desktop,
             .calbayog-footer-phone-link {
               gap: 6px;
-              font-size: 0.62rem;
+              font-size: 0.67rem;
               line-height: 1.45;
             }
 
@@ -558,6 +615,35 @@ const BottomNav: React.FC<BottomNavProps> = () => {
               width: 15px;
               height: 15px;
               flex-basis: 15px;
+            }
+
+            /* Tablet phone becomes clickable */
+            .calbayog-footer-phone-desktop {
+              display: none;
+            }
+
+            .calbayog-footer-phone-mobile {
+              display: flex;
+              align-items: flex-start;
+              gap: 6px;
+
+              width: 100%;
+              min-width: 0;
+
+              color: #000000;
+              font-family: "Poppins", "Inter", sans-serif;
+              font-size: 0.67rem;
+              line-height: 1.45;
+              font-weight: 400;
+
+              text-decoration: none;
+              cursor: pointer;
+
+              transition: color 0.2s ease;
+            }
+
+            .calbayog-footer-phone-mobile:hover {
+              color: #2D3195;
             }
 
             .calbayog-footer-facebook-link {
@@ -572,12 +658,12 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             }
 
             .calbayog-footer-facebook-name {
-              font-size: 0.62rem;
+              font-size: 0.67rem;
               line-height: 1.4;
             }
 
             .calbayog-footer-facebook-label {
-              font-size: 0.56rem;
+              font-size: 0.61rem;
               line-height: 1.4;
             }
 
@@ -591,11 +677,11 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             }
 
             .calbayog-footer-copyright {
-              font-size: 0.58rem;
+              font-size: 0.62rem;
             }
 
             .calbayog-footer-location {
-              font-size: 0.58rem;
+              font-size: 0.62rem;
             }
 
             .calbayog-footer-location-icon svg {
@@ -642,14 +728,14 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             .calbayog-footer-description {
               margin-top: 8px;
 
-              font-size: 0.53rem;
+              font-size: 0.60rem;
               line-height: 1.55;
             }
 
             .calbayog-footer-heading {
               margin-bottom: 8px;
 
-              font-size: 0.59rem;
+              font-size: 0.62rem;
               line-height: 1.3;
             }
 
@@ -660,10 +746,12 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             .calbayog-footer-contact,
             .calbayog-footer-email-link,
             .calbayog-footer-address-link,
-            .calbayog-footer-phone-link {
+            .calbayog-footer-phone-desktop,
+            .calbayog-footer-phone-link,
+            .calbayog-footer-phone-mobile {
               gap: 4px;
 
-              font-size: 0.51rem;
+              font-size: 0.56rem;
               line-height: 1.4;
             }
 
@@ -695,14 +783,14 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             }
 
             .calbayog-footer-facebook-name {
-              font-size: 0.51rem;
+              font-size: 0.56rem;
               line-height: 1.35;
             }
 
             .calbayog-footer-facebook-label {
               margin-top: 1px;
 
-              font-size: 0.45rem;
+              font-size: 0.50rem;
               line-height: 1.35;
             }
 
@@ -716,14 +804,14 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             }
 
             .calbayog-footer-copyright {
-              font-size: 0.48rem;
+              font-size: 0.53rem;
               line-height: 1.35;
             }
 
             .calbayog-footer-location {
               gap: 3px;
 
-              font-size: 0.48rem;
+              font-size: 0.53rem;
               line-height: 1.35;
             }
 
@@ -763,13 +851,13 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             .calbayog-footer-description {
               margin-top: 7px;
 
-              font-size: 0.47rem;
+              font-size: 0.53rem;
               line-height: 1.5;
             }
 
             .calbayog-footer-heading {
               margin-bottom: 7px;
-              font-size: 0.53rem;
+              font-size: 0.56rem;
             }
 
             .calbayog-footer-contact-list {
@@ -779,9 +867,11 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             .calbayog-footer-contact,
             .calbayog-footer-email-link,
             .calbayog-footer-address-link,
-            .calbayog-footer-phone-link {
+            .calbayog-footer-phone-desktop,
+            .calbayog-footer-phone-link,
+            .calbayog-footer-phone-mobile {
               gap: 3px;
-              font-size: 0.46rem;
+              font-size: 0.50rem;
             }
 
             .calbayog-footer-contact-icon {
@@ -811,11 +901,11 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             }
 
             .calbayog-footer-facebook-name {
-              font-size: 0.46rem;
+              font-size: 0.50rem;
             }
 
             .calbayog-footer-facebook-label {
-              font-size: 0.41rem;
+              font-size: 0.44rem;
             }
 
             .calbayog-footer-bottom-wrapper {
@@ -828,11 +918,11 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             }
 
             .calbayog-footer-copyright {
-              font-size: 0.43rem;
+              font-size: 0.47rem;
             }
 
             .calbayog-footer-location {
-              font-size: 0.43rem;
+              font-size: 0.47rem;
               gap: 2px;
             }
 
@@ -866,18 +956,20 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             }
 
             .calbayog-footer-description {
-              font-size: 0.43rem;
+              font-size: 0.48rem;
             }
 
             .calbayog-footer-heading {
-              font-size: 0.49rem;
+              font-size: 0.51rem;
             }
 
             .calbayog-footer-contact,
             .calbayog-footer-email-link,
             .calbayog-footer-address-link,
-            .calbayog-footer-phone-link {
-              font-size: 0.42rem;
+            .calbayog-footer-phone-desktop,
+            .calbayog-footer-phone-link,
+            .calbayog-footer-phone-mobile {
+              font-size: 0.46rem;
             }
 
             .calbayog-footer-contact-icon {
@@ -903,11 +995,11 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             }
 
             .calbayog-footer-facebook-name {
-              font-size: 0.42rem;
+              font-size: 0.46rem;
             }
 
             .calbayog-footer-facebook-label {
-              font-size: 0.38rem;
+              font-size: 0.41rem;
             }
 
             .calbayog-footer-bottom-wrapper {
@@ -920,11 +1012,11 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             }
 
             .calbayog-footer-copyright {
-              font-size: 0.39rem;
+              font-size: 0.43rem;
             }
 
             .calbayog-footer-location {
-              font-size: 0.39rem;
+              font-size: 0.43rem;
             }
           }
 
@@ -953,26 +1045,28 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             }
 
             .calbayog-footer-description {
-              font-size: 0.40rem;
+              font-size: 0.43rem;
             }
 
             .calbayog-footer-heading {
-              font-size: 0.45rem;
+              font-size: 0.48rem;
             }
 
             .calbayog-footer-contact,
             .calbayog-footer-email-link,
             .calbayog-footer-address-link,
-            .calbayog-footer-phone-link {
-              font-size: 0.39rem;
+            .calbayog-footer-phone-desktop,
+            .calbayog-footer-phone-link,
+            .calbayog-footer-phone-mobile {
+              font-size: 0.43rem;
             }
 
             .calbayog-footer-facebook-name {
-              font-size: 0.39rem;
+              font-size: 0.43rem;
             }
 
             .calbayog-footer-facebook-label {
-              font-size: 0.35rem;
+              font-size: 0.39rem;
             }
 
             .calbayog-footer-bottom-wrapper {
@@ -981,7 +1075,7 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
             .calbayog-footer-copyright,
             .calbayog-footer-location {
-              font-size: 0.36rem;
+              font-size: 0.40rem;
             }
           }
 
@@ -1043,19 +1137,31 @@ const BottomNav: React.FC<BottomNavProps> = () => {
           <div className="calbayog-footer-contact-list">
 
             {/* ======================================================
-                PHONE
+                PHONE — DESKTOP
+                Plain text only. NOT clickable.
+            ====================================================== */}
 
-                tel: links work on phones/tablets and other devices
-                that support telephone handling.
+            <div className="calbayog-footer-phone-desktop">
+              <span className="calbayog-footer-contact-icon">
+                <FooterIcon
+                  name="phone"
+                  size={16}
+                />
+              </span>
 
-                Desktop browsers that do not support telephone
-                applications simply handle the link according to
-                the browser/OS.
+              <span className="calbayog-footer-contact-text">
+                0960 2146 409
+              </span>
+            </div>
+
+            {/* ======================================================
+                PHONE — TABLET / MOBILE
+                Clickable telephone link.
             ====================================================== */}
 
             <a
               href="tel:09602146409"
-              className="calbayog-footer-phone-link"
+              className="calbayog-footer-phone-mobile"
               aria-label="Call Calbayog City Tourism at 0960 2146 409"
             >
               <span className="calbayog-footer-contact-icon">
@@ -1072,9 +1178,7 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
             {/* ======================================================
                 EMAIL
-
-                mailto works on desktop, laptop, tablet, and mobile
-                when an email application/service is available.
+                Clickable on desktop, laptop, tablet, and mobile.
             ====================================================== */}
 
             <a
@@ -1096,11 +1200,7 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
             {/* ======================================================
                 ADDRESS
-
-                Opens Google Maps on supported devices.
-                Desktop browsers open Google Maps in a new tab.
-                Mobile devices may open the Google Maps application
-                if the operating system/browser supports it.
+                Opens Google Maps in a new tab.
             ====================================================== */}
 
             <a
@@ -1127,9 +1227,9 @@ const BottomNav: React.FC<BottomNavProps> = () => {
           </div>
         </div>
 
-        {/* ==========================================================
+        {/* ============================================================
             FACEBOOK
-        ========================================================== */}
+        ============================================================ */}
 
         <div>
           <h3 className="calbayog-footer-heading">
