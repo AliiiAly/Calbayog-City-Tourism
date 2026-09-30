@@ -1,15 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useRef, useState } from "react";
 import { Container, Row, Col, Button, Spinner } from "react-bootstrap";
-
-import {
-  ArrowUpRight,
-  Building2,
-  Globe2,
-  Hotel,
-  MapPin,
-  Phone,
-} from "lucide-react";
+import { Hotel } from "lucide-react";
 
 import { getAccommodations, clearCache } from "../services/api";
 
@@ -18,11 +9,10 @@ import {
   unsubscribeAll,
 } from "../services/supabase";
 
+import AccommodationCard from "../components/accommodations/AccommodationCard";
+
 /* =========================================================
    BRAND COLOR
-
-   Matches Attractions.tsx so the two pages read as one
-   consistent dashboard.
 ========================================================= */
 
 const CALBAYOG_BLUE = "#2D3195";
@@ -30,11 +20,8 @@ const CALBAYOG_BLUE = "#2D3195";
 /* =========================================================
    ACCOMMODATION RECORD
 
-   Mirrors exactly what AdminAccommodations.tsx manages —
-   no fields are shown here that the admin panel doesn't
-   actually let staff edit (no category/type, no amenities,
-   no rating, no operating hours, no email, no separate
-   price_min/price_max).
+   Matches the accommodation data managed by the admin
+   accommodation system.
 ========================================================= */
 
 interface AccommodationItem {
@@ -56,17 +43,11 @@ interface AccommodationItem {
    HELPERS
 ========================================================= */
 
-const normalizeText = (value: unknown): string => {
-  if (value === null || value === undefined) {
-    return "";
-  }
-
-  return String(value).toLowerCase().trim().replace(/\s+/g, " ");
-};
-
 const normalizeArray = (value: unknown): string[] => {
   if (Array.isArray(value)) {
-    return value.map((item) => String(item).trim()).filter(Boolean);
+    return value
+      .map((item) => String(item).trim())
+      .filter(Boolean);
   }
 
   if (typeof value === "string") {
@@ -79,7 +60,9 @@ const normalizeArray = (value: unknown): string[] => {
   return [];
 };
 
-const normalizeAccommodation = (value: any): AccommodationItem => ({
+const normalizeAccommodation = (
+  value: any,
+): AccommodationItem => ({
   id: String(value?.id ?? value?._id ?? "").trim(),
   name: String(value?.name ?? "").trim(),
   owner: value?.owner ?? null,
@@ -94,32 +77,10 @@ const normalizeAccommodation = (value: any): AccommodationItem => ({
   updated_at: value?.updated_at ?? null,
 });
 
-const getAccommodationId = (accommodation: AccommodationItem): string => {
+const getAccommodationId = (
+  accommodation: AccommodationItem,
+): string => {
   return String(accommodation?.id ?? "").trim();
-};
-
-const getWebsiteHref = (website: string): string => {
-  if (!website) return "";
-
-  if (/^https?:\/\//i.test(website)) {
-    return website;
-  }
-
-  return `https://${website}`;
-};
-
-const buildDirectionsUrl = (accommodation: AccommodationItem): string => {
-  const query = [
-    accommodation.name,
-    accommodation.address,
-    "Calbayog City, Samar, Philippines",
-  ]
-    .filter(Boolean)
-    .join(", ");
-
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-    query,
-  )}`;
 };
 
 /* =========================================================
@@ -131,21 +92,24 @@ const Accommodations: React.FC = () => {
      PAGE STATE
   ========================================================= */
 
-  const [accommodations, setAccommodations] = useState<AccommodationItem[]>(
-    [],
-  );
+  const [
+    accommodations,
+    setAccommodations,
+  ] = useState<AccommodationItem[]>([]);
 
   const [loading, setLoading] = useState(true);
 
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
-
   /* =========================================================
      IMAGE ROTATION
+
+     The reusable AccommodationCard receives the current
+     image index so the page can continue rotating images.
   ========================================================= */
 
-  const [imageIndexes, setImageIndexes] = useState<Record<string, number>>(
-    {},
-  );
+  const [
+    imageIndexes,
+    setImageIndexes,
+  ] = useState<Record<string, number>>({});
 
   /* =========================================================
      FETCH LOCK
@@ -170,16 +134,25 @@ const Accommodations: React.FC = () => {
 
       const response = await getAccommodations();
 
-      const data = Array.isArray(response?.data) ? response.data : [];
+      const data = Array.isArray(response?.data)
+        ? response.data
+        : [];
 
       const normalized = data
         .map(normalizeAccommodation)
-        .filter((item: AccommodationItem) => item.id && item.name);
+        .filter(
+          (item: AccommodationItem) =>
+            item.id && item.name,
+        );
 
       setAccommodations(normalized);
+
       setImageIndexes({});
     } catch (error) {
-      console.error("Failed to fetch accommodations:", error);
+      console.error(
+        "Failed to fetch accommodations:",
+        error,
+      );
 
       setAccommodations([]);
     } finally {
@@ -217,17 +190,28 @@ const Accommodations: React.FC = () => {
       setImageIndexes((previous) => {
         const next = { ...previous };
 
-        accommodations.forEach((accommodation) => {
-          const images = accommodation.images;
+        accommodations.forEach(
+          (accommodation) => {
+            const images = accommodation.images;
 
-          const accommodationId = getAccommodationId(accommodation);
+            const accommodationId =
+              getAccommodationId(
+                accommodation,
+              );
 
-          if (accommodationId && images.length > 1) {
-            const currentIndex = previous[accommodationId] || 0;
+            if (
+              accommodationId &&
+              images.length > 1
+            ) {
+              const currentIndex =
+                previous[accommodationId] || 0;
 
-            next[accommodationId] = (currentIndex + 1) % images.length;
-          }
-        });
+              next[accommodationId] =
+                (currentIndex + 1) %
+                images.length;
+            }
+          },
+        );
 
         return next;
       });
@@ -239,39 +223,11 @@ const Accommodations: React.FC = () => {
   }, [accommodations]);
 
   /* =========================================================
-     FAVORITE TOGGLE
-
-     Local, UI-only — there is no favorites field on the
-     accommodations record (AdminAccommodations doesn't
-     manage one), so this simply lets a visitor mark cards
-     for their own session.
+     RESULT COUNT
   ========================================================= */
 
-  const toggleFavorite = (
-    event: React.MouseEvent<HTMLButtonElement>,
-    accommodationId: string,
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    setFavoriteIds((previous) => {
-      const next = new Set(previous);
-
-      if (next.has(accommodationId)) {
-        next.delete(accommodationId);
-      } else {
-        next.add(accommodationId);
-      }
-
-      return next;
-    });
-  };
-
-  /* =========================================================
-     RESULT LABEL
-  ========================================================= */
-
-  const resultCount = accommodations.length;
+  const resultCount =
+    accommodations.length;
 
   /* =========================================================
      RENDER
@@ -285,11 +241,14 @@ const Accommodations: React.FC = () => {
 
       <section className="accommodations-header">
         <div className="accommodations-header-inner">
-          <h1 className="accommodations-title">ACCOMMODATIONS</h1>
+          <h1 className="accommodations-title">
+            ACCOMMODATIONS
+          </h1>
 
           <p className="accommodations-subtitle">
-            Find comfortable hotels, resorts, inns, and places to stay
-            during your Calbayog City adventure.
+            Find comfortable hotels, resorts, inns, and
+            places to stay during your Calbayog City
+            adventure.
           </p>
         </div>
       </section>
@@ -307,21 +266,33 @@ const Accommodations: React.FC = () => {
           <div className="results-bar">
             <div className="results-left">
               <div className="results-icon">
-                <Hotel size={18} strokeWidth={1.9} />
+                <Hotel
+                  size={18}
+                  strokeWidth={1.9}
+                />
               </div>
 
               <div>
-                <div className="results-label">Showing</div>
+                <div className="results-label">
+                  Showing
+                </div>
 
                 <div className="results-count">
-                  <strong>{resultCount}</strong> accommodation
-                  {resultCount !== 1 ? "s" : ""}
+                  <strong>
+                    {resultCount}
+                  </strong>{" "}
+                  accommodation
+                  {resultCount !== 1
+                    ? "s"
+                    : ""}
                 </div>
               </div>
             </div>
 
             <div className="results-right">
-              <span className="results-category">All accommodations</span>
+              <span className="results-category">
+                All accommodations
+              </span>
             </div>
           </div>
         )}
@@ -333,36 +304,55 @@ const Accommodations: React.FC = () => {
         {loading ? (
           <div className="accommodations-loading">
             <div className="loading-icon">
-              <Spinner animation="border" size="sm" />
+              <Spinner
+                animation="border"
+                size="sm"
+              />
             </div>
 
-            <div className="loading-title">Discovering places to stay...</div>
+            <div className="loading-title">
+              Discovering places to stay...
+            </div>
 
-            <p className="loading-subtitle">Please wait a moment.</p>
+            <p className="loading-subtitle">
+              Please wait a moment.
+            </p>
           </div>
-        ) : accommodations.length === 0 ? (
+        ) : accommodations.length ===
+          0 ? (
           /* =================================================
              EMPTY STATE
           ================================================= */
 
           <div className="empty-state">
             <div className="empty-icon">
-              <Hotel size={30} strokeWidth={1.6} />
+              <Hotel
+                size={30}
+                strokeWidth={1.6}
+              />
             </div>
 
-            <h3>No accommodations yet</h3>
+            <h3>
+              No accommodations yet
+            </h3>
 
             <p>
-              There are no accommodations listed yet. Please check back
+              There are no accommodations
+              listed yet. Please check back
               soon.
             </p>
 
             <Button
               variant="outline-primary"
-              onClick={() => void fetchAccommodations()}
+              onClick={() =>
+                void fetchAccommodations()
+              }
               className="empty-button"
             >
-              <Hotel size={15} strokeWidth={1.8} />
+              <Hotel
+                size={15}
+                strokeWidth={1.8}
+              />
               Refresh
             </Button>
           </div>
@@ -372,211 +362,41 @@ const Accommodations: React.FC = () => {
           ================================================= */
 
           <Row className="accommodations-grid">
-            {accommodations.map((accommodation) => {
-              const accommodationId = getAccommodationId(accommodation);
+            {accommodations.map(
+              (accommodation) => {
+                const accommodationId =
+                  getAccommodationId(
+                    accommodation,
+                  );
 
-              const images = accommodation.images;
+                const currentImageIndex =
+                  imageIndexes[
+                    accommodationId
+                  ] || 0;
 
-              const currentImageIndex = imageIndexes[accommodationId] || 0;
-
-              const currentImage =
-                images.length > 0
-                  ? images[currentImageIndex % images.length]
-                  : "";
-
-              const isFavorite = favoriteIds.has(accommodationId);
-
-              const description = accommodation.description || "";
-
-              const address = accommodation.address || "";
-
-              const priceRange = accommodation.price_range || "";
-
-              const website = accommodation.website || "";
-
-              const phone = accommodation.contact_number || "";
-
-              return (
-                <Col
-                  xs={12}
-                  sm={6}
-                  lg={3}
-                  key={accommodationId || accommodation.name}
-                  className="accommodation-col"
-                >
-                  <div className="accommodation-card">
-                    {/* =====================================
-                         IMAGE
-                      ===================================== */}
-
-                    <div className="accommodation-image-wrap">
-                      <Link
-                        to={`/accommodations/${accommodationId}`}
-                        className="accommodation-image-link"
-                      >
-                        {currentImage ? (
-                          <img
-                            src={currentImage}
-                            alt={accommodation.name || "Accommodation"}
-                            className="accommodation-image"
-                            onError={(event) => {
-                              event.currentTarget.style.display = "none";
-                            }}
-                          />
-                        ) : (
-                          <div className="accommodation-image-placeholder">
-                            <Hotel size={34} strokeWidth={1.5} />
-
-                            <span className="accommodation-image-placeholder-text">
-                              No image
-                            </span>
-                          </div>
-                        )}
-
-                        {priceRange && (
-                          <div className="accommodation-image-price-badge">
-                            {priceRange}
-                          </div>
-                        )}
-
-                        {images.length > 1 && (
-                          <div className="accommodation-image-dots">
-                            {images
-                              .slice(0, 6)
-                              .map((_: string, index: number) => (
-                                <span
-                                  key={index}
-                                  className={`accommodation-image-dot ${
-                                    index === currentImageIndex % images.length
-                                      ? "accommodation-image-dot-active"
-                                      : ""
-                                  }`}
-                                />
-                              ))}
-                          </div>
-                        )}
-                      </Link>
-
-                      {/* FAVORITE */}
-
-                      <button
-                        type="button"
-                        className={`accommodation-favorite-button ${
-                          isFavorite ? "accommodation-favorite-active" : ""
-                        }`}
-                        onClick={(event) =>
-                          toggleFavorite(event, accommodationId)
-                        }
-                        aria-label={
-                          isFavorite
-                            ? `Remove ${
-                                accommodation.name || "accommodation"
-                              } from favorites`
-                            : `Add ${
-                                accommodation.name || "accommodation"
-                              } to favorites`
-                        }
-                      >
-                        <svg
-                          width="19"
-                          height="19"
-                          viewBox="0 0 24 24"
-                          fill={isFavorite ? "currentColor" : "none"}
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                        >
-                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                        </svg>
-                      </button>
-                    </div>
-
-                    {/* =====================================
-                         CARD BODY
-                      ===================================== */}
-
-                    <div className="accommodation-card-body">
-                      <Link
-                        to={`/accommodations/${accommodationId}`}
-                        className="accommodation-content-link"
-                      >
-                        <div className="accommodation-name">
-                          {accommodation.name || "Unnamed Accommodation"}
-                        </div>
-
-                        {address && (
-                          <div className="accommodation-location">
-                            <MapPin size={15} strokeWidth={1.8} />
-
-                            <span>{address}</span>
-                          </div>
-                        )}
-
-                        {description && (
-                          <p className="accommodation-description">
-                            {description.slice(0, 150)}
-
-                            {description.length > 150 ? "..." : ""}
-                          </p>
-                        )}
-                      </Link>
-
-                      {/* =================================
-                           BOTTOM ROW
-                        ================================= */}
-
-                      <div className="accommodation-bottom-row">
-                        <div className="accommodation-contact-summary">
-                          {phone && (
-                            <a
-                              href={`tel:${phone}`}
-                              className="accommodation-action-link"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <Phone size={13} strokeWidth={1.8} />
-                              Call
-                            </a>
-                          )}
-
-                          {website && (
-                            <a
-                              href={getWebsiteHref(website)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(event) => event.stopPropagation()}
-                              className="accommodation-action-link"
-                            >
-                              <Globe2 size={13} strokeWidth={1.8} />
-                              Website
-                            </a>
-                          )}
-
-                          {address && (
-                            <a
-                              href={buildDirectionsUrl(accommodation)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(event) => event.stopPropagation()}
-                              className="accommodation-action-link"
-                            >
-                              <MapPin size={13} strokeWidth={1.8} />
-                              Directions
-                            </a>
-                          )}
-                        </div>
-
-                        <Link
-                          to={`/accommodations/${accommodationId}`}
-                          className="accommodation-view-details-link"
-                        >
-                          View details
-                          <ArrowUpRight size={15} strokeWidth={1.9} />
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </Col>
-              );
-            })}
+                return (
+                  <Col
+                    xs={12}
+                    sm={6}
+                    lg={3}
+                    key={
+                      accommodationId ||
+                      accommodation.name
+                    }
+                    className="accommodation-col"
+                  >
+                    <AccommodationCard
+                      accommodation={
+                        accommodation
+                      }
+                      imageIndex={
+                        currentImageIndex
+                      }
+                    />
+                  </Col>
+                );
+              },
+            )}
           </Row>
         )}
       </Container>
@@ -584,9 +404,11 @@ const Accommodations: React.FC = () => {
       {/* =====================================================
           PAGE STYLES
 
-          Class names and layout intentionally mirror
-          Attractions.tsx so the two pages feel like one
-          consistent dashboard.
+          Card-specific styling now lives inside
+          AccommodationCard.tsx.
+
+          This file only keeps page-level layout,
+          header, loading and empty-state styling.
       ===================================================== */}
 
       <style>{`
@@ -630,7 +452,8 @@ const Accommodations: React.FC = () => {
         .accommodations-subtitle {
           max-width: 590px;
           margin: 6px 0 0;
-          font-family: "Nunito", "Poppins", "Segoe UI", sans-serif;
+          font-family: "Nunito", "Poppins",
+            "Segoe UI", sans-serif;
           font-size: 0.81rem;
           line-height: 1.55;
           font-weight: 500;
@@ -719,292 +542,6 @@ const Accommodations: React.FC = () => {
           padding-left: 12px;
           padding-right: 12px;
           display: flex;
-        }
-
-        /* =====================================================
-           CARD
-        ===================================================== */
-
-        .accommodation-card {
-          width: 100%;
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-        }
-
-        .accommodation-image-wrap {
-          position: relative;
-          width: 100%;
-          aspect-ratio: 4 / 5;
-          overflow: hidden;
-          border-radius: 18px;
-          background: #eef2ef;
-        }
-
-        .accommodation-image-link {
-          position: absolute;
-          inset: 0;
-          display: block;
-          overflow: hidden;
-          text-decoration: none;
-        }
-
-        .accommodation-image {
-          width: 100%;
-          height: 100%;
-          display: block;
-          object-fit: cover;
-          object-position: center;
-          transition:
-            transform 0.65s cubic-bezier(0.2, 0.65, 0.3, 1),
-            filter 0.35s ease;
-        }
-
-        .accommodation-card:hover .accommodation-image {
-          transform: scale(1.035);
-        }
-
-        .accommodation-card:hover .accommodation-image-wrap {
-          box-shadow: 0 12px 32px rgba(20, 30, 24, 0.11);
-        }
-
-        .accommodation-image-placeholder {
-          width: 100%;
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          color: ${CALBAYOG_BLUE};
-          background: linear-gradient(135deg, #eef0ff, #f8faf9);
-        }
-
-        .accommodation-image-placeholder-text {
-          color: #64706a;
-          font-family: "Nunito", sans-serif;
-          font-size: 0.68rem;
-          line-height: 1.2;
-          font-weight: 800;
-          letter-spacing: 0.02em;
-        }
-
-        .accommodation-image-price-badge {
-          position: absolute;
-          top: 12px;
-          left: 12px;
-          max-width: calc(100% - 66px);
-          padding: 7px 10px;
-          border-radius: 999px;
-          background: rgba(255, 255, 255, 0.93);
-          color: #242925;
-          box-shadow: 0 3px 12px rgba(0, 0, 0, 0.09);
-          backdrop-filter: blur(10px);
-          font-family: "Nunito", sans-serif;
-          font-size: 0.61rem;
-          font-weight: 800;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          z-index: 3;
-        }
-
-        .accommodation-favorite-button {
-          position: absolute;
-          top: 11px;
-          right: 11px;
-          width: 40px;
-          height: 40px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: none;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.94);
-          color: #222724;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.11);
-          backdrop-filter: blur(10px);
-          cursor: pointer;
-          z-index: 5;
-          transition:
-            transform 0.2s ease,
-            background 0.2s ease,
-            color 0.2s ease;
-        }
-
-        .accommodation-favorite-button:hover {
-          transform: scale(1.08);
-          background: #ffffff;
-        }
-
-        .accommodation-favorite-button:active {
-          transform: scale(0.92);
-        }
-
-        .accommodation-favorite-active {
-          color: #e94b58;
-          animation: accommodationFavoritePop 0.3s ease;
-        }
-
-        @keyframes accommodationFavoritePop {
-          0% {
-            transform: scale(0.85);
-          }
-          55% {
-            transform: scale(1.18);
-          }
-          100% {
-            transform: scale(1);
-          }
-        }
-
-        .accommodation-image-dots {
-          position: absolute;
-          left: 50%;
-          bottom: 11px;
-          transform: translateX(-50%);
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          z-index: 4;
-          padding: 5px 8px;
-          border-radius: 999px;
-          background: rgba(0, 0, 0, 0.13);
-          backdrop-filter: blur(7px);
-        }
-
-        .accommodation-image-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.62);
-          transition:
-            width 0.25s ease,
-            background 0.25s ease;
-        }
-
-        .accommodation-image-dot-active {
-          width: 7px;
-          background: #ffffff;
-        }
-
-        /* =====================================================
-           CARD BODY
-        ===================================================== */
-
-        .accommodation-card-body {
-          padding: 13px 2px 0;
-          display: flex;
-          flex-direction: column;
-          flex: 1;
-        }
-
-        .accommodation-content-link {
-          display: block;
-          color: inherit;
-          text-decoration: none;
-        }
-
-        .accommodation-name {
-          margin: 0;
-          color: #171b18;
-          font-family: "Poppins", "Nunito", sans-serif;
-          font-size: 0.91rem;
-          line-height: 1.3;
-          font-weight: 700;
-          letter-spacing: -0.012em;
-        }
-
-        .accommodation-location {
-          display: flex;
-          align-items: flex-start;
-          gap: 5px;
-          margin-top: 5px;
-          color: #747d77;
-          font-family: "Nunito", sans-serif;
-          font-size: 0.68rem;
-          line-height: 1.4;
-          font-weight: 600;
-        }
-
-        .accommodation-location svg {
-          flex: 0 0 auto;
-          margin-top: 1px;
-        }
-
-        .accommodation-description {
-          margin: 7px 0 0;
-          color: #707973;
-          font-family: "Nunito", sans-serif;
-          font-size: 0.7rem;
-          line-height: 1.5;
-          font-weight: 500;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-
-        /* =====================================================
-           BOTTOM ROW
-        ===================================================== */
-
-        .accommodation-bottom-row {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 8px;
-          flex-wrap: wrap;
-          margin-top: auto;
-          padding-top: 10px;
-          margin-top: 10px;
-          border-top: 1px solid #f0f2f0;
-        }
-
-        .accommodation-contact-summary {
-          display: flex;
-          align-items: center;
-          gap: 11px;
-          flex-wrap: wrap;
-          min-width: 0;
-        }
-
-        .accommodation-action-link {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          color: #727b76;
-          font-family: "Nunito", sans-serif;
-          font-size: 0.61rem;
-          font-weight: 800;
-          text-decoration: none;
-          transition:
-            color 0.2s ease,
-            transform 0.2s ease;
-        }
-
-        .accommodation-action-link:hover {
-          color: ${CALBAYOG_BLUE};
-          transform: translateY(-1px);
-        }
-
-        .accommodation-view-details-link {
-          display: inline-flex;
-          align-items: center;
-          gap: 3px;
-          color: #171b18;
-          font-family: "Nunito", sans-serif;
-          font-size: 0.62rem;
-          font-weight: 800;
-          text-decoration: none;
-          transition:
-            color 0.2s ease,
-            transform 0.2s ease;
-        }
-
-        .accommodation-view-details-link:hover {
-          color: ${CALBAYOG_BLUE};
-          transform: translateX(2px);
         }
 
         /* =====================================================
@@ -1100,13 +637,21 @@ const Accommodations: React.FC = () => {
           font-weight: 800 !important;
         }
 
+        /* =====================================================
+           RESPONSIVE
+        ===================================================== */
+
         @media (max-width: 991.98px) {
           .accommodations-header {
             padding: 28px 20px 18px;
           }
 
           .accommodations-title {
-            font-size: clamp(1.65rem, 4.5vw, 2.25rem);
+            font-size: clamp(
+              1.65rem,
+              4.5vw,
+              2.25rem
+            );
           }
 
           .accommodations-grid {
@@ -1160,15 +705,6 @@ const Accommodations: React.FC = () => {
 
           .accommodations-subtitle {
             font-size: 0.77rem;
-          }
-
-          .accommodation-name {
-            font-size: 0.94rem;
-          }
-
-          .accommodation-favorite-button {
-            width: 39px;
-            height: 39px;
           }
         }
       `}</style>
