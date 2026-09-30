@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   MapContainer,
   Marker,
-  Pane,
   TileLayer,
   useMap,
   useMapEvents,
@@ -18,18 +17,113 @@ import {
 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
-const markerIcon = L.icon({
-  iconUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+const normalizeMarkerValue = (value: unknown) =>
+  String(value ?? "")
+    .toLowerCase()
+    .trim();
+
+const CATEGORY_MARKER_DESIGNS: Record<
+  string,
+  { color: string; icon: string }
+> = {
+  Nature: { color: "#34A853", icon: "🌿" },
+  "History and Culture": { color: "#A66A3F", icon: "🏛️" },
+  "Industrial Tourism": { color: "#5F6B76", icon: "🏭" },
+  Shopping: { color: "#E65A9E", icon: "🛍️" },
+  Other: { color: "#7B8794", icon: "📍" },
+};
+
+const SUBCATEGORY_MARKER_ICONS: Record<string, string> = {
+  waterfalls: "💧",
+  beaches: "🏖️",
+  caves: "🪨",
+  "hot springs": "♨️",
+  rivers: "🌊",
+  "dive sites": "🤿",
+  churches: "⛪",
+  museums: "🏛️",
+  "historic buildings": "🏛️",
+  monuments: "🗿",
+  parks: "🌳",
+  factories: "🏭",
+  farms: "🌾",
+  "production sites": "⚙️",
+  markets: "🛒",
+  malls: "🛍️",
+  "local craft centers": "🧺",
+  other: "📍",
+};
+
+const createAttractionMarkerIcon = (
+  markerCategory?: string | null,
+  markerType?: string | null,
+) => {
+  const categoryKey = String(markerCategory ?? "").trim();
+  const design =
+    CATEGORY_MARKER_DESIGNS[categoryKey] ||
+    CATEGORY_MARKER_DESIGNS.Other;
+
+  const typeKey = normalizeMarkerValue(markerType);
+  const glyph =
+    SUBCATEGORY_MARKER_ICONS[typeKey] ||
+    design.icon;
+
+  return L.divIcon({
+    className: "category-attraction-marker",
+    html: `
+      <div
+        style="
+          position:relative;
+          width:40px;
+          height:48px;
+          display:flex;
+          align-items:flex-start;
+          justify-content:center;
+          filter:drop-shadow(0 2px 3px rgba(0,0,0,.28));
+        "
+        aria-label="${String(markerType || markerCategory || "Attraction")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")}">
+        <div
+          style="
+            position:absolute;
+            top:0;
+            left:3px;
+            width:34px;
+            height:34px;
+            border-radius:50% 50% 50% 0;
+            transform:rotate(-45deg);
+            background:${design.color};
+            border:3px solid #fff;
+            box-sizing:border-box;
+          "
+        ></div>
+        <div
+          style="
+            position:absolute;
+            top:5px;
+            left:8px;
+            width:24px;
+            height:24px;
+            border-radius:50%;
+            background:#fff;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:14px;
+            line-height:1;
+            z-index:2;
+          "
+        >${glyph}</div>
+      </div>
+    `,
+    iconSize: [40, 48],
+    iconAnchor: [20, 45],
+    popupAnchor: [0, -43],
+  });
+};
 
 interface SearchablePlace {
   id?: string;
@@ -43,6 +137,8 @@ interface LocationPickerProps {
   latitude?: number | null;
   longitude?: number | null;
   address?: string | null;
+  category?: string | null;
+  attractionType?: string | null;
   searchablePlaces?: SearchablePlace[];
   onChange: (location: {
     latitude: number;
@@ -82,7 +178,7 @@ function MapCenter({
   const map = useMap();
 
   useEffect(() => {
-    map.flyTo([latitude, longitude], zoom, {
+    map.flyTo([latitude, longitude], Math.max(map.getZoom(), zoom), {
       duration: 0.7,
     });
   }, [map, latitude, longitude, zoom]);
@@ -95,7 +191,6 @@ function MapResizeHandler() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => map.invalidateSize(), 150);
-
     return () => window.clearTimeout(timer);
   }, [map]);
 
@@ -112,6 +207,8 @@ export default function LocationPicker({
   latitude,
   longitude,
   address,
+  category,
+  attractionType,
   searchablePlaces = [],
   onChange,
 }: LocationPickerProps) {
@@ -120,9 +217,7 @@ export default function LocationPicker({
     typeof longitude === "number" ? longitude : DEFAULT_LONGITUDE,
   ];
 
-  const [position, setPosition] =
-    useState<[number, number]>(initialPosition);
-
+  const [position, setPosition] = useState<[number, number]>(initialPosition);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
@@ -131,10 +226,7 @@ export default function LocationPicker({
   const [mapZoom, setMapZoom] = useState(16);
 
   useEffect(() => {
-    if (
-      typeof latitude === "number" &&
-      typeof longitude === "number"
-    ) {
+    if (typeof latitude === "number" && typeof longitude === "number") {
       setPosition([latitude, longitude]);
       setMapZoom(17);
     }
@@ -142,56 +234,38 @@ export default function LocationPicker({
 
   const localMatches = useMemo(() => {
     const query = normalize(searchTerm);
-
     if (!query) return [];
 
     return searchablePlaces
       .filter((place) => {
         const text = normalize(
-          [place.name, place.address]
-            .filter(Boolean)
-            .join(" ")
+          [place.name, place.address].filter(Boolean).join(" "),
         );
-
         return query
           .split(/\s+/)
           .filter(Boolean)
           .every((token) => text.includes(token));
       })
+      .slice(0, 6)
       .map((place) => ({
         ...place,
         source: "local",
-        latitude: Number(place.latitude),
-        longitude: Number(place.longitude),
-        name: String(place.name || "Location"),
-        address: place.address ? String(place.address) : "",
-        display_name: [place.name, place.address]
-          .filter(Boolean)
-          .join(" — "),
-      }))
-      .filter(
-        (place) =>
-          Number.isFinite(place.latitude) &&
-          Number.isFinite(place.longitude)
-      )
-      .slice(0, 6);
+        display_name: [place.name, place.address].filter(Boolean).join(" — "),
+      }));
   }, [searchTerm, searchablePlaces]);
 
   const handleLocationChange = (
     lat: number,
     lng: number,
     selectedAddress?: string,
-    zoom = 17
   ) => {
     setPosition([lat, lng]);
-    setMapZoom(zoom);
+    setMapZoom(17);
 
     onChange({
       latitude: lat,
       longitude: lng,
-      ...(selectedAddress
-        ? { address: selectedAddress }
-        : {}),
+      ...(selectedAddress ? { address: selectedAddress } : {}),
     });
   };
 
@@ -200,17 +274,13 @@ export default function LocationPicker({
 
     if (!query) {
       setSearchResults([]);
-      setSearchMessage(
-        "Type an attraction name or address to search."
-      );
+      setSearchMessage("Type an attraction name or address to search.");
       return;
     }
 
     if (localMatches.length > 0) {
       setSearchResults(localMatches);
-      setSearchMessage(
-        "Existing attraction matches are shown first."
-      );
+      setSearchMessage("Existing attraction matches are shown first.");
     }
 
     setSearching(true);
@@ -218,14 +288,12 @@ export default function LocationPicker({
 
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&addressdetails=1&q=${encodeURIComponent(
-          `${query}, Calbayog City, Samar, Philippines`
-        )}`,
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&addressdetails=1&q=${encodeURIComponent(`${query}, Calbayog City, Samar, Philippines`)}`,
         {
           headers: {
             Accept: "application/json",
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -233,74 +301,33 @@ export default function LocationPicker({
       }
 
       const results = await response.json();
-
       const externalResults = Array.isArray(results)
-        ? results
-            .map((result) => ({
-              source: "search",
-              name:
-                String(
-                  result.display_name || result.name || "Location"
-                )
-                  .split(",")[0]
-                  .trim(),
-              address: String(
-                result.display_name || ""
-              ).trim(),
-              display_name: String(
-                result.display_name || ""
-              ).trim(),
-              latitude: Number(result.lat),
-              longitude: Number(result.lon),
-            }))
-            .filter(
-              (result) =>
-                Number.isFinite(result.latitude) &&
-                Number.isFinite(result.longitude)
-            )
+        ? results.map((result) => ({ ...result, source: "search" }))
         : [];
 
-      setSearchResults(() => {
-        const merged = [...localMatches, ...externalResults];
+      setSearchResults((previous) => {
+        const local = previous.filter((item) => item.source === "local");
+        const merged = [...local, ...externalResults];
         const seen = new Set<string>();
 
         return merged.filter((item) => {
-          const lat = Number(item.latitude);
-          const lng = Number(item.longitude);
-          const name = String(
-            item.display_name || item.name || ""
-          );
-
-          if (
-            !Number.isFinite(lat) ||
-            !Number.isFinite(lng)
-          ) {
-            return false;
-          }
-
-          const key = `${lat.toFixed(7)}|${lng.toFixed(7)}|${name}`;
-
+          const key = `${item.lat}|${item.lon}|${item.display_name}`;
           if (seen.has(key)) return false;
-
           seen.add(key);
           return true;
         });
       });
 
-      if (
-        externalResults.length === 0 &&
-        localMatches.length === 0
-      ) {
+      if (externalResults.length === 0 && localMatches.length === 0) {
         setSearchMessage(
-          "No exact match found. Try a nearby landmark, barangay, or full address."
+          "No exact match found. Try a nearby landmark, barangay, or full address.",
         );
       }
     } catch (error) {
       console.error("Location search failed:", error);
-
       if (localMatches.length === 0) {
         setSearchMessage(
-          "Search is temporarily unavailable. You can still click or drag the pin on the map."
+          "Search is temporarily unavailable. You can still click or drag the pin on the map.",
         );
       }
     } finally {
@@ -309,109 +336,62 @@ export default function LocationPicker({
   };
 
   const selectResult = (result: any) => {
-    const lat = Number(
-      result.latitude ?? result.lat
-    );
+    const lat = Number(result.latitude ?? result.lat);
+    const lng = Number(result.longitude ?? result.lon);
 
-    const lng = Number(
-      result.longitude ?? result.lon
-    );
-
-    if (
-      !Number.isFinite(lat) ||
-      !Number.isFinite(lng)
-    ) {
-      return;
-    }
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
     const selectedAddress =
-      typeof result.address === "string"
-        ? result.address
-        : typeof result.display_name === "string"
-          ? result.display_name
-          : typeof result.name === "string"
-            ? result.name
-            : "";
+      result.address || result.display_name || result.name || "";
 
-    handleLocationChange(
-      lat,
-      lng,
-      selectedAddress,
-      18
-    );
-
-    setSearchMessage(
-      "Location selected. The map is centered on the selected coordinates. You can still drag the pin to fine-tune it."
-    );
-
+    handleLocationChange(lat, lng, selectedAddress);
+    setSearchMessage("Location selected. You can still drag the pin to fine-tune it.");
     setSearchResults([]);
   };
 
   const useCurrentLocation = () => {
     if (!navigator.geolocation) {
-      setSearchMessage(
-        "Your browser does not support location access."
-      );
+      setSearchMessage("Your browser does not support location access.");
       return;
     }
 
-    setSearchMessage(
-      "Getting your current location…"
-    );
+    setSearchMessage("Getting your current location…");
 
     navigator.geolocation.getCurrentPosition(
       (location) => {
         handleLocationChange(
           location.coords.latitude,
-          location.coords.longitude
+          location.coords.longitude,
         );
-
-        setSearchMessage(
-          "Current location selected. Drag the pin if needed."
-        );
+        setSearchMessage("Current location selected. Drag the pin if needed.");
       },
       () => {
         setSearchMessage(
-          "We could not access your location. You can search, click, or drag the pin instead."
+          "We could not access your location. You can search, click, or drag the pin instead.",
         );
       },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-      }
+      { enableHighAccuracy: true, timeout: 10000 },
     );
   };
 
   const tileConfig = {
     street: {
-      url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-      attribution:
-        "&copy; OpenStreetMap contributors",
+      url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      attribution: '&copy; OpenStreetMap contributors',
     },
-
     satellite: {
-      url:
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      attribution:
-        "Tiles &copy; Esri | Map data &copy; OpenStreetMap contributors",
-      labelUrl:
-        "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
-      labelAttribution:
-        "Reference &copy; Esri, DeLorme, USGS, NPS",
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      attribution: "Tiles &copy; Esri",
     },
-
     terrain: {
-      url:
-        "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+      url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
       attribution:
-        "Map data &copy; OpenStreetMap contributors, SRTM | Map style &copy; OpenTopoMap",
+        'Map data &copy; OpenStreetMap contributors, SRTM | Map style &copy; OpenTopoMap',
     },
   }[layer];
 
   return (
     <div className="location-picker">
-
-      {/* SEARCH AREA */}
       <div
         style={{
           border: "1px solid #e1e4ec",
@@ -429,14 +409,7 @@ export default function LocationPicker({
             flexWrap: "wrap",
           }}
         >
-
-          {/* SEARCH INPUT */}
-          <div
-            style={{
-              flex: "1 1 300px",
-              position: "relative",
-            }}
-          >
+          <div style={{ flex: "1 1 300px", position: "relative" }}>
             <Search
               size={17}
               style={{
@@ -448,34 +421,18 @@ export default function LocationPicker({
                 pointerEvents: "none",
               }}
             />
-
             <input
               value={searchTerm}
               onChange={(event) => {
                 setSearchTerm(event.target.value);
                 setSearchMessage("");
-
-                if (!event.target.value.trim()) {
-                  setSearchResults([]);
-                }
+                if (!event.target.value.trim()) setSearchResults([]);
               }}
-
-              /*
-               * IMPORTANT:
-               * Prevent Enter from submitting the parent
-               * Admin Attraction form.
-               */
               onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  searchLocation();
-                }
+                if (event.key === "Enter") searchLocation();
               }}
-
               placeholder="Search attraction name or address…"
               aria-label="Search attraction name or address"
-
               style={{
                 width: "100%",
                 minHeight: 44,
@@ -486,8 +443,6 @@ export default function LocationPicker({
                 fontSize: 13,
               }}
             />
-
-            {/* CLEAR SEARCH */}
             {searchTerm && (
               <button
                 type="button"
@@ -516,7 +471,6 @@ export default function LocationPicker({
             )}
           </div>
 
-          {/* SEARCH BUTTON */}
           <button
             type="button"
             onClick={searchLocation}
@@ -536,7 +490,6 @@ export default function LocationPicker({
             {searching ? "Searching…" : "Search"}
           </button>
 
-          {/* CURRENT LOCATION */}
           <button
             type="button"
             onClick={useCurrentLocation}
@@ -561,11 +514,8 @@ export default function LocationPicker({
           </button>
         </div>
 
-        {/* SEARCH RESULTS / MESSAGE */}
-        {(searchResults.length > 0 ||
-          searchMessage) && (
+        {(searchResults.length > 0 || searchMessage) && (
           <div style={{ marginTop: 10 }}>
-
             {searchResults.length > 0 && (
               <div
                 style={{
@@ -575,96 +525,70 @@ export default function LocationPicker({
                   background: "#fff",
                 }}
               >
-                {searchResults.map(
-                  (result, index) => (
-                    <button
-                      key={`${Number(result.latitude).toFixed(7)}-${Number(
-                        result.longitude
-                      ).toFixed(7)}-${index}`}
-                      type="button"
-                      onClick={() =>
-                        selectResult(result)
-                      }
+                {searchResults.map((result, index) => (
+                  <button
+                    key={`${result.lat || result.latitude}-${result.lon || result.longitude}-${index}`}
+                    type="button"
+                    onClick={() => selectResult(result)}
+                    style={{
+                      width: "100%",
+                      display: "block",
+                      textAlign: "left",
+                      border: 0,
+                      borderBottom:
+                        index === searchResults.length - 1
+                          ? "0"
+                          : "1px solid #eef0f4",
+                      background: "#fff",
+                      padding: "10px 12px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div
                       style={{
-                        width: "100%",
-                        display: "block",
-                        textAlign: "left",
-                        border: 0,
-                        borderBottom:
-                          index ===
-                          searchResults.length - 1
-                            ? "0"
-                            : "1px solid #eef0f4",
-                        background: "#fff",
-                        padding: "10px 12px",
-                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 9,
                       }}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          gap: 9,
-                        }}
-                      >
-                        <MapPin
-                          size={16}
-                          style={{
-                            marginTop: 2,
-                            color: "#2D3195",
-                            flex: "0 0 auto",
-                          }}
-                        />
-
+                      <MapPin
+                        size={16}
+                        style={{ marginTop: 2, color: "#2D3195", flex: "0 0 auto" }}
+                      />
+                      <span style={{ minWidth: 0 }}>
                         <span
                           style={{
-                            minWidth: 0,
+                            display: "block",
+                            color: "#252936",
+                            fontWeight: 800,
+                            fontSize: 12,
                           }}
                         >
-                          <span
-                            style={{
-                              display: "block",
-                              color: "#252936",
-                              fontWeight: 800,
-                              fontSize: 12,
-                            }}
-                          >
-                            {result.name ||
-                              String(
-                                result.display_name ||
-                                  "Location"
-                              ).split(",")[0]}
-                          </span>
-
-                          <span
-                            style={{
-                              display: "block",
-                              marginTop: 2,
-                              color: "#7b8190",
-                              fontSize: 11,
-                              lineHeight: 1.4,
-                            }}
-                          >
-                            {String(
-                              typeof result.address === "string"
-                                ? result.address
-                                : result.display_name || ""
-                            )}
-                          </span>
+                          {result.name ||
+                            String(result.display_name || "Location").split(",")[0]}
                         </span>
-                      </div>
-                    </button>
-                  )
-                )}
+                        <span
+                          style={{
+                            display: "block",
+                            marginTop: 2,
+                            color: "#7b8190",
+                            fontSize: 11,
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {result.address || result.display_name}
+                        </span>
+                      </span>
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
 
             {searchMessage && (
               <div
                 style={{
-                  marginTop: searchResults.length
-                    ? 8
-                    : 0,
+                  marginTop: searchResults.length ? 8 : 0,
                   color: "#737987",
                   fontSize: 11,
                   fontWeight: 600,
@@ -677,7 +601,6 @@ export default function LocationPicker({
         )}
       </div>
 
-      {/* MAP STYLE BUTTONS */}
       <div
         style={{
           display: "flex",
@@ -688,165 +611,81 @@ export default function LocationPicker({
           marginBottom: 8,
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            gap: 6,
-            flexWrap: "wrap",
-          }}
-        >
-          {(
-            [
-              [
-                "street",
-                "Street",
-                <MapIcon size={13} />,
-              ],
-              [
-                "satellite",
-                "Satellite",
-                <Satellite size={13} />,
-              ],
-              [
-                "terrain",
-                "Terrain",
-                <MapIcon size={13} />,
-              ],
-            ] as const
-          ).map(
-            ([value, label, icon]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() =>
-                  setLayer(value)
-                }
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                  minHeight: 34,
-                  padding: "7px 10px",
-                  border: `1px solid ${
-                    layer === value
-                      ? "#2D3195"
-                      : "#dfe3eb"
-                  }`,
-                  borderRadius: 9,
-                  background:
-                    layer === value
-                      ? "#eef0ff"
-                      : "#fff",
-                  color:
-                    layer === value
-                      ? "#2D3195"
-                      : "#606674",
-                  fontSize: 11,
-                  fontWeight: 800,
-                  cursor: "pointer",
-                }}
-              >
-                {icon}
-                {label}
-              </button>
-            )
-          )}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {([
+            ["street", "Street", <MapIcon size={13} />],
+            ["satellite", "Satellite", <Satellite size={13} />],
+            ["terrain", "Terrain", <MapIcon size={13} />],
+          ] as const).map(([value, label, icon]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setLayer(value)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                minHeight: 34,
+                padding: "7px 10px",
+                border: `1px solid ${layer === value ? "#2D3195" : "#dfe3eb"}`,
+                borderRadius: 9,
+                background: layer === value ? "#eef0ff" : "#fff",
+                color: layer === value ? "#2D3195" : "#606674",
+                fontSize: 11,
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              {icon}
+              {label}
+            </button>
+          ))}
         </div>
 
-        <span
-          style={{
-            color: "#7a808e",
-            fontSize: 10.5,
-            fontWeight: 700,
-          }}
-        >
-          Search first, then drag or click the pin
-          to fine-tune.
+        <span style={{ color: "#7a808e", fontSize: 10.5, fontWeight: 700 }}>
+          Search first, then drag or click the pin to fine-tune.
         </span>
       </div>
 
-      {/* MAP */}
       <div
         style={{
           overflow: "hidden",
           borderRadius: 14,
           border: "1px solid #dfe3eb",
-          boxShadow:
-            "0 6px 18px rgba(26,30,53,.06)",
+          boxShadow: "0 6px 18px rgba(26,30,53,.06)",
         }}
       >
         <MapContainer
           center={position}
           zoom={mapZoom}
           scrollWheelZoom={true}
-          style={{
-            height: "360px",
-            width: "100%",
-          }}
+          style={{ height: "360px", width: "100%" }}
         >
-          <TileLayer
-            attribution={tileConfig.attribution}
-            url={tileConfig.url}
-          />
-
-          {layer === "satellite" &&
-            "labelUrl" in tileConfig && (
-              <Pane
-                name="satelliteLabels"
-                style={{ zIndex: 450 }}
-              >
-                <TileLayer
-                  attribution={tileConfig.labelAttribution}
-                  url={tileConfig.labelUrl ?? ""}
-                  opacity={1}
-                  zIndex={450}
-                />
-              </Pane>
-            )}
-
+          <TileLayer attribution={tileConfig.attribution} url={tileConfig.url} />
           <MapCenter
             latitude={position[0]}
             longitude={position[1]}
             zoom={mapZoom}
           />
-
           <MapResizeHandler />
-
           <MapClickHandler
-            onLocationChange={(
-              lat,
-              lng
-            ) =>
-              handleLocationChange(
-                lat,
-                lng
-              )
-            }
+            onLocationChange={(lat, lng) => handleLocationChange(lat, lng)}
           />
-
           <Marker
             position={position}
-            icon={markerIcon}
+            icon={createAttractionMarkerIcon(category, attractionType)}
             draggable={true}
             eventHandlers={{
               dragend: (event) => {
-                const marker =
-                  event.target;
-
-                const location =
-                  marker.getLatLng();
-
-                handleLocationChange(
-                  location.lat,
-                  location.lng
-                );
+                const marker = event.target;
+                const location = marker.getLatLng();
+                handleLocationChange(location.lat, location.lng);
               },
             }}
           />
         </MapContainer>
       </div>
 
-      {/* LOCATION INFORMATION */}
       <div
         style={{
           marginTop: 10,
@@ -861,33 +700,12 @@ export default function LocationPicker({
           alignItems: "center",
         }}
       >
-        <div
-          style={{
-            color: "#555b68",
-            fontSize: 11.5,
-            fontWeight: 700,
-          }}
-        >
-          <strong
-            style={{
-              color: "#2D3195",
-            }}
-          >
-            Pinned location:
-          </strong>{" "}
-          {address ||
-            "Search or place the pin on the map"}
+        <div style={{ color: "#555b68", fontSize: 11.5, fontWeight: 700 }}>
+          <strong style={{ color: "#2D3195" }}>Pinned location:</strong>{" "}
+          {address || "Search or place the pin on the map"}
         </div>
-
-        <div
-          style={{
-            color: "#7a808e",
-            fontSize: 10.5,
-            fontWeight: 800,
-          }}
-        >
-          {position[0].toFixed(6)},{" "}
-          {position[1].toFixed(6)}
+        <div style={{ color: "#7a808e", fontSize: 10.5, fontWeight: 800 }}>
+          {position[0].toFixed(6)}, {position[1].toFixed(6)}
         </div>
       </div>
     </div>
