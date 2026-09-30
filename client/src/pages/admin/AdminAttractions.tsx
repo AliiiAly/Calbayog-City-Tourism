@@ -2902,6 +2902,8 @@ location_lng: form.location_lng,
                   latitude={form.location_lat}
                   longitude={form.location_lng}
                   address={form.location_address}
+                  category={form.category}
+                  attractionType={form.attraction_type}
                   searchablePlaces={items.map((item: any) => ({
                     id: item.id,
                     name: item.name,
