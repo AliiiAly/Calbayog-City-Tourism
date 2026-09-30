@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   MapContainer,
   Marker,
+  Pane,
   TileLayer,
   useMap,
   useMapEvents,
@@ -81,7 +82,7 @@ function MapCenter({
   const map = useMap();
 
   useEffect(() => {
-    map.flyTo([latitude, longitude], Math.max(map.getZoom(), zoom), {
+    map.flyTo([latitude, longitude], zoom, {
       duration: 0.7,
     });
   }, [map, latitude, longitude, zoom]);
@@ -157,23 +158,33 @@ export default function LocationPicker({
           .filter(Boolean)
           .every((token) => text.includes(token));
       })
-      .slice(0, 6)
       .map((place) => ({
         ...place,
         source: "local",
+        latitude: Number(place.latitude),
+        longitude: Number(place.longitude),
+        name: String(place.name || "Location"),
+        address: place.address ? String(place.address) : "",
         display_name: [place.name, place.address]
           .filter(Boolean)
           .join(" — "),
-      }));
+      }))
+      .filter(
+        (place) =>
+          Number.isFinite(place.latitude) &&
+          Number.isFinite(place.longitude)
+      )
+      .slice(0, 6);
   }, [searchTerm, searchablePlaces]);
 
   const handleLocationChange = (
     lat: number,
     lng: number,
-    selectedAddress?: string
+    selectedAddress?: string,
+    zoom = 17
   ) => {
     setPosition([lat, lng]);
-    setMapZoom(17);
+    setMapZoom(zoom);
 
     onChange({
       latitude: lat,
@@ -224,29 +235,50 @@ export default function LocationPicker({
       const results = await response.json();
 
       const externalResults = Array.isArray(results)
-        ? results.map((result) => ({
-            source: "search",
-            name:
-              String(result.display_name || result.name || "Location")
-                .split(",")[0]
-                .trim(),
-            address: String(result.display_name || "").trim(),
-            display_name: String(result.display_name || "").trim(),
-            latitude: Number(result.lat),
-            longitude: Number(result.lon),
-          }))
+        ? results
+            .map((result) => ({
+              source: "search",
+              name:
+                String(
+                  result.display_name || result.name || "Location"
+                )
+                  .split(",")[0]
+                  .trim(),
+              address: String(
+                result.display_name || ""
+              ).trim(),
+              display_name: String(
+                result.display_name || ""
+              ).trim(),
+              latitude: Number(result.lat),
+              longitude: Number(result.lon),
+            }))
+            .filter(
+              (result) =>
+                Number.isFinite(result.latitude) &&
+                Number.isFinite(result.longitude)
+            )
         : [];
 
-      setSearchResults((previous) => {
-        const local = previous.filter(
-          (item) => item.source === "local"
-        );
-
-        const merged = [...local, ...externalResults];
+      setSearchResults(() => {
+        const merged = [...localMatches, ...externalResults];
         const seen = new Set<string>();
 
         return merged.filter((item) => {
-          const key = `${item.lat}|${item.lon}|${item.display_name}`;
+          const lat = Number(item.latitude);
+          const lng = Number(item.longitude);
+          const name = String(
+            item.display_name || item.name || ""
+          );
+
+          if (
+            !Number.isFinite(lat) ||
+            !Number.isFinite(lng)
+          ) {
+            return false;
+          }
+
+          const key = `${lat.toFixed(7)}|${lng.toFixed(7)}|${name}`;
 
           if (seen.has(key)) return false;
 
@@ -304,11 +336,12 @@ export default function LocationPicker({
     handleLocationChange(
       lat,
       lng,
-      selectedAddress
+      selectedAddress,
+      18
     );
 
     setSearchMessage(
-      "Location selected. You can still drag the pin to fine-tune it."
+      "Location selected. The map is centered on the selected coordinates. You can still drag the pin to fine-tune it."
     );
 
     setSearchResults([]);
@@ -362,7 +395,7 @@ export default function LocationPicker({
       attribution:
         "Tiles &copy; Esri | Map data &copy; OpenStreetMap contributors",
       labelUrl:
-        "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Reference_Overlay/MapServer/tile/{z}/{y}/{x}",
+        "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
       labelAttribution:
         "Reference &copy; Esri, DeLorme, USGS, NPS",
     },
@@ -545,7 +578,9 @@ export default function LocationPicker({
                 {searchResults.map(
                   (result, index) => (
                     <button
-                      key={`${result.lat || result.latitude}-${result.lon || result.longitude}-${index}`}
+                      key={`${Number(result.latitude).toFixed(7)}-${Number(
+                        result.longitude
+                      ).toFixed(7)}-${index}`}
                       type="button"
                       onClick={() =>
                         selectResult(result)
@@ -754,14 +789,20 @@ export default function LocationPicker({
             url={tileConfig.url}
           />
 
-          {layer === "satellite" && "labelUrl" in tileConfig && (
-            <TileLayer
-              attribution={tileConfig.labelAttribution}
-              url={tileConfig.labelUrl ?? ""}
-              opacity={1}
-              zIndex={400}
-            />
-          )}
+          {layer === "satellite" &&
+            "labelUrl" in tileConfig && (
+              <Pane
+                name="satelliteLabels"
+                style={{ zIndex: 450 }}
+              >
+                <TileLayer
+                  attribution={tileConfig.labelAttribution}
+                  url={tileConfig.labelUrl ?? ""}
+                  opacity={1}
+                  zIndex={450}
+                />
+              </Pane>
+            )}
 
           <MapCenter
             latitude={position[0]}
