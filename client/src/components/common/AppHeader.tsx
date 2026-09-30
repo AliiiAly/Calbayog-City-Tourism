@@ -56,7 +56,9 @@ type HeaderIconName =
   | "chevron"
   | "lock"
   | "logout"
-  | "download";
+  | "download"
+  | "clock"
+  | "arrow";
 
 interface HeaderIconProps {
   name: HeaderIconName;
@@ -111,16 +113,12 @@ const HeaderIcon: React.FC<HeaderIconProps> = ({
       return (
         <svg {...commonProps}>
           <circle cx="12" cy="12" r="4" />
-
           <path d="M12 2v2" />
           <path d="M12 20v2" />
-
           <path d="m4.93 4.93 1.41 1.41" />
           <path d="m17.66 17.66 1.41 1.41" />
-
           <path d="M2 12h2" />
           <path d="M20 12h2" />
-
           <path d="m4.93 19.07 1.41-1.41" />
           <path d="m17.66 6.34 1.41-1.41" />
         </svg>
@@ -201,8 +199,95 @@ const HeaderIcon: React.FC<HeaderIconProps> = ({
         </svg>
       );
 
+    case "clock":
+      return (
+        <svg {...commonProps}>
+          <circle cx="12" cy="12" r="8.5" />
+          <path d="M12 7v5l3 2" />
+        </svg>
+      );
+
+    case "arrow":
+      return (
+        <svg {...commonProps}>
+          <path d="M5 12h14" />
+          <path d="m13 6 6 6-6 6" />
+        </svg>
+      );
+
     default:
       return null;
+  }
+};
+
+/* =========================================================
+   SEARCH STORAGE
+========================================================= */
+
+const RECENT_SEARCHES_KEY = "calbayog-recent-searches";
+
+const MAX_RECENT_SEARCHES = 5;
+
+const getStoredRecentSearches = (): string[] => {
+  try {
+    const raw = localStorage.getItem(RECENT_SEARCHES_KEY);
+
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .filter(
+        (item): item is string =>
+          typeof item === "string" && item.trim().length > 0,
+      )
+      .map((item) => item.trim())
+      .slice(0, MAX_RECENT_SEARCHES);
+  } catch {
+    return [];
+  }
+};
+
+const saveRecentSearch = (
+  query: string,
+  currentSearches: string[],
+): string[] => {
+  const normalizedQuery = query.trim();
+
+  if (!normalizedQuery) {
+    return currentSearches;
+  }
+
+  const updated = [
+    normalizedQuery,
+    ...currentSearches.filter(
+      (item) => item.toLowerCase() !== normalizedQuery.toLowerCase(),
+    ),
+  ].slice(0, MAX_RECENT_SEARCHES);
+
+  try {
+    localStorage.setItem(
+      RECENT_SEARCHES_KEY,
+      JSON.stringify(updated),
+    );
+  } catch {
+    // localStorage may be unavailable in some browser privacy modes.
+  }
+
+  return updated;
+};
+
+const clearStoredRecentSearches = () => {
+  try {
+    localStorage.removeItem(RECENT_SEARCHES_KEY);
+  } catch {
+    // Ignore storage errors.
   }
 };
 
@@ -460,6 +545,8 @@ const AppHeaderStyles: React.FC = () => (
     ===================================================== */
 
     .header-search-container {
+      position: relative;
+
       flex: 1 1 auto;
 
       min-width: 170px;
@@ -666,6 +753,342 @@ const AppHeaderStyles: React.FC = () => (
     .search-submit-btn:active {
       transform:
         scale(0.94);
+    }
+
+    /* =====================================================
+       SEARCH DROPDOWN
+    ===================================================== */
+
+    .search-dropdown {
+      position: absolute;
+
+      top: calc(100% + 10px);
+      left: 0;
+      right: 0;
+
+      width: 100%;
+
+      overflow: hidden;
+
+      border:
+        1px solid rgba(45, 49, 149, 0.12);
+
+      border-radius: 18px;
+
+      background:
+        rgba(255, 255, 255, 0.88);
+
+      backdrop-filter:
+        blur(25px)
+        saturate(170%);
+
+      -webkit-backdrop-filter:
+        blur(25px)
+        saturate(170%);
+
+      box-shadow:
+        0 22px 55px rgba(15, 23, 42, 0.16);
+
+      transform-origin:
+        top center;
+
+      animation:
+        searchDropdownOpen
+        0.2s
+        cubic-bezier(.2,.8,.2,1)
+        both;
+
+      z-index: 1300;
+    }
+
+    @keyframes searchDropdownOpen {
+      from {
+        opacity: 0;
+        transform:
+          translateY(-7px)
+          scale(0.985);
+      }
+
+      to {
+        opacity: 1;
+        transform:
+          translateY(0)
+          scale(1);
+      }
+    }
+
+    html.dark-mode .search-dropdown {
+      background:
+        rgba(12, 22, 36, 0.91);
+
+      border-color:
+        rgba(255, 255, 255, 0.09);
+
+      box-shadow:
+        0 22px 55px rgba(0, 0, 0, 0.32);
+    }
+
+    .search-dropdown-header {
+      display: flex;
+
+      align-items: center;
+      justify-content: space-between;
+
+      gap: 10px;
+
+      padding:
+        13px 15px;
+
+      border-bottom:
+        1px solid rgba(15, 23, 42, 0.07);
+    }
+
+    html.dark-mode .search-dropdown-header {
+      border-bottom-color:
+        rgba(255, 255, 255, 0.07);
+    }
+
+    .search-dropdown-title {
+      color:
+        var(--header-text);
+
+      font-size: 0.77rem;
+
+      font-weight: 800;
+
+      letter-spacing:
+        0.01em;
+    }
+
+    .search-clear-btn {
+      padding:
+        4px 7px;
+
+      border: 0;
+
+      border-radius: 7px;
+
+      background: transparent;
+
+      color:
+        var(--calbayog-blue);
+
+      font-size: 0.68rem;
+
+      font-weight: 750;
+
+      cursor: pointer;
+
+      transition:
+        background 0.18s ease,
+        color 0.18s ease;
+    }
+
+    .search-clear-btn:hover {
+      background:
+        var(--calbayog-blue-soft);
+
+      color:
+        var(--calbayog-blue-dark);
+    }
+
+    .search-recent-list {
+      padding:
+        7px;
+    }
+
+    .search-recent-item {
+      width: 100%;
+
+      min-height: 45px;
+
+      padding:
+        0 10px;
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 10px;
+
+      border: 0;
+
+      border-radius: 11px;
+
+      background: transparent;
+
+      color:
+        var(--header-text);
+
+      text-align: left;
+
+      cursor: pointer;
+
+      transition:
+        background 0.18s ease,
+        color 0.18s ease,
+        transform 0.18s cubic-bezier(.2,.8,.2,1);
+    }
+
+    .search-recent-item:hover {
+      background:
+        var(--calbayog-blue-soft);
+
+      color:
+        var(--calbayog-blue);
+
+      transform:
+        translateX(2px);
+    }
+
+    .search-recent-icon {
+      width: 28px;
+      height: 28px;
+
+      display: inline-flex;
+
+      align-items: center;
+      justify-content: center;
+
+      flex-shrink: 0;
+
+      border-radius: 9px;
+
+      background:
+        rgba(45, 49, 149, 0.07);
+
+      color:
+        var(--header-muted);
+    }
+
+    .search-recent-item:hover
+    .search-recent-icon {
+      color:
+        var(--calbayog-blue);
+
+      background:
+        rgba(45, 49, 149, 0.11);
+    }
+
+    .search-recent-text {
+      min-width: 0;
+
+      flex: 1;
+
+      overflow: hidden;
+
+      text-overflow: ellipsis;
+
+      white-space: nowrap;
+
+      font-size: 0.78rem;
+
+      font-weight: 650;
+    }
+
+    .search-recent-arrow {
+      color:
+        var(--header-muted);
+
+      opacity: 0;
+
+      transform:
+        translateX(-3px);
+
+      transition:
+        opacity 0.18s ease,
+        transform 0.18s ease;
+    }
+
+    .search-recent-item:hover
+    .search-recent-arrow {
+      opacity: 1;
+
+      transform:
+        translateX(0);
+    }
+
+    .search-dropdown-footer {
+      padding:
+        10px 14px;
+
+      border-top:
+        1px solid rgba(15, 23, 42, 0.07);
+
+      color:
+        var(--header-muted);
+
+      font-size: 0.66rem;
+
+      line-height: 1.4;
+    }
+
+    html.dark-mode .search-dropdown-footer {
+      border-top-color:
+        rgba(255, 255, 255, 0.07);
+    }
+
+    .search-dropdown-empty {
+      padding:
+        18px 16px;
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 11px;
+
+      color:
+        var(--header-muted);
+
+      font-size: 0.76rem;
+
+      line-height: 1.45;
+    }
+
+    .search-dropdown-empty-icon {
+      width: 34px;
+      height: 34px;
+
+      display: inline-flex;
+
+      align-items: center;
+      justify-content: center;
+
+      flex-shrink: 0;
+
+      border-radius: 10px;
+
+      background:
+        var(--calbayog-blue-soft);
+
+      color:
+        var(--calbayog-blue);
+    }
+
+    .search-query-preview {
+      padding:
+        11px 14px;
+
+      border-bottom:
+        1px solid rgba(15, 23, 42, 0.07);
+
+      color:
+        var(--header-muted);
+
+      font-size: 0.7rem;
+    }
+
+    html.dark-mode .search-query-preview {
+      border-bottom-color:
+        rgba(255, 255, 255, 0.07);
+    }
+
+    .search-query-preview strong {
+      color:
+        var(--header-text);
+
+      font-weight: 800;
     }
 
     /* =====================================================
@@ -1001,8 +1424,15 @@ const AppHeaderStyles: React.FC = () => (
     }
 
     @keyframes profileOpen {
-      from { opacity: 0; transform: translateY(-6px) scale(0.98); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
+      from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.98);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
     }
 
     .header-profile-summary {
@@ -1512,6 +1942,10 @@ const AppHeaderStyles: React.FC = () => (
 
         max-width: none;
       }
+
+      .search-dropdown {
+        top: calc(100% + 8px);
+      }
     }
 
     @media (max-width: 767.98px) {
@@ -1559,7 +1993,6 @@ const AppHeaderStyles: React.FC = () => (
         border-radius: 12px;
       }
 
-      /* Keep the Install App action visible on mobile. */
       .header-install-btn {
         width: auto;
         min-width: 40px;
@@ -1579,6 +2012,10 @@ const AppHeaderStyles: React.FC = () => (
       .search-input {
         min-height: 43px;
         height: 43px;
+      }
+
+      .search-dropdown {
+        border-radius: 16px;
       }
     }
 
@@ -1605,6 +2042,36 @@ const AppHeaderStyles: React.FC = () => (
 
         width: auto;
       }
+
+      .search-dropdown {
+        width: calc(100vw - 22px);
+
+        left: 50%;
+
+        right: auto;
+
+        transform: translateX(-50%);
+
+        transform-origin: top center;
+      }
+
+      @keyframes searchDropdownOpen {
+        from {
+          opacity: 0;
+          transform:
+            translateX(-50%)
+            translateY(-7px)
+            scale(0.985);
+        }
+
+        to {
+          opacity: 1;
+          transform:
+            translateX(-50%)
+            translateY(0)
+            scale(1);
+        }
+      }
     }
 
     /* =====================================================
@@ -1618,6 +2085,7 @@ const AppHeaderStyles: React.FC = () => (
       .header-actions,
       .announcement-badge,
       .announcement-dropdown,
+      .search-dropdown,
       .announcement-btn.is-active svg {
         animation: none !important;
       }
@@ -1627,6 +2095,8 @@ const AppHeaderStyles: React.FC = () => (
       .header-brand-mark img,
       .search-input-wrapper,
       .search-submit-btn,
+      .search-recent-item,
+      .search-recent-arrow,
       .header-login-btn,
       .header-signup-btn,
       .header-install-btn,
@@ -1640,7 +2110,7 @@ const AppHeaderStyles: React.FC = () => (
 );
 
 /* =========================================================
-   APP HEADER
+   PWA INSTALL EVENT
 ========================================================= */
 
 interface BeforeInstallPromptEvent extends Event {
@@ -1650,6 +2120,10 @@ interface BeforeInstallPromptEvent extends Event {
     platform: string;
   }>;
 }
+
+/* =========================================================
+   APP HEADER
+========================================================= */
 
 const AppHeader: React.FC<AppHeaderProps> = ({
   onMenuClick,
@@ -1668,8 +2142,11 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   const isUserAuthenticated = Boolean(
     (auth as any)?.isUserAuthenticated && (auth as any)?.user,
   );
+
   const currentUser = (auth as any)?.user || null;
+
   const userLogout = (auth as any)?.userLogout;
+
   const storedAdmin = (() => {
     try {
       const raw = localStorage.getItem("admin_user");
@@ -1687,23 +2164,48 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   })();
 
   const currentAdmin =
-    (auth as any)?.adminUser || (auth as any)?.admin || storedAdmin || null;
+    (auth as any)?.adminUser ||
+    (auth as any)?.admin ||
+    storedAdmin ||
+    null;
+
   const adminLogout =
     (auth as any)?.adminLogout ||
     (auth as any)?.logout ||
     (auth as any)?.adminLogoutUser;
 
+  /* =========================================================
+     SEARCH STATE
+  ========================================================= */
+
   const [search, setSearch] = useState("");
 
-  const [showAnnouncementsMenu, setShowAnnouncementsMenu] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>(
+    getStoredRecentSearches,
+  );
 
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
 
-  const [showSignupModal, setShowSignupModal] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  /* =========================================================
+     OTHER STATE
+  ========================================================= */
 
-  const [profileNotice, setProfileNotice] = useState("");
+  const [showAnnouncementsMenu, setShowAnnouncementsMenu] =
+    useState(false);
+
+  const [showLoginModal, setShowLoginModal] =
+    useState(false);
+
+  const [showSignupModal, setShowSignupModal] =
+    useState(false);
+
+  const [showProfileMenu, setShowProfileMenu] =
+    useState(false);
+
+  const [profileNotice, setProfileNotice] =
+    useState("");
 
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -1712,13 +2214,17 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   const [deferredInstallPrompt, setDeferredInstallPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
 
-  const [canInstallApp, setCanInstallApp] = useState(false);
+  const [canInstallApp, setCanInstallApp] =
+    useState(false);
 
-  const [isMobileInstallDevice, setIsMobileInstallDevice] = useState(false);
+  const [isMobileInstallDevice, setIsMobileInstallDevice] =
+    useState(false);
 
-  const [isStandalone, setIsStandalone] = useState(false);
+  const [isStandalone, setIsStandalone] =
+    useState(false);
 
-  const isLoggedInHeader = isAdmin ? true : isUserAuthenticated;
+  const isLoggedInHeader =
+    isAdmin ? true : isUserAuthenticated;
 
   const profileDisplayName = isAdmin
     ? String(
@@ -1735,8 +2241,16 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       );
 
   const profileEmail = isAdmin
-    ? String(currentAdmin?.email || currentAdmin?.username || "Administrator")
-    : String(currentUser?.email || currentUser?.username || "");
+    ? String(
+        currentAdmin?.email ||
+          currentAdmin?.username ||
+          "Administrator",
+      )
+    : String(
+        currentUser?.email ||
+          currentUser?.username ||
+          "",
+      );
 
   const profileInitials =
     profileDisplayName
@@ -1744,8 +2258,11 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       .split(/\s+/)
       .filter(Boolean)
       .slice(0, 2)
-      .map((part: string) => part.charAt(0).toUpperCase())
-      .join("") || (isAdmin ? "A" : "U");
+      .map((part: string) =>
+        part.charAt(0).toUpperCase(),
+      )
+      .join("") ||
+    (isAdmin ? "A" : "U");
 
   /* =========================================================
      ANNOUNCEMENTS
@@ -1775,7 +2292,8 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   ========================================================= */
 
   const [darkMode, setDarkMode] = useState<boolean>(() => {
-    const savedTheme = localStorage.getItem("calbayog-theme");
+    const savedTheme =
+      localStorage.getItem("calbayog-theme");
 
     if (savedTheme === "dark") {
       return true;
@@ -1785,7 +2303,11 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       return false;
     }
 
-    return window.matchMedia?.("(prefers-color-scheme: dark)").matches || false;
+    return (
+      window.matchMedia?.(
+        "(prefers-color-scheme: dark)",
+      ).matches || false
+    );
   });
 
   useEffect(() => {
@@ -1796,13 +2318,19 @@ const AppHeader: React.FC<AppHeaderProps> = ({
 
       root.classList.add("dark-mode");
 
-      localStorage.setItem("calbayog-theme", "dark");
+      localStorage.setItem(
+        "calbayog-theme",
+        "dark",
+      );
     } else {
       root.setAttribute("data-theme", "light");
 
       root.classList.remove("dark-mode");
 
-      localStorage.setItem("calbayog-theme", "light");
+      localStorage.setItem(
+        "calbayog-theme",
+        "light",
+      );
     }
   }, [darkMode]);
 
@@ -1810,46 +2338,174 @@ const AppHeader: React.FC<AppHeaderProps> = ({
      SEARCH
   ========================================================= */
 
-  const handleSearch = (event: React.FormEvent) => {
-    event.preventDefault();
+  const executeSearch = (query: string) => {
+    const normalizedQuery = query.trim();
 
-    const query = search.trim();
-
-    if (!query) {
+    if (!normalizedQuery) {
       return;
     }
 
-    if (onSearch) {
-      onSearch(query);
-    }
+    const updatedRecentSearches =
+      saveRecentSearch(
+        normalizedQuery,
+        recentSearches,
+      );
 
-    const separator = searchPath.includes("?") ? "&" : "?";
-
-    history.replace(
-      `${searchPath}${separator}search=${encodeURIComponent(query)}`,
-    );
+    setRecentSearches(updatedRecentSearches);
 
     setSearch("");
+
+    setShowSearchDropdown(false);
+
+    /*
+     * If a parent provides onSearch, the parent owns
+     * the global search navigation.
+     */
+    if (onSearch) {
+      onSearch(normalizedQuery);
+
+      return;
+    }
+
+    /*
+     * Fallback for AppHeader instances that do not
+     * provide an onSearch handler.
+     */
+    const separator =
+      searchPath.includes("?")
+        ? "&"
+        : "?";
+
+    history.push(
+      `${searchPath}${separator}search=${encodeURIComponent(
+        normalizedQuery,
+      )}`,
+    );
   };
+
+  const handleSearch = (
+    event: React.FormEvent,
+  ) => {
+    event.preventDefault();
+
+    executeSearch(search);
+  };
+
+  const handleRecentSearchClick = (
+    query: string,
+  ) => {
+    executeSearch(query);
+  };
+
+  const handleClearRecentSearches = () => {
+    clearStoredRecentSearches();
+
+    setRecentSearches([]);
+  };
+
+  const handleSearchInputChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const value = event.target.value;
+
+    setSearch(value);
+
+    setShowSearchDropdown(true);
+  };
+
+  const handleSearchInputFocus = () => {
+    setShowSearchDropdown(true);
+  };
+
+  /* =========================================================
+     SEARCH OUTSIDE CLICK
+  ========================================================= */
+
+  useEffect(() => {
+    const handleClickOutside = (
+      event: MouseEvent,
+    ) => {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(
+          event.target as Node,
+        )
+      ) {
+        setShowSearchDropdown(false);
+      }
+    };
+
+    document.addEventListener(
+      "mousedown",
+      handleClickOutside,
+    );
+
+    return () => {
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside,
+      );
+    };
+  }, []);
+
+  /* =========================================================
+     SEARCH ESCAPE
+  ========================================================= */
+
+  useEffect(() => {
+    if (!showSearchDropdown) {
+      return;
+    }
+
+    const handleEscape = (
+      event: KeyboardEvent,
+    ) => {
+      if (event.key === "Escape") {
+        setShowSearchDropdown(false);
+      }
+    };
+
+    document.addEventListener(
+      "keydown",
+      handleEscape,
+    );
+
+    return () => {
+      document.removeEventListener(
+        "keydown",
+        handleEscape,
+      );
+    };
+  }, [showSearchDropdown]);
 
   /* =========================================================
      ANNOUNCEMENT OUTSIDE CLICK
   ========================================================= */
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (
+      event: MouseEvent,
+    ) => {
       if (
         announcementRef.current &&
-        !announcementRef.current.contains(event.target as Node)
+        !announcementRef.current.contains(
+          event.target as Node,
+        )
       ) {
         setShowAnnouncementsMenu(false);
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener(
+      "mousedown",
+      handleClickOutside,
+    );
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside,
+      );
     };
   }, []);
 
@@ -1862,16 +2518,24 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       return;
     }
 
-    const handleEscape = (event: KeyboardEvent) => {
+    const handleEscape = (
+      event: KeyboardEvent,
+    ) => {
       if (event.key === "Escape") {
         setShowAnnouncementsMenu(false);
       }
     };
 
-    document.addEventListener("keydown", handleEscape);
+    document.addEventListener(
+      "keydown",
+      handleEscape,
+    );
 
     return () => {
-      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener(
+        "keydown",
+        handleEscape,
+      );
     };
   }, [showAnnouncementsMenu]);
 
@@ -1881,39 +2545,56 @@ const AppHeader: React.FC<AppHeaderProps> = ({
 
   useEffect(() => {
     const standalone =
-      window.matchMedia?.("(display-mode: standalone)").matches ||
-      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+      window.matchMedia?.(
+        "(display-mode: standalone)",
+      ).matches ||
+      (
+        window.navigator as Navigator & {
+          standalone?: boolean;
+        }
+      ).standalone === true;
 
     const mobileDevice =
-      /Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent) ||
+      /Android|iPhone|iPad|iPod/i.test(
+        window.navigator.userAgent,
+      ) ||
       window.navigator.maxTouchPoints > 1;
 
     setIsStandalone(standalone);
-    setIsMobileInstallDevice(mobileDevice);
+
+    setIsMobileInstallDevice(
+      mobileDevice,
+    );
 
     if (standalone) {
       setDeferredInstallPrompt(null);
+
       setCanInstallApp(false);
+
       return;
     }
 
-    // On mobile devices, keep the Install App button visible even before
-    // Chrome sends beforeinstallprompt. If the browser supports the native
-    // prompt, the event below will replace the fallback with the real prompt.
     if (mobileDevice) {
       setCanInstallApp(true);
     }
 
-    const handleBeforeInstallPrompt = (event: Event) => {
+    const handleBeforeInstallPrompt = (
+      event: Event,
+    ) => {
       event.preventDefault();
 
-      setDeferredInstallPrompt(event as BeforeInstallPromptEvent);
+      setDeferredInstallPrompt(
+        event as BeforeInstallPromptEvent,
+      );
+
       setCanInstallApp(true);
     };
 
     const handleAppInstalled = () => {
       setDeferredInstallPrompt(null);
+
       setCanInstallApp(false);
+
       setIsStandalone(true);
     };
 
@@ -1922,7 +2603,10 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       handleBeforeInstallPrompt,
     );
 
-    window.addEventListener("appinstalled", handleAppInstalled);
+    window.addEventListener(
+      "appinstalled",
+      handleAppInstalled,
+    );
 
     return () => {
       window.removeEventListener(
@@ -1930,16 +2614,24 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         handleBeforeInstallPrompt,
       );
 
-      window.removeEventListener("appinstalled", handleAppInstalled);
+      window.removeEventListener(
+        "appinstalled",
+        handleAppInstalled,
+      );
     };
   }, []);
 
   const handleInstallApp = async () => {
     if (!deferredInstallPrompt) {
       const isIOS =
-        /iPad|iPhone|iPod/i.test(window.navigator.userAgent) ||
-        (window.navigator.platform === "MacIntel" &&
-          window.navigator.maxTouchPoints > 1);
+        /iPad|iPhone|iPod/i.test(
+          window.navigator.userAgent,
+        ) ||
+        (
+          window.navigator.platform ===
+            "MacIntel" &&
+          window.navigator.maxTouchPoints > 1
+        );
 
       window.alert(
         isIOS
@@ -1953,23 +2645,30 @@ const AppHeader: React.FC<AppHeaderProps> = ({
     try {
       await deferredInstallPrompt.prompt();
 
-      const choice = await deferredInstallPrompt.userChoice;
+      const choice =
+        await deferredInstallPrompt.userChoice;
 
-      // beforeinstallprompt events are one-use events. If the user dismisses
-      // the native prompt, keep the button visible so they can try again or
-      // follow the browser's manual installation instructions.
       setDeferredInstallPrompt(null);
 
       if (choice.outcome === "accepted") {
         setCanInstallApp(false);
       } else {
-        setCanInstallApp(!isStandalone);
+        setCanInstallApp(
+          !isStandalone,
+        );
       }
     } catch (error) {
-      console.error("PWA install prompt failed:", error);
+      console.error(
+        "PWA install prompt failed:",
+        error,
+      );
 
       setDeferredInstallPrompt(null);
-      setCanInstallApp(!isStandalone && isMobileInstallDevice);
+
+      setCanInstallApp(
+        !isStandalone &&
+          isMobileInstallDevice,
+      );
     }
   };
 
@@ -1978,19 +2677,29 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   ========================================================= */
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (
+      event: MouseEvent,
+    ) => {
       if (
         profileRef.current &&
-        !profileRef.current.contains(event.target as Node)
+        !profileRef.current.contains(
+          event.target as Node,
+        )
       ) {
         setShowProfileMenu(false);
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener(
+      "mousedown",
+      handleClickOutside,
+    );
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside,
+      );
     };
   }, []);
 
@@ -1999,89 +2708,139 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   ========================================================= */
 
   useEffect(() => {
-    if (!showProfileMenu) return;
+    if (!showProfileMenu) {
+      return;
+    }
 
-    const handleEscape = (event: KeyboardEvent) => {
+    const handleEscape = (
+      event: KeyboardEvent,
+    ) => {
       if (event.key === "Escape") {
         setShowProfileMenu(false);
       }
     };
 
-    document.addEventListener("keydown", handleEscape);
+    document.addEventListener(
+      "keydown",
+      handleEscape,
+    );
 
     return () => {
-      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener(
+        "keydown",
+        handleEscape,
+      );
     };
   }, [showProfileMenu]);
 
   /* =========================================================
      CHANGE PASSWORD
-
-     Uses the existing secure Gmail password-reset flow.
-     No new password endpoint is invented here.
   ========================================================= */
 
   const handleChangePassword = async () => {
     const email = String(
-      currentUser?.email || currentUser?.username || "",
+      currentUser?.email ||
+        currentUser?.username ||
+        "",
     ).trim();
 
     setProfileNotice("");
 
     if (!email) {
-      setProfileNotice("Your account email could not be found.");
+      setProfileNotice(
+        "Your account email could not be found.",
+      );
+
       return;
     }
 
     try {
       const apiUrl = (
-        (import.meta as any).env?.VITE_API_URL || "http://localhost:5000/api"
+        (import.meta as any).env
+          ?.VITE_API_URL ||
+        "http://localhost:5000/api"
       ).replace(/\/$/, "");
 
-      const response = await fetch(`${apiUrl}/auth/user/forgot-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
+      const response = await fetch(
+        `${apiUrl}/auth/user/forgot-password`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+            Accept:
+              "application/json",
+          },
+          body: JSON.stringify({
+            username: email,
+          }),
         },
-        body: JSON.stringify({ username: email }),
-      });
+      );
 
-      const data = await response.json().catch(() => ({}));
+      const data =
+        await response
+          .json()
+          .catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(
-          data?.message || "Unable to send the password reset email.",
+          data?.message ||
+            "Unable to send the password reset email.",
         );
       }
 
-      setProfileNotice(`A password reset link was sent to ${email}.`);
-    } catch (error: any) {
-      console.error("Change password request failed:", error);
       setProfileNotice(
-        error?.message || "Unable to start the password change process.",
+        `A password reset link was sent to ${email}.`,
+      );
+    } catch (error: any) {
+      console.error(
+        "Change password request failed:",
+        error,
+      );
+
+      setProfileNotice(
+        error?.message ||
+          "Unable to start the password change process.",
       );
     }
   };
 
   const handleProfileLogout = () => {
     setShowProfileMenu(false);
+
     setProfileNotice("");
 
     try {
       if (isAdmin) {
-        if (typeof adminLogout === "function") {
+        if (
+          typeof adminLogout ===
+          "function"
+        ) {
           adminLogout();
         } else {
-          localStorage.removeItem("token");
-          localStorage.removeItem("admin_token");
-          localStorage.removeItem("admin_user");
+          localStorage.removeItem(
+            "token",
+          );
+
+          localStorage.removeItem(
+            "admin_token",
+          );
+
+          localStorage.removeItem(
+            "admin_user",
+          );
         }
-      } else if (typeof userLogout === "function") {
+      } else if (
+        typeof userLogout ===
+        "function"
+      ) {
         userLogout();
       }
     } catch (error) {
-      console.error("Logout failed:", error);
+      console.error(
+        "Logout failed:",
+        error,
+      );
     }
   };
 
@@ -2105,39 +2864,39 @@ const AppHeader: React.FC<AppHeaderProps> = ({
     });
   };
 
-  const closeAuthModals = () => {
-    setShowLoginModal(false);
-    setShowSignupModal(false);
-  };
-
   /* =========================================================
      ADMIN LOGIN → UNIFIED LOGIN MODAL
-
-     /admin/login redirects to:
-
-       /?openLogin=1
-
-     This opens the SAME LoginModal used by normal users,
-     then removes the temporary query parameter from the URL.
   ========================================================= */
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
+    const params =
+      new URLSearchParams(
+        location.search,
+      );
 
-    if (params.get("openLogin") !== "1") {
+    if (
+      params.get("openLogin") !==
+      "1"
+    ) {
       return;
     }
 
     setShowSignupModal(false);
+
     setShowLoginModal(true);
 
     params.delete("openLogin");
 
-    const cleanSearch = params.toString();
+    const cleanSearch =
+      params.toString();
 
     history.replace({
-      pathname: location.pathname,
-      search: cleanSearch ? `?${cleanSearch}` : "",
+      pathname:
+        location.pathname,
+
+      search: cleanSearch
+        ? `?${cleanSearch}`
+        : "",
     });
   }, [
     location.pathname,
@@ -2147,37 +2906,45 @@ const AppHeader: React.FC<AppHeaderProps> = ({
 
   /* =========================================================
      VERIFY EMAIL → LOGIN MODAL BRIDGE
-
-     VerifyEmail.tsx dispatches:
-
-       new Event("open-login-modal")
-
-     This listener opens the same LoginModal used by
-     the header.
-
-     IMPORTANT:
-     This listener does NOT run in admin mode.
   ========================================================= */
 
   useEffect(() => {
-    const handleOpenLoginModal = () => {
-      if (isAdmin) {
-        return;
-      }
+    const handleOpenLoginModal =
+      () => {
+        if (isAdmin) {
+          return;
+        }
 
-      setShowSignupModal(false);
+        setShowSignupModal(false);
 
-      requestAnimationFrame(() => {
-        setShowLoginModal(true);
-      });
-    };
+        requestAnimationFrame(() => {
+          setShowLoginModal(true);
+        });
+      };
 
-    window.addEventListener("open-login-modal", handleOpenLoginModal);
+    window.addEventListener(
+      "open-login-modal",
+      handleOpenLoginModal,
+    );
 
     return () => {
-      window.removeEventListener("open-login-modal", handleOpenLoginModal);
+      window.removeEventListener(
+        "open-login-modal",
+        handleOpenLoginModal,
+      );
     };
   }, [isAdmin]);
+
+  /* =========================================================
+     SEARCH DROPDOWN CONTENT
+  ========================================================= */
+
+  const hasSearchText =
+    search.trim().length > 0;
+
+  const shouldShowSearchDropdown =
+    showSearchDropdown &&
+    showSearch;
 
   /* =========================================================
      RENDER
@@ -2190,6 +2957,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       <header className="sticky-search-header">
         <Container className="app-header-container">
           <div className="app-header-inner">
+
             {/* =================================================
                MENU
             ================================================= */}
@@ -2201,16 +2969,26 @@ const AppHeader: React.FC<AppHeaderProps> = ({
               aria-label="Open navigation menu"
               title="Open menu"
             >
-              <HeaderIcon name="menu" size={22} strokeWidth={1.9} />
+              <HeaderIcon
+                name="menu"
+                size={22}
+                strokeWidth={1.9}
+              />
             </button>
 
             {/* =================================================
                LOGO
             ================================================= */}
 
-            <div className="header-brand" aria-label="Calbayog City Tourism">
+            <div
+              className="header-brand"
+              aria-label="Calbayog City Tourism"
+            >
               <div className="header-brand-mark">
-                <img src="/logo2.png" alt="Calbayog City Tourism" />
+                <img
+                  src="/logo2.png"
+                  alt="Calbayog City Tourism"
+                />
               </div>
             </div>
 
@@ -2219,24 +2997,42 @@ const AppHeader: React.FC<AppHeaderProps> = ({
             ================================================= */}
 
             {showSearch && (
-              <div className="header-search-container">
+              <div
+                className="header-search-container"
+                ref={searchRef}
+              >
                 <Form
                   onSubmit={handleSearch}
                   role="search"
                   className="header-search-form"
                 >
                   <InputGroup className="search-input-wrapper">
+
                     <InputGroup.Text className="search-icon">
-                      <HeaderIcon name="search" size={18} strokeWidth={1.8} />
+                      <HeaderIcon
+                        name="search"
+                        size={18}
+                        strokeWidth={1.8}
+                      />
                     </InputGroup.Text>
 
                     <Form.Control
                       type="search"
                       placeholder={searchPlaceholder}
                       value={search}
-                      onChange={(event) => setSearch(event.target.value)}
+                      onChange={
+                        handleSearchInputChange
+                      }
+                      onFocus={
+                        handleSearchInputFocus
+                      }
                       className="search-input"
                       aria-label="Search tourism information"
+                      aria-expanded={
+                        shouldShowSearchDropdown
+                      }
+                      aria-controls="global-search-dropdown"
+                      autoComplete="off"
                     />
 
                     <button
@@ -2245,10 +3041,222 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                       aria-label="Submit search"
                       title="Search"
                     >
-                      <HeaderIcon name="search" size={17} strokeWidth={1.9} />
+                      <HeaderIcon
+                        name="search"
+                        size={17}
+                        strokeWidth={1.9}
+                      />
                     </button>
+
                   </InputGroup>
                 </Form>
+
+                {/* =================================================
+                   SEARCH DROPDOWN
+                ================================================= */}
+
+                {shouldShowSearchDropdown && (
+                  <div
+                    id="global-search-dropdown"
+                    className="search-dropdown"
+                    role="dialog"
+                    aria-label="Search suggestions"
+                  >
+                    {hasSearchText ? (
+                      <>
+                        <div className="search-query-preview">
+                          Press <strong>Enter</strong> or click the search button to search for{" "}
+                          <strong>
+                            "{search.trim()}"
+                          </strong>
+                          .
+                        </div>
+
+                        <div className="search-recent-list">
+                          <button
+                            type="button"
+                            className="search-recent-item"
+                            onMouseDown={(event) =>
+                              event.preventDefault()
+                            }
+                            onClick={() =>
+                              executeSearch(search)
+                            }
+                          >
+                            <span className="search-recent-icon">
+                              <HeaderIcon
+                                name="search"
+                                size={15}
+                                strokeWidth={1.9}
+                              />
+                            </span>
+
+                            <span className="search-recent-text">
+                              Search all tourism information
+                            </span>
+
+                            <span className="search-recent-arrow">
+                              <HeaderIcon
+                                name="arrow"
+                                size={15}
+                                strokeWidth={1.8}
+                              />
+                            </span>
+                          </button>
+                        </div>
+
+                        {recentSearches.length > 0 && (
+                          <>
+                            <div className="search-dropdown-header">
+                              <span className="search-dropdown-title">
+                                Recent searches
+                              </span>
+
+                              <button
+                                type="button"
+                                className="search-clear-btn"
+                                onMouseDown={(event) =>
+                                  event.preventDefault()
+                                }
+                                onClick={
+                                  handleClearRecentSearches
+                                }
+                              >
+                                Clear
+                              </button>
+                            </div>
+
+                            <div className="search-recent-list">
+                              {recentSearches.map(
+                                (recentQuery) => (
+                                  <button
+                                    key={recentQuery}
+                                    type="button"
+                                    className="search-recent-item"
+                                    onMouseDown={(event) =>
+                                      event.preventDefault()
+                                    }
+                                    onClick={() =>
+                                      handleRecentSearchClick(
+                                        recentQuery,
+                                      )
+                                    }
+                                  >
+                                    <span className="search-recent-icon">
+                                      <HeaderIcon
+                                        name="clock"
+                                        size={15}
+                                        strokeWidth={1.8}
+                                      />
+                                    </span>
+
+                                    <span className="search-recent-text">
+                                      {recentQuery}
+                                    </span>
+
+                                    <span className="search-recent-arrow">
+                                      <HeaderIcon
+                                        name="arrow"
+                                        size={15}
+                                        strokeWidth={1.8}
+                                      />
+                                    </span>
+                                  </button>
+                                ),
+                              )}
+                            </div>
+                          </>
+                        )}
+
+                        <div className="search-dropdown-footer">
+                          Search by destination name, keyword,
+                          event, accommodation, category, or description.
+                        </div>
+                      </>
+                    ) : recentSearches.length > 0 ? (
+                      <>
+                        <div className="search-dropdown-header">
+                          <span className="search-dropdown-title">
+                            Recent searches
+                          </span>
+
+                          <button
+                            type="button"
+                            className="search-clear-btn"
+                            onMouseDown={(event) =>
+                              event.preventDefault()
+                            }
+                            onClick={
+                              handleClearRecentSearches
+                            }
+                          >
+                            Clear
+                          </button>
+                        </div>
+
+                        <div className="search-recent-list">
+                          {recentSearches.map(
+                            (recentQuery) => (
+                              <button
+                                key={recentQuery}
+                                type="button"
+                                className="search-recent-item"
+                                onMouseDown={(event) =>
+                                  event.preventDefault()
+                                }
+                                onClick={() =>
+                                  handleRecentSearchClick(
+                                    recentQuery,
+                                  )
+                                }
+                              >
+                                <span className="search-recent-icon">
+                                  <HeaderIcon
+                                    name="clock"
+                                    size={15}
+                                    strokeWidth={1.8}
+                                  />
+                                </span>
+
+                                <span className="search-recent-text">
+                                  {recentQuery}
+                                </span>
+
+                                <span className="search-recent-arrow">
+                                  <HeaderIcon
+                                    name="arrow"
+                                    size={15}
+                                    strokeWidth={1.8}
+                                  />
+                                </span>
+                              </button>
+                            ),
+                          )}
+                        </div>
+
+                        <div className="search-dropdown-footer">
+                          Your recent searches are saved only in
+                          this browser.
+                        </div>
+                      </>
+                    ) : (
+                      <div className="search-dropdown-empty">
+                        <span className="search-dropdown-empty-icon">
+                          <HeaderIcon
+                            name="search"
+                            size={17}
+                            strokeWidth={1.8}
+                          />
+                        </span>
+
+                        <span>
+                          Start typing to search Calbayog City
+                          tourism information.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -2257,104 +3265,142 @@ const AppHeader: React.FC<AppHeaderProps> = ({
             ================================================= */}
 
             <div className="header-actions">
+
               {/* EXTRA ACTIONS */}
 
               {extraActions && (
-                <div className="header-extra-actions">{extraActions}</div>
+                <div className="header-extra-actions">
+                  {extraActions}
+                </div>
               )}
 
               {/* =================================================
-                 ANNOUNCEMENTS / NOTIFICATIONS
+                 ANNOUNCEMENTS
               ================================================= */}
 
-              {showAnnouncements && !isAdmin && (
-                <div className="announcement-wrapper" ref={announcementRef}>
-                  <button
-                    type="button"
-                    className={`header-icon-btn announcement-btn ${
-                      showAnnouncementsMenu ? "is-active" : ""
-                    }`}
-                    onClick={() =>
-                      setShowAnnouncementsMenu((previous) => !previous)
-                    }
-                    aria-label="View announcements"
-                    title="Announcements"
-                    aria-expanded={showAnnouncementsMenu}
-                    aria-haspopup="dialog"
+              {showAnnouncements &&
+                !isAdmin && (
+                  <div
+                    className="announcement-wrapper"
+                    ref={announcementRef}
                   >
-                    <HeaderIcon name="bell" size={20} strokeWidth={1.8} />
-
-                    {announcements.length > 0 && (
-                      <span
-                        className="announcement-badge"
-                        aria-label={`${announcements.length} announcements`}
-                      >
-                        {announcements.length}
-                      </span>
-                    )}
-                  </button>
-
-                  {showAnnouncementsMenu && (
-                    <div
-                      className="announcement-dropdown"
-                      role="dialog"
-                      aria-label="Announcements"
+                    <button
+                      type="button"
+                      className={`header-icon-btn announcement-btn ${
+                        showAnnouncementsMenu
+                          ? "is-active"
+                          : ""
+                      }`}
+                      onClick={() =>
+                        setShowAnnouncementsMenu(
+                          (previous) =>
+                            !previous,
+                        )
+                      }
+                      aria-label="View announcements"
+                      title="Announcements"
+                      aria-expanded={
+                        showAnnouncementsMenu
+                      }
+                      aria-haspopup="dialog"
                     >
-                      <div className="announcement-header">
-                        <div className="announcement-heading">
-                          <div className="announcement-title">
-                            Announcements
+                      <HeaderIcon
+                        name="bell"
+                        size={20}
+                        strokeWidth={1.8}
+                      />
+
+                      {announcements.length >
+                        0 && (
+                        <span
+                          className="announcement-badge"
+                          aria-label={`${announcements.length} announcements`}
+                        >
+                          {announcements.length}
+                        </span>
+                      )}
+                    </button>
+
+                    {showAnnouncementsMenu && (
+                      <div
+                        className="announcement-dropdown"
+                        role="dialog"
+                        aria-label="Announcements"
+                      >
+                        <div className="announcement-header">
+                          <div className="announcement-heading">
+                            <div className="announcement-title">
+                              Announcements
+                            </div>
+
+                            <div className="announcement-subtitle">
+                              Latest tourism updates
+                            </div>
                           </div>
 
-                          <div className="announcement-subtitle">
-                            Latest tourism updates
-                          </div>
+                          <button
+                            type="button"
+                            className="announcement-close"
+                            onClick={() =>
+                              setShowAnnouncementsMenu(
+                                false,
+                              )
+                            }
+                            aria-label="Close announcements"
+                          >
+                            <HeaderIcon
+                              name="close"
+                              size={16}
+                            />
+                          </button>
                         </div>
 
-                        <button
-                          type="button"
-                          className="announcement-close"
-                          onClick={() => setShowAnnouncementsMenu(false)}
-                          aria-label="Close announcements"
-                        >
-                          <HeaderIcon name="close" size={16} />
-                        </button>
-                      </div>
+                        <div className="announcement-list">
+                          {announcements.map(
+                            (announcement) => (
+                              <div
+                                key={
+                                  announcement.id
+                                }
+                                className="announcement-item"
+                              >
+                                <div className="announcement-item-icon">
+                                  {
+                                    announcement.icon
+                                  }
+                                </div>
 
-                      <div className="announcement-list">
-                        {announcements.map((announcement) => (
-                          <div
-                            key={announcement.id}
-                            className="announcement-item"
-                          >
-                            <div className="announcement-item-icon">
-                              {announcement.icon}
-                            </div>
+                                <div className="announcement-item-content">
+                                  <div className="announcement-item-title">
+                                    {
+                                      announcement.title
+                                    }
+                                  </div>
 
-                            <div className="announcement-item-content">
-                              <div className="announcement-item-title">
-                                {announcement.title}
+                                  <div className="announcement-item-description">
+                                    {
+                                      announcement.description
+                                    }
+                                  </div>
+
+                                  <div className="announcement-item-date">
+                                    {
+                                      announcement.date
+                                    }
+                                  </div>
+                                </div>
                               </div>
+                            ),
+                          )}
+                        </div>
 
-                              <div className="announcement-item-description">
-                                {announcement.description}
-                              </div>
-
-                              <div className="announcement-item-date">
-                                {announcement.date}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                        <div className="announcement-footer">
+                          Calbayog City Tourism Office
+                        </div>
                       </div>
-
-                      <div className="announcement-footer">
-                        Calbayog City Tourism Office
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
+                  </div>
+                )}
 
               {/* =================================================
                  INSTALL APP
@@ -2364,7 +3410,9 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                 <button
                   type="button"
                   className="header-install-btn"
-                  onClick={handleInstallApp}
+                  onClick={
+                    handleInstallApp
+                  }
                   aria-label="Install Calbayog City Tourism app"
                   title="Install Calbayog City Tourism"
                 >
@@ -2373,7 +3421,10 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                     size={18}
                     strokeWidth={1.9}
                   />
-                  <span>Install App</span>
+
+                  <span>
+                    Install App
+                  </span>
                 </button>
               )}
 
@@ -2384,14 +3435,29 @@ const AppHeader: React.FC<AppHeaderProps> = ({
               <button
                 type="button"
                 className="header-icon-btn"
-                onClick={() => setDarkMode((previous) => !previous)}
-                aria-label={
-                  darkMode ? "Switch to light mode" : "Switch to dark mode"
+                onClick={() =>
+                  setDarkMode(
+                    (previous) =>
+                      !previous,
+                  )
                 }
-                title={darkMode ? "Light mode" : "Dark mode"}
+                aria-label={
+                  darkMode
+                    ? "Switch to light mode"
+                    : "Switch to dark mode"
+                }
+                title={
+                  darkMode
+                    ? "Light mode"
+                    : "Dark mode"
+                }
               >
                 <HeaderIcon
-                  name={darkMode ? "sun" : "moon"}
+                  name={
+                    darkMode
+                      ? "sun"
+                      : "moon"
+                  }
                   size={19}
                   strokeWidth={1.8}
                 />
@@ -2406,53 +3472,90 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                   <button
                     type="button"
                     className="header-login-btn"
-                    onClick={openLogin}
+                    onClick={
+                      openLogin
+                    }
                     aria-label="Log in"
                     title="Log in"
                   >
-                    <HeaderIcon name="login" size={18} strokeWidth={1.9} />
+                    <HeaderIcon
+                      name="login"
+                      size={18}
+                      strokeWidth={1.9}
+                    />
 
-                    <span>Log in</span>
+                    <span>
+                      Log in
+                    </span>
                   </button>
 
                   <button
                     type="button"
                     className="header-signup-btn"
-                    onClick={openSignup}
+                    onClick={
+                      openSignup
+                    }
                     aria-label="Sign up"
                     title="Sign up"
                   >
-                    <HeaderIcon name="signup" size={18} strokeWidth={1.9} />
+                    <HeaderIcon
+                      name="signup"
+                      size={18}
+                      strokeWidth={1.9}
+                    />
 
-                    <span>Sign up</span>
+                    <span>
+                      Sign up
+                    </span>
                   </button>
                 </>
               ) : (
-                <div className="header-profile-wrapper" ref={profileRef}>
+                <div
+                  className="header-profile-wrapper"
+                  ref={profileRef}
+                >
                   <button
                     type="button"
                     className={`header-profile-btn ${
-                      showProfileMenu ? "is-open" : ""
+                      showProfileMenu
+                        ? "is-open"
+                        : ""
                     }`}
                     onClick={() => {
                       setProfileNotice("");
-                      setShowProfileMenu((previous) => !previous);
+
+                      setShowProfileMenu(
+                        (previous) =>
+                          !previous,
+                      );
                     }}
                     aria-label="Open profile menu"
-                    title={profileDisplayName}
-                    aria-expanded={showProfileMenu}
+                    title={
+                      profileDisplayName
+                    }
+                    aria-expanded={
+                      showProfileMenu
+                    }
                     aria-haspopup="menu"
                   >
                     <span className="header-profile-avatar">
-                      {profileInitials}
+                      {
+                        profileInitials
+                      }
                     </span>
 
                     <span className="header-profile-name">
-                      {profileDisplayName}
+                      {
+                        profileDisplayName
+                      }
                     </span>
 
                     <span className="header-profile-chevron">
-                      <HeaderIcon name="chevron" size={15} strokeWidth={1.9} />
+                      <HeaderIcon
+                        name="chevron"
+                        size={15}
+                        strokeWidth={1.9}
+                      />
                     </span>
                   </button>
 
@@ -2464,43 +3567,70 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                     >
                       <div className="header-profile-summary">
                         <div className="header-profile-summary-name">
-                          {profileDisplayName}
+                          {
+                            profileDisplayName
+                          }
                         </div>
 
                         <div className="header-profile-summary-email">
-                          {profileEmail}
+                          {
+                            profileEmail
+                          }
                         </div>
 
                         <span className="header-profile-role">
-                          {isAdmin ? "Administrator" : "Traveler"}
+                          {isAdmin
+                            ? "Administrator"
+                            : "Traveler"}
                         </span>
                       </div>
+
                       {!isAdmin && (
                         <button
                           type="button"
                           className="header-profile-menu-item"
-                          onClick={handleChangePassword}
+                          onClick={
+                            handleChangePassword
+                          }
                           role="menuitem"
                         >
-                          <HeaderIcon name="lock" size={17} strokeWidth={1.8} />
-                          <span>Change Password</span>
+                          <HeaderIcon
+                            name="lock"
+                            size={17}
+                            strokeWidth={1.8}
+                          />
+
+                          <span>
+                            Change Password
+                          </span>
                         </button>
                       )}
 
                       {profileNotice && (
                         <div className="header-profile-notice">
-                          {profileNotice}
+                          {
+                            profileNotice
+                          }
                         </div>
                       )}
 
                       <button
                         type="button"
                         className="header-profile-menu-item logout"
-                        onClick={handleProfileLogout}
+                        onClick={
+                          handleProfileLogout
+                        }
                         role="menuitem"
                       >
-                        <HeaderIcon name="logout" size={17} strokeWidth={1.8} />
-                        <span>Log Out</span>
+                        <HeaderIcon
+                          name="logout"
+                          size={17}
+                          strokeWidth={1.8}
+                        />
+
+                        <span>
+                          Log Out
+                        </span>
                       </button>
                     </div>
                   )}
@@ -2513,8 +3643,6 @@ const AppHeader: React.FC<AppHeaderProps> = ({
 
       {/* =======================================================
           LOGIN MODAL
-          
-          Login CAN close after successful login.
       ======================================================= */}
 
       <LoginModal
@@ -2530,23 +3658,12 @@ const AppHeader: React.FC<AppHeaderProps> = ({
           });
         }}
         onSuccess={() => {
-          /*
-           * Successful login:
-           * close the login modal and return to the page.
-           */
           setShowLoginModal(false);
         }}
       />
 
       {/* =======================================================
           SIGNUP MODAL
-
-          IMPORTANT:
-          DO NOT PASS onSuccess THAT CLOSES THE MODAL.
-
-          SignupModal itself handles the successful signup
-          state and displays the "Verify your email" message
-          inside this same modal.
       ======================================================= */}
 
       <SignupModal
