@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { IonApp } from "@ionic/react";
 import {
@@ -98,7 +99,6 @@ const App: React.FC = () => {
 
   const handleSplashComplete = () => {
     sessionStorage.setItem(SPLASH_KEY, "1");
-
     setSplashDone(true);
   };
 
@@ -108,22 +108,12 @@ const App: React.FC = () => {
 
   if (!splashDone) {
     return (
-      <SplashScreen
-        onComplete={handleSplashComplete}
-      />
+      <SplashScreen onComplete={handleSplashComplete} />
     );
   }
 
   /* =========================================================
      APP PROVIDERS
-
-     AuthProvider
-       ↓
-     FavoritesProvider
-       ↓
-     DarkModeProvider
-       ↓
-     Router
   ========================================================= */
 
   return (
@@ -146,8 +136,7 @@ const App: React.FC = () => {
 ========================================================= */
 
 const AppContent: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] =
-    useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const history = useHistory();
 
@@ -174,10 +163,7 @@ const AppContent: React.FC = () => {
 
     return () => {
       unlisten();
-
-      document.body.classList.remove(
-        "admin-page"
-      );
+      document.body.classList.remove("admin-page");
     };
   }, [history]);
 
@@ -187,11 +173,23 @@ const AppContent: React.FC = () => {
 
   const handleSearch = (query: string) => {
     history.push(
-      `/attractions?search=${encodeURIComponent(
-        query
-      )}`
+      `/attractions?search=${encodeURIComponent(query)}`
     );
   };
+
+  /* =========================================================
+     SHARED PUBLIC HEADER
+  ========================================================= */
+
+  const renderPublicPage = (page: React.ReactNode) => (
+    <>
+      <AppHeader
+        onMenuClick={() => setSidebarOpen(true)}
+        onSearch={handleSearch}
+      />
+      {page}
+    </>
+  );
 
   /* =========================================================
      RENDER
@@ -201,46 +199,25 @@ const AppContent: React.FC = () => {
     <>
       <OfflineBanner />
 
-      {/* =====================================================
-          SIDEBAR
-      ===================================================== */}
+      {/* SIDEBAR */}
 
       {!IS_ADMIN_BUILD && (
         <Sidebar
           isOpen={sidebarOpen}
-          onClose={() =>
-            setSidebarOpen(false)
-          }
+          onClose={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* =====================================================
-          MAIN SCROLL CONTAINER
-      ===================================================== */}
+      {/* MAIN SCROLL CONTAINER */}
 
       <div
         className="page-scroll-container"
-        style={{
-          paddingBottom: 0,
-        }}
+        style={{ paddingBottom: 0 }}
       >
         <Switch>
           {/* =================================================
               ADMIN ROUTES
           ================================================= */}
-
-          {/*
-           * IMPORTANT:
-           * There is no separate AdminLogin authentication
-           * route anymore.
-           *
-           * The actual authentication is handled by the
-           * unified login system.
-           *
-           * If an old link sends the user to /admin/login,
-           * redirect them to the public home page and tell
-           * AppHeader to open the unified LoginModal.
-           */}
 
           <Route
             exact
@@ -249,10 +226,6 @@ const AppContent: React.FC = () => {
               <Redirect to="/?openLogin=1" />
             )}
           />
-
-          {/* =================================================
-              ADMIN DASHBOARD
-          ================================================= */}
 
           <Route
             exact
@@ -264,10 +237,6 @@ const AppContent: React.FC = () => {
             )}
           />
 
-          {/* =================================================
-              ADMIN ATTRACTIONS
-          ================================================= */}
-
           <Route
             exact
             path="/admin/attractions"
@@ -277,10 +246,6 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             )}
           />
-
-          {/* =================================================
-              ADMIN GETTING THERE
-          ================================================= */}
 
           <Route
             exact
@@ -292,10 +257,6 @@ const AppContent: React.FC = () => {
             )}
           />
 
-          {/* =================================================
-              ADMIN EVENTS
-          ================================================= */}
-
           <Route
             exact
             path="/admin/events"
@@ -305,10 +266,6 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             )}
           />
-
-          {/* =================================================
-              ADMIN ACCOMMODATIONS
-          ================================================= */}
 
           <Route
             exact
@@ -320,10 +277,6 @@ const AppContent: React.FC = () => {
             )}
           />
 
-          {/* =================================================
-              ADMIN GUIDES
-          ================================================= */}
-
           <Route
             exact
             path="/admin/guides"
@@ -333,10 +286,6 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             )}
           />
-
-          {/* =================================================
-              ADMIN REQUESTS
-          ================================================= */}
 
           <Route
             exact
@@ -348,10 +297,6 @@ const AppContent: React.FC = () => {
             )}
           />
 
-          {/* =================================================
-              ADMIN USERS
-          ================================================= */}
-
           <Route
             exact
             path="/admin/users"
@@ -361,10 +306,6 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             )}
           />
-
-          {/* =================================================
-              ADMIN MANAGEMENT
-          ================================================= */}
 
           <Route
             exact
@@ -376,10 +317,6 @@ const AppContent: React.FC = () => {
             )}
           />
 
-          {/* =================================================
-              ADMIN FEEDBACK
-          ================================================= */}
-
           <Route
             exact
             path="/admin/feedback"
@@ -389,10 +326,6 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             )}
           />
-
-          {/* =================================================
-              ADMIN FEATURED VIDEOS
-          ================================================= */}
 
           <Route
             exact
@@ -405,29 +338,17 @@ const AppContent: React.FC = () => {
           />
 
           {/* =================================================
-              PUBLIC ROUTES
-          ================================================= */}
-
-          {/* =================================================
-              HOME
+              PUBLIC HOME
           ================================================= */}
 
           {!IS_ADMIN_BUILD && (
             <Route
               exact
               path="/"
-              render={() => (
-                <>
-                  <AppHeader
-                    onMenuClick={() =>
-                      setSidebarOpen(true)
-                    }
-                    onSearch={handleSearch}
-                  />
-
-                  <Welcome />
-                </>
-              )}
+              render={() => <WelcomeWithHeader
+                onMenuClick={() => setSidebarOpen(true)}
+                onSearch={handleSearch}
+              />}
             />
           )}
 
@@ -444,157 +365,69 @@ const AppContent: React.FC = () => {
           )}
 
           {/* =================================================
-              ATTRACTIONS
+              ATTRACTIONS — PUBLIC
           ================================================= */}
 
           {!IS_ADMIN_BUILD && (
             <Route
               exact
               path="/attractions"
-              render={() => (
-                <UserProtectedRoute>
-                  <>
-                    <AppHeader
-                      onMenuClick={() =>
-                        setSidebarOpen(true)
-                      }
-                      onSearch={handleSearch}
-                    />
-
-                    <Attractions />
-                  </>
-                </UserProtectedRoute>
-              )}
+              render={() => renderPublicPage(<Attractions />)}
             />
           )}
 
-          {/* =================================================
-              ATTRACTION DETAIL
-          ================================================= */}
+          {/* ATTRACTION DETAILS — PUBLIC */}
 
           {!IS_ADMIN_BUILD && (
             <Route
               exact
               path="/attractions/:id"
-              render={() => (
-                <UserProtectedRoute>
-                  <>
-                    <AppHeader
-                      onMenuClick={() =>
-                        setSidebarOpen(true)
-                      }
-                      onSearch={handleSearch}
-                    />
-
-                    <AttractionDetail />
-                  </>
-                </UserProtectedRoute>
-              )}
+              render={() => renderPublicPage(<AttractionDetail />)}
             />
           )}
 
-          {/* =================================================
-              GETTING THERE
-          ================================================= */}
+          {/* GETTING THERE — PUBLIC */}
 
           {!IS_ADMIN_BUILD && (
             <Route
               exact
               path="/getting-there"
-              render={() => (
-                <UserProtectedRoute>
-                  <>
-                    <AppHeader
-                      onMenuClick={() =>
-                        setSidebarOpen(true)
-                      }
-                      onSearch={handleSearch}
-                    />
-
-                    <GettingThere />
-                  </>
-                </UserProtectedRoute>
-              )}
+              render={() => renderPublicPage(<GettingThere />)}
             />
           )}
 
-          {/* =================================================
-              ACCOMMODATIONS
-          ================================================= */}
+          {/* ACCOMMODATIONS — PUBLIC */}
 
           {!IS_ADMIN_BUILD && (
             <Route
               exact
               path="/accommodations"
-              render={() => (
-                <UserProtectedRoute>
-                  <>
-                    <AppHeader
-                      onMenuClick={() =>
-                        setSidebarOpen(true)
-                      }
-                      onSearch={handleSearch}
-                    />
-
-                    <Accommodations />
-                  </>
-                </UserProtectedRoute>
-              )}
+              render={() => renderPublicPage(<Accommodations />)}
             />
           )}
 
-          {/* =================================================
-              ACCOMMODATION DETAIL
-          ================================================= */}
+          {/* ACCOMMODATION DETAILS — PUBLIC */}
 
           {!IS_ADMIN_BUILD && (
             <Route
               exact
               path="/accommodations/:id"
-              render={() => (
-                <UserProtectedRoute>
-                  <>
-                    <AppHeader
-                      onMenuClick={() =>
-                        setSidebarOpen(true)
-                      }
-                      onSearch={handleSearch}
-                    />
-
-                    <AccommodationDetail />
-                  </>
-                </UserProtectedRoute>
-              )}
+              render={() => renderPublicPage(<AccommodationDetail />)}
             />
           )}
 
-          {/* =================================================
-              GUIDES
-          ================================================= */}
+          {/* GUIDES — PUBLIC */}
 
           {!IS_ADMIN_BUILD && (
             <Route
               exact
               path="/guides"
-              render={() => (
-                <UserProtectedRoute>
-                  <>
-                    <AppHeader
-                      onMenuClick={() =>
-                        setSidebarOpen(true)
-                      }
-                      onSearch={handleSearch}
-                    />
-
-                    <Guides />
-                  </>
-                </UserProtectedRoute>
-              )}
+              render={() => renderPublicPage(<Guides />)}
             />
           )}
 
           {/* =================================================
-              ITINERARY
+              ITINERARY — REGULAR USERS ONLY
           ================================================= */}
 
           {!IS_ADMIN_BUILD && (
@@ -603,24 +436,13 @@ const AppContent: React.FC = () => {
               path="/itinerary"
               render={() => (
                 <UserProtectedRoute>
-                  <>
-                    <AppHeader
-                      onMenuClick={() =>
-                        setSidebarOpen(true)
-                      }
-                      onSearch={handleSearch}
-                    />
-
-                    <ItineraryPlanner />
-                  </>
+                  {renderPublicPage(<ItineraryPlanner />)}
                 </UserProtectedRoute>
               )}
             />
           )}
 
-          {/* =================================================
-              REQUEST ITINERARY
-          ================================================= */}
+          {/* REQUEST ITINERARY — REGULAR USERS ONLY */}
 
           {!IS_ADMIN_BUILD && (
             <Route
@@ -628,49 +450,23 @@ const AppContent: React.FC = () => {
               path="/request-itinerary"
               render={() => (
                 <UserProtectedRoute>
-                  <>
-                    <AppHeader
-                      onMenuClick={() =>
-                        setSidebarOpen(true)
-                      }
-                      onSearch={handleSearch}
-                    />
-
-                    <ItineraryRequest />
-                  </>
+                  {renderPublicPage(<ItineraryRequest />)}
                 </UserProtectedRoute>
               )}
             />
           )}
 
-          {/* =================================================
-              EVENTS
-          ================================================= */}
+          {/* EVENTS — PUBLIC */}
 
           {!IS_ADMIN_BUILD && (
             <Route
               exact
               path="/events"
-              render={() => (
-                <UserProtectedRoute>
-                  <>
-                    <AppHeader
-                      onMenuClick={() =>
-                        setSidebarOpen(true)
-                      }
-                      onSearch={handleSearch}
-                    />
-
-                    <Events />
-                  </>
-                </UserProtectedRoute>
-              )}
+              render={() => renderPublicPage(<Events />)}
             />
           )}
 
-          {/* =================================================
-              MEMORIES
-          ================================================= */}
+          {/* MEMORIES — REGULAR USERS ONLY */}
 
           {!IS_ADMIN_BUILD && (
             <Route
@@ -678,24 +474,13 @@ const AppContent: React.FC = () => {
               path="/memories"
               render={() => (
                 <UserProtectedRoute>
-                  <>
-                    <AppHeader
-                      onMenuClick={() =>
-                        setSidebarOpen(true)
-                      }
-                      onSearch={handleSearch}
-                    />
-
-                    <Memories />
-                  </>
+                  {renderPublicPage(<Memories />)}
                 </UserProtectedRoute>
               )}
             />
           )}
 
-          {/* =================================================
-              EMAIL VERIFICATION
-          ================================================= */}
+          {/* EMAIL VERIFICATION */}
 
           {!IS_ADMIN_BUILD && (
             <Route
@@ -705,30 +490,46 @@ const AppContent: React.FC = () => {
             />
           )}
 
-          {/* =================================================
-              FALLBACK
-          ================================================= */}
+          {/* FALLBACK */}
 
           <Route
             path="*"
             render={() => (
               <Redirect
-                to={
-                  IS_ADMIN_BUILD
-                    ? "/admin/login"
-                    : "/"
-                }
+                to={IS_ADMIN_BUILD ? "/admin/login" : "/"}
               />
             )}
           />
         </Switch>
 
-        {/* =====================================================
-            PUBLIC FOOTER
-        ===================================================== */}
+        {/* PUBLIC FOOTER */}
 
         <PublicBottomNav />
       </div>
+    </>
+  );
+};
+
+/* =========================================================
+   HOME HEADER
+========================================================= */
+
+interface WelcomeWithHeaderProps {
+  onMenuClick: () => void;
+  onSearch: (query: string) => void;
+}
+
+const WelcomeWithHeader: React.FC<WelcomeWithHeaderProps> = ({
+  onMenuClick,
+  onSearch,
+}) => {
+  return (
+    <>
+      <AppHeader
+        onMenuClick={onMenuClick}
+        onSearch={onSearch}
+      />
+      <Welcome />
     </>
   );
 };
@@ -739,7 +540,6 @@ const AppContent: React.FC = () => {
 
 const PublicBottomNav: React.FC = () => {
   const location = useLocation();
-
   const pathname = location.pathname;
 
   /*
