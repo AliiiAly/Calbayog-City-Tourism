@@ -710,14 +710,20 @@ const Sidebar: React.FC<SidebarProps> = ({
                 {section.title}
               </div>
 
-              {section.items.map((item) => {
-                const requiresLogin =
-                  item.requiresAuth &&
-                  !isUserAuthenticated &&
-                  !isAdmin;
+              {section.items
+  .filter(
+    (item) =>
+      item.to !== "/memories" ||
+      (isUserAuthenticated && !isAdmin)
+  )
+  .map((item) => {
+    const requiresLogin =
+      item.requiresAuth &&
+      !isUserAuthenticated &&
+      !isAdmin;
 
-                return (
-                  <Link
+    return (
+      <Link
                     key={item.to}
                     to={item.to}
                     className={`sidebar-item ${
