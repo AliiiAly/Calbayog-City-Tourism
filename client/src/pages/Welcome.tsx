@@ -319,7 +319,7 @@ const getWeatherDescription = (
 ========================================================= */ 
  
 const Welcome: React.FC = () => { 
-  const { user } = useAuth();
+  const { user, isUserAuthenticated } = useAuth();
 
   // Plan Trip and My Memories are protected user features.
   // If a visitor is not logged in, open the app-wide login form
@@ -1491,7 +1491,12 @@ const Welcome: React.FC = () => {
           </div>
 
           <Row className="g-3 g-md-4 welcome-quick-grid">
-            {quickCards.map(
+            {quickCards
+  .filter(
+    (card) =>
+      card.to !== "/memories" || isUserAuthenticated,
+  )
+  .map(
               (card) => (
                 <Col
                   xs={4}
