@@ -3,7 +3,6 @@ import {
   Container,
   Row,
   Col,
-  Card,
   Badge,
   Spinner,
   Button,
@@ -14,12 +13,9 @@ import { useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
-  ArrowUpRight,
   CalendarDays,
-  Check,
   MapPin,
   Star,
-  Ticket,
 } from "lucide-react";
 
 import { getEvents } from "../services/api";
@@ -29,9 +25,12 @@ import {
 } from "../services/supabase";
 
 import { Event } from "../types";
+import EventCard, {
+  EventCardItem,
+} from "../components/events/EventCard";
 
 /* =========================================================
-   FONTS
+   FONTS + PAGE STYLES
 ========================================================= */
 
 const styles = `
@@ -142,6 +141,7 @@ const styles = `
   font-weight: 800;
 
   cursor: pointer;
+
   transition:
     color 0.2s ease,
     border-color 0.2s ease,
@@ -202,6 +202,9 @@ const styles = `
 }
 
 .events-filter-pill {
+  --filter-color: #1a7a4a;
+  --filter-background: #eef8f2;
+
   flex: 0 0 auto;
 
   display: inline-flex;
@@ -224,8 +227,7 @@ const styles = `
 
   cursor: pointer;
 
-  transition:
-    all 0.2s ease;
+  transition: all 0.2s ease;
 
   white-space: nowrap;
 }
@@ -491,330 +493,6 @@ const styles = `
 }
 
 /* =========================================================
-   EVENT CARD
-========================================================= */
-
-.event-card {
-  width: 100%;
-  height: 100%;
-
-  border: none !important;
-  border-radius: 0 !important;
-
-  background: transparent !important;
-  box-shadow: none !important;
-
-  overflow: visible;
-
-  cursor: pointer;
-}
-
-.event-image-wrap {
-  position: relative;
-
-  width: 100%;
-
-  aspect-ratio: 4 / 5;
-
-  overflow: hidden;
-
-  border-radius: 18px;
-
-  background: #f2f7f4;
-
-  box-shadow:
-    0 7px 22px rgba(20, 30, 24, 0.06);
-
-  transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease;
-}
-
-.event-card:hover .event-image-wrap {
-  transform: translateY(-3px);
-
-  box-shadow:
-    0 13px 30px rgba(20, 30, 24, 0.11);
-}
-
-.event-image {
-  width: 100%;
-  height: 100%;
-
-  display: block;
-
-  object-fit: cover;
-
-  transition:
-    transform 0.45s ease;
-}
-
-.event-card:hover .event-image {
-  transform: scale(1.035);
-}
-
-.event-image-placeholder {
-  width: 100%;
-  height: 100%;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  font-size: 2.5rem;
-}
-
-.event-image-overlay {
-  position: absolute;
-
-  left: 0;
-  right: 0;
-  bottom: 0;
-
-  height: 95px;
-
-  background:
-    linear-gradient(
-      to top,
-      rgba(0, 0, 0, 0.45),
-      transparent
-    );
-
-  pointer-events: none;
-}
-
-/* =========================================================
-   IMAGE BADGES
-========================================================= */
-
-.event-category-badge {
-  position: absolute;
-
-  top: 11px;
-  left: 11px;
-
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-
-  max-width: 70%;
-
-  padding: 5px 9px;
-
-  border-radius: 999px;
-
-  background: rgba(255, 255, 255, 0.95);
-
-  font-family: "Nunito", sans-serif;
-  font-size: 0.61rem;
-  font-weight: 800;
-
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.1);
-
-  backdrop-filter: blur(6px);
-
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.event-featured-badge {
-  position: absolute;
-
-  top: 11px;
-  right: 11px;
-
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-
-  padding: 5px 9px;
-
-  border-radius: 999px;
-
-  background: rgba(255, 248, 230, 0.96);
-  color: #a86400;
-
-  font-family: "Nunito", sans-serif;
-  font-size: 0.61rem;
-  font-weight: 800;
-
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.event-view-overlay {
-  position: absolute;
-
-  right: 12px;
-  bottom: 11px;
-
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-
-  color: #ffffff;
-
-  font-family: "Nunito", sans-serif;
-  font-size: 0.62rem;
-  font-weight: 800;
-
-  text-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.35);
-}
-
-/* =========================================================
-   CARD BODY
-========================================================= */
-
-.event-card-body {
-  padding: 13px 2px 0 !important;
-}
-
-.event-title-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-
-  gap: 8px;
-}
-
-.event-name {
-  margin: 0 !important;
-
-  color: #171b18 !important;
-
-  font-family:
-    "Poppins",
-    "Nunito",
-    sans-serif !important;
-
-  font-size: 0.91rem !important;
-  line-height: 1.3 !important;
-
-  font-weight: 700 !important;
-
-  letter-spacing: -0.012em;
-}
-
-.event-date {
-  display: flex;
-  align-items: flex-start;
-  gap: 5px;
-
-  margin-top: 5px;
-
-  color: #747d77;
-
-  font-family: "Nunito", sans-serif;
-  font-size: 0.67rem;
-  line-height: 1.4;
-
-  font-weight: 600;
-}
-
-.event-location {
-  display: flex;
-  align-items: flex-start;
-  gap: 5px;
-
-  margin-top: 5px;
-
-  color: #747d77;
-
-  font-family: "Nunito", sans-serif;
-  font-size: 0.67rem;
-  line-height: 1.4;
-
-  font-weight: 600;
-}
-
-.event-location-text {
-  display: -webkit-box;
-
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-
-  overflow: hidden;
-}
-
-.event-description {
-  margin: 7px 0 0;
-
-  color: #707973;
-
-  font-family: "Nunito", sans-serif;
-  font-size: 0.7rem;
-  line-height: 1.5;
-
-  font-weight: 500;
-
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-
-  overflow: hidden;
-}
-
-.event-category-label {
-  display: block;
-
-  margin-top: 8px;
-
-  font-family: "Nunito", sans-serif;
-  font-size: 0.63rem;
-
-  font-weight: 800;
-
-  letter-spacing: 0.045em;
-  text-transform: uppercase;
-}
-
-/* =========================================================
-   CARD BOTTOM
-========================================================= */
-
-.event-bottom-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  gap: 8px;
-
-  margin-top: 10px;
-  padding-top: 10px;
-
-  border-top: 1px solid #f0f2f0;
-}
-
-.event-price {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-
-  min-width: 0;
-
-  font-family: "Nunito", sans-serif;
-  font-size: 0.62rem;
-  font-weight: 800;
-}
-
-.event-details-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-
-  color: #171b18;
-
-  font-family: "Nunito", sans-serif;
-  font-size: 0.62rem;
-  font-weight: 800;
-
-  white-space: nowrap;
-}
-
-/* =========================================================
    LOADING
 ========================================================= */
 
@@ -1016,10 +694,6 @@ const styles = `
       );
   }
 
-  .event-image-wrap {
-    aspect-ratio: 4 / 5;
-  }
-
   .events-grid {
     row-gap: 40px !important;
   }
@@ -1054,17 +728,8 @@ const styles = `
     justify-content: space-between;
   }
 
-  .event-image-wrap {
-    aspect-ratio: 4 / 5;
-    border-radius: 17px;
-  }
-
   .events-grid {
     row-gap: 36px !important;
-  }
-
-  .event-bottom-row {
-    align-items: flex-start;
   }
 }
 
@@ -1075,18 +740,6 @@ const styles = `
 
   .events-subtitle {
     font-size: 0.77rem;
-  }
-
-  .event-image-wrap {
-    aspect-ratio: 4 / 5;
-  }
-
-  .event-name {
-    font-size: 0.94rem !important;
-  }
-
-  .event-description {
-    font-size: 0.7rem;
   }
 
   .events-calendar {
@@ -1194,8 +847,7 @@ const Calendar: React.FC<{
   const {
     firstDay,
     daysInMonth,
-  } =
-    getDaysInMonth(currentMonth);
+  } = getDaysInMonth(currentMonth);
 
   const weekdays = [
     "Sun",
@@ -1233,9 +885,7 @@ const Calendar: React.FC<{
         <button
           type="button"
           className="events-calendar-nav"
-          onClick={
-            goToPreviousMonth
-          }
+          onClick={goToPreviousMonth}
           aria-label="Previous month"
         >
           <ArrowLeft
@@ -1257,9 +907,7 @@ const Calendar: React.FC<{
         <button
           type="button"
           className="events-calendar-nav"
-          onClick={
-            goToNextMonth
-          }
+          onClick={goToNextMonth}
           aria-label="Next month"
         >
           <ArrowRight
@@ -1270,114 +918,96 @@ const Calendar: React.FC<{
       </div>
 
       <div className="events-calendar-weekdays">
-        {weekdays.map(
-          (day) => (
-            <div
-              key={day}
-              className="events-calendar-weekday"
-            >
-              {day}
-            </div>
-          ),
-        )}
+        {weekdays.map((day) => (
+          <div
+            key={day}
+            className="events-calendar-weekday"
+          >
+            {day}
+          </div>
+        ))}
       </div>
 
       <div className="events-calendar-grid">
         {Array.from({
           length: firstDay,
-        }).map(
-          (_, index) => (
-            <div
-              key={`empty-${index}`}
-              className="events-calendar-day-empty"
-            />
-          ),
-        )}
+        }).map((_, index) => (
+          <div
+            key={`empty-${index}`}
+            className="events-calendar-day-empty"
+          />
+        ))}
 
         {Array.from({
           length: daysInMonth,
-        }).map(
-          (_, index) => {
-            const day =
-              index + 1;
+        }).map((_, index) => {
+          const day = index + 1;
 
-            const eventCount =
-              countEventsOnDate(
-                day,
-              );
+          const eventCount =
+            countEventsOnDate(day);
 
-            const selected =
-              isSelectedDate(
-                day,
-              );
+          const selected =
+            isSelectedDate(day);
 
-            const today =
-              isToday(day);
+          const today =
+            isToday(day);
 
-            const dotCount =
-              Math.min(
-                eventCount,
-                3,
-              );
+          const dotCount = Math.min(
+            eventCount,
+            3,
+          );
 
-            return (
-              <button
-                key={day}
-                type="button"
-                className={[
-                  "events-calendar-day",
-                  today
-                    ? "events-calendar-day-today"
-                    : "",
-                  selected
-                    ? "events-calendar-day-selected"
-                    : "",
-                ]
-                  .filter(
-                    Boolean,
-                  )
-                  .join(" ")}
-                onClick={() => {
-                  const newDate =
-                    new Date(
-                      currentMonth.getFullYear(),
-                      currentMonth.getMonth(),
-                      day,
-                    );
-
-                  onSelectDate(
-                    selectedDate &&
-                      selectedDate.toDateString() ===
-                        newDate.toDateString()
-                      ? null
-                      : newDate,
+          return (
+            <button
+              key={day}
+              type="button"
+              className={[
+                "events-calendar-day",
+                today
+                  ? "events-calendar-day-today"
+                  : "",
+                selected
+                  ? "events-calendar-day-selected"
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              onClick={() => {
+                const newDate =
+                  new Date(
+                    currentMonth.getFullYear(),
+                    currentMonth.getMonth(),
+                    day,
                   );
-                }}
-              >
-                {day}
 
-                {dotCount >
-                  0 && (
-                  <div className="events-calendar-dots">
-                    {Array.from({
-                      length:
-                        dotCount,
-                    }).map(
-                      (_, dotIndex) => (
-                        <span
-                          key={
-                            dotIndex
-                          }
-                          className="events-calendar-dot"
-                        />
-                      ),
-                    )}
-                  </div>
-                )}
-              </button>
-            );
-          },
-        )}
+                onSelectDate(
+                  selectedDate &&
+                    selectedDate.toDateString() ===
+                      newDate.toDateString()
+                    ? null
+                    : newDate,
+                );
+              }}
+            >
+              {day}
+
+              {dotCount > 0 && (
+                <div className="events-calendar-dots">
+                  {Array.from({
+                    length: dotCount,
+                  }).map(
+                    (_, dotIndex) => (
+                      <span
+                        key={dotIndex}
+                        className="events-calendar-dot"
+                      />
+                    ),
+                  )}
+                </div>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -1441,27 +1071,22 @@ const categoryIcons: Record<
 ========================================================= */
 
 const Events: React.FC = () => {
-  const location =
-    useLocation();
+  const location = useLocation();
 
   const highlightId =
     (location.state as any)
       ?.highlightId;
 
-  const [
-    events,
-    setEvents,
-  ] = useState<Event[]>([]);
+  const [events, setEvents] =
+    useState<Event[]>([]);
 
   const [
     calendarEvents,
     setCalendarEvents,
   ] = useState<Event[]>([]);
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
   const [
     activeCategory,
@@ -1476,16 +1101,12 @@ const Events: React.FC = () => {
   const [
     selectedDate,
     setSelectedDate,
-  ] = useState<Date | null>(
-    null,
-  );
+  ] = useState<Date | null>(null);
 
   const [
     selected,
     setSelected,
-  ] = useState<Event | null>(
-    null,
-  );
+  ] = useState<Event | null>(null);
 
   const didAutoOpen =
     useRef(false);
@@ -1512,8 +1133,7 @@ const Events: React.FC = () => {
       }
 
       if (upcomingOnly) {
-        params.upcoming =
-          "true";
+        params.upcoming = "true";
       }
 
       const response =
@@ -1526,8 +1146,7 @@ const Events: React.FC = () => {
           ? response.data
           : [];
 
-      let filtered =
-        fetched;
+      let filtered = fetched;
 
       if (selectedDate) {
         filtered =
@@ -1561,7 +1180,9 @@ const Events: React.FC = () => {
 
       setEvents(filtered);
 
-      /* AUTO OPEN EVENT */
+      /* =====================================================
+         AUTO OPEN EVENT
+      ===================================================== */
 
       if (
         highlightId &&
@@ -1722,8 +1343,7 @@ const Events: React.FC = () => {
     return (
       categoryColors[
         category
-      ] ||
-      "#1A7A4A"
+      ] || "#1A7A4A"
     );
   };
 
@@ -1733,8 +1353,7 @@ const Events: React.FC = () => {
     return (
       categoryIcons[
         category
-      ] ||
-      "📍"
+      ] || "📍"
     );
   };
 
@@ -1752,6 +1371,34 @@ const Events: React.FC = () => {
       : "#1A7A4A";
 
   /* =========================================================
+     CONVERT EVENT FOR REUSABLE EVENT CARD
+  ========================================================= */
+
+  const toEventCardItem = (
+    event: Event,
+  ): EventCardItem => {
+    return {
+      id: event.id,
+      _id: event._id,
+      title: event.title,
+      image: event.image,
+      category: event.category,
+      featured: event.featured,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      venue: event.venue,
+      description:
+        event.description,
+      organizer: event.organizer,
+      isFree: event.isFree,
+      ticketPrice:
+        event.ticketPrice,
+      facebook:
+        event.contact?.facebook,
+    };
+  };
+
+  /* =========================================================
      RENDER
   ========================================================= */
 
@@ -1764,7 +1411,7 @@ const Events: React.FC = () => {
       <div className="page-enter events-page">
 
         {/* ===================================================
-            HEADER — MATCHES ATTRACTIONS
+            HEADER
         =================================================== */}
 
         <section className="events-header">
@@ -1810,9 +1457,7 @@ const Events: React.FC = () => {
 
                 return (
                   <button
-                    key={
-                      category
-                    }
+                    key={category}
                     type="button"
                     className={[
                       "events-category-pill",
@@ -1835,6 +1480,7 @@ const Events: React.FC = () => {
                       setActiveCategory(
                         category,
                       );
+
                       setSelectedDate(
                         null,
                       );
@@ -1900,9 +1546,7 @@ const Events: React.FC = () => {
               >
                 <CalendarDays
                   size={14}
-                  strokeWidth={
-                    2.2
-                  }
+                  strokeWidth={2.2}
                 />
 
                 Upcoming Events
@@ -1928,9 +1572,7 @@ const Events: React.FC = () => {
                 >
                   <CalendarDays
                     size={14}
-                    strokeWidth={
-                      2.2
-                    }
+                    strokeWidth={2.2}
                   />
 
                   {selectedDate.toLocaleDateString(
@@ -1996,9 +1638,7 @@ const Events: React.FC = () => {
                 <div className="events-results-icon">
                   <CalendarDays
                     size={16}
-                    strokeWidth={
-                      2.2
-                    }
+                    strokeWidth={2.2}
                   />
                 </div>
 
@@ -2098,9 +1738,7 @@ const Events: React.FC = () => {
               <div className="events-empty-icon">
                 <CalendarDays
                   size={27}
-                  strokeWidth={
-                    1.8
-                  }
+                  strokeWidth={1.8}
                 />
               </div>
 
@@ -2122,16 +1760,14 @@ const Events: React.FC = () => {
                   clearFilters
                 }
                 style={{
-                  borderRadius:
-                    999,
+                  borderRadius: 999,
                   padding:
                     "7px 14px",
                   fontFamily:
                     "Nunito, sans-serif",
                   fontSize:
                     "0.7rem",
-                  fontWeight:
-                    800,
+                  fontWeight: 800,
                 }}
               >
                 View all events
@@ -2151,13 +1787,9 @@ const Events: React.FC = () => {
                   event,
                   index,
                 ) => {
-                  const color =
-                    getCategoryColor(
-                      event.category,
-                    );
-
                   const eventId =
                     event._id ||
+                    event.id ||
                     `event-${index}`;
 
                   return (
@@ -2168,232 +1800,19 @@ const Events: React.FC = () => {
                       key={eventId}
                       className="event-col"
                     >
-                      <Card
-                        className="event-card"
+                      <EventCard
+                        event={toEventCardItem(
+                          event,
+                        )}
+                        showFeatured={
+                          true
+                        }
                         onClick={() =>
                           setSelected(
                             event,
                           )
                         }
-                      >
-
-                        {/* =================================
-                            IMAGE
-                        ================================= */}
-
-                        <div
-                          className="event-image-wrap"
-                          style={{
-                            background:
-                              `${color}12`,
-                          }}
-                        >
-
-                          {event.image ? (
-                            <img
-                              src={
-                                event.image
-                              }
-                              alt={
-                                event.title
-                              }
-                              className="event-image"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div
-                              className="event-image-placeholder"
-                              style={{
-                                background:
-                                  `linear-gradient(135deg, ${color}18, #ffffff)`,
-                              }}
-                            >
-                              {getCategoryIcon(
-                                event.category,
-                              )}
-                            </div>
-                          )}
-
-                          <div className="event-image-overlay" />
-
-                          {/* CATEGORY */}
-
-                          <span
-                            className="event-category-badge"
-                            style={{
-                              color:
-                                color,
-                            }}
-                          >
-                            {getCategoryIcon(
-                              event.category,
-                            )}
-
-                            {event.category ||
-                              "Event"}
-                          </span>
-
-                          {/* FEATURED */}
-
-                          {event.featured && (
-                            <span className="event-featured-badge">
-                              <Star
-                                size={11}
-                                fill="currentColor"
-                                strokeWidth={
-                                  2
-                                }
-                              />
-
-                              Featured
-                            </span>
-                          )}
-
-                          {/* VIEW */}
-
-                          <span className="event-view-overlay">
-                            View details
-                            <ArrowUpRight
-                              size={12}
-                              strokeWidth={
-                                2.2
-                              }
-                            />
-                          </span>
-                        </div>
-
-                        {/* =================================
-                            BODY
-                        ================================= */}
-
-                        <Card.Body className="event-card-body">
-
-                          <div className="event-title-row">
-                            <h3 className="event-name">
-                              {
-                                event.title
-                              }
-                            </h3>
-                          </div>
-
-                          {/* DATE */}
-
-                          <div className="event-date">
-                            <CalendarDays
-                              size={12}
-                              strokeWidth={
-                                2.1
-                              }
-                            />
-
-                            <span>
-                              {formatDateRange(
-                                event.startDate,
-                                event.endDate,
-                              )}
-                            </span>
-                          </div>
-
-                          {/* VENUE */}
-
-                          <div className="event-location">
-                            <MapPin
-                              size={12}
-                              strokeWidth={
-                                2.1
-                              }
-                            />
-
-                            <span className="event-location-text">
-                              {event.venue ||
-                                "Calbayog City"}
-                            </span>
-                          </div>
-
-                          {/* DESCRIPTION */}
-
-                          <p className="event-description">
-                            {event.description ||
-                              "Discover this event and experience the vibrant culture and community of Calbayog City."}
-                          </p>
-
-                          {/* CATEGORY */}
-
-                          <span
-                            className="event-category-label"
-                            style={{
-                              color:
-                                color,
-                            }}
-                          >
-                            {event.category ||
-                              "Event"}
-                          </span>
-
-                          {/* BOTTOM */}
-
-                          <div className="event-bottom-row">
-
-                            <span
-                              className="event-price"
-                              style={{
-                                color:
-                                  event.isFree
-                                    ? "#1A7A4A"
-                                    : "#D99A1A",
-                              }}
-                            >
-                              {event.isFree ? (
-                                <>
-                                  <Check
-                                    size={
-                                      12
-                                    }
-                                    strokeWidth={
-                                      2.5
-                                    }
-                                  />
-
-                                  Free
-                                </>
-                              ) : (
-                                <>
-                                  <Ticket
-                                    size={
-                                      12
-                                    }
-                                    strokeWidth={
-                                      2.2
-                                    }
-                                  />
-
-                                  {event.ticketPrice ||
-                                    "Ticketed"}
-                                </>
-                              )}
-                            </span>
-
-                            <span
-                              className="event-details-link"
-                              style={{
-                                color:
-                                  color,
-                              }}
-                            >
-                              Details
-                              <ArrowUpRight
-                                size={
-                                  12
-                                }
-                                strokeWidth={
-                                  2.2
-                                }
-                              />
-                            </span>
-
-                          </div>
-                        </Card.Body>
-                      </Card>
+                      />
                     </Col>
                   );
                 },
@@ -2426,9 +1845,7 @@ const Events: React.FC = () => {
                 }}
               >
                 <Modal.Title className="events-modal-title">
-                  {
-                    selected.title
-                  }
+                  {selected.title}
                 </Modal.Title>
               </Modal.Header>
 
@@ -2440,7 +1857,7 @@ const Events: React.FC = () => {
 
                 {/* IMAGE */}
 
-                {selected.image && (
+                {selected.image ? (
                   <img
                     src={
                       selected.image
@@ -2450,6 +1867,22 @@ const Events: React.FC = () => {
                     }
                     className="events-modal-image"
                   />
+                ) : (
+                  <div
+                    className="events-modal-image d-flex align-items-center justify-content-center"
+                    style={{
+                      background:
+                        "#f3f7f4",
+                      color:
+                        selectedColor,
+                      fontSize:
+                        "3rem",
+                    }}
+                  >
+                    {getCategoryIcon(
+                      selected.category,
+                    )}
+                  </div>
                 )}
 
                 {/* BADGES */}
@@ -2475,9 +1908,8 @@ const Events: React.FC = () => {
                     {getCategoryIcon(
                       selected.category,
                     )}{" "}
-                    {
-                      selected.category
-                    }
+                    {selected.category ||
+                      "Event"}
                   </Badge>
 
                   <Badge
@@ -2532,9 +1964,7 @@ const Events: React.FC = () => {
                       <Star
                         size={10}
                         fill="currentColor"
-                        strokeWidth={
-                          2
-                        }
+                        strokeWidth={2}
                       />{" "}
                       Featured
                     </Badge>
@@ -2548,9 +1978,7 @@ const Events: React.FC = () => {
                   <div className="events-modal-detail">
                     <CalendarDays
                       size={15}
-                      strokeWidth={
-                        2
-                      }
+                      strokeWidth={2}
                       style={{
                         color:
                           selectedColor,
@@ -2574,9 +2002,7 @@ const Events: React.FC = () => {
                   <div className="events-modal-detail">
                     <MapPin
                       size={15}
-                      strokeWidth={
-                        2
-                      }
+                      strokeWidth={2}
                       style={{
                         color:
                           selectedColor,
@@ -2599,9 +2025,7 @@ const Events: React.FC = () => {
                     <div className="events-modal-detail">
                       <Star
                         size={15}
-                        strokeWidth={
-                          2
-                        }
+                        strokeWidth={2}
                         style={{
                           color:
                             selectedColor,
@@ -2640,8 +2064,7 @@ const Events: React.FC = () => {
                   ?.facebook && (
                   <a
                     href={
-                      selected
-                        .contact
+                      selected.contact
                         .facebook
                     }
                     target="_blank"
@@ -2663,8 +2086,6 @@ const Events: React.FC = () => {
                         800,
                     }}
                   >
-                    
-
                     Facebook Page
                   </a>
                 )}
@@ -2686,16 +2107,14 @@ const Events: React.FC = () => {
                     )
                   }
                   style={{
-                    borderRadius:
-                      999,
+                    borderRadius: 999,
                     padding:
                       "6px 14px",
                     fontFamily:
                       "Nunito, sans-serif",
                     fontSize:
                       "0.7rem",
-                    fontWeight:
-                      800,
+                    fontWeight: 800,
                   }}
                 >
                   Close
