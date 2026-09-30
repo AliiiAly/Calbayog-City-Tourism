@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { IonApp } from "@ionic/react";
 import {
@@ -173,10 +172,16 @@ const AppContent: React.FC = () => {
   ========================================================= */
 
   const handleSearch = (query: string) => {
-  history.push(
-    `/search?query=${encodeURIComponent(query)}`
-  );
-};
+    const trimmedQuery = query.trim();
+
+    if (!trimmedQuery) {
+      return;
+    }
+
+    history.push(
+      `/search?query=${encodeURIComponent(trimmedQuery)}`
+    );
+  };
 
   /* =========================================================
      SHARED PUBLIC HEADER
@@ -346,10 +351,14 @@ const AppContent: React.FC = () => {
             <Route
               exact
               path="/"
-              render={() => <WelcomeWithHeader
-                onMenuClick={() => setSidebarOpen(true)}
-                onSearch={handleSearch}
-              />}
+              render={() => (
+                <WelcomeWithHeader
+                  onMenuClick={() =>
+                    setSidebarOpen(true)
+                  }
+                  onSearch={handleSearch}
+                />
+              )}
             />
           )}
 
@@ -373,7 +382,9 @@ const AppContent: React.FC = () => {
             <Route
               exact
               path="/attractions"
-              render={() => renderPublicPage(<Attractions />)}
+              render={() =>
+                renderPublicPage(<Attractions />)
+              }
             />
           )}
 
@@ -383,7 +394,11 @@ const AppContent: React.FC = () => {
             <Route
               exact
               path="/attractions/:id"
-              render={() => renderPublicPage(<AttractionDetail />)}
+              render={() =>
+                renderPublicPage(
+                  <AttractionDetail />
+                )
+              }
             />
           )}
 
@@ -393,7 +408,9 @@ const AppContent: React.FC = () => {
             <Route
               exact
               path="/getting-there"
-              render={() => renderPublicPage(<GettingThere />)}
+              render={() =>
+                renderPublicPage(<GettingThere />)
+              }
             />
           )}
 
@@ -403,7 +420,11 @@ const AppContent: React.FC = () => {
             <Route
               exact
               path="/accommodations"
-              render={() => renderPublicPage(<Accommodations />)}
+              render={() =>
+                renderPublicPage(
+                  <Accommodations />
+                )
+              }
             />
           )}
 
@@ -413,7 +434,11 @@ const AppContent: React.FC = () => {
             <Route
               exact
               path="/accommodations/:id"
-              render={() => renderPublicPage(<AccommodationDetail />)}
+              render={() =>
+                renderPublicPage(
+                  <AccommodationDetail />
+                )
+              }
             />
           )}
 
@@ -423,7 +448,9 @@ const AppContent: React.FC = () => {
             <Route
               exact
               path="/guides"
-              render={() => renderPublicPage(<Guides />)}
+              render={() =>
+                renderPublicPage(<Guides />)
+              }
             />
           )}
 
@@ -437,7 +464,9 @@ const AppContent: React.FC = () => {
               path="/itinerary"
               render={() => (
                 <UserProtectedRoute>
-                  {renderPublicPage(<ItineraryPlanner />)}
+                  {renderPublicPage(
+                    <ItineraryPlanner />
+                  )}
                 </UserProtectedRoute>
               )}
             />
@@ -451,7 +480,9 @@ const AppContent: React.FC = () => {
               path="/request-itinerary"
               render={() => (
                 <UserProtectedRoute>
-                  {renderPublicPage(<ItineraryRequest />)}
+                  {renderPublicPage(
+                    <ItineraryRequest />
+                  )}
                 </UserProtectedRoute>
               )}
             />
@@ -463,7 +494,25 @@ const AppContent: React.FC = () => {
             <Route
               exact
               path="/events"
-              render={() => renderPublicPage(<Events />)}
+              render={() =>
+                renderPublicPage(<Events />)
+              }
+            />
+          )}
+
+          {/* =================================================
+              GLOBAL SEARCH RESULTS — PUBLIC
+          ================================================= */}
+
+          {!IS_ADMIN_BUILD && (
+            <Route
+              exact
+              path="/search"
+              render={() =>
+                renderPublicPage(
+                  <SearchResults />
+                )
+              }
             />
           )}
 
@@ -475,7 +524,9 @@ const AppContent: React.FC = () => {
               path="/memories"
               render={() => (
                 <UserProtectedRoute>
-                  {renderPublicPage(<Memories />)}
+                  {renderPublicPage(
+                    <Memories />
+                  )}
                 </UserProtectedRoute>
               )}
             />
@@ -497,7 +548,11 @@ const AppContent: React.FC = () => {
             path="*"
             render={() => (
               <Redirect
-                to={IS_ADMIN_BUILD ? "/admin/login" : "/"}
+                to={
+                  IS_ADMIN_BUILD
+                    ? "/admin/login"
+                    : "/"
+                }
               />
             )}
           />
@@ -520,7 +575,9 @@ interface WelcomeWithHeaderProps {
   onSearch: (query: string) => void;
 }
 
-const WelcomeWithHeader: React.FC<WelcomeWithHeaderProps> = ({
+const WelcomeWithHeader: React.FC<
+  WelcomeWithHeaderProps
+> = ({
   onMenuClick,
   onSearch,
 }) => {
