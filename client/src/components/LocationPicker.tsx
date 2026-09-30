@@ -7,6 +7,7 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
+import { vectorTileLayer } from "esri-leaflet-vector";
 import {
   Crosshair,
   Map as MapIcon,
@@ -16,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 const markerIcon = L.icon({
   iconUrl:
@@ -55,6 +57,19 @@ type MapLayer = "street" | "satellite" | "terrain";
 const DEFAULT_LATITUDE = 12.0668;
 const DEFAULT_LONGITUDE = 124.6041;
 
+/*
+ * Current Esri Hybrid Reference Layer.
+ *
+ * This is a vector reference layer designed to sit on top
+ * of satellite imagery. It provides place labels, roads,
+ * parks, landmarks, administrative boundaries, etc.
+ *
+ * It is a public ArcGIS item and does not require us to
+ * put an ArcGIS API key into this project.
+ */
+const ESRI_HYBRID_REFERENCE_LAYER_ID =
+  "af6063d6906c4eb589dfe03819610660";
+
 function MapClickHandler({
   onLocationChange,
 }: {
@@ -93,9 +108,66 @@ function MapResizeHandler() {
   const map = useMap();
 
   useEffect(() => {
-    const timer = window.setTimeout(() => map.invalidateSize(), 150);
+    const timer = window.setTimeout(() => {
+      map.invalidateSize();
+    }, 150);
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [map]);
+
+  return null;
+}
+
+/*
+ * Satellite label/reference layer.
+ *
+ * The satellite imagery itself is raster imagery.
+ * This vector layer is placed above it so labels remain
+ * visible over the satellite image.
+ */
+function SatelliteReferenceLayer() {
+  const map = useMap();
+
+  useEffect(() => {
+    const paneName = "location-reference-pane";
+
+    /*
+     * Create a dedicated Leaflet pane so the reference
+     * labels stay above the satellite imagery but below
+     * the marker.
+     */
+    let pane = map.getPane(paneName);
+
+    if (!pane) {
+      pane = map.createPane(paneName);
+    }
+
+    pane.style.zIndex = "450";
+    pane.style.pointerEvents = "none";
+
+    /*
+     * Esri Hybrid Reference Layer.
+     *
+     * It is intentionally added only while the Satellite
+     * layer is active because this component only exists
+     * in Satellite mode.
+     */
+    const referenceLayer = vectorTileLayer(
+      ESRI_HYBRID_REFERENCE_LAYER_ID,
+      {
+        pane: paneName,
+      }
+    );
+
+    referenceLayer.addTo(map);
+
+    return () => {
+      if (map.hasLayer(referenceLayer)) {
+        map.removeLayer(referenceLayer);
+      }
+    };
   }, [map]);
 
   return null;
@@ -115,20 +187,31 @@ export default function LocationPicker({
   onChange,
 }: LocationPickerProps) {
   const initialPosition: [number, number] = [
-    typeof latitude === "number" ? latitude : DEFAULT_LATITUDE,
-    typeof longitude === "number" ? longitude : DEFAULT_LONGITUDE,
+    typeof latitude === "number"
+      ? latitude
+      : DEFAULT_LATITUDE,
+    typeof longitude === "number"
+      ? longitude
+      : DEFAULT_LONGITUDE,
   ];
 
   const [position, setPosition] =
     useState<[number, number]>(initialPosition);
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<any[]>(
+    []
+  );
   const [searching, setSearching] = useState(false);
   const [searchMessage, setSearchMessage] = useState("");
-  const [layer, setLayer] = useState<MapLayer>("street");
+  const [layer, setLayer] =
+    useState<MapLayer>("street");
   const [mapZoom, setMapZoom] = useState(16);
 
+  /*
+   * Keep the map synchronized with the Attraction form
+   * when editing an existing attraction.
+   */
   useEffect(() => {
     if (
       typeof latitude === "number" &&
@@ -139,10 +222,15 @@ export default function LocationPicker({
     }
   }, [latitude, longitude]);
 
+  /*
+   * Search existing attractions first.
+   */
   const localMatches = useMemo(() => {
     const query = normalize(searchTerm);
 
-    if (!query) return [];
+    if (!query) {
+      return [];
+    }
 
     return searchablePlaces
       .filter((place) => {
@@ -155,18 +243,26 @@ export default function LocationPicker({
         return query
           .split(/\s+/)
           .filter(Boolean)
-          .every((token) => text.includes(token));
+          .every((token) =>
+            text.includes(token)
+          );
       })
       .slice(0, 6)
       .map((place) => ({
         ...place,
         source: "local",
-        display_name: [place.name, place.address]
+        display_name: [
+          place.name,
+          place.address,
+        ]
           .filter(Boolean)
           .join(" — "),
       }));
   }, [searchTerm, searchablePlaces]);
 
+  /*
+   * Updates the selected map location.
+   */
   const handleLocationChange = (
     lat: number,
     lng: number,
@@ -179,11 +275,18 @@ export default function LocationPicker({
       latitude: lat,
       longitude: lng,
       ...(selectedAddress
-        ? { address: selectedAddress }
+        ? {
+            address: selectedAddress,
+          }
         : {}),
     });
   };
 
+  /*
+   * Search local attractions first, then use Nominatim
+   * for addresses and places that are not in the local
+   * attraction list.
+   */
   const searchLocation = async () => {
     const query = searchTerm.trim();
 
@@ -218,7 +321,9 @@ export default function LocationPicker({
       );
 
       if (!response.ok) {
-        throw new Error("Location search failed.");
+        throw new Error(
+          "Location search failed."
+        );
       }
 
       const results = await response.json();
@@ -226,31 +331,63 @@ export default function LocationPicker({
       const externalResults = Array.isArray(results)
         ? results.map((result) => ({
             source: "search",
-            name:
-              String(result.display_name || result.name || "Location")
-                .split(",")[0]
-                .trim(),
-            address: String(result.display_name || "").trim(),
-            display_name: String(result.display_name || "").trim(),
+
+            name: String(
+              result.display_name ||
+                result.name ||
+                "Location"
+            )
+              .split(",")[0]
+              .trim(),
+
+            address: String(
+              result.display_name || ""
+            ).trim(),
+
+            display_name: String(
+              result.display_name || ""
+            ).trim(),
+
             latitude: Number(result.lat),
+
             longitude: Number(result.lon),
           }))
         : [];
 
       setSearchResults((previous) => {
-        const local = previous.filter(
-          (item) => item.source === "local"
-        );
+        const existingLocalResults =
+          previous.filter(
+            (item) =>
+              item.source === "local"
+          );
 
-        const merged = [...local, ...externalResults];
+        const merged = [
+          ...existingLocalResults,
+          ...externalResults,
+        ];
+
         const seen = new Set<string>();
 
         return merged.filter((item) => {
-          const key = `${item.lat}|${item.lon}|${item.display_name}`;
+          const itemLatitude =
+            item.latitude ?? item.lat ?? "";
 
-          if (seen.has(key)) return false;
+          const itemLongitude =
+            item.longitude ?? item.lon ?? "";
+
+          const itemName =
+            item.display_name ||
+            item.name ||
+            "";
+
+          const key = `${itemLatitude}|${itemLongitude}|${itemName}`;
+
+          if (seen.has(key)) {
+            return false;
+          }
 
           seen.add(key);
+
           return true;
         });
       });
@@ -264,7 +401,10 @@ export default function LocationPicker({
         );
       }
     } catch (error) {
-      console.error("Location search failed:", error);
+      console.error(
+        "Location search failed:",
+        error
+      );
 
       if (localMatches.length === 0) {
         setSearchMessage(
@@ -276,6 +416,9 @@ export default function LocationPicker({
     }
   };
 
+  /*
+   * Select a search result.
+   */
   const selectResult = (result: any) => {
     const lat = Number(
       result.latitude ?? result.lat
@@ -295,11 +438,12 @@ export default function LocationPicker({
     const selectedAddress =
       typeof result.address === "string"
         ? result.address
-        : typeof result.display_name === "string"
-          ? result.display_name
-          : typeof result.name === "string"
-            ? result.name
-            : "";
+        : typeof result.display_name ===
+          "string"
+        ? result.display_name
+        : typeof result.name === "string"
+        ? result.name
+        : "";
 
     handleLocationChange(
       lat,
@@ -314,11 +458,15 @@ export default function LocationPicker({
     setSearchResults([]);
   };
 
+  /*
+   * Use the browser's current location.
+   */
   const useCurrentLocation = () => {
     if (!navigator.geolocation) {
       setSearchMessage(
         "Your browser does not support location access."
       );
+
       return;
     }
 
@@ -349,9 +497,18 @@ export default function LocationPicker({
     );
   };
 
+  /*
+   * Raster map layers.
+   *
+   * Satellite uses Esri World Imagery.
+   * The current Esri Hybrid Reference Layer is added
+   * separately through SatelliteReferenceLayer.
+   */
   const tileConfig = {
     street: {
-      url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      url:
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+
       attribution:
         "&copy; OpenStreetMap contributors",
     },
@@ -359,17 +516,15 @@ export default function LocationPicker({
     satellite: {
       url:
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+
       attribution:
-        "Tiles &copy; Esri | Map data &copy; OpenStreetMap contributors",
-      labelUrl:
-        "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
-      labelAttribution:
-        "Labels &copy; Esri",
+        "Tiles &copy; Esri",
     },
 
     terrain: {
       url:
         "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+
       attribution:
         "Map data &copy; OpenStreetMap contributors, SRTM | Map style &copy; OpenTopoMap",
     },
@@ -377,7 +532,6 @@ export default function LocationPicker({
 
   return (
     <div className="location-picker">
-
       {/* SEARCH AREA */}
       <div
         style={{
@@ -396,7 +550,6 @@ export default function LocationPicker({
             flexWrap: "wrap",
           }}
         >
-
           {/* SEARCH INPUT */}
           <div
             style={{
@@ -410,7 +563,8 @@ export default function LocationPicker({
                 position: "absolute",
                 left: 12,
                 top: "50%",
-                transform: "translateY(-50%)",
+                transform:
+                  "translateY(-50%)",
                 color: "#727887",
                 pointerEvents: "none",
               }}
@@ -419,18 +573,21 @@ export default function LocationPicker({
             <input
               value={searchTerm}
               onChange={(event) => {
-                setSearchTerm(event.target.value);
+                setSearchTerm(
+                  event.target.value
+                );
+
                 setSearchMessage("");
 
-                if (!event.target.value.trim()) {
+                if (
+                  !event.target.value.trim()
+                ) {
                   setSearchResults([]);
                 }
               }}
-
               /*
-               * IMPORTANT:
-               * Prevent Enter from submitting the parent
-               * Admin Attraction form.
+               * Prevent Enter from submitting
+               * the parent Attraction form.
                */
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -439,15 +596,15 @@ export default function LocationPicker({
                   searchLocation();
                 }
               }}
-
               placeholder="Search attraction name or address…"
               aria-label="Search attraction name or address"
-
               style={{
                 width: "100%",
                 minHeight: 44,
-                padding: "10px 38px 10px 38px",
-                border: "1px solid #dfe3eb",
+                padding:
+                  "10px 38px 10px 38px",
+                border:
+                  "1px solid #dfe3eb",
                 borderRadius: 11,
                 outline: "none",
                 fontSize: 13,
@@ -468,12 +625,14 @@ export default function LocationPicker({
                   position: "absolute",
                   right: 8,
                   top: "50%",
-                  transform: "translateY(-50%)",
+                  transform:
+                    "translateY(-50%)",
                   width: 28,
                   height: 28,
                   border: 0,
                   borderRadius: 8,
-                  background: "transparent",
+                  background:
+                    "transparent",
                   color: "#777d8a",
                   cursor: "pointer",
                 }}
@@ -497,10 +656,14 @@ export default function LocationPicker({
               color: "#fff",
               fontWeight: 800,
               fontSize: 12,
-              cursor: searching ? "wait" : "pointer",
+              cursor: searching
+                ? "wait"
+                : "pointer",
             }}
           >
-            {searching ? "Searching…" : "Search"}
+            {searching
+              ? "Searching…"
+              : "Search"}
           </button>
 
           {/* CURRENT LOCATION */}
@@ -511,7 +674,8 @@ export default function LocationPicker({
             style={{
               minHeight: 44,
               padding: "10px 13px",
-              border: "1px solid #dfe3eb",
+              border:
+                "1px solid #dfe3eb",
               borderRadius: 11,
               background: "#f8f9ff",
               color: "#2D3195",
@@ -531,95 +695,132 @@ export default function LocationPicker({
         {/* SEARCH RESULTS / MESSAGE */}
         {(searchResults.length > 0 ||
           searchMessage) && (
-          <div style={{ marginTop: 10 }}>
-
+          <div
+            style={{
+              marginTop: 10,
+            }}
+          >
             {searchResults.length > 0 && (
               <div
                 style={{
-                  border: "1px solid #e6e8ef",
+                  border:
+                    "1px solid #e6e8ef",
                   borderRadius: 11,
                   overflow: "hidden",
                   background: "#fff",
                 }}
               >
                 {searchResults.map(
-                  (result, index) => (
-                    <button
-                      key={`${result.lat || result.latitude}-${result.lon || result.longitude}-${index}`}
-                      type="button"
-                      onClick={() =>
-                        selectResult(result)
-                      }
-                      style={{
-                        width: "100%",
-                        display: "block",
-                        textAlign: "left",
-                        border: 0,
-                        borderBottom:
-                          index ===
-                          searchResults.length - 1
-                            ? "0"
-                            : "1px solid #eef0f4",
-                        background: "#fff",
-                        padding: "10px 12px",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <div
+                  (result, index) => {
+                    const resultLatitude =
+                      result.latitude ??
+                      result.lat ??
+                      "";
+
+                    const resultLongitude =
+                      result.longitude ??
+                      result.lon ??
+                      "";
+
+                    return (
+                      <button
+                        key={`${resultLatitude}-${resultLongitude}-${index}`}
+                        type="button"
+                        onClick={() =>
+                          selectResult(
+                            result
+                          )
+                        }
                         style={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          gap: 9,
+                          width: "100%",
+                          display: "block",
+                          textAlign:
+                            "left",
+                          border: 0,
+                          borderBottom:
+                            index ===
+                            searchResults.length -
+                              1
+                              ? "0"
+                              : "1px solid #eef0f4",
+                          background:
+                            "#fff",
+                          padding:
+                            "10px 12px",
+                          cursor:
+                            "pointer",
                         }}
                       >
-                        <MapPin
-                          size={16}
+                        <div
                           style={{
-                            marginTop: 2,
-                            color: "#2D3195",
-                            flex: "0 0 auto",
-                          }}
-                        />
-
-                        <span
-                          style={{
-                            minWidth: 0,
+                            display:
+                              "flex",
+                            alignItems:
+                              "flex-start",
+                            gap: 9,
                           }}
                         >
-                          <span
+                          <MapPin
+                            size={16}
                             style={{
-                              display: "block",
-                              color: "#252936",
-                              fontWeight: 800,
-                              fontSize: 12,
+                              marginTop: 2,
+                              color:
+                                "#2D3195",
+                              flex:
+                                "0 0 auto",
                             }}
-                          >
-                            {result.name ||
-                              String(
-                                result.display_name ||
-                                  "Location"
-                              ).split(",")[0]}
-                          </span>
+                          />
 
                           <span
                             style={{
-                              display: "block",
-                              marginTop: 2,
-                              color: "#7b8190",
-                              fontSize: 11,
-                              lineHeight: 1.4,
+                              minWidth: 0,
                             }}
                           >
-                            {String(
-                              typeof result.address === "string"
-                                ? result.address
-                                : result.display_name || ""
-                            )}
+                            <span
+                              style={{
+                                display:
+                                  "block",
+                                color:
+                                  "#252936",
+                                fontWeight:
+                                  800,
+                                fontSize: 12,
+                              }}
+                            >
+                              {result.name ||
+                                String(
+                                  result.display_name ||
+                                    "Location"
+                                ).split(
+                                  ","
+                                )[0]}
+                            </span>
+
+                            <span
+                              style={{
+                                display:
+                                  "block",
+                                marginTop: 2,
+                                color:
+                                  "#7b8190",
+                                fontSize: 11,
+                                lineHeight:
+                                  1.4,
+                              }}
+                            >
+                              {String(
+                                typeof result.address ===
+                                  "string"
+                                  ? result.address
+                                  : result.display_name ||
+                                      ""
+                              )}
+                            </span>
                           </span>
-                        </span>
-                      </div>
-                    </button>
-                  )
+                        </div>
+                      </button>
+                    );
+                  }
                 )}
               </div>
             )}
@@ -627,9 +828,10 @@ export default function LocationPicker({
             {searchMessage && (
               <div
                 style={{
-                  marginTop: searchResults.length
-                    ? 8
-                    : 0,
+                  marginTop:
+                    searchResults.length
+                      ? 8
+                      : 0,
                   color: "#737987",
                   fontSize: 11,
                   fontWeight: 600,
@@ -646,7 +848,8 @@ export default function LocationPicker({
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          justifyContent:
+            "space-between",
           gap: 8,
           alignItems: "center",
           flexWrap: "wrap",
@@ -665,17 +868,23 @@ export default function LocationPicker({
               [
                 "street",
                 "Street",
-                <MapIcon size={13} />,
+                <MapIcon
+                  size={13}
+                />,
               ],
               [
                 "satellite",
                 "Satellite",
-                <Satellite size={13} />,
+                <Satellite
+                  size={13}
+                />,
               ],
               [
                 "terrain",
                 "Terrain",
-                <MapIcon size={13} />,
+                <MapIcon
+                  size={13}
+                />,
               ],
             ] as const
           ).map(
@@ -687,11 +896,14 @@ export default function LocationPicker({
                   setLayer(value)
                 }
                 style={{
-                  display: "inline-flex",
-                  alignItems: "center",
+                  display:
+                    "inline-flex",
+                  alignItems:
+                    "center",
                   gap: 5,
                   minHeight: 34,
-                  padding: "7px 10px",
+                  padding:
+                    "7px 10px",
                   border: `1px solid ${
                     layer === value
                       ? "#2D3195"
@@ -708,7 +920,8 @@ export default function LocationPicker({
                       : "#606674",
                   fontSize: 11,
                   fontWeight: 800,
-                  cursor: "pointer",
+                  cursor:
+                    "pointer",
                 }}
               >
                 {icon}
@@ -725,8 +938,8 @@ export default function LocationPicker({
             fontWeight: 700,
           }}
         >
-          Search first, then drag or click the pin
-          to fine-tune.
+          Search first, then drag or
+          click the pin to fine-tune.
         </span>
       </div>
 
@@ -735,7 +948,8 @@ export default function LocationPicker({
         style={{
           overflow: "hidden",
           borderRadius: 14,
-          border: "1px solid #dfe3eb",
+          border:
+            "1px solid #dfe3eb",
           boxShadow:
             "0 6px 18px rgba(26,30,53,.06)",
         }}
@@ -749,18 +963,26 @@ export default function LocationPicker({
             width: "100%",
           }}
         >
+          {/* BASE MAP */}
           <TileLayer
-            attribution={tileConfig.attribution}
+            attribution={
+              tileConfig.attribution
+            }
             url={tileConfig.url}
           />
 
-          {layer === "satellite" && "labelUrl" in tileConfig && (
-            <TileLayer
-              attribution={tileConfig.labelAttribution}
-              url={tileConfig.labelUrl}
-              opacity={1}
-              zIndex={400}
-            />
+          {/*
+           * SATELLITE LABELS
+           *
+           * This is the important change.
+           *
+           * The Hybrid Reference Layer is rendered
+           * above World Imagery so place names,
+           * roads, parks, landmarks, and boundaries
+           * remain visible.
+           */}
+          {layer === "satellite" && (
+            <SatelliteReferenceLayer />
           )}
 
           <MapCenter
@@ -783,6 +1005,7 @@ export default function LocationPicker({
             }
           />
 
+          {/* DRAGGABLE LOCATION PIN */}
           <Marker
             position={position}
             icon={markerIcon}
@@ -809,15 +1032,22 @@ export default function LocationPicker({
       <div
         style={{
           marginTop: 10,
-          padding: "10px 12px",
+          padding:
+            "10px 12px",
           borderRadius: 11,
-          background: "#f7f8fc",
-          border: "1px solid #e7e9f0",
-          display: "flex",
-          justifyContent: "space-between",
+          background:
+            "#f7f8fc",
+          border:
+            "1px solid #e7e9f0",
+          display:
+            "flex",
+          justifyContent:
+            "space-between",
           gap: 12,
-          flexWrap: "wrap",
-          alignItems: "center",
+          flexWrap:
+            "wrap",
+          alignItems:
+            "center",
         }}
       >
         <div
@@ -829,7 +1059,8 @@ export default function LocationPicker({
         >
           <strong
             style={{
-              color: "#2D3195",
+              color:
+                "#2D3195",
             }}
           >
             Pinned location:
@@ -840,13 +1071,19 @@ export default function LocationPicker({
 
         <div
           style={{
-            color: "#7a808e",
+            color:
+              "#7a808e",
             fontSize: 10.5,
             fontWeight: 800,
           }}
         >
-          {position[0].toFixed(6)},{" "}
-          {position[1].toFixed(6)}
+          {position[0].toFixed(
+            6
+          )}
+          ,{" "}
+          {position[1].toFixed(
+            6
+          )}
         </div>
       </div>
     </div>
