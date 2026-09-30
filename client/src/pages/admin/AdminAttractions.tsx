@@ -2899,24 +2899,25 @@ location_lng: form.location_lng,
                 </div>
 
                 <LocationPicker
-                  latitude={form.location_lat}
-                  longitude={form.location_lng}
-                  address={form.location_address}
-                  category={form.category}
-                  attractionType={form.attraction_type}
-                  searchablePlaces={items.map((item: any) => ({
-                    id: item.id,
-                    name: item.name,
-                    address: item.location_address,
-                    latitude: item.location_lat,
-                    longitude: item.location_lng,
-                  }))}
-                  onChange={({ latitude, longitude, address }) => {
-                    fc("location_lat", latitude);
-                    fc("location_lng", longitude);
-                    if (address) fc("location_address", address);
-                  }}
-                />
+  name={form.name}
+  latitude={form.location_lat}
+  longitude={form.location_lng}
+  address={form.location_address}
+  category={form.category}
+  attractionType={form.attraction_type}
+  searchablePlaces={items.map((item: any) => ({
+    id: item.id,
+    name: item.name,
+    address: item.location_address,
+    latitude: item.location_lat,
+    longitude: item.location_lng,
+  }))}
+  onChange={({ latitude, longitude, address }) => {
+    fc("location_lat", latitude);
+    fc("location_lng", longitude);
+    if (address) fc("location_address", address);
+  }}
+/>
 
                 <Form.Label className="fw-semibold mt-3">Address</Form.Label>
                 <Form.Control
