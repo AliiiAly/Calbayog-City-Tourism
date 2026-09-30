@@ -359,7 +359,12 @@ export default function LocationPicker({
     satellite: {
       url:
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      attribution: "Tiles &copy; Esri",
+      attribution:
+        "Tiles &copy; Esri | Map data &copy; OpenStreetMap contributors",
+      labelUrl:
+        "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+      labelAttribution:
+        "Labels &copy; Esri",
     },
 
     terrain: {
@@ -748,6 +753,15 @@ export default function LocationPicker({
             attribution={tileConfig.attribution}
             url={tileConfig.url}
           />
+
+          {layer === "satellite" && "labelUrl" in tileConfig && (
+            <TileLayer
+              attribution={tileConfig.labelAttribution}
+              url={tileConfig.labelUrl}
+              opacity={1}
+              zIndex={400}
+            />
+          )}
 
           <MapCenter
             latitude={position[0]}
