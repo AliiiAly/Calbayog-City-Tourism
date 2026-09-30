@@ -225,8 +225,15 @@ export default function LocationPicker({
 
       const externalResults = Array.isArray(results)
         ? results.map((result) => ({
-            ...result,
             source: "search",
+            name:
+              String(result.display_name || result.name || "Location")
+                .split(",")[0]
+                .trim(),
+            address: String(result.display_name || "").trim(),
+            display_name: String(result.display_name || "").trim(),
+            latitude: Number(result.lat),
+            longitude: Number(result.lon),
           }))
         : [];
 
@@ -286,10 +293,13 @@ export default function LocationPicker({
     }
 
     const selectedAddress =
-      result.address ||
-      result.display_name ||
-      result.name ||
-      "";
+      typeof result.address === "string"
+        ? result.address
+        : typeof result.display_name === "string"
+          ? result.display_name
+          : typeof result.name === "string"
+            ? result.name
+            : "";
 
     handleLocationChange(
       lat,
@@ -341,7 +351,7 @@ export default function LocationPicker({
 
   const tileConfig = {
     street: {
-      url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
       attribution:
         "&copy; OpenStreetMap contributors",
     },
@@ -595,8 +605,11 @@ export default function LocationPicker({
                               lineHeight: 1.4,
                             }}
                           >
-                            {result.address ||
-                              result.display_name}
+                            {String(
+                              typeof result.address === "string"
+                                ? result.address
+                                : result.display_name || ""
+                            )}
                           </span>
                         </span>
                       </div>
