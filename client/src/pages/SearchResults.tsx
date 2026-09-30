@@ -774,7 +774,7 @@ const SearchResults: React.FC =
             flex: 0 0 auto;
             border-radius: 15px;
             background: #eef0ff;
-            color: ${CALBAYOG_BLUE};
+            color: #4f46e5;
           }
 
           .search-results-eyebrow {
@@ -879,7 +879,7 @@ const SearchResults: React.FC =
             justify-content: center;
             border-radius: 999px;
             background: #eef0ff;
-            color: ${CALBAYOG_BLUE};
+            color: #4f46e5;
             font-size: 0.66rem;
             font-weight: 800;
           }
@@ -908,7 +908,7 @@ const SearchResults: React.FC =
           }
 
           .search-results-state svg {
-            color: ${CALBAYOG_BLUE};
+            color: #4f46e5;
           }
 
           .search-results-state h2 {
