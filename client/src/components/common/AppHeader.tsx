@@ -2130,7 +2130,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   onSearch,
   showSearch = true,
   searchPath = "/destinations",
-  searchPlaceholder = "Search destinations, events, guides...",
+  searchPlaceholder = "Search attractions, events, hotels & resorts...",
   showAnnouncements = true,
   extraActions,
   isAdmin = false,
