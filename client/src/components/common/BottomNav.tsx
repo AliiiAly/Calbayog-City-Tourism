@@ -299,6 +299,75 @@ const BottomNav: React.FC<BottomNavProps> = () => {
           }
 
           /* ==========================================================
+             PHONE RESPONSIVE BEHAVIOR
+             
+             Mobile:
+             - Clickable tel link
+
+             Desktop:
+             - Plain text only
+             - Does not attempt to open a phone application
+          ========================================================== */
+
+          .calbayog-footer-phone-mobile {
+            display: none;
+          }
+
+          .calbayog-footer-phone-desktop {
+            display: block;
+          }
+
+          /* ==========================================================
+             EMAIL
+          ========================================================== */
+
+          .calbayog-footer-email-link {
+            display: flex;
+
+            align-items: flex-start;
+
+            gap: 9px;
+
+            width: 100%;
+
+            min-width: 0;
+
+            color: #000000;
+
+            text-decoration: none;
+          }
+
+          .calbayog-footer-email-link:hover {
+            color: #000000;
+          }
+
+          /* ==========================================================
+             ADDRESS
+          ========================================================== */
+
+          .calbayog-footer-address-link {
+            display: flex;
+
+            align-items: flex-start;
+
+            gap: 9px;
+
+            width: 100%;
+
+            min-width: 0;
+
+            color: #000000;
+
+            text-decoration: none;
+
+            cursor: pointer;
+          }
+
+          .calbayog-footer-address-link:hover {
+            color: #000000;
+          }
+
+          /* ==========================================================
              FACEBOOK
           ========================================================== */
 
@@ -316,6 +385,8 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             color: #000000;
 
             text-decoration: none;
+
+            cursor: default;
           }
 
           .calbayog-footer-facebook-icon {
@@ -373,11 +444,6 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             line-height: 1.5;
 
             overflow-wrap: anywhere;
-          }
-
-          .calbayog-footer-facebook-link:hover
-            .calbayog-footer-facebook-name {
-            color: #000000;
           }
 
           /* ==========================================================
@@ -505,7 +571,9 @@ const BottomNav: React.FC<BottomNavProps> = () => {
               font-size: 0.75rem;
             }
 
-            .calbayog-footer-contact {
+            .calbayog-footer-contact,
+            .calbayog-footer-email-link,
+            .calbayog-footer-address-link {
               font-size: 0.69rem;
             }
 
@@ -575,7 +643,9 @@ const BottomNav: React.FC<BottomNavProps> = () => {
               gap: 9px;
             }
 
-            .calbayog-footer-contact {
+            .calbayog-footer-contact,
+            .calbayog-footer-email-link,
+            .calbayog-footer-address-link {
               gap: 6px;
 
               font-size: 0.62rem;
@@ -697,7 +767,9 @@ const BottomNav: React.FC<BottomNavProps> = () => {
               gap: 7px;
             }
 
-            .calbayog-footer-contact {
+            .calbayog-footer-contact,
+            .calbayog-footer-email-link,
+            .calbayog-footer-address-link {
               gap: 4px;
 
               font-size: 0.51rem;
@@ -777,6 +849,15 @@ const BottomNav: React.FC<BottomNavProps> = () => {
               width: 9px;
               height: 9px;
             }
+
+            /* MOBILE PHONE = CLICKABLE */
+            .calbayog-footer-phone-mobile {
+              display: block;
+            }
+
+            .calbayog-footer-phone-desktop {
+              display: none;
+            }
           }
 
           /* ==========================================================
@@ -828,7 +909,9 @@ const BottomNav: React.FC<BottomNavProps> = () => {
               gap: 6px;
             }
 
-            .calbayog-footer-contact {
+            .calbayog-footer-contact,
+            .calbayog-footer-email-link,
+            .calbayog-footer-address-link {
               gap: 3px;
 
               font-size: 0.46rem;
@@ -931,7 +1014,9 @@ const BottomNav: React.FC<BottomNavProps> = () => {
               font-size: 0.49rem;
             }
 
-            .calbayog-footer-contact {
+            .calbayog-footer-contact,
+            .calbayog-footer-email-link,
+            .calbayog-footer-address-link {
               font-size: 0.42rem;
             }
 
@@ -1022,7 +1107,9 @@ const BottomNav: React.FC<BottomNavProps> = () => {
               font-size: 0.45rem;
             }
 
-            .calbayog-footer-contact {
+            .calbayog-footer-contact,
+            .calbayog-footer-email-link,
+            .calbayog-footer-address-link {
               font-size: 0.39rem;
             }
 
@@ -1101,11 +1188,18 @@ const BottomNav: React.FC<BottomNavProps> = () => {
 
           <div className="calbayog-footer-contact-list">
 
-            <a
-              href="tel:09602146409"
-              className="calbayog-footer-contact"
-              aria-label="Call Calbayog City Tourism"
-            >
+            {/* ======================================================
+                PHONE
+
+                MOBILE:
+                Clickable tel link
+
+                DESKTOP:
+                Plain text
+            ====================================================== */}
+
+            <div className="calbayog-footer-contact">
+
               <span className="calbayog-footer-contact-icon">
                 <FooterIcon
                   name="phone"
@@ -1114,13 +1208,31 @@ const BottomNav: React.FC<BottomNavProps> = () => {
               </span>
 
               <span className="calbayog-footer-contact-text">
-                0960 2146 409
+
+                {/* MOBILE */}
+                <a
+                  href="tel:09602146409"
+                  className="calbayog-footer-phone-mobile"
+                  aria-label="Call Calbayog City Tourism"
+                >
+                  0960 2146 409
+                </a>
+
+                {/* DESKTOP */}
+                <span className="calbayog-footer-phone-desktop">
+                  0960 2146 409
+                </span>
+
               </span>
-            </a>
+            </div>
+
+            {/* ======================================================
+                EMAIL
+            ====================================================== */}
 
             <a
               href="mailto:calbayogtourism@gmail.com"
-              className="calbayog-footer-contact"
+              className="calbayog-footer-email-link"
               aria-label="Email Calbayog City Tourism"
             >
               <span className="calbayog-footer-contact-icon">
@@ -1135,7 +1247,20 @@ const BottomNav: React.FC<BottomNavProps> = () => {
               </span>
             </a>
 
-            <div className="calbayog-footer-contact">
+            {/* ======================================================
+                ADDRESS
+
+                Opens Google Maps.
+                Works on both desktop and mobile.
+            ====================================================== */}
+
+            <a
+              href="https://www.google.com/maps/search/?api=1&query=Gelera+St,+Nijaga+Park,+Calbayog+City,+Samar+6710"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="calbayog-footer-address-link"
+              aria-label="Open Calbayog City Tourism Office location in Google Maps"
+            >
               <span className="calbayog-footer-contact-icon">
                 <FooterIcon
                   name="location"
@@ -1148,7 +1273,7 @@ const BottomNav: React.FC<BottomNavProps> = () => {
                 <br />
                 Calbayog City, Samar 6710
               </span>
-            </div>
+            </a>
 
           </div>
         </div>
@@ -1162,11 +1287,15 @@ const BottomNav: React.FC<BottomNavProps> = () => {
             Follow Us
           </h3>
 
-          <a
-            href="#"
+          {/*
+            The original file did not contain the official Facebook URL.
+            Therefore this remains informational and is NOT made into
+            a fake clickable link.
+          */}
+
+          <div
             className="calbayog-footer-facebook-link"
             aria-label="Calbayog City Tourism Office Facebook"
-            onClick={(e) => e.preventDefault()}
           >
             <span className="calbayog-footer-facebook-icon">
               <FooterIcon
@@ -1184,7 +1313,7 @@ const BottomNav: React.FC<BottomNavProps> = () => {
                 Follow us on Facebook
               </span>
             </span>
-          </a>
+          </div>
         </div>
 
       </div>
