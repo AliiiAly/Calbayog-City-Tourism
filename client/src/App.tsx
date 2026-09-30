@@ -34,6 +34,7 @@ import ItineraryPlanner from "./pages/ItineraryPlanner";
 import ItineraryRequest from "./pages/ItineraryRequest";
 import Events from "./pages/Events";
 import Memories from "./pages/Memories";
+import SearchResults from "./pages/SearchResults";
 import UserLogin from "./pages/UserLogin";
 import VerifyEmail from "./components/VerifyEmail";
 
@@ -172,10 +173,10 @@ const AppContent: React.FC = () => {
   ========================================================= */
 
   const handleSearch = (query: string) => {
-    history.push(
-      `/attractions?search=${encodeURIComponent(query)}`
-    );
-  };
+  history.push(
+    `/search?query=${encodeURIComponent(query)}`
+  );
+};
 
   /* =========================================================
      SHARED PUBLIC HEADER
