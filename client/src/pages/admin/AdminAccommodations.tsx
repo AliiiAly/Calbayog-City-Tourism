@@ -23,6 +23,7 @@ import {
   Image as ImageIcon,
   Info,
   MapPin,
+  MapPinned,
   Pencil,
   Phone,
   Plus,
