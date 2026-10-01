@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   MapContainer,
@@ -86,10 +85,6 @@ interface OverpassElement {
   tags?: Record<string, string>;
 }
 
-interface OverpassResponse {
-  elements?: OverpassElement[];
-}
-
 const CATEGORY_MARKER_DESIGNS: Record<
   string,
   { color: string; icon: string }
@@ -145,10 +140,7 @@ const createAttractionMarkerIcon = (
     className: "calbayog-location-marker",
     html: `
       <div class="calbayog-marker-shell">
-        <div
-          class="calbayog-marker-pin"
-          style="background:${design.color}"
-        ></div>
+        <div class="calbayog-marker-pin" style="background:${design.color}"></div>
         <div class="calbayog-marker-icon">${glyph}</div>
       </div>
     `,
@@ -161,17 +153,16 @@ const createAttractionMarkerIcon = (
 
 const mappedPlaceIcon = L.divIcon({
   className: "calbayog-osm-place-marker",
-  html: `
-    <div class="calbayog-osm-place-marker-inner">
-      ✦
-    </div>
-  `,
+  html: `<div class="calbayog-osm-place-marker-inner">✦</div>`,
   iconSize: [29, 29],
   iconAnchor: [14, 14],
   popupAnchor: [0, -14],
 });
 
-const tileLayers: Record<MapLayer, { url: string; attribution: string }> = {
+const tileLayers: Record<
+  MapLayer,
+  { url: string; attribution: string }
+> = {
   street: {
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     attribution:
@@ -188,10 +179,12 @@ const tileLayers: Record<MapLayer, { url: string; attribution: string }> = {
   },
 };
 
-const OVERPASS_ENDPOINTS = [
-  "https://overpass-api.de/api/interpreter",
-  "https://overpass.kumi.systems/api/interpreter",
-];
+/*
+ * This transparent Esri layer adds place names and other reference labels
+ * on top of satellite imagery. It is not a second satellite imagery layer.
+ */
+const SATELLITE_LABELS_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Reference_Overlay/MapServer/tile/{z}/{y}/{x}";
 
 function getMappedPlaceCategory(tags: Record<string, string>) {
   if (tags.tourism) {
@@ -284,11 +277,7 @@ async function geocodeLocation(query: string): Promise<SearchResult[]> {
       `${cleanedQuery}, Calbayog City, Samar, Philippines`,
     )}`;
 
-  const response = await fetch(url, {
-    headers: {
-      Accept: "application/json",
-    },
-  });
+  const response = await fetch(url);
 
   if (!response.ok) {
     throw new Error("The location service could not complete the search.");
@@ -304,11 +293,13 @@ async function geocodeLocation(query: string): Promise<SearchResult[]> {
     : [];
 }
 
-/**
- * Loads named places from OpenStreetMap into a separate marker layer.
+/*
+ * Additional places are displayed separately from the selected attraction.
+ * They are never automatically saved to Supabase.
  *
- * These markers are not automatically saved to Supabase and do not
- * replace the currently selected attraction marker.
+ * GET is used instead of POST to avoid the unnecessary POST preflight
+ * that was visible in the browser console. CORS restrictions can still
+ * occur on public services; this component tries both endpoints.
  */
 function OpenStreetMapPlaces({
   enabled,
@@ -318,7 +309,6 @@ function OpenStreetMapPlaces({
   onSelect: (place: OpenStreetMapPlace) => void;
 }) {
   const map = useMap();
-
   const [places, setPlaces] = useState<OpenStreetMapPlace[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadMessage, setLoadMessage] = useState("");
@@ -327,55 +317,43 @@ function OpenStreetMapPlaces({
   const lastRequestAt = useRef(0);
   const requestTimer = useRef<number | null>(null);
   const activeController = useRef<AbortController | null>(null);
-  const mountedRef = useRef(true);
-
-  useEffect(() => {
-    mountedRef.current = true;
-
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
 
   const loadPlaces = useCallback(async () => {
     if (!enabled) {
       return;
     }
 
-    const zoom = map.getZoom();
-
-    // Require a close enough zoom so queries stay small.
-    if (zoom < 13) {
+    /*
+     * Nearby mapped-place requests are restricted to reasonably close
+     * zoom levels and a small visible area.
+     */
+    if (map.getZoom() < 12) {
       setPlaces([]);
-      setLoadMessage("Zoom in to level 13 or closer to load nearby places.");
+      setLoadMessage("Zoom in to see nearby mapped places.");
       return;
     }
 
     const bounds = map.getBounds();
-
     const south = Math.max(-90, bounds.getSouth());
     const west = Math.max(-180, bounds.getWest());
     const north = Math.min(90, bounds.getNorth());
     const east = Math.min(180, bounds.getEast());
 
-    // Avoid large Overpass queries.
-    if (north - south > 0.22 || east - west > 0.22) {
-      setPlaces([]);
+    if (north - south > 0.45 || east - west > 0.45) {
       setLoadMessage("Zoom in a little more to load nearby mapped places.");
       return;
     }
 
     const round = (value: number) => value.toFixed(4);
-
-    const boundsKey = [south, west, north, east]
-      .map(round)
-      .join(",");
+    const boundsKey = [south, west, north, east].map(round).join(",");
 
     if (boundsKey === lastBoundsKey.current) {
       return;
     }
 
-    // Avoid repeatedly sending requests to public Overpass servers.
+    /*
+     * Space requests apart to avoid overloading public Overpass services.
+     */
     const elapsed = Date.now() - lastRequestAt.current;
 
     if (elapsed < 8000) {
@@ -385,77 +363,68 @@ function OpenStreetMapPlaces({
 
       requestTimer.current = window.setTimeout(() => {
         void loadPlaces();
-      }, 8000 - elapsed + 100);
+      }, 8000 - elapsed);
 
       return;
     }
-
-    lastBoundsKey.current = boundsKey;
-    lastRequestAt.current = Date.now();
 
     activeController.current?.abort();
 
     const controller = new AbortController();
     activeController.current = controller;
+    lastRequestAt.current = Date.now();
+    setLoading(true);
+    setLoadMessage("Loading nearby mapped places…");
 
     const bbox =
       `${round(south)},${round(west)},` +
       `${round(north)},${round(east)}`;
 
-    /*
-     * Important fixes:
-     * - Use "out tags center;" so ways and relations can return centers.
-     * - Query named amenities and shops for both nodes and ways.
-     * - Include natural, tourism, historic and leisure features.
-     */
     const query = `
-      [out:json][timeout:25];
+      [out:json][timeout:20];
       (
-        nwr["name"]["tourism"](${bbox});
-        nwr["name"]["historic"](${bbox});
-        nwr["name"]["natural"](${bbox});
-        nwr["name"]["leisure"](${bbox});
-        nwr["name"]["amenity"](${bbox});
-        nwr["name"]["shop"](${bbox});
+        node["name"]["tourism"](${bbox});
+        way["name"]["tourism"](${bbox});
+        node["name"]["historic"](${bbox});
+        way["name"]["historic"](${bbox});
+        node["name"]["natural"](${bbox});
+        way["name"]["natural"](${bbox});
+        node["name"]["leisure"](${bbox});
+        way["name"]["leisure"](${bbox});
+        node["name"]["amenity"](${bbox});
+        way["name"]["amenity"](${bbox});
+        node["name"]["shop"](${bbox});
+        way["name"]["shop"](${bbox});
       );
-      out tags center;
+      out center tags;
     `;
 
-    setLoading(true);
-    setLoadMessage("Loading nearby places from OpenStreetMap…");
+    /*
+     * Try the alternate service first, then the main Overpass service.
+     * A failed request does not permanently mark these map bounds as loaded.
+     */
+    const endpoints = [
+      "https://overpass.kumi.systems/api/interpreter",
+      "https://overpass-api.de/api/interpreter",
+    ];
 
-    let succeeded = false;
-    let lastError: unknown = null;
-
-    for (const endpoint of OVERPASS_ENDPOINTS) {
-      if (controller.signal.aborted) {
-        return;
-      }
-
+    for (const endpoint of endpoints) {
       try {
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-            Accept: "application/json",
-          },
-          body: `data=${encodeURIComponent(query)}`,
+        const url = `${endpoint}?data=${encodeURIComponent(query)}`;
+
+        const response = await fetch(url, {
+          method: "GET",
           signal: controller.signal,
         });
 
         if (!response.ok) {
-          throw new Error(
-            `OpenStreetMap returned HTTP ${response.status}.`,
-          );
+          throw new Error(`Map place service returned ${response.status}.`);
         }
 
-        const data: OverpassResponse = await response.json();
+        const data: { elements?: OverpassElement[] } =
+          await response.json();
 
-        if (!Array.isArray(data.elements)) {
-          throw new Error("The map service returned an invalid response.");
-        }
-
-        const mappedPlaces = data.elements
+        const mappedPlaces = (data.elements || [])
           .map((element): OpenStreetMapPlace | null => {
             const latitude = Number(
               element.lat ?? element.center?.lat,
@@ -482,7 +451,6 @@ function OpenStreetMapPlaces({
             }
 
             const address = [
-              tags["addr:housenumber"],
               tags["addr:street"],
               tags["addr:suburb"],
               tags["addr:city"],
@@ -504,7 +472,6 @@ function OpenStreetMapPlaces({
             (place): place is OpenStreetMapPlace => place !== null,
           );
 
-        // Remove duplicate results returned under different OSM objects.
         const unique = new Map<string, OpenStreetMapPlace>();
 
         for (const place of mappedPlaces) {
@@ -518,27 +485,24 @@ function OpenStreetMapPlaces({
           }
         }
 
-        if (controller.signal.aborted || !mountedRef.current) {
+        const results = Array.from(unique.values()).slice(0, 100);
+
+        if (controller.signal.aborted) {
           return;
         }
 
-        const result = Array.from(unique.values()).slice(0, 150);
-
-        setPlaces(result);
+        setPlaces(results);
+        lastBoundsKey.current = boundsKey;
         setLoadMessage(
-          result.length > 0
-            ? `${result.length} nearby mapped places loaded.`
-            : "No named places were found in this area. Try moving the map or zooming out slightly, then zooming back in.",
+          results.length > 0
+            ? `${results.length} nearby mapped places loaded.`
+            : "No named places were found in this area. Try moving the map or searching for a place.",
         );
-
-        succeeded = true;
         return;
       } catch (error) {
         if (controller.signal.aborted) {
           return;
         }
-
-        lastError = error;
 
         console.warn(
           `Could not load nearby places from ${endpoint}:`,
@@ -547,20 +511,10 @@ function OpenStreetMapPlaces({
       }
     }
 
-    if (!succeeded && !controller.signal.aborted && mountedRef.current) {
-      // Allow a later map movement to retry this same area.
-      lastBoundsKey.current = "";
-
-      setPlaces([]);
+    if (!controller.signal.aborted) {
       setLoadMessage(
-        "Nearby places could not be loaded right now. The map service may be busy. Move the map slightly or try again later.",
+        "Nearby places could not be loaded from the map service. You can still search for a location or set the attraction pin manually.",
       );
-
-      console.warn("All OpenStreetMap place requests failed:", lastError);
-    }
-
-    if (mountedRef.current && !controller.signal.aborted) {
-      setLoading(false);
     }
   }, [enabled, map]);
 
@@ -568,14 +522,10 @@ function OpenStreetMapPlaces({
     if (!enabled) {
       setPlaces([]);
       setLoadMessage("");
-      setLoading(false);
-      lastBoundsKey.current = "";
-
       activeController.current?.abort();
 
       if (requestTimer.current !== null) {
         window.clearTimeout(requestTimer.current);
-        requestTimer.current = null;
       }
 
       return;
@@ -592,7 +542,7 @@ function OpenStreetMapPlaces({
 
       requestTimer.current = window.setTimeout(() => {
         void loadPlaces();
-      }, 700);
+      }, 800);
     };
 
     map.on("moveend zoomend", onMapChange);
@@ -602,7 +552,6 @@ function OpenStreetMapPlaces({
 
       if (requestTimer.current !== null) {
         window.clearTimeout(requestTimer.current);
-        requestTimer.current = null;
       }
 
       map.off("moveend zoomend", onMapChange);
@@ -621,18 +570,17 @@ function OpenStreetMapPlaces({
           key={place.id}
           position={[place.latitude, place.longitude]}
           icon={mappedPlaceIcon}
-          zIndexOffset={100}
+          zIndexOffset={-100}
         >
           <Popup>
             <div className="calbayog-location-popup">
               <strong>{place.name}</strong>
-
               <span>{place.category}</span>
 
               {place.address && <span>{place.address}</span>}
 
               <span className="calbayog-osm-credit">
-                OpenStreetMap mapped place
+                Place data from OpenStreetMap
               </span>
 
               <button
@@ -647,10 +595,16 @@ function OpenStreetMapPlaces({
         </Marker>
       ))}
 
-      {(loading || loadMessage) && (
-        <div className="calbayog-osm-status" aria-live="polite">
-          {loading && <LoaderCircle size={13} className="calbayog-spin" />}
-          <span>{loadMessage}</span>
+      {loading && (
+        <div className="calbayog-map-status">
+          <LoaderCircle size={14} className="calbayog-spin" />
+          Loading nearby places…
+        </div>
+      )}
+
+      {!loading && loadMessage && (
+        <div className="calbayog-map-status" role="status">
+          {loadMessage}
         </div>
       )}
     </>
@@ -691,7 +645,7 @@ export default function LocationPicker({
   const [mapZoom, setMapZoom] = useState(
     validInitialCoordinates ? 17 : 13,
   );
-  const [selectedPlaceName, setSelectedPlaceName] = useState("");
+  const [selectedPlaceName, setSelectedPlaceName] = useState(name || "");
   const [selectedPlaceAddress, setSelectedPlaceAddress] = useState(
     address || "",
   );
@@ -814,7 +768,7 @@ export default function LocationPicker({
         const lng = result.longitude ?? result.lon ?? "";
 
         const key = result.id
-          ? `local:${result.id}`
+          ? `${result.source || "result"}:${result.id}`
           : `${normalize(result.name)}|${lat}|${lng}|${normalize(
               result.display_name,
             )}`;
@@ -868,8 +822,8 @@ export default function LocationPicker({
     const lng = Number(result.longitude ?? result.lon);
 
     const hasCoordinates =
-      result.latitude != null &&
-      result.longitude != null &&
+      (result.latitude != null || result.lat != null) &&
+      (result.longitude != null || result.lon != null) &&
       Number.isFinite(lat) &&
       Number.isFinite(lng) &&
       Math.abs(lat) <= 90 &&
@@ -885,7 +839,7 @@ export default function LocationPicker({
       setSearchResults([]);
       setSearchTerm(resultName);
       setSearchMessage(
-        "Location selected. The name is shown above the pin. Drag the pin or click the map to fine-tune the position.",
+        "Location selected. Drag the pin or click the map to fine-tune its position.",
       );
       return;
     }
@@ -918,21 +872,15 @@ export default function LocationPicker({
 
       if (!match) {
         setSearchMessage(
-          `“${resultName}” is in your saved attraction list, but no usable coordinates were found. Try searching with its barangay or enter the correct location manually on the map.`,
+          `“${resultName}” is in your saved attraction list, but no usable coordinates were found. Try searching with its barangay or place the pin manually.`,
         );
         return;
       }
 
-      const fallbackLat = Number(match.lat);
-      const fallbackLng = Number(match.lon);
-      const fallbackAddress = String(
-        match.display_name || resultAddress || "",
-      );
-
       handleLocationChange(
-        fallbackLat,
-        fallbackLng,
-        fallbackAddress,
+        Number(match.lat),
+        Number(match.lon),
+        String(match.display_name || resultAddress || ""),
         resultName,
       );
 
@@ -1002,9 +950,7 @@ export default function LocationPicker({
           width: 100%;
         }
 
-        .calbayog-location-picker * {
-          box-sizing: border-box;
-        }
+        .calbayog-location-picker * { box-sizing: border-box; }
 
         .calbayog-map-toolbar {
           background: #fff;
@@ -1012,7 +958,7 @@ export default function LocationPicker({
           border-radius: 18px;
           padding: 16px;
           margin-bottom: 14px;
-          box-shadow: 0 5px 20px rgba(28, 38, 75, .045);
+          box-shadow: 0 5px 20px rgba(28,38,75,.045);
         }
 
         .calbayog-map-title {
@@ -1082,18 +1028,15 @@ export default function LocationPicker({
           color: #252b3c;
           outline: none;
           font-size: 13px;
-          transition: border-color .18s, box-shadow .18s, background .18s;
         }
 
         .calbayog-search-input:focus {
           background: #fff;
           border-color: ${BRAND_BLUE};
-          box-shadow: 0 0 0 3px rgba(45, 49, 149, .10);
+          box-shadow: 0 0 0 3px rgba(45,49,149,.10);
         }
 
-        .calbayog-search-input::placeholder {
-          color: #9ba2b1;
-        }
+        .calbayog-search-input::placeholder { color: #9ba2b1; }
 
         .calbayog-control-button {
           min-height: 46px;
@@ -1106,12 +1049,7 @@ export default function LocationPicker({
           font-size: 12px;
           font-weight: 800;
           cursor: pointer;
-          transition: transform .16s, box-shadow .16s, background .16s;
           white-space: nowrap;
-        }
-
-        .calbayog-control-button:hover:not(:disabled) {
-          transform: translateY(-1px);
         }
 
         .calbayog-control-button:disabled {
@@ -1123,12 +1061,10 @@ export default function LocationPicker({
           border: 1px solid ${BRAND_BLUE};
           background: ${BRAND_BLUE};
           color: #fff;
-          box-shadow: 0 4px 10px rgba(45, 49, 149, .15);
         }
 
         .calbayog-primary-button:hover:not(:disabled) {
           background: #23277c;
-          box-shadow: 0 6px 14px rgba(45, 49, 149, .20);
         }
 
         .calbayog-secondary-button {
@@ -1139,7 +1075,6 @@ export default function LocationPicker({
 
         .calbayog-secondary-button:hover:not(:disabled) {
           background: #f7f8ff;
-          border-color: #cbd1e4;
         }
 
         .calbayog-clear-button {
@@ -1170,7 +1105,7 @@ export default function LocationPicker({
           border-radius: 13px;
           overflow: hidden;
           background: #fff;
-          box-shadow: 0 10px 28px rgba(24, 31, 60, .07);
+          box-shadow: 0 10px 28px rgba(24,31,60,.07);
           max-height: 300px;
           overflow-y: auto;
         }
@@ -1186,12 +1121,9 @@ export default function LocationPicker({
           background: #fff;
           text-align: left;
           cursor: pointer;
-          transition: background .15s;
         }
 
-        .calbayog-search-result:last-child {
-          border-bottom: 0;
-        }
+        .calbayog-search-result:last-child { border-bottom: 0; }
 
         .calbayog-search-result:hover,
         .calbayog-search-result:focus-visible {
@@ -1285,7 +1217,6 @@ export default function LocationPicker({
           font-size: 11px;
           font-weight: 800;
           cursor: pointer;
-          transition: all .15s;
         }
 
         .calbayog-layer-button:hover {
@@ -1314,7 +1245,7 @@ export default function LocationPicker({
           border: 1px solid #dce1ec;
           border-radius: 17px;
           background: #e9edf4;
-          box-shadow: 0 8px 24px rgba(27, 36, 70, .08);
+          box-shadow: 0 8px 24px rgba(27,36,70,.08);
           isolation: isolate;
         }
 
@@ -1324,6 +1255,26 @@ export default function LocationPicker({
           font-family: Inter, "Segoe UI", Arial, sans-serif;
           background: #e9edf4;
           z-index: 1;
+        }
+
+        .calbayog-map-status {
+          position: absolute;
+          z-index: 1000;
+          left: 10px;
+          bottom: 10px;
+          max-width: min(390px, calc(100% - 20px));
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          padding: 7px 10px;
+          border: 1px solid rgba(220,225,236,.95);
+          border-radius: 9px;
+          background: rgba(255,255,255,.94);
+          color: #535c70;
+          box-shadow: 0 2px 8px rgba(20,30,50,.12);
+          font-size: 10px;
+          line-height: 1.4;
+          pointer-events: none;
         }
 
         .calbayog-location-summary {
@@ -1393,7 +1344,7 @@ export default function LocationPicker({
           position: relative;
           width: 44px;
           height: 52px;
-          filter: drop-shadow(0 3px 4px rgba(16, 24, 40, .25));
+          filter: drop-shadow(0 3px 4px rgba(16,24,40,.25));
         }
 
         .calbayog-marker-pin {
@@ -1429,7 +1380,7 @@ export default function LocationPicker({
           padding: 6px 10px !important;
           background: #20263a !important;
           color: #fff !important;
-          box-shadow: 0 4px 14px rgba(17, 24, 39, .25) !important;
+          box-shadow: 0 4px 14px rgba(17,24,39,.25) !important;
           font-size: 11px !important;
           font-weight: 850 !important;
           white-space: nowrap;
@@ -1504,29 +1455,8 @@ export default function LocationPicker({
           background: #23277c;
         }
 
-        .calbayog-osm-status {
-          position: absolute;
-          z-index: 500;
-          bottom: 12px;
-          left: 12px;
-          display: flex;
-          align-items: center;
-          gap: 7px;
-          max-width: calc(100% - 24px);
-          padding: 8px 11px;
-          border: 1px solid rgba(220, 225, 236, .95);
-          border-radius: 9px;
-          background: rgba(255, 255, 255, .95);
-          color: #515a70;
-          font-size: 10.5px;
-          line-height: 1.4;
-          box-shadow: 0 2px 9px rgba(20, 30, 60, .12);
-          pointer-events: none;
-        }
-
         .calbayog-spin {
           animation: calbayog-spin 1s linear infinite;
-          flex: 0 0 auto;
         }
 
         @keyframes calbayog-spin {
@@ -1572,10 +1502,6 @@ export default function LocationPicker({
           .calbayog-location-picker *::before,
           .calbayog-location-picker *::after {
             transition: none !important;
-            animation: none !important;
-          }
-
-          .calbayog-spin {
             animation: none !important;
           }
         }
@@ -1808,7 +1734,18 @@ export default function LocationPicker({
             key={layer}
             attribution={activeTiles.attribution}
             url={activeTiles.url}
+            zIndex={1}
           />
+
+          {layer === "satellite" && (
+            <TileLayer
+              key="satellite-labels"
+              attribution="Labels &copy; Esri"
+              url={SATELLITE_LABELS_URL}
+              zIndex={2}
+              opacity={1}
+            />
+          )}
 
           <MapCenter
             latitude={position[0]}
@@ -1851,10 +1788,10 @@ export default function LocationPicker({
             position={position}
             icon={createAttractionMarkerIcon(category, attractionType)}
             draggable
+            zIndexOffset={1000}
             eventHandlers={{
               dragend: (event) => {
-                const marker = event.target;
-                const location = marker.getLatLng();
+                const location = event.target.getLatLng();
 
                 handleLocationChange(
                   location.lat,
