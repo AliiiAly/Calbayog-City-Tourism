@@ -1,8 +1,10 @@
+
 require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const https = require("https");
 
 const seedAll = require("./src/utils/seed");
 const supabase = require("./src/config/supabase");
@@ -22,14 +24,13 @@ const allowedOrigins = [
   "capacitor://localhost",
   "ionic://localhost",
   "http://192.168.254.113:5173",
+  "https://calbayog-city-tourism.vercel.app",
   process.env.CLIENT_URL,
 ].filter(Boolean);
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin
-      // (mobile apps, curl, Postman, etc.)
       if (!origin) {
         return callback(null, true);
       }
@@ -38,7 +39,6 @@ app.use(
         return callback(null, true);
       }
 
-      // Allow localhost variants
       if (
         origin.startsWith("http://localhost") ||
         origin.startsWith("capacitor://") ||
@@ -49,7 +49,6 @@ app.use(
 
       return callback(new Error("Not allowed by CORS"));
     },
-
     credentials: true,
   })
 );
@@ -82,11 +81,6 @@ app.use(
    STATIC FILES
 ========================================================= */
 
-/*
-  Serve uploads from:
-  c:\Calbayog_City_Tourism\uploads
-*/
-
 app.use(
   "/uploads",
   express.static(
@@ -114,107 +108,118 @@ app.use(
    API ROUTES
 ========================================================= */
 
-app.use(
-  "/api/auth",
-  require("./src/routes/auth")
-);
-
-app.use(
-  "/api/destinations",
-  require("./src/routes/destinations")
-);
-
-app.use(
-  "/api/events",
-  require("./src/routes/events")
-);
-
-app.use(
-  "/api/accommodations",
-  require("./src/routes/accommodations")
-);
-
-app.use(
-  "/api/guides",
-  require("./src/routes/guides")
-);
-
-app.use(
-  "/api/itinerary-requests",
-  require("./src/routes/itinerary")
-);
-
-app.use(
-  "/api/feedback",
-  require("./src/routes/feedback")
-);
-
-app.use(
-  "/api/upload",
-  require("./src/routes/upload")
-);
-
-app.use(
-  "/api/admin-management",
-  require("./src/routes/adminManagement")
-);
+app.use("/api/auth", require("./src/routes/auth"));
+app.use("/api/destinations", require("./src/routes/destinations"));
+app.use("/api/events", require("./src/routes/events"));
+app.use("/api/accommodations", require("./src/routes/accommodations"));
+app.use("/api/guides", require("./src/routes/guides"));
+app.use("/api/itinerary-requests", require("./src/routes/itinerary"));
+app.use("/api/feedback", require("./src/routes/feedback"));
+app.use("/api/upload", require("./src/routes/upload"));
+app.use("/api/admin-management", require("./src/routes/adminManagement"));
 
 /* =========================================================
    FEATURED VIDEOS
 ========================================================= */
 
-app.use(
-  "/api/featured-videos",
-  require("./src/routes/featuredVideos")
-);
-
-app.use(
-  "/api/getting-there",
-  require("./src/routes/gettingThere")
-);
-
-app.use(
-  "/api/notifications",
-  require("./src/routes/notifications")
-);
+app.use("/api/featured-videos", require("./src/routes/featuredVideos"));
+app.use("/api/getting-there", require("./src/routes/gettingThere"));
+app.use("/api/notifications", require("./src/routes/notifications"));
 
 /* =========================================================
    USER MEMORIES
 ========================================================= */
 
-app.use(
-  "/api/memories",
-  require("./src/routes/memories")
-);
+app.use("/api/memories", require("./src/routes/memories"));
 
 /* =========================================================
    FAVORITES
 ========================================================= */
 
-app.use(
-  "/api/favorites",
-  require("./src/routes/favorites")
-);
+app.use("/api/favorites", require("./src/routes/favorites"));
 
 /* =========================================================
    USER ITINERARIES
 ========================================================= */
 
-app.use(
-  "/api/itineraries",
-  require("./src/routes/itineraries")
-);
+app.use("/api/itineraries", require("./src/routes/itineraries"));
+
+/* =========================================================
+   OPENSTREETMAP OVERPASS REQUEST HELPER
+========================================================= */
+
+/*
+  Uses Node's built-in HTTPS module instead of global fetch.
+
+  This avoids relying on Node's global fetch being available.
+  It does not guarantee that an Overpass provider will respond;
+  the route below tries multiple providers and logs failures.
+*/
+
+function requestOverpass(endpoint, query, timeoutMs = 22000) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(endpoint);
+
+    const body = new URLSearchParams({
+      data: query,
+    }).toString();
+
+    const request = https.request(
+      {
+        protocol: url.protocol,
+        hostname: url.hostname,
+        port: url.port || 443,
+        path: `${url.pathname}${url.search}`,
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/x-www-form-urlencoded; charset=UTF-8",
+          "Content-Length": Buffer.byteLength(body),
+          Accept: "application/json",
+          "User-Agent": "CalbayogCityTourism/1.0",
+        },
+      },
+      (response) => {
+        let responseBody = "";
+
+        response.setEncoding("utf8");
+
+        response.on("data", (chunk) => {
+          responseBody += chunk;
+        });
+
+        response.on("end", () => {
+          resolve({
+            statusCode: response.statusCode || 0,
+            body: responseBody,
+          });
+        });
+
+        response.on("error", reject);
+      }
+    );
+
+    request.setTimeout(timeoutMs, () => {
+      request.destroy(
+        new Error(`Request timed out after ${timeoutMs} ms`)
+      );
+    });
+
+    request.on("error", reject);
+
+    request.end(body);
+  });
+}
 
 /* =========================================================
    OPENSTREETMAP NEARBY PLACES PROXY
 ========================================================= */
 
 /*
-  The Vercel frontend calls this Render endpoint instead
-  of requesting Overpass directly from the browser.
+  The frontend calls this Render endpoint.
 
-  This returns external map data only.
-  It does NOT save anything to Supabase.
+  Nearby OSM data is returned to the frontend only.
+  This endpoint does NOT insert or update Supabase records.
 */
 
 app.post("/api/map/places", async (req, res) => {
@@ -247,41 +252,30 @@ app.post("/api/map/places", async (req, res) => {
     });
   }
 
+  // Try different public Overpass providers.
   const endpoints = [
-    "https://overpass.kumi.systems/api/interpreter",
     "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
   ];
 
   for (const endpoint of endpoints) {
-    let timeout;
-
     try {
-      const controller = new AbortController();
+      console.log(`[Map Places] Requesting ${endpoint}`);
 
-      timeout = setTimeout(() => {
-        controller.abort();
-      }, 25000);
+      const result = await requestOverpass(
+        endpoint,
+        query,
+        22000
+      );
 
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type":
-            "application/x-www-form-urlencoded",
-          Accept: "application/json",
-          "User-Agent":
-            "CalbayogCityTourism/1.0",
-        },
-        body: new URLSearchParams({
-          data: query,
-        }).toString(),
-        signal: controller.signal,
-      });
-
-      const responseText = await response.text();
-
-      if (!response.ok) {
+      if (
+        result.statusCode < 200 ||
+        result.statusCode >= 300
+      ) {
         console.warn(
-          `Overpass returned HTTP ${response.status}: ${endpoint}`
+          `[Map Places] ${endpoint} returned HTTP ${result.statusCode}.`,
+          result.body.slice(0, 500)
         );
 
         continue;
@@ -290,35 +284,55 @@ app.post("/api/map/places", async (req, res) => {
       let data;
 
       try {
-        data = JSON.parse(responseText);
-      } catch {
+        data = JSON.parse(result.body);
+      } catch (error) {
         console.warn(
-          `Overpass returned invalid JSON: ${endpoint}`
+          `[Map Places] Invalid JSON from ${endpoint}:`,
+          result.body.slice(0, 300)
         );
 
         continue;
       }
 
-      return res.json({
+      if (!Array.isArray(data.elements)) {
+        console.warn(
+          `[Map Places] Missing elements array from ${endpoint}.`,
+          data.remark || "No provider details"
+        );
+
+        continue;
+      }
+
+      if (data.remark) {
+        console.warn(
+          `[Map Places] Provider remark from ${endpoint}:`,
+          data.remark
+        );
+      }
+
+      console.log(
+        `[Map Places] Success: ${data.elements.length} map elements received from ${endpoint}.`
+      );
+
+      return res.status(200).json({
         success: true,
-        elements: Array.isArray(data.elements)
-          ? data.elements
-          : [],
+        elements: data.elements,
       });
     } catch (error) {
-      console.warn(
-        `Overpass request failed (${endpoint}):`,
+      console.error(
+        `[Map Places] Provider failed: ${endpoint}`,
         error.message
       );
-    } finally {
-      if (timeout) {
-        clearTimeout(timeout);
-      }
     }
   }
 
+  console.error(
+    "[Map Places] All Overpass providers failed. Check the preceding provider logs."
+  );
+
   return res.status(502).json({
     success: false,
+    code: "OVERPASS_UNAVAILABLE",
     message:
       "Nearby places are temporarily unavailable. Please try again later.",
   });
@@ -328,15 +342,12 @@ app.post("/api/map/places", async (req, res) => {
    HEALTH CHECK
 ========================================================= */
 
-app.get(
-  "/api/health",
-  (req, res) => {
-    res.json({
-      status: "ok",
-      timestamp: new Date(),
-    });
-  }
-);
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    timestamp: new Date(),
+  });
+});
 
 /* =========================================================
    START SERVER
@@ -344,15 +355,9 @@ app.get(
 
 /*
   Skip automatic seed.
-  Data is already populated through SQL.
+  Existing data is populated through SQL.
 */
 
-app.listen(
-  PORT,
-  "0.0.0.0",
-  () => {
-    console.log(
-      `🚀 Server running on port ${PORT}`
-    );
-  }
-);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
