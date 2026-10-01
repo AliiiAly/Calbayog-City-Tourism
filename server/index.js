@@ -57,11 +57,7 @@ app.use(
    BODY PARSING
 ========================================================= */
 
-app.use(
-  express.json({
-    limit: "50mb",
-  })
-);
+app.use(express.json({ limit: "50mb" }));
 
 app.use(
   express.urlencoded({
@@ -83,24 +79,13 @@ app.use(
 
 app.use(
   "/uploads",
-  express.static(
-    path.join(__dirname, "..", "uploads")
-  )
+  express.static(path.join(__dirname, "..", "uploads"))
 );
-
-/* =========================================================
-   PROMO VIDEO
-========================================================= */
 
 app.use(
   "/promo.mp4",
   express.static(
-    path.join(
-      __dirname,
-      "..",
-      "uploads",
-      "promo.mp4"
-    )
+    path.join(__dirname, "..", "uploads", "promo.mp4")
   )
 );
 
@@ -148,17 +133,32 @@ app.use("/api/itineraries", require("./src/routes/itineraries"));
    OPENSTREETMAP OVERPASS REQUEST HELPER
 ========================================================= */
 
-/*
-  Uses Node's built-in HTTPS module instead of global fetch.
+const OVERPASS_TIMEOUT_MS = 12000;
+const OVERPASS_CACHE_TTL_MS = 45000;
+const MAX_MAP_QUERY_LENGTH = 20000;
 
-  This avoids relying on Node's global fetch being available.
-  It does not guarantee that an Overpass provider will respond;
-  the route below tries multiple providers and logs failures.
-*/
+// Cache successful responses briefly to reduce repeated requests.
+const mapPlacesCache = new Map();
 
-function requestOverpass(endpoint, query, timeoutMs = 22000) {
+// Reuse an active request when multiple clients submit the same query.
+const mapPlacesInFlight = new Map();
+
+const OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+];
+
+function requestOverpass(endpoint, query, timeoutMs = OVERPASS_TIMEOUT_MS) {
   return new Promise((resolve, reject) => {
-    const url = new URL(endpoint);
+    let url;
+
+    try {
+      url = new URL(endpoint);
+    } catch {
+      reject(new Error("Invalid Overpass provider URL."));
+      return;
+    }
 
     const body = new URLSearchParams({
       data: query,
@@ -181,21 +181,37 @@ function requestOverpass(endpoint, query, timeoutMs = 22000) {
       },
       (response) => {
         let responseBody = "";
+        let settled = false;
+
+        const finish = (callback, value) => {
+          if (settled) return;
+          settled = true;
+          callback(value);
+        };
 
         response.setEncoding("utf8");
 
         response.on("data", (chunk) => {
           responseBody += chunk;
+
+          // Avoid retaining an unexpectedly large response in memory.
+          if (responseBody.length > 12 * 1024 * 1024) {
+            response.destroy(
+              new Error("Overpass response exceeded the size limit.")
+            );
+          }
         });
 
         response.on("end", () => {
-          resolve({
+          finish(resolve, {
             statusCode: response.statusCode || 0,
             body: responseBody,
           });
         });
 
-        response.on("error", reject);
+        response.on("error", (error) => {
+          finish(reject, error);
+        });
       }
     );
 
@@ -206,78 +222,37 @@ function requestOverpass(endpoint, query, timeoutMs = 22000) {
     });
 
     request.on("error", reject);
-
     request.end(body);
   });
 }
 
 /* =========================================================
-   OPENSTREETMAP NEARBY PLACES PROXY
+   OVERPASS PROVIDER FAILOVER
 ========================================================= */
 
-/*
-  The frontend calls this Render endpoint.
+async function fetchNearbyMapData(query) {
+  const providerErrors = [];
 
-  Nearby OSM data is returned to the frontend only.
-  This endpoint does NOT insert or update Supabase records.
-*/
-
-app.post("/api/map/places", async (req, res) => {
-  const query = req.body?.query;
-
-  if (
-    typeof query !== "string" ||
-    !query.trim()
-  ) {
-    return res.status(400).json({
-      success: false,
-      message: "A valid Overpass query is required.",
-    });
-  }
-
-  if (query.length > 20000) {
-    return res.status(413).json({
-      success: false,
-      message: "The map query is too large.",
-    });
-  }
-
-  // Accept only Overpass QL queries requesting JSON.
-  if (
-    !/^\s*\[out:json(?:[,\]])/i.test(query)
-  ) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid Overpass query format.",
-    });
-  }
-
-  // Try different public Overpass providers.
-  const endpoints = [
-    "https://overpass-api.de/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",
-    "https://overpass.private.coffee/api/interpreter",
-  ];
-
-  for (const endpoint of endpoints) {
+  for (const endpoint of OVERPASS_ENDPOINTS) {
     try {
       console.log(`[Map Places] Requesting ${endpoint}`);
 
       const result = await requestOverpass(
         endpoint,
         query,
-        22000
+        OVERPASS_TIMEOUT_MS
       );
 
-      if (
-        result.statusCode < 200 ||
-        result.statusCode >= 300
-      ) {
+      if (result.statusCode < 200 || result.statusCode >= 300) {
+        const errorMessage =
+          `${endpoint} returned HTTP ${result.statusCode}`;
+
         console.warn(
-          `[Map Places] ${endpoint} returned HTTP ${result.statusCode}.`,
-          result.body.slice(0, 500)
+          `[Map Places] ${errorMessage}:`,
+          result.body.slice(0, 300)
         );
 
+        providerErrors.push(errorMessage);
         continue;
       }
 
@@ -285,21 +260,23 @@ app.post("/api/map/places", async (req, res) => {
 
       try {
         data = JSON.parse(result.body);
-      } catch (error) {
-        console.warn(
-          `[Map Places] Invalid JSON from ${endpoint}:`,
-          result.body.slice(0, 300)
-        );
+      } catch {
+        const errorMessage = `${endpoint} returned invalid JSON`;
 
+        console.warn(`[Map Places] ${errorMessage}`);
+        providerErrors.push(errorMessage);
         continue;
       }
 
-      if (!Array.isArray(data.elements)) {
+      if (!data || !Array.isArray(data.elements)) {
+        const errorMessage = `${endpoint} returned no elements array`;
+
         console.warn(
-          `[Map Places] Missing elements array from ${endpoint}.`,
-          data.remark || "No provider details"
+          `[Map Places] ${errorMessage}:`,
+          data?.remark || "Unexpected response format"
         );
 
+        providerErrors.push(errorMessage);
         continue;
       }
 
@@ -311,31 +288,129 @@ app.post("/api/map/places", async (req, res) => {
       }
 
       console.log(
-        `[Map Places] Success: ${data.elements.length} map elements received from ${endpoint}.`
+        `[Map Places] Success: ${data.elements.length} elements from ${endpoint}`
       );
 
-      return res.status(200).json({
+      return {
         success: true,
         elements: data.elements,
-      });
+        provider: endpoint,
+      };
     } catch (error) {
-      console.error(
-        `[Map Places] Provider failed: ${endpoint}`,
-        error.message
+      const errorMessage = error?.message || "Unknown provider error";
+
+      console.warn(
+        `[Map Places] Provider failed: ${endpoint}: ${errorMessage}`
       );
+
+      providerErrors.push(`${endpoint}: ${errorMessage}`);
     }
   }
 
-  console.error(
-    "[Map Places] All Overpass providers failed. Check the preceding provider logs."
-  );
+  const error = new Error("All Overpass providers failed.");
+  error.providerErrors = providerErrors;
+  throw error;
+}
 
-  return res.status(502).json({
-    success: false,
-    code: "OVERPASS_UNAVAILABLE",
-    message:
-      "Nearby places are temporarily unavailable. Please try again later.",
-  });
+/* =========================================================
+   OPENSTREETMAP NEARBY PLACES PROXY
+========================================================= */
+
+app.post("/api/map/places", async (req, res) => {
+  const query = req.body?.query;
+
+  if (typeof query !== "string" || !query.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: "A valid Overpass query is required.",
+    });
+  }
+
+  const normalizedQuery = query.trim();
+
+  if (normalizedQuery.length > MAX_MAP_QUERY_LENGTH) {
+    return res.status(413).json({
+      success: false,
+      message: "The map query is too large.",
+    });
+  }
+
+  // Accept only Overpass QL queries requesting JSON.
+  if (!/^\s*\[out:json(?:[,\]])/i.test(normalizedQuery)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid Overpass query format.",
+    });
+  }
+
+  const cacheKey = normalizedQuery;
+  const cached = mapPlacesCache.get(cacheKey);
+
+  if (cached && Date.now() - cached.timestamp < OVERPASS_CACHE_TTL_MS) {
+    console.log("[Map Places] Returning cached response.");
+
+    return res.status(200).json({
+      success: true,
+      elements: cached.elements,
+      cached: true,
+    });
+  }
+
+  // Remove expired cache entry.
+  if (cached) {
+    mapPlacesCache.delete(cacheKey);
+  }
+
+  try {
+    let activeRequest = mapPlacesInFlight.get(cacheKey);
+
+    if (!activeRequest) {
+      activeRequest = fetchNearbyMapData(normalizedQuery);
+      mapPlacesInFlight.set(cacheKey, activeRequest);
+    } else {
+      console.log("[Map Places] Reusing an in-progress request.");
+    }
+
+    const result = await activeRequest;
+
+    // Cache only successful results.
+    mapPlacesCache.set(cacheKey, {
+      elements: result.elements,
+      timestamp: Date.now(),
+    });
+
+    // Prevent unbounded cache growth.
+    if (mapPlacesCache.size > 100) {
+      const oldestKey = mapPlacesCache.keys().next().value;
+
+      if (oldestKey !== undefined) {
+        mapPlacesCache.delete(oldestKey);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      elements: result.elements,
+      cached: false,
+    });
+  } catch (error) {
+    console.error("[Map Places] All providers failed.");
+
+    if (Array.isArray(error.providerErrors)) {
+      for (const providerError of error.providerErrors) {
+        console.error(`[Map Places] ${providerError}`);
+      }
+    }
+
+    return res.status(502).json({
+      success: false,
+      code: "OVERPASS_UNAVAILABLE",
+      message:
+        "Nearby places are temporarily unavailable. Please try again later.",
+    });
+  } finally {
+    mapPlacesInFlight.delete(cacheKey);
+  }
 });
 
 /* =========================================================
