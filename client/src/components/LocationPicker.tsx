@@ -27,7 +27,6 @@ const BRAND_BLUE = "#2D3195";
 const DEFAULT_LATITUDE = 12.0668;
 const DEFAULT_LONGITUDE = 124.6041;
 
-// Render backend URL. The backend proxies requests to Overpass.
 const MAP_PLACES_API_URL =
   "https://calbayog-city-tourism.onrender.com/api/map/places";
 
@@ -83,10 +82,7 @@ interface OverpassElement {
   id: number;
   lat?: number;
   lon?: number;
-  center?: {
-    lat?: number;
-    lon?: number;
-  };
+  center?: { lat?: number; lon?: number };
   tags?: Record<string, string>;
 }
 
@@ -98,7 +94,7 @@ const CATEGORY_MARKER_DESIGNS: Record<
   "History and Culture": { color: "#A66A3F", icon: "🏛️" },
   "Industrial Tourism": { color: "#526477", icon: "🏭" },
   Shopping: { color: "#D9468F", icon: "🛍️" },
-  Other: { color: "#2D3195", icon: "📍" },
+  Other: { color: BRAND_BLUE, icon: "📍" },
 };
 
 const SUBCATEGORY_MARKER_ICONS: Record<string, string> = {
@@ -129,6 +125,14 @@ const normalize = (value: unknown) =>
     .toLowerCase()
     .trim()
     .replace(/\s+/g, " ");
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 
 const createAttractionMarkerIcon = (
   markerCategory?: string | null,
@@ -184,34 +188,20 @@ const tileLayers: Record<
   },
 };
 
+/* Satellite imagery overlays. */
 const SATELLITE_LABELS_URL =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Reference_Overlay/MapServer/tile/{z}/{y}/{x}";
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
+
+const SATELLITE_ROADS_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}";
 
 function getMappedPlaceCategory(tags: Record<string, string>) {
-  if (tags.tourism) {
-    return `Tourism · ${tags.tourism.replace(/_/g, " ")}`;
-  }
-
-  if (tags.historic) {
-    return `Historic · ${tags.historic.replace(/_/g, " ")}`;
-  }
-
-  if (tags.natural) {
-    return `Natural feature · ${tags.natural.replace(/_/g, " ")}`;
-  }
-
-  if (tags.leisure) {
-    return `Leisure · ${tags.leisure.replace(/_/g, " ")}`;
-  }
-
-  if (tags.amenity) {
-    return `Amenity · ${tags.amenity.replace(/_/g, " ")}`;
-  }
-
-  if (tags.shop) {
-    return `Shop · ${tags.shop.replace(/_/g, " ")}`;
-  }
-
+  if (tags.tourism) return `Tourism · ${tags.tourism.replace(/_/g, " ")}`;
+  if (tags.historic) return `Historic · ${tags.historic.replace(/_/g, " ")}`;
+  if (tags.natural) return `Natural feature · ${tags.natural.replace(/_/g, " ")}`;
+  if (tags.leisure) return `Leisure · ${tags.leisure.replace(/_/g, " ")}`;
+  if (tags.amenity) return `Amenity · ${tags.amenity.replace(/_/g, " ")}`;
+  if (tags.shop) return `Shop · ${tags.shop.replace(/_/g, " ")}`;
   return "Mapped place";
 }
 
@@ -241,9 +231,7 @@ function MapCenter({
   const map = useMap();
 
   useEffect(() => {
-    map.flyTo([latitude, longitude], zoom, {
-      duration: 0.65,
-    });
+    map.flyTo([latitude, longitude], zoom, { duration: 0.65 });
   }, [map, latitude, longitude, zoom]);
 
   return null;
@@ -267,10 +255,7 @@ function MapResizeHandler() {
 
 async function geocodeLocation(query: string): Promise<SearchResult[]> {
   const cleanedQuery = query.trim();
-
-  if (!cleanedQuery) {
-    return [];
-  }
+  if (!cleanedQuery) return [];
 
   const url =
     "https://nominatim.openstreetmap.org/search" +
@@ -278,7 +263,9 @@ async function geocodeLocation(query: string): Promise<SearchResult[]> {
       `${cleanedQuery}, Calbayog City, Samar, Philippines`,
     )}`;
 
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    headers: { Accept: "application/json" },
+  });
 
   if (!response.ok) {
     throw new Error("The location service could not complete the search.");
@@ -294,13 +281,6 @@ async function geocodeLocation(query: string): Promise<SearchResult[]> {
     : [];
 }
 
-/*
- * External OpenStreetMap places are displayed separately from the
- * selected attraction marker. They are not automatically saved to Supabase.
- *
- * Nearby-place requests go through the Render backend proxy rather than
- * directly to public Overpass servers, avoiding browser-side Overpass CORS.
- */
 function OpenStreetMapPlaces({
   enabled,
   onSelect,
@@ -319,9 +299,7 @@ function OpenStreetMapPlaces({
   const activeController = useRef<AbortController | null>(null);
 
   const loadPlaces = useCallback(async () => {
-    if (!enabled) {
-      return;
-    }
+    if (!enabled) return;
 
     if (map.getZoom() < 12) {
       setPlaces([]);
@@ -343,9 +321,7 @@ function OpenStreetMapPlaces({
     const round = (value: number) => value.toFixed(4);
     const boundsKey = [south, west, north, east].map(round).join(",");
 
-    if (boundsKey === lastBoundsKey.current) {
-      return;
-    }
+    if (boundsKey === lastBoundsKey.current) return;
 
     const elapsed = Date.now() - lastRequestAt.current;
 
@@ -355,6 +331,7 @@ function OpenStreetMapPlaces({
       }
 
       requestTimer.current = window.setTimeout(() => {
+        requestTimer.current = null;
         void loadPlaces();
       }, 8000 - elapsed);
 
@@ -394,10 +371,6 @@ function OpenStreetMapPlaces({
     `;
 
     try {
-      /*
-       * Send the query to our Render backend.
-       * The backend contacts Overpass and returns { success, elements }.
-       */
       const response = await fetch(MAP_PLACES_API_URL, {
         method: "POST",
         headers: {
@@ -418,12 +391,11 @@ function OpenStreetMapPlaces({
               ? errorData.message
               : "";
         } catch {
-          // Keep the HTTP status as the fallback error.
+          // Use the HTTP status if the server did not return JSON.
         }
 
         throw new Error(
-          serverMessage ||
-            `The map service returned HTTP ${response.status}.`,
+          serverMessage || `The map service returned HTTP ${response.status}.`,
         );
       }
 
@@ -486,19 +458,14 @@ function OpenStreetMapPlaces({
       for (const place of mappedPlaces) {
         const key =
           `${normalize(place.name)}|` +
-          `${place.latitude.toFixed(5)}|` +
-          `${place.longitude.toFixed(5)}`;
+          `${place.latitude.toFixed(5)}|${place.longitude.toFixed(5)}`;
 
-        if (!unique.has(key)) {
-          unique.set(key, place);
-        }
+        if (!unique.has(key)) unique.set(key, place);
       }
 
       const results = Array.from(unique.values()).slice(0, 100);
 
-      if (controller.signal.aborted) {
-        return;
-      }
+      if (controller.signal.aborted) return;
 
       setPlaces(results);
       lastBoundsKey.current = boundsKey;
@@ -509,16 +476,14 @@ function OpenStreetMapPlaces({
           : "No named places were found in this area. Try moving the map or searching for a place.",
       );
     } catch (error) {
-      if (controller.signal.aborted) {
-        return;
-      }
+      if (controller.signal.aborted) return;
 
       console.error("Could not load nearby mapped places:", error);
 
       setLoadMessage(
         error instanceof Error
           ? `Nearby places could not be loaded: ${error.message}`
-          : "Nearby places could not be loaded. You can still search for a location or place the attraction pin manually.",
+          : "Nearby places could not be loaded. You can still search or place the attraction pin manually.",
       );
     } finally {
       if (activeController.current === controller) {
@@ -574,9 +539,7 @@ function OpenStreetMapPlaces({
     };
   }, [enabled, loadPlaces, map]);
 
-  if (!enabled) {
-    return null;
-  }
+  if (!enabled) return null;
 
   return (
     <>
@@ -591,13 +554,10 @@ function OpenStreetMapPlaces({
             <div className="calbayog-location-popup">
               <strong>{place.name}</strong>
               <span>{place.category}</span>
-
               {place.address && <span>{place.address}</span>}
-
               <span className="calbayog-osm-credit">
                 Place data from OpenStreetMap
               </span>
-
               <button
                 type="button"
                 className="calbayog-use-place-button"
@@ -685,17 +645,12 @@ export default function LocationPicker({
   }, [address]);
 
   useEffect(() => {
-    if (name?.trim()) {
-      setSelectedPlaceName(name.trim());
-    }
+    if (name?.trim()) setSelectedPlaceName(name.trim());
   }, [name]);
 
   const localMatches = useMemo(() => {
     const query = normalize(searchTerm);
-
-    if (!query) {
-      return [];
-    }
+    if (!query) return [];
 
     const tokens = query.split(/\s+/).filter(Boolean);
 
@@ -740,13 +695,8 @@ export default function LocationPicker({
       setPosition([lat, lng]);
       setMapZoom(17);
 
-      if (selectedAddress) {
-        setSelectedPlaceAddress(selectedAddress);
-      }
-
-      if (selectedName) {
-        setSelectedPlaceName(selectedName);
-      }
+      if (selectedAddress) setSelectedPlaceAddress(selectedAddress);
+      if (selectedName) setSelectedPlaceName(selectedName);
 
       onChange({
         latitude: lat,
@@ -788,10 +738,7 @@ export default function LocationPicker({
               result.display_name,
             )}`;
 
-        if (seen.has(key)) {
-          return false;
-        }
-
+        if (seen.has(key)) return false;
         seen.add(key);
         return true;
       });
@@ -964,9 +911,7 @@ export default function LocationPicker({
           font-family: Inter, "Segoe UI", Arial, sans-serif;
           width: 100%;
         }
-
         .calbayog-location-picker * { box-sizing: border-box; }
-
         .calbayog-map-toolbar {
           background: #fff;
           border: 1px solid #e3e7f0;
@@ -975,14 +920,12 @@ export default function LocationPicker({
           margin-bottom: 14px;
           box-shadow: 0 5px 20px rgba(28,38,75,.045);
         }
-
         .calbayog-map-title {
           display: flex;
           align-items: center;
           gap: 10px;
           margin-bottom: 14px;
         }
-
         .calbayog-map-title-icon {
           width: 40px;
           height: 40px;
@@ -994,7 +937,6 @@ export default function LocationPicker({
           background: #eef0ff;
           flex: 0 0 auto;
         }
-
         .calbayog-map-title h3 {
           font-size: 15px;
           font-weight: 850;
@@ -1002,27 +944,23 @@ export default function LocationPicker({
           letter-spacing: -.25px;
           color: #20263a;
         }
-
         .calbayog-map-title p {
           font-size: 11.5px;
           color: #7b8395;
           margin: 3px 0 0;
           line-height: 1.5;
         }
-
         .calbayog-search-row {
           display: flex;
           gap: 9px;
           align-items: stretch;
           flex-wrap: wrap;
         }
-
         .calbayog-search-input-wrap {
           position: relative;
           flex: 1 1 260px;
           min-width: 0;
         }
-
         .calbayog-search-icon {
           position: absolute;
           top: 50%;
@@ -1031,7 +969,6 @@ export default function LocationPicker({
           color: #8a91a3;
           pointer-events: none;
         }
-
         .calbayog-search-input {
           display: block;
           width: 100%;
@@ -1044,15 +981,12 @@ export default function LocationPicker({
           outline: none;
           font-size: 13px;
         }
-
         .calbayog-search-input:focus {
           background: #fff;
           border-color: ${BRAND_BLUE};
           box-shadow: 0 0 0 3px rgba(45,49,149,.10);
         }
-
         .calbayog-search-input::placeholder { color: #9ba2b1; }
-
         .calbayog-control-button {
           min-height: 46px;
           padding: 10px 14px;
@@ -1066,32 +1000,19 @@ export default function LocationPicker({
           cursor: pointer;
           white-space: nowrap;
         }
-
-        .calbayog-control-button:disabled {
-          opacity: .7;
-          cursor: wait;
-        }
-
+        .calbayog-control-button:disabled { opacity: .7; cursor: wait; }
         .calbayog-primary-button {
           border: 1px solid ${BRAND_BLUE};
           background: ${BRAND_BLUE};
           color: #fff;
         }
-
-        .calbayog-primary-button:hover:not(:disabled) {
-          background: #23277c;
-        }
-
+        .calbayog-primary-button:hover:not(:disabled) { background: #23277c; }
         .calbayog-secondary-button {
           border: 1px solid #e0e5ef;
           background: #fff;
           color: #4b5265;
         }
-
-        .calbayog-secondary-button:hover:not(:disabled) {
-          background: #f7f8ff;
-        }
-
+        .calbayog-secondary-button:hover:not(:disabled) { background: #f7f8ff; }
         .calbayog-clear-button {
           position: absolute;
           top: 50%;
@@ -1108,23 +1029,16 @@ export default function LocationPicker({
           color: #858c9d;
           cursor: pointer;
         }
-
-        .calbayog-clear-button:hover {
-          background: #eef0f7;
-          color: #30364a;
-        }
-
+        .calbayog-clear-button:hover { background: #eef0f7; color: #30364a; }
         .calbayog-search-results {
           margin-top: 10px;
           border: 1px solid #e5e8f0;
           border-radius: 13px;
-          overflow: hidden;
+          overflow: auto;
           background: #fff;
           box-shadow: 0 10px 28px rgba(24,31,60,.07);
           max-height: 300px;
-          overflow-y: auto;
         }
-
         .calbayog-search-result {
           display: flex;
           align-items: flex-start;
@@ -1137,15 +1051,12 @@ export default function LocationPicker({
           text-align: left;
           cursor: pointer;
         }
-
         .calbayog-search-result:last-child { border-bottom: 0; }
-
         .calbayog-search-result:hover,
         .calbayog-search-result:focus-visible {
           background: #f5f6ff;
           outline: none;
         }
-
         .calbayog-result-pin {
           display: flex;
           align-items: center;
@@ -1157,7 +1068,6 @@ export default function LocationPicker({
           background: #eef0ff;
           color: ${BRAND_BLUE};
         }
-
         .calbayog-result-name {
           display: block;
           font-size: 12.5px;
@@ -1166,7 +1076,6 @@ export default function LocationPicker({
           color: #262c3f;
           overflow-wrap: anywhere;
         }
-
         .calbayog-result-address {
           display: block;
           font-size: 11px;
@@ -1175,7 +1084,6 @@ export default function LocationPicker({
           line-height: 1.5;
           overflow-wrap: anywhere;
         }
-
         .calbayog-result-source {
           display: inline-flex;
           margin-top: 5px;
@@ -1188,7 +1096,6 @@ export default function LocationPicker({
           background: #f0f2f7;
           text-transform: uppercase;
         }
-
         .calbayog-search-message {
           display: flex;
           gap: 8px;
@@ -1202,7 +1109,6 @@ export default function LocationPicker({
           font-size: 11.5px;
           line-height: 1.55;
         }
-
         .calbayog-map-tools {
           display: flex;
           align-items: center;
@@ -1211,13 +1117,7 @@ export default function LocationPicker({
           flex-wrap: wrap;
           margin-bottom: 10px;
         }
-
-        .calbayog-layer-group {
-          display: flex;
-          gap: 6px;
-          flex-wrap: wrap;
-        }
-
+        .calbayog-layer-group { display: flex; gap: 6px; flex-wrap: wrap; }
         .calbayog-layer-button {
           min-height: 35px;
           display: inline-flex;
@@ -1233,18 +1133,15 @@ export default function LocationPicker({
           font-weight: 800;
           cursor: pointer;
         }
-
         .calbayog-layer-button:hover {
           border-color: #c5cae4;
           background: #f8f8ff;
         }
-
         .calbayog-layer-button.active {
           border-color: #cbd0f6;
           background: #eef0ff;
           color: ${BRAND_BLUE};
         }
-
         .calbayog-map-hint {
           display: inline-flex;
           align-items: center;
@@ -1253,7 +1150,6 @@ export default function LocationPicker({
           font-size: 10.5px;
           font-weight: 650;
         }
-
         .calbayog-map-frame {
           position: relative;
           overflow: hidden;
@@ -1263,7 +1159,6 @@ export default function LocationPicker({
           box-shadow: 0 8px 24px rgba(27,36,70,.08);
           isolation: isolate;
         }
-
         .calbayog-map-frame .leaflet-container {
           width: 100%;
           height: 390px;
@@ -1271,7 +1166,6 @@ export default function LocationPicker({
           background: #e9edf4;
           z-index: 1;
         }
-
         .calbayog-map-status {
           position: absolute;
           z-index: 1000;
@@ -1291,7 +1185,6 @@ export default function LocationPicker({
           line-height: 1.4;
           pointer-events: none;
         }
-
         .calbayog-location-summary {
           margin-top: 12px;
           display: flex;
@@ -1304,14 +1197,12 @@ export default function LocationPicker({
           padding: 12px 14px;
           background: #fafbfe;
         }
-
         .calbayog-location-summary-main {
           display: flex;
           align-items: flex-start;
           gap: 9px;
           min-width: 0;
         }
-
         .calbayog-location-summary-icon {
           width: 32px;
           height: 32px;
@@ -1323,7 +1214,6 @@ export default function LocationPicker({
           background: #e9f7ef;
           color: #198754;
         }
-
         .calbayog-location-summary-label {
           display: block;
           font-size: 10px;
@@ -1333,7 +1223,6 @@ export default function LocationPicker({
           color: #858c9c;
           margin-bottom: 3px;
         }
-
         .calbayog-location-summary-value {
           display: block;
           color: #30364a;
@@ -1342,7 +1231,6 @@ export default function LocationPicker({
           font-weight: 750;
           overflow-wrap: anywhere;
         }
-
         .calbayog-coordinate-chip {
           border: 1px solid #e4e7ef;
           border-radius: 9px;
@@ -1354,14 +1242,12 @@ export default function LocationPicker({
           font-variant-numeric: tabular-nums;
           white-space: nowrap;
         }
-
         .calbayog-marker-shell {
           position: relative;
           width: 44px;
           height: 52px;
           filter: drop-shadow(0 3px 4px rgba(16,24,40,.25));
         }
-
         .calbayog-marker-pin {
           position: absolute;
           top: 1px;
@@ -1373,7 +1259,6 @@ export default function LocationPicker({
           transform: rotate(-45deg);
           box-shadow: 0 1px 3px rgba(0,0,0,.12);
         }
-
         .calbayog-marker-icon {
           position: absolute;
           top: 6px;
@@ -1388,7 +1273,6 @@ export default function LocationPicker({
           font-size: 13px;
           line-height: 1;
         }
-
         .calbayog-location-tooltip {
           border: 0 !important;
           border-radius: 8px !important;
@@ -1403,16 +1287,10 @@ export default function LocationPicker({
           overflow: hidden;
           text-overflow: ellipsis;
         }
-
         .calbayog-location-tooltip::before {
           border-top-color: #20263a !important;
         }
-
-        .calbayog-location-popup {
-          min-width: 170px;
-          max-width: 260px;
-        }
-
+        .calbayog-location-popup { min-width: 170px; max-width: 260px; }
         .calbayog-location-popup strong {
           display: block;
           color: #252b3c;
@@ -1420,7 +1298,6 @@ export default function LocationPicker({
           line-height: 1.45;
           margin-bottom: 4px;
         }
-
         .calbayog-location-popup span {
           display: block;
           color: #71798b;
@@ -1428,12 +1305,7 @@ export default function LocationPicker({
           line-height: 1.5;
           overflow-wrap: anywhere;
         }
-
-        .calbayog-osm-place-marker {
-          background: transparent;
-          border: 0;
-        }
-
+        .calbayog-osm-place-marker { background: transparent; border: 0; }
         .calbayog-osm-place-marker-inner {
           width: 29px;
           height: 29px;
@@ -1448,13 +1320,11 @@ export default function LocationPicker({
           line-height: 1;
           box-shadow: 0 2px 7px rgba(0,0,0,.35);
         }
-
         .calbayog-osm-credit {
           margin-top: 5px;
           font-size: 10px !important;
           color: #8a91a3 !important;
         }
-
         .calbayog-use-place-button {
           margin-top: 10px;
           padding: 8px 10px;
@@ -1465,53 +1335,27 @@ export default function LocationPicker({
           font-weight: 700;
           cursor: pointer;
         }
-
-        .calbayog-use-place-button:hover {
-          background: #23277c;
-        }
-
-        .calbayog-spin {
-          animation: calbayog-spin 1s linear infinite;
-        }
-
-        @keyframes calbayog-spin {
-          to { transform: rotate(360deg); }
-        }
-
+        .calbayog-use-place-button:hover { background: #23277c; }
+        .calbayog-spin { animation: calbayog-spin 1s linear infinite; }
+        @keyframes calbayog-spin { to { transform: rotate(360deg); } }
         @media (max-width: 600px) {
-          .calbayog-map-toolbar {
-            padding: 12px;
-            border-radius: 14px;
-          }
-
+          .calbayog-map-toolbar { padding: 12px; border-radius: 14px; }
           .calbayog-search-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
           }
-
           .calbayog-search-input-wrap {
             grid-column: 1 / -1;
             width: 100%;
           }
-
           .calbayog-search-row .calbayog-control-button {
             width: 100%;
             padding: 9px;
           }
-
-          .calbayog-map-frame .leaflet-container {
-            height: 330px;
-          }
-
-          .calbayog-map-hint {
-            width: 100%;
-          }
-
-          .calbayog-coordinate-chip {
-            white-space: normal;
-          }
+          .calbayog-map-frame .leaflet-container { height: 330px; }
+          .calbayog-map-hint { width: 100%; }
+          .calbayog-coordinate-chip { white-space: normal; }
         }
-
         @media (prefers-reduced-motion: reduce) {
           .calbayog-location-picker *,
           .calbayog-location-picker *::before,
@@ -1527,7 +1371,6 @@ export default function LocationPicker({
           <div className="calbayog-map-title-icon">
             <MapPin size={20} />
           </div>
-
           <div>
             <h3>Set Attraction Location</h3>
             <p>
@@ -1540,7 +1383,6 @@ export default function LocationPicker({
         <div className="calbayog-search-row">
           <div className="calbayog-search-input-wrap">
             <Search className="calbayog-search-icon" size={17} />
-
             <input
               className="calbayog-search-input"
               type="search"
@@ -1561,7 +1403,6 @@ export default function LocationPicker({
               aria-label="Search attraction name or address"
               autoComplete="off"
             />
-
             {searchTerm && (
               <button
                 className="calbayog-clear-button"
@@ -1637,25 +1478,21 @@ export default function LocationPicker({
                   <span className="calbayog-result-pin">
                     <MapPin size={17} />
                   </span>
-
                   <span style={{ minWidth: 0, flex: 1 }}>
                     <span className="calbayog-result-name">
                       {resultTitle}
                     </span>
-
                     {resultSubtitle && (
                       <span className="calbayog-result-address">
                         {resultSubtitle}
                       </span>
                     )}
-
                     <span className="calbayog-result-source">
                       {result.source === "local"
                         ? "Saved attraction"
                         : "Map search result"}
                     </span>
                   </span>
-
                   <Navigation
                     size={15}
                     style={{
@@ -1753,13 +1590,22 @@ export default function LocationPicker({
           />
 
           {layer === "satellite" && (
-            <TileLayer
-              key="satellite-labels"
-              attribution="Labels &copy; Esri"
-              url={SATELLITE_LABELS_URL}
-              zIndex={2}
-              opacity={1}
-            />
+            <>
+              <TileLayer
+                key="satellite-place-labels"
+                attribution="Place and boundary labels &copy; Esri"
+                url={SATELLITE_LABELS_URL}
+                zIndex={2}
+                opacity={1}
+              />
+              <TileLayer
+                key="satellite-road-labels"
+                attribution="Transportation labels &copy; Esri"
+                url={SATELLITE_ROADS_URL}
+                zIndex={3}
+                opacity={1}
+              />
+            </>
           )}
 
           <MapCenter
@@ -1779,7 +1625,6 @@ export default function LocationPicker({
                 place.address || place.name,
                 place.name,
               );
-
               setSearchTerm(place.name);
               setSearchResults([]);
               setSearchMessage(
@@ -1807,7 +1652,6 @@ export default function LocationPicker({
             eventHandlers={{
               dragend: (event) => {
                 const location = event.target.getLatLng();
-
                 handleLocationChange(
                   location.lat,
                   location.lng,
@@ -1830,13 +1674,11 @@ export default function LocationPicker({
             <Popup>
               <div className="calbayog-location-popup">
                 <strong>{markerLabel}</strong>
-
                 <span>
                   {selectedPlaceAddress ||
                     address ||
                     "Selected attraction location"}
                 </span>
-
                 <span style={{ marginTop: 5 }}>
                   {position[0].toFixed(6)}, {position[1].toFixed(6)}
                 </span>
@@ -1851,16 +1693,13 @@ export default function LocationPicker({
           <div className="calbayog-location-summary-icon">
             <CheckCircle2 size={17} />
           </div>
-
           <div style={{ minWidth: 0 }}>
             <span className="calbayog-location-summary-label">
               Selected attraction
             </span>
-
             <span className="calbayog-location-summary-value">
               {markerLabel}
             </span>
-
             <span
               className="calbayog-result-address"
               style={{ marginTop: 4 }}
