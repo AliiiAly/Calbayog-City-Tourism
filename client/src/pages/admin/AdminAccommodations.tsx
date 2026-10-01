@@ -18,7 +18,6 @@ import {
   Building2,
   DollarSign,
   Eye,
-  ExternalLink,
   FileText,
   Globe2,
   Image as ImageIcon,
@@ -62,17 +61,17 @@ import { useDarkMode } from "../../context/DarkModeContext";
    - owner
    - manager
    - address
-   - location_lat
-   - location_lng
    - contact_number
    - website
    - images
    - description
    - price_range
+   - latitude
+   - longitude
 
    id / created_at / updated_at are database-generated fields.
-   location_lat / location_lng store the exact map pin so the
-   accommodation can be found again from the in-app map.
+   Location is stored directly in the existing latitude / longitude
+   columns and is edited through the shared in-app LocationPicker.
 ========================================================= */
 
 interface AccommodationRecord {
@@ -81,13 +80,13 @@ interface AccommodationRecord {
   owner: string | null;
   manager: string | null;
   address: string | null;
-  location_lat: number | null;
-  location_lng: number | null;
   contact_number: string | null;
   website: string | null;
   images: string[] | string | null;
   description: string | null;
   price_range: string | null;
+  latitude: number | null;
+  longitude: number | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -97,12 +96,12 @@ interface AccommodationForm {
   owner: string;
   manager: string;
   address: string;
-  location_lat: number | null;
-  location_lng: number | null;
   contactNumber: string;
   website: string;
   description: string;
   priceRange: string;
+  latitude: number | null;
+  longitude: number | null;
   images: string;
   imageFiles: File[];
 }
@@ -112,12 +111,12 @@ const EMPTY_FORM: AccommodationForm = {
   owner: "",
   manager: "",
   address: "",
-  location_lat: null,
-  location_lng: null,
   contactNumber: "",
   website: "",
   description: "",
   priceRange: "",
+  latitude: null,
+  longitude: null,
   images: "",
   imageFiles: [],
 };
@@ -684,38 +683,28 @@ const ADMIN_ACCOMMODATIONS_STYLES = `
   }
 
   /* Address / map link panel */
-  .admin-location-panel {
-    padding:14px 16px; border-radius:13px;
-    border:1px solid var(--admin-border); background:#FAFAFF;
-  }
-  .admin-location-panel-title {
-    display:inline-flex; align-items:center; gap:6px;
-    color:#2D3195; font-family:"Poppins",sans-serif; font-size:.74rem; font-weight:800;
-  }
-  .admin-location-panel small { color:var(--admin-muted); font-size:.63rem; font-weight:600; }
-  .admin-location-button-inline {
-    display:inline-flex !important; align-items:center; gap:6px;
-    border-radius:10px !important; border-color:rgba(45,49,149,.28) !important;
-    color:#2D3195 !important; background:#fff !important;
-    font-size:.66rem !important; font-weight:900 !important;
-  }
   .admin-location-picker-heading {
-    display:flex; align-items:flex-start; justify-content:space-between; gap:14px;
+    display:flex; align-items:flex-start; justify-content:space-between; gap:16px;
     margin-bottom:10px; padding:12px 14px;
     border:1px solid rgba(45,49,149,.10); border-radius:13px;
-    background:linear-gradient(135deg, #f8f8ff 0%, #ffffff 75%);
+    background:linear-gradient(135deg,#f8f8ff 0%,#fff 72%);
   }
   .admin-location-helper {
     margin-top:2px; color:var(--admin-muted); font-size:.63rem; font-weight:600; line-height:1.5;
   }
   .admin-location-ready-badge {
-    flex:0 0 auto; padding:6px 9px !important; border-radius:999px !important;
+    flex:0 0 auto; border-radius:999px !important; padding:6px 9px !important;
     background:#e7f8ee !important; color:#177a45 !important;
-    font-size:.58rem !important; font-weight:900 !important;
+    font-size:.60rem !important; font-weight:900 !important;
   }
-  .admin-location-picker-heading + div {
-    width:100%;
+  .admin-location-coordinates {
+    display:flex; align-items:center; gap:6px; padding:8px 10px;
+    border-radius:10px; background:#f7f7ff; border:1px solid rgba(45,49,149,.08);
+    color:var(--admin-muted); font-size:.62rem; font-weight:800;
   }
+  .admin-location-coordinates svg { color:#2D3195; flex:0 0 auto; }
+  .admin-accommodations-dark .admin-location-picker-heading { background:#202436; border-color:#343A4F; }
+  .admin-accommodations-dark .admin-location-coordinates { background:#202436; border-color:#343A4F; }
 
   .admin-image-dropzone {
     display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -808,12 +797,6 @@ const ADMIN_ACCOMMODATIONS_STYLES = `
   .admin-accommodations-dark .admin-location-panel,
   .admin-accommodations-dark .admin-image-dropzone,
   .admin-accommodations-dark .admin-accommodation-detail-box { background:#202436 !important; border-color:#343A4F !important; }
-  .admin-accommodations-dark .admin-location-picker-heading {
-    background:#202436 !important; border-color:#343A4F !important;
-  }
-  .admin-accommodations-dark .admin-location-ready-badge {
-    background:#1f4b36 !important; color:#8de0ae !important;
-  }
   .admin-accommodations-dark .admin-form-intro strong,
   .admin-accommodations-dark .admin-location-panel-title { color:#c9ccff !important; }
   .admin-accommodations-dark .admin-form-section { background:#262B46 !important; color:#c9ccff !important; }
@@ -880,24 +863,29 @@ const normalizeArray = (value: unknown): string[] => {
   return [];
 };
 
-const normalizeCoordinate = (value: unknown): number | null => {
-  const numeric = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(numeric) ? numeric : null;
-};
-
 const normalizeAccommodation = (value: any): AccommodationRecord => ({
   id: String(value?.id ?? value?._id ?? ""),
   name: String(value?.name ?? "").trim(),
   owner: value?.owner ?? null,
   manager: value?.manager ?? null,
   address: value?.address ?? null,
-  location_lat: normalizeCoordinate(value?.location_lat ?? value?.latitude),
-  location_lng: normalizeCoordinate(value?.location_lng ?? value?.longitude),
   contact_number: value?.contact_number ?? null,
   website: value?.website ?? null,
   images: normalizeArray(value?.images),
   description: value?.description ?? null,
   price_range: value?.price_range ?? null,
+  latitude:
+    typeof value?.latitude === "number" && Number.isFinite(value.latitude)
+      ? value.latitude
+      : value?.latitude != null && value?.latitude !== "" && Number.isFinite(Number(value.latitude))
+        ? Number(value.latitude)
+        : null,
+  longitude:
+    typeof value?.longitude === "number" && Number.isFinite(value.longitude)
+      ? value.longitude
+      : value?.longitude != null && value?.longitude !== "" && Number.isFinite(Number(value.longitude))
+        ? Number(value.longitude)
+        : null,
   created_at: value?.created_at ?? null,
   updated_at: value?.updated_at ?? null,
 });
@@ -927,28 +915,6 @@ const getWebsiteHref = (website: string): string => {
   if (!website) return "";
   if (/^https?:\/\//i.test(website)) return website;
   return `https://${website}`;
-};
-
-/* Builds an external Google Maps search link from the establishment's
-   name and address, so location lives in Google Maps instead of an
-   in-app interactive map. */
-const buildGoogleMapsUrl = (accommodation: AccommodationRecord): string => {
-  if (
-    typeof accommodation.location_lat === "number" &&
-    typeof accommodation.location_lng === "number"
-  ) {
-    const query = `${accommodation.location_lat},${accommodation.location_lng}`;
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-      query
-    )}`;
-  }
-
-  const address = getAddress(accommodation);
-  const query = [accommodation.name, address].filter(Boolean).join(", ");
-
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    query || accommodation.name
-  )}`;
 };
 
 /* =========================================================
@@ -1124,12 +1090,12 @@ const AdminAccommodations: React.FC = () => {
       owner: getOwner(accommodation),
       manager: getManager(accommodation),
       address: getAddress(accommodation),
-      location_lat: accommodation.location_lat,
-      location_lng: accommodation.location_lng,
       contactNumber: getPhone(accommodation),
       website: getWebsite(accommodation),
       description: accommodation.description || "",
       priceRange: getPriceRange(accommodation),
+      latitude: accommodation.latitude,
+      longitude: accommodation.longitude,
       images: getImages(accommodation).join(", "),
       imageFiles: [],
     });
@@ -1201,12 +1167,12 @@ const AdminAccommodations: React.FC = () => {
         owner: form.owner.trim(),
         manager: form.manager.trim(),
         address: form.address.trim(),
-        location_lat: form.location_lat,
-        location_lng: form.location_lng,
         contact_number: form.contactNumber.trim(),
         website: form.website.trim(),
         description: form.description.trim(),
         price_range: form.priceRange.trim(),
+        latitude: typeof form.latitude === "number" ? form.latitude : null,
+        longitude: typeof form.longitude === "number" ? form.longitude : null,
         images: imageUrls,
       };
 
@@ -1707,22 +1673,11 @@ const AdminAccommodations: React.FC = () => {
                           size="sm"
                           variant="outline-warning"
                           className="admin-map-link-button"
-                          disabled={!address}
-                          onClick={() =>
-                            window.open(
-                              buildGoogleMapsUrl(accommodation),
-                              "_blank",
-                              "noopener,noreferrer"
-                            )
-                          }
-                          title={
-                            address
-                              ? "Open in Google Maps"
-                              : "Add an address to enable this"
-                          }
+                          onClick={() => openEdit(accommodation)}
+                          title="Open the in-app map and edit the location"
                         >
-                          <ExternalLink size={14} strokeWidth={2} />
-                          Google Maps
+                          <MapPin size={14} strokeWidth={2} />
+                          Map
                         </Button>
 
                         <Button
@@ -1872,30 +1827,16 @@ const AdminAccommodations: React.FC = () => {
                   <Col xs={12} md={6}>
                     <div className="admin-accommodation-detail-box">
                       <small>
-                        <ExternalLink size={12} strokeWidth={2.2} />
+                        <MapPin size={12} strokeWidth={2.2} />
                         Map Location
                       </small>
-                      {getAddress(viewItem) ||
-                      (typeof viewItem.location_lat === "number" &&
-                        typeof viewItem.location_lng === "number") ? (
-                        <a
-                          href={buildGoogleMapsUrl(viewItem)}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{
-                            color: CALBAYOG_BLUE,
-                            fontWeight: 800,
-                            fontSize: "0.74rem",
-                            textDecoration: "none",
-                          }}
-                        >
-                          {typeof viewItem.location_lat === "number" &&
-                          typeof viewItem.location_lng === "number"
-                            ? "Open pinned location in Google Maps"
-                            : "Open in Google Maps"}
-                        </a>
+                      {typeof viewItem.latitude === "number" &&
+                      typeof viewItem.longitude === "number" ? (
+                        <strong>
+                          Location set • {viewItem.latitude.toFixed(6)}, {viewItem.longitude.toFixed(6)}
+                        </strong>
                       ) : (
-                        <strong>Set a map location to enable this</strong>
+                        <strong>Location not set yet</strong>
                       )}
                     </div>
                   </Col>
@@ -2092,34 +2033,30 @@ const AdminAccommodations: React.FC = () => {
                   <div>
                     <Form.Label className="fw-semibold mb-1">Set Establishment Location</Form.Label>
                     <div className="admin-location-helper">
-                      Search the establishment or address, choose a result, then drag or click the pin to fine-tune it.
+                      Search the accommodation or address, choose a result, then drag or click the pin to fine-tune it.
                     </div>
                   </div>
-                  {typeof form.location_lat === "number" && typeof form.location_lng === "number" && (
+                  {typeof form.latitude === "number" && typeof form.longitude === "number" && (
                     <Badge className="admin-location-ready-badge">Location set</Badge>
                   )}
                 </div>
 
                 <LocationPicker
                   name={form.name}
-                  latitude={form.location_lat}
-                  longitude={form.location_lng}
+                  latitude={form.latitude}
+                  longitude={form.longitude}
                   address={form.address}
-                  category="Other"
-                  attractionType="Accommodation"
                   searchablePlaces={items.map((item) => ({
                     id: item.id,
                     name: item.name,
                     address: item.address,
-                    latitude: item.location_lat,
-                    longitude: item.location_lng,
+                    latitude: item.latitude,
+                    longitude: item.longitude,
                   }))}
                   onChange={({ latitude, longitude, address }) => {
-                    updateForm("location_lat", latitude);
-                    updateForm("location_lng", longitude);
-                    if (address) {
-                      updateForm("address", address);
-                    }
+                    updateForm("latitude", latitude);
+                    updateForm("longitude", longitude);
+                    if (address) updateForm("address", address);
                   }}
                 />
 
@@ -2132,6 +2069,13 @@ const AdminAccommodations: React.FC = () => {
                   placeholder="Address will be filled from the selected location, or enter it manually"
                   disabled={saving}
                 />
+
+                {typeof form.latitude === "number" && typeof form.longitude === "number" && (
+                  <div className="admin-location-coordinates mt-2">
+                    <MapPinned size={14} strokeWidth={2} />
+                    <span>Coordinates: {form.latitude.toFixed(6)}, {form.longitude.toFixed(6)}</span>
+                  </div>
+                )}
               </Col>
             </Row>
 
