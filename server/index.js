@@ -206,6 +206,125 @@ app.use(
 );
 
 /* =========================================================
+   OPENSTREETMAP NEARBY PLACES PROXY
+========================================================= */
+
+/*
+  The Vercel frontend calls this Render endpoint instead
+  of requesting Overpass directly from the browser.
+
+  This returns external map data only.
+  It does NOT save anything to Supabase.
+*/
+
+app.post("/api/map/places", async (req, res) => {
+  const query = req.body?.query;
+
+  if (
+    typeof query !== "string" ||
+    !query.trim()
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "A valid Overpass query is required.",
+    });
+  }
+
+  if (query.length > 20000) {
+    return res.status(413).json({
+      success: false,
+      message: "The map query is too large.",
+    });
+  }
+
+  // Accept only Overpass QL queries requesting JSON.
+  if (
+    !/^\s*\[out:json(?:[,\]])/i.test(query)
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid Overpass query format.",
+    });
+  }
+
+  const endpoints = [
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass-api.de/api/interpreter",
+  ];
+
+  for (const endpoint of endpoints) {
+    let timeout;
+
+    try {
+      const controller = new AbortController();
+
+      timeout = setTimeout(() => {
+        controller.abort();
+      }, 25000);
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/x-www-form-urlencoded",
+          Accept: "application/json",
+          "User-Agent":
+            "CalbayogCityTourism/1.0",
+        },
+        body: new URLSearchParams({
+          data: query,
+        }).toString(),
+        signal: controller.signal,
+      });
+
+      const responseText = await response.text();
+
+      if (!response.ok) {
+        console.warn(
+          `Overpass returned HTTP ${response.status}: ${endpoint}`
+        );
+
+        continue;
+      }
+
+      let data;
+
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        console.warn(
+          `Overpass returned invalid JSON: ${endpoint}`
+        );
+
+        continue;
+      }
+
+      return res.json({
+        success: true,
+        elements: Array.isArray(data.elements)
+          ? data.elements
+          : [],
+      });
+    } catch (error) {
+      console.warn(
+        `Overpass request failed (${endpoint}):`,
+        error.message
+      );
+    } finally {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    }
+  }
+
+  return res.status(502).json({
+    success: false,
+    message:
+      "Nearby places are temporarily unavailable. Please try again later.",
+  });
+});
+
+/* =========================================================
    HEALTH CHECK
 ========================================================= */
 
