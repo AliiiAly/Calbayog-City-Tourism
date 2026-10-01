@@ -1,10 +1,8 @@
-
 require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const https = require("https");
 
 const seedAll = require("./src/utils/seed");
 const supabase = require("./src/config/supabase");
@@ -104,7 +102,7 @@ app.use("/api/upload", require("./src/routes/upload"));
 app.use("/api/admin-management", require("./src/routes/adminManagement"));
 
 /* =========================================================
-   FEATURED VIDEOS
+   FEATURED VIDEOS AND OTHER ROUTES
 ========================================================= */
 
 app.use("/api/featured-videos", require("./src/routes/featuredVideos"));
@@ -130,12 +128,15 @@ app.use("/api/favorites", require("./src/routes/favorites"));
 app.use("/api/itineraries", require("./src/routes/itineraries"));
 
 /* =========================================================
-   OPENSTREETMAP OVERPASS REQUEST HELPER
+   OPENSTREETMAP OVERPASS CONFIGURATION
 ========================================================= */
 
-const OVERPASS_TIMEOUT_MS = 12000;
+// Give each provider enough time to process the map query.
+const OVERPASS_TIMEOUT_MS = 27000;
+
 const OVERPASS_CACHE_TTL_MS = 45000;
 const MAX_MAP_QUERY_LENGTH = 20000;
+const MAX_MAP_RESULTS = 100;
 
 // Cache successful responses briefly to reduce repeated requests.
 const mapPlacesCache = new Map();
@@ -143,87 +144,75 @@ const mapPlacesCache = new Map();
 // Reuse an active request when multiple clients submit the same query.
 const mapPlacesInFlight = new Map();
 
+/*
+ * Provider failover:
+ * If one Overpass instance fails, the next provider is tried.
+ */
 const OVERPASS_ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
   "https://overpass.private.coffee/api/interpreter",
+  "https://overpass.nchc.org.tw/api/interpreter",
 ];
 
-function requestOverpass(endpoint, query, timeoutMs = OVERPASS_TIMEOUT_MS) {
-  return new Promise((resolve, reject) => {
-    let url;
+/* =========================================================
+   REQUEST ONE OVERPASS PROVIDER
+========================================================= */
 
-    try {
-      url = new URL(endpoint);
-    } catch {
-      reject(new Error("Invalid Overpass provider URL."));
-      return;
-    }
+/*
+ * Use Node's built-in fetch instead of manually managing an
+ * HTTPS request. This makes response handling and timeouts
+ * easier to control.
+ *
+ * Requires a Node.js version with built-in fetch (Node 18+).
+ */
+async function requestOverpass(
+  endpoint,
+  query,
+  timeoutMs = OVERPASS_TIMEOUT_MS
+) {
+  const controller = new AbortController();
 
-    const body = new URLSearchParams({
-      data: query,
-    }).toString();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
 
-    const request = https.request(
-      {
-        protocol: url.protocol,
-        hostname: url.hostname,
-        port: url.port || 443,
-        path: `${url.pathname}${url.search}`,
-        method: "POST",
-        headers: {
-          "Content-Type":
-            "application/x-www-form-urlencoded; charset=UTF-8",
-          "Content-Length": Buffer.byteLength(body),
-          Accept: "application/json",
-          "User-Agent": "CalbayogCityTourism/1.0",
-        },
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type":
+          "application/x-www-form-urlencoded; charset=UTF-8",
+        Accept: "application/json",
+        "User-Agent": "CalbayogCityTourism/1.0",
       },
-      (response) => {
-        let responseBody = "";
-        let settled = false;
-
-        const finish = (callback, value) => {
-          if (settled) return;
-          settled = true;
-          callback(value);
-        };
-
-        response.setEncoding("utf8");
-
-        response.on("data", (chunk) => {
-          responseBody += chunk;
-
-          // Avoid retaining an unexpectedly large response in memory.
-          if (responseBody.length > 12 * 1024 * 1024) {
-            response.destroy(
-              new Error("Overpass response exceeded the size limit.")
-            );
-          }
-        });
-
-        response.on("end", () => {
-          finish(resolve, {
-            statusCode: response.statusCode || 0,
-            body: responseBody,
-          });
-        });
-
-        response.on("error", (error) => {
-          finish(reject, error);
-        });
-      }
-    );
-
-    request.setTimeout(timeoutMs, () => {
-      request.destroy(
-        new Error(`Request timed out after ${timeoutMs} ms`)
-      );
+      body: new URLSearchParams({
+        data: query,
+      }).toString(),
+      signal: controller.signal,
     });
 
-    request.on("error", reject);
-    request.end(body);
-  });
+    const responseBody = await response.text();
+
+    return {
+      statusCode: response.status,
+      body: responseBody,
+    };
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error(
+        `Request timed out after ${timeoutMs} ms`
+      );
+    }
+
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : "Network request to the Overpass provider failed."
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 /* =========================================================
@@ -261,7 +250,8 @@ async function fetchNearbyMapData(query) {
       try {
         data = JSON.parse(result.body);
       } catch {
-        const errorMessage = `${endpoint} returned invalid JSON`;
+        const errorMessage =
+          `${endpoint} returned invalid JSON`;
 
         console.warn(`[Map Places] ${errorMessage}`);
         providerErrors.push(errorMessage);
@@ -269,7 +259,8 @@ async function fetchNearbyMapData(query) {
       }
 
       if (!data || !Array.isArray(data.elements)) {
-        const errorMessage = `${endpoint} returned no elements array`;
+        const errorMessage =
+          `${endpoint} returned no elements array`;
 
         console.warn(
           `[Map Places] ${errorMessage}:`,
@@ -280,11 +271,19 @@ async function fetchNearbyMapData(query) {
         continue;
       }
 
+      /*
+       * Overpass may return a remark when a query exceeds its
+       * execution limits. Do not treat an incomplete response
+       * as a successful nearby-places result.
+       */
       if (data.remark) {
-        console.warn(
-          `[Map Places] Provider remark from ${endpoint}:`,
-          data.remark
-        );
+        const errorMessage =
+          `${endpoint} reported: ${data.remark}`;
+
+        console.warn(`[Map Places] ${errorMessage}`);
+
+        providerErrors.push(errorMessage);
+        continue;
       }
 
       console.log(
@@ -297,25 +296,42 @@ async function fetchNearbyMapData(query) {
         provider: endpoint,
       };
     } catch (error) {
-      const errorMessage = error?.message || "Unknown provider error";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Unknown provider error";
 
       console.warn(
         `[Map Places] Provider failed: ${endpoint}: ${errorMessage}`
       );
 
-      providerErrors.push(`${endpoint}: ${errorMessage}`);
+      providerErrors.push(
+        `${endpoint}: ${errorMessage}`
+      );
     }
   }
 
-  const error = new Error("All Overpass providers failed.");
+  const error = new Error(
+    "All Overpass providers failed."
+  );
+
   error.providerErrors = providerErrors;
+
   throw error;
 }
 
 /* =========================================================
-   OPENSTREETMAP NEARBY PLACES PROXY
+   OPENSTREETMAP NEARBY PLACES API
 ========================================================= */
 
+/*
+ * This endpoint is intentionally defined in this server file.
+ * Do NOT create a separate map.js file for this implementation.
+ *
+ * Frontend request:
+ * POST /api/map/places
+ * Body: { "query": "<Overpass QL query>" }
+ */
 app.post("/api/map/places", async (req, res) => {
   const query = req.body?.query;
 
@@ -343,10 +359,24 @@ app.post("/api/map/places", async (req, res) => {
     });
   }
 
-  const cacheKey = normalizedQuery;
+  /*
+   * Limit the output size to avoid unnecessarily large responses.
+   * This changes the final output statement only; the query's
+   * filters and selected geographic area remain unchanged.
+   */
+  const optimizedQuery = normalizedQuery.replace(
+    /\bout\s+center\s+tags\s*;/i,
+    `out center tags ${MAX_MAP_RESULTS};`
+  );
+
+  const cacheKey = optimizedQuery;
+
   const cached = mapPlacesCache.get(cacheKey);
 
-  if (cached && Date.now() - cached.timestamp < OVERPASS_CACHE_TTL_MS) {
+  if (
+    cached &&
+    Date.now() - cached.timestamp < OVERPASS_CACHE_TTL_MS
+  ) {
     console.log("[Map Places] Returning cached response.");
 
     return res.status(200).json({
@@ -356,7 +386,7 @@ app.post("/api/map/places", async (req, res) => {
     });
   }
 
-  // Remove expired cache entry.
+  // Remove expired cache entries.
   if (cached) {
     mapPlacesCache.delete(cacheKey);
   }
@@ -365,15 +395,18 @@ app.post("/api/map/places", async (req, res) => {
     let activeRequest = mapPlacesInFlight.get(cacheKey);
 
     if (!activeRequest) {
-      activeRequest = fetchNearbyMapData(normalizedQuery);
+      activeRequest = fetchNearbyMapData(optimizedQuery);
+
       mapPlacesInFlight.set(cacheKey, activeRequest);
     } else {
-      console.log("[Map Places] Reusing an in-progress request.");
+      console.log(
+        "[Map Places] Reusing an in-progress request."
+      );
     }
 
     const result = await activeRequest;
 
-    // Cache only successful results.
+    // Cache successful responses only.
     mapPlacesCache.set(cacheKey, {
       elements: result.elements,
       timestamp: Date.now(),
@@ -394,19 +427,30 @@ app.post("/api/map/places", async (req, res) => {
       cached: false,
     });
   } catch (error) {
-    console.error("[Map Places] All providers failed.");
+    console.error(
+      "[Map Places] All Overpass providers failed."
+    );
 
     if (Array.isArray(error.providerErrors)) {
       for (const providerError of error.providerErrors) {
-        console.error(`[Map Places] ${providerError}`);
+        console.error(
+          `[Map Places] ${providerError}`
+        );
       }
+    } else {
+      console.error(
+        "[Map Places] Unexpected error:",
+        error instanceof Error
+          ? error.message
+          : error
+      );
     }
 
     return res.status(502).json({
       success: false,
       code: "OVERPASS_UNAVAILABLE",
       message:
-        "Nearby places are temporarily unavailable. Please try again later.",
+        "Nearby places are temporarily unavailable. You can still search for a location or place the pin manually.",
     });
   } finally {
     mapPlacesInFlight.delete(cacheKey);
@@ -429,9 +473,9 @@ app.get("/api/health", (req, res) => {
 ========================================================= */
 
 /*
-  Skip automatic seed.
-  Existing data is populated through SQL.
-*/
+ * Skip automatic seed.
+ * Existing data is populated through SQL.
+ */
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
