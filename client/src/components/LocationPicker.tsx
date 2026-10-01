@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   MapContainer,
@@ -25,6 +26,10 @@ import "leaflet/dist/leaflet.css";
 const BRAND_BLUE = "#2D3195";
 const DEFAULT_LATITUDE = 12.0668;
 const DEFAULT_LONGITUDE = 124.6041;
+
+// Render backend URL. The backend proxies requests to Overpass.
+const MAP_PLACES_API_URL =
+  "https://calbayog-city-tourism.onrender.com/api/map/places";
 
 type MapLayer = "street" | "satellite" | "terrain";
 
@@ -179,10 +184,6 @@ const tileLayers: Record<
   },
 };
 
-/*
- * This transparent Esri layer adds place names and other reference labels
- * on top of satellite imagery. It is not a second satellite imagery layer.
- */
 const SATELLITE_LABELS_URL =
   "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Reference_Overlay/MapServer/tile/{z}/{y}/{x}";
 
@@ -294,12 +295,11 @@ async function geocodeLocation(query: string): Promise<SearchResult[]> {
 }
 
 /*
- * Additional places are displayed separately from the selected attraction.
- * They are never automatically saved to Supabase.
+ * External OpenStreetMap places are displayed separately from the
+ * selected attraction marker. They are not automatically saved to Supabase.
  *
- * GET is used instead of POST to avoid the unnecessary POST preflight
- * that was visible in the browser console. CORS restrictions can still
- * occur on public services; this component tries both endpoints.
+ * Nearby-place requests go through the Render backend proxy rather than
+ * directly to public Overpass servers, avoiding browser-side Overpass CORS.
  */
 function OpenStreetMapPlaces({
   enabled,
@@ -323,10 +323,6 @@ function OpenStreetMapPlaces({
       return;
     }
 
-    /*
-     * Nearby mapped-place requests are restricted to reasonably close
-     * zoom levels and a small visible area.
-     */
     if (map.getZoom() < 12) {
       setPlaces([]);
       setLoadMessage("Zoom in to see nearby mapped places.");
@@ -351,9 +347,6 @@ function OpenStreetMapPlaces({
       return;
     }
 
-    /*
-     * Space requests apart to avoid overloading public Overpass services.
-     */
     const elapsed = Date.now() - lastRequestAt.current;
 
     if (elapsed < 8000) {
@@ -373,6 +366,7 @@ function OpenStreetMapPlaces({
     const controller = new AbortController();
     activeController.current = controller;
     lastRequestAt.current = Date.now();
+
     setLoading(true);
     setLoadMessage("Loading nearby mapped places…");
 
@@ -399,122 +393,138 @@ function OpenStreetMapPlaces({
       out center tags;
     `;
 
-    /*
-     * Try the alternate service first, then the main Overpass service.
-     * A failed request does not permanently mark these map bounds as loaded.
-     */
-    const endpoints = [
-      "https://overpass.kumi.systems/api/interpreter",
-      "https://overpass-api.de/api/interpreter",
-    ];
+    try {
+      /*
+       * Send the query to our Render backend.
+       * The backend contacts Overpass and returns { success, elements }.
+       */
+      const response = await fetch(MAP_PLACES_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ query }),
+        signal: controller.signal,
+      });
 
-    for (const endpoint of endpoints) {
-      try {
-        const url = `${endpoint}?data=${encodeURIComponent(query)}`;
+      if (!response.ok) {
+        let serverMessage = "";
 
-        const response = await fetch(url, {
-          method: "GET",
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error(`Map place service returned ${response.status}.`);
+        try {
+          const errorData = await response.json();
+          serverMessage =
+            typeof errorData.message === "string"
+              ? errorData.message
+              : "";
+        } catch {
+          // Keep the HTTP status as the fallback error.
         }
 
-        const data: { elements?: OverpassElement[] } =
-          await response.json();
-
-        const mappedPlaces = (data.elements || [])
-          .map((element): OpenStreetMapPlace | null => {
-            const latitude = Number(
-              element.lat ?? element.center?.lat,
-            );
-
-            const longitude = Number(
-              element.lon ?? element.center?.lon,
-            );
-
-            const tags = element.tags || {};
-
-            const placeName = String(
-              tags.name || tags["name:en"] || "",
-            ).trim();
-
-            if (
-              !placeName ||
-              !Number.isFinite(latitude) ||
-              !Number.isFinite(longitude) ||
-              Math.abs(latitude) > 90 ||
-              Math.abs(longitude) > 180
-            ) {
-              return null;
-            }
-
-            const address = [
-              tags["addr:street"],
-              tags["addr:suburb"],
-              tags["addr:city"],
-              tags["addr:province"],
-            ]
-              .filter(Boolean)
-              .join(", ");
-
-            return {
-              id: `${element.type}-${element.id}`,
-              name: placeName,
-              latitude,
-              longitude,
-              category: getMappedPlaceCategory(tags),
-              address,
-            };
-          })
-          .filter(
-            (place): place is OpenStreetMapPlace => place !== null,
-          );
-
-        const unique = new Map<string, OpenStreetMapPlace>();
-
-        for (const place of mappedPlaces) {
-          const key =
-            `${normalize(place.name)}|` +
-            `${place.latitude.toFixed(5)}|` +
-            `${place.longitude.toFixed(5)}`;
-
-          if (!unique.has(key)) {
-            unique.set(key, place);
-          }
-        }
-
-        const results = Array.from(unique.values()).slice(0, 100);
-
-        if (controller.signal.aborted) {
-          return;
-        }
-
-        setPlaces(results);
-        lastBoundsKey.current = boundsKey;
-        setLoadMessage(
-          results.length > 0
-            ? `${results.length} nearby mapped places loaded.`
-            : "No named places were found in this area. Try moving the map or searching for a place.",
-        );
-        return;
-      } catch (error) {
-        if (controller.signal.aborted) {
-          return;
-        }
-
-        console.warn(
-          `Could not load nearby places from ${endpoint}:`,
-          error,
+        throw new Error(
+          serverMessage ||
+            `The map service returned HTTP ${response.status}.`,
         );
       }
-    }
 
-    if (!controller.signal.aborted) {
+      const data: {
+        success?: boolean;
+        elements?: OverpassElement[];
+        message?: string;
+      } = await response.json();
+
+      if (data.success === false) {
+        throw new Error(
+          data.message || "The map service could not load nearby places.",
+        );
+      }
+
+      const mappedPlaces = (data.elements || [])
+        .map((element): OpenStreetMapPlace | null => {
+          const latitude = Number(element.lat ?? element.center?.lat);
+          const longitude = Number(element.lon ?? element.center?.lon);
+          const tags = element.tags || {};
+
+          const placeName = String(
+            tags.name || tags["name:en"] || "",
+          ).trim();
+
+          if (
+            !placeName ||
+            !Number.isFinite(latitude) ||
+            !Number.isFinite(longitude) ||
+            Math.abs(latitude) > 90 ||
+            Math.abs(longitude) > 180
+          ) {
+            return null;
+          }
+
+          const address = [
+            tags["addr:street"],
+            tags["addr:suburb"],
+            tags["addr:city"],
+            tags["addr:province"],
+          ]
+            .filter(Boolean)
+            .join(", ");
+
+          return {
+            id: `${element.type}-${element.id}`,
+            name: placeName,
+            latitude,
+            longitude,
+            category: getMappedPlaceCategory(tags),
+            address,
+          };
+        })
+        .filter(
+          (place): place is OpenStreetMapPlace => place !== null,
+        );
+
+      const unique = new Map<string, OpenStreetMapPlace>();
+
+      for (const place of mappedPlaces) {
+        const key =
+          `${normalize(place.name)}|` +
+          `${place.latitude.toFixed(5)}|` +
+          `${place.longitude.toFixed(5)}`;
+
+        if (!unique.has(key)) {
+          unique.set(key, place);
+        }
+      }
+
+      const results = Array.from(unique.values()).slice(0, 100);
+
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      setPlaces(results);
+      lastBoundsKey.current = boundsKey;
+
       setLoadMessage(
-        "Nearby places could not be loaded from the map service. You can still search for a location or set the attraction pin manually.",
+        results.length > 0
+          ? `${results.length} nearby mapped places loaded.`
+          : "No named places were found in this area. Try moving the map or searching for a place.",
       );
+    } catch (error) {
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      console.error("Could not load nearby mapped places:", error);
+
+      setLoadMessage(
+        error instanceof Error
+          ? `Nearby places could not be loaded: ${error.message}`
+          : "Nearby places could not be loaded. You can still search for a location or place the attraction pin manually.",
+      );
+    } finally {
+      if (activeController.current === controller) {
+        activeController.current = null;
+        setLoading(false);
+      }
     }
   }, [enabled, map]);
 
@@ -523,11 +533,14 @@ function OpenStreetMapPlaces({
       setPlaces([]);
       setLoadMessage("");
       activeController.current?.abort();
+      lastBoundsKey.current = "";
 
       if (requestTimer.current !== null) {
         window.clearTimeout(requestTimer.current);
+        requestTimer.current = null;
       }
 
+      setLoading(false);
       return;
     }
 
@@ -541,6 +554,7 @@ function OpenStreetMapPlaces({
       }
 
       requestTimer.current = window.setTimeout(() => {
+        requestTimer.current = null;
         void loadPlaces();
       }, 800);
     };
@@ -552,6 +566,7 @@ function OpenStreetMapPlaces({
 
       if (requestTimer.current !== null) {
         window.clearTimeout(requestTimer.current);
+        requestTimer.current = null;
       }
 
       map.off("moveend zoomend", onMapChange);
