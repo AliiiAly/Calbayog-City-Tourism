@@ -27,15 +27,12 @@ const DEFAULT_LATITUDE = 12.0668;
 const DEFAULT_LONGITUDE = 124.6041;
 
 /*
- * Public Overpass API endpoints.
- * Nearby places are requested directly from OpenStreetMap,
- * rather than from the application's Render backend.
+ * Nearby places are requested through the application backend.
+ * The backend communicates with OpenStreetMap's Overpass services.
+ * This avoids browser-side Overpass CORS errors.
  */
-const OVERPASS_ENDPOINTS = [
-  "https://overpass-api.de/api/interpreter",
-  "https://overpass.kumi.systems/api/interpreter",
-  "https://overpass.private.coffee/api/interpreter",
-];
+const MAP_PLACES_API_URL =
+  "https://calbayog-city-tourism.onrender.com/api/map/places";
 
 type MapLayer = "street" | "satellite" | "terrain";
 
@@ -91,6 +88,13 @@ interface OverpassElement {
   lon?: number;
   center?: { lat?: number; lon?: number };
   tags?: Record<string, string>;
+}
+
+interface MapPlacesResponse {
+  success?: boolean;
+  elements?: OverpassElement[];
+  message?: string;
+  code?: string;
 }
 
 const CATEGORY_MARKER_DESIGNS: Record<
@@ -205,73 +209,81 @@ function getMappedPlaceCategory(tags: Record<string, string>) {
 }
 
 /*
- * Query the public Overpass services directly.
- * Each endpoint is tried in sequence if the previous one fails.
+ * Fetch nearby OpenStreetMap places through the Render backend.
+ *
+ * The backend handles communication with the Overpass providers.
+ * This function does not call public Overpass endpoints from the browser.
  */
 async function fetchOverpassPlaces(
   query: string,
   signal: AbortSignal,
 ): Promise<OverpassElement[]> {
-  const errors: string[] = [];
-
-  for (const endpoint of OVERPASS_ENDPOINTS) {
-    if (signal.aborted) {
-      throw new DOMException("Request cancelled.", "AbortError");
-    }
-
-    const requestController = new AbortController();
-
-    const forwardAbort = () => requestController.abort();
-    signal.addEventListener("abort", forwardAbort, { once: true });
-
-    const timeout = window.setTimeout(
-      () => requestController.abort(),
-      18000,
-    );
-
-    try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-          Accept: "application/json",
-        },
-        body: new URLSearchParams({ data: query }).toString(),
-        signal: requestController.signal,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const data = (await response.json()) as {
-        elements?: OverpassElement[];
-        remark?: string;
-      };
-
-      if (!Array.isArray(data.elements)) {
-        throw new Error(data.remark || "Invalid map data received.");
-      }
-
-      return data.elements;
-    } catch (error) {
-      if (signal.aborted) {
-        throw new DOMException("Request cancelled.", "AbortError");
-      }
-
-      const message =
-        error instanceof Error ? error.message : "Unknown network error";
-
-      errors.push(`${new URL(endpoint).hostname}: ${message}`);
-    } finally {
-      window.clearTimeout(timeout);
-      signal.removeEventListener("abort", forwardAbort);
-    }
+  if (signal.aborted) {
+    throw new DOMException("Request cancelled.", "AbortError");
   }
 
-  throw new Error(
-    `All nearby-place services failed. ${errors.join(" | ")}`,
-  );
+  const response = await fetch(MAP_PLACES_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ query }),
+    signal,
+  });
+
+  let data: MapPlacesResponse;
+
+  try {
+    data = (await response.json()) as MapPlacesResponse;
+  } catch {
+    throw new Error(
+      "The map service returned an invalid response. Please try again.",
+    );
+  }
+
+  if (!response.ok || data.success !== true) {
+    if (
+      response.status === 502 ||
+      data.code === "OVERPASS_UNAVAILABLE"
+    ) {
+      throw new Error(
+        "Nearby places are temporarily unavailable. You can still search for a location or place the pin manually.",
+      );
+    }
+
+    if (response.status === 429) {
+      throw new Error(
+        "Too many map requests. Please wait a moment and try again.",
+      );
+    }
+
+    if (response.status === 404) {
+      throw new Error(
+        "The nearby-places API endpoint was not found. Check the Render backend route.",
+      );
+    }
+
+    if (response.status >= 500) {
+      throw new Error(
+        data.message ||
+          "The map server is temporarily unavailable. Please try again later.",
+      );
+    }
+
+    throw new Error(
+      data.message ||
+        `The map service returned HTTP ${response.status}.`,
+    );
+  }
+
+  if (!Array.isArray(data.elements)) {
+    throw new Error(
+      "The map service returned an unexpected data format.",
+    );
+  }
+
+  return data.elements;
 }
 
 function MapClickHandler({
