@@ -163,6 +163,76 @@ const createAttractionMarkerIcon = (
   });
 };
 
+const createAccommodationMarkerIcon = () =>
+  L.divIcon({
+    className: "calbayog-accommodation-marker",
+    html: `
+      <div
+        aria-label="Hotels and Resorts"
+        style="
+          position:relative;
+          width:44px;
+          height:52px;
+          display:flex;
+          align-items:flex-start;
+          justify-content:center;
+          filter:drop-shadow(0 3px 4px rgba(15,23,42,.30));
+        "
+      >
+        <div
+          style="
+            position:absolute;
+            top:0;
+            left:3px;
+            width:38px;
+            height:38px;
+            border-radius:50% 50% 50% 0;
+            transform:rotate(-45deg);
+            background:#2563EB;
+            border:3px solid #fff;
+            box-shadow:0 1px 2px rgba(15,23,42,.18);
+          "
+        ></div>
+        <div
+          style="
+            position:absolute;
+            top:7px;
+            left:10px;
+            width:24px;
+            height:24px;
+            border-radius:50%;
+            background:#fff;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            z-index:2;
+          "
+        >
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#2563EB"
+            stroke-width="2.1"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 21h18"/>
+            <path d="M5 21V7l7-4 7 4v14"/>
+            <path d="M9 21v-4h6v4"/>
+            <path d="M8 9h.01M12 9h.01M16 9h.01M8 12h.01M12 12h.01M16 12h.01"/>
+          </svg>
+        </div>
+      </div>
+    `,
+    iconSize: [44, 52],
+    iconAnchor: [22, 49],
+    popupAnchor: [0, -47],
+    tooltipAnchor: [0, -43],
+  });
+
 const mappedPlaceIcon = L.divIcon({
   className: "calbayog-osm-place-marker",
   html: `<div class="calbayog-osm-place-marker-inner">✦</div>`,
@@ -1700,7 +1770,11 @@ export default function LocationPicker({
 
           <Marker
             position={position}
-            icon={createAttractionMarkerIcon(category, attractionType)}
+            icon={
+              category || attractionType
+                ? createAttractionMarkerIcon(category, attractionType)
+                : createAccommodationMarkerIcon()
+            }
             draggable
             zIndexOffset={1000}
             eventHandlers={{
