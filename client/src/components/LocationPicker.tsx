@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   MapContainer,
@@ -83,6 +84,10 @@ interface OverpassElement {
     lon?: number;
   };
   tags?: Record<string, string>;
+}
+
+interface OverpassResponse {
+  elements?: OverpassElement[];
 }
 
 const CATEGORY_MARKER_DESIGNS: Record<
@@ -300,10 +305,10 @@ async function geocodeLocation(query: string): Promise<SearchResult[]> {
 }
 
 /**
- * Displays mapped OpenStreetMap places as a separate layer.
+ * Loads named places from OpenStreetMap into a separate marker layer.
  *
- * These markers are references only. They are not automatically saved
- * to Supabase and do not replace the selected attraction pin.
+ * These markers are not automatically saved to Supabase and do not
+ * replace the currently selected attraction marker.
  */
 function OpenStreetMapPlaces({
   enabled,
@@ -315,20 +320,34 @@ function OpenStreetMapPlaces({
   const map = useMap();
 
   const [places, setPlaces] = useState<OpenStreetMapPlace[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadMessage, setLoadMessage] = useState("");
 
   const lastBoundsKey = useRef("");
   const lastRequestAt = useRef(0);
   const requestTimer = useRef<number | null>(null);
   const activeController = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const loadPlaces = useCallback(async () => {
     if (!enabled) {
       return;
     }
 
-    // Avoid large area queries when zoomed too far out.
-    if (map.getZoom() < 13) {
+    const zoom = map.getZoom();
+
+    // Require a close enough zoom so queries stay small.
+    if (zoom < 13) {
       setPlaces([]);
+      setLoadMessage("Zoom in to level 13 or closer to load nearby places.");
       return;
     }
 
@@ -339,19 +358,24 @@ function OpenStreetMapPlaces({
     const north = Math.min(90, bounds.getNorth());
     const east = Math.min(180, bounds.getEast());
 
-    // Restrict queries to a small visible area to reduce server load.
+    // Avoid large Overpass queries.
     if (north - south > 0.22 || east - west > 0.22) {
+      setPlaces([]);
+      setLoadMessage("Zoom in a little more to load nearby mapped places.");
       return;
     }
 
-    const round = (value: number) => value.toFixed(3);
-    const boundsKey = [south, west, north, east].map(round).join(",");
+    const round = (value: number) => value.toFixed(4);
+
+    const boundsKey = [south, west, north, east]
+      .map(round)
+      .join(",");
 
     if (boundsKey === lastBoundsKey.current) {
       return;
     }
 
-    // Respect public Overpass infrastructure by spacing out requests.
+    // Avoid repeatedly sending requests to public Overpass servers.
     const elapsed = Date.now() - lastRequestAt.current;
 
     if (elapsed < 8000) {
@@ -361,7 +385,7 @@ function OpenStreetMapPlaces({
 
       requestTimer.current = window.setTimeout(() => {
         void loadPlaces();
-      }, 8000 - elapsed);
+      }, 8000 - elapsed + 100);
 
       return;
     }
@@ -378,29 +402,42 @@ function OpenStreetMapPlaces({
       `${round(south)},${round(west)},` +
       `${round(north)},${round(east)}`;
 
+    /*
+     * Important fixes:
+     * - Use "out tags center;" so ways and relations can return centers.
+     * - Query named amenities and shops for both nodes and ways.
+     * - Include natural, tourism, historic and leisure features.
+     */
     const query = `
-      [out:json][timeout:20];
+      [out:json][timeout:25];
       (
-        node["name"]["tourism"](${bbox});
-        way["name"]["tourism"](${bbox});
-        node["name"]["historic"](${bbox});
-        way["name"]["historic"](${bbox});
-        node["name"]["natural"](${bbox});
-        way["name"]["natural"](${bbox});
-        node["name"]["leisure"](${bbox});
-        way["name"]["leisure"](${bbox});
-        node["name"]["amenity"](${bbox});
-        node["name"]["shop"](${bbox});
+        nwr["name"]["tourism"](${bbox});
+        nwr["name"]["historic"](${bbox});
+        nwr["name"]["natural"](${bbox});
+        nwr["name"]["leisure"](${bbox});
+        nwr["name"]["amenity"](${bbox});
+        nwr["name"]["shop"](${bbox});
       );
-      out center tags;
+      out tags center;
     `;
 
+    setLoading(true);
+    setLoadMessage("Loading nearby places from OpenStreetMap…");
+
+    let succeeded = false;
+    let lastError: unknown = null;
+
     for (const endpoint of OVERPASS_ENDPOINTS) {
+      if (controller.signal.aborted) {
+        return;
+      }
+
       try {
         const response = await fetch(endpoint, {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            Accept: "application/json",
           },
           body: `data=${encodeURIComponent(query)}`,
           signal: controller.signal,
@@ -408,14 +445,17 @@ function OpenStreetMapPlaces({
 
         if (!response.ok) {
           throw new Error(
-            `OpenStreetMap search returned ${response.status}`,
+            `OpenStreetMap returned HTTP ${response.status}.`,
           );
         }
 
-        const data: { elements?: OverpassElement[] } =
-          await response.json();
+        const data: OverpassResponse = await response.json();
 
-        const mappedPlaces = (data.elements || [])
+        if (!Array.isArray(data.elements)) {
+          throw new Error("The map service returned an invalid response.");
+        }
+
+        const mappedPlaces = data.elements
           .map((element): OpenStreetMapPlace | null => {
             const latitude = Number(
               element.lat ?? element.center?.lat,
@@ -442,6 +482,7 @@ function OpenStreetMapPlaces({
             }
 
             const address = [
+              tags["addr:housenumber"],
               tags["addr:street"],
               tags["addr:suburb"],
               tags["addr:city"],
@@ -463,6 +504,7 @@ function OpenStreetMapPlaces({
             (place): place is OpenStreetMapPlace => place !== null,
           );
 
+        // Remove duplicate results returned under different OSM objects.
         const unique = new Map<string, OpenStreetMapPlace>();
 
         for (const place of mappedPlaces) {
@@ -476,25 +518,66 @@ function OpenStreetMapPlaces({
           }
         }
 
-        setPlaces(Array.from(unique.values()).slice(0, 100));
+        if (controller.signal.aborted || !mountedRef.current) {
+          return;
+        }
+
+        const result = Array.from(unique.values()).slice(0, 150);
+
+        setPlaces(result);
+        setLoadMessage(
+          result.length > 0
+            ? `${result.length} nearby mapped places loaded.`
+            : "No named places were found in this area. Try moving the map or zooming out slightly, then zooming back in.",
+        );
+
+        succeeded = true;
         return;
       } catch (error) {
         if (controller.signal.aborted) {
           return;
         }
 
+        lastError = error;
+
         console.warn(
-          "Could not load nearby OpenStreetMap places:",
+          `Could not load nearby places from ${endpoint}:`,
           error,
         );
       }
+    }
+
+    if (!succeeded && !controller.signal.aborted && mountedRef.current) {
+      // Allow a later map movement to retry this same area.
+      lastBoundsKey.current = "";
+
+      setPlaces([]);
+      setLoadMessage(
+        "Nearby places could not be loaded right now. The map service may be busy. Move the map slightly or try again later.",
+      );
+
+      console.warn("All OpenStreetMap place requests failed:", lastError);
+    }
+
+    if (mountedRef.current && !controller.signal.aborted) {
+      setLoading(false);
     }
   }, [enabled, map]);
 
   useEffect(() => {
     if (!enabled) {
       setPlaces([]);
+      setLoadMessage("");
+      setLoading(false);
+      lastBoundsKey.current = "";
+
       activeController.current?.abort();
+
+      if (requestTimer.current !== null) {
+        window.clearTimeout(requestTimer.current);
+        requestTimer.current = null;
+      }
+
       return;
     }
 
@@ -509,7 +592,7 @@ function OpenStreetMapPlaces({
 
       requestTimer.current = window.setTimeout(() => {
         void loadPlaces();
-      }, 650);
+      }, 700);
     };
 
     map.on("moveend zoomend", onMapChange);
@@ -519,6 +602,7 @@ function OpenStreetMapPlaces({
 
       if (requestTimer.current !== null) {
         window.clearTimeout(requestTimer.current);
+        requestTimer.current = null;
       }
 
       map.off("moveend zoomend", onMapChange);
@@ -537,7 +621,7 @@ function OpenStreetMapPlaces({
           key={place.id}
           position={[place.latitude, place.longitude]}
           icon={mappedPlaceIcon}
-          zIndexOffset={-100}
+          zIndexOffset={100}
         >
           <Popup>
             <div className="calbayog-location-popup">
@@ -562,6 +646,13 @@ function OpenStreetMapPlaces({
           </Popup>
         </Marker>
       ))}
+
+      {(loading || loadMessage) && (
+        <div className="calbayog-osm-status" aria-live="polite">
+          {loading && <LoaderCircle size={13} className="calbayog-spin" />}
+          <span>{loadMessage}</span>
+        </div>
+      )}
     </>
   );
 }
@@ -702,9 +793,7 @@ export default function LocationPicker({
 
     if (!query) {
       setSearchResults([]);
-      setSearchMessage(
-        "Enter an attraction name or address to search.",
-      );
+      setSearchMessage("Enter an attraction name or address to search.");
       return;
     }
 
@@ -801,7 +890,6 @@ export default function LocationPicker({
       return;
     }
 
-    // Resolve saved places that have a name or address but no coordinates.
     const query = [
       resultName,
       typeof result.address === "string" ? result.address : "",
@@ -1416,6 +1504,35 @@ export default function LocationPicker({
           background: #23277c;
         }
 
+        .calbayog-osm-status {
+          position: absolute;
+          z-index: 500;
+          bottom: 12px;
+          left: 12px;
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          max-width: calc(100% - 24px);
+          padding: 8px 11px;
+          border: 1px solid rgba(220, 225, 236, .95);
+          border-radius: 9px;
+          background: rgba(255, 255, 255, .95);
+          color: #515a70;
+          font-size: 10.5px;
+          line-height: 1.4;
+          box-shadow: 0 2px 9px rgba(20, 30, 60, .12);
+          pointer-events: none;
+        }
+
+        .calbayog-spin {
+          animation: calbayog-spin 1s linear infinite;
+          flex: 0 0 auto;
+        }
+
+        @keyframes calbayog-spin {
+          to { transform: rotate(360deg); }
+        }
+
         @media (max-width: 600px) {
           .calbayog-map-toolbar {
             padding: 12px;
@@ -1455,6 +1572,10 @@ export default function LocationPicker({
           .calbayog-location-picker *::before,
           .calbayog-location-picker *::after {
             transition: none !important;
+            animation: none !important;
+          }
+
+          .calbayog-spin {
             animation: none !important;
           }
         }
@@ -1660,16 +1781,12 @@ export default function LocationPicker({
             className={`calbayog-layer-button ${
               showMappedPlaces ? "active" : ""
             }`}
-            onClick={() =>
-              setShowMappedPlaces((current) => !current)
-            }
+            onClick={() => setShowMappedPlaces((current) => !current)}
             aria-pressed={showMappedPlaces}
             title="Show or hide places mapped in OpenStreetMap"
           >
             <MapPin size={14} />
-            {showMappedPlaces
-              ? "Nearby Places On"
-              : "Nearby Places Off"}
+            {showMappedPlaces ? "Nearby Places On" : "Nearby Places Off"}
           </button>
 
           <div className="calbayog-map-hint">
@@ -1769,8 +1886,7 @@ export default function LocationPicker({
                 </span>
 
                 <span style={{ marginTop: 5 }}>
-                  {position[0].toFixed(6)},{" "}
-                  {position[1].toFixed(6)}
+                  {position[0].toFixed(6)}, {position[1].toFixed(6)}
                 </span>
               </div>
             </Popup>
