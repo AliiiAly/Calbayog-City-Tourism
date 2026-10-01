@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   MapContainer,
@@ -27,8 +26,16 @@ const BRAND_BLUE = "#2D3195";
 const DEFAULT_LATITUDE = 12.0668;
 const DEFAULT_LONGITUDE = 124.6041;
 
-const MAP_PLACES_API_URL =
-  "https://calbayog-city-tourism.onrender.com/api/map/places";
+/*
+ * Public Overpass API endpoints.
+ * Nearby places are requested directly from OpenStreetMap,
+ * rather than from the application's Render backend.
+ */
+const OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+];
 
 type MapLayer = "street" | "satellite" | "terrain";
 
@@ -126,14 +133,6 @@ const normalize = (value: unknown) =>
     .trim()
     .replace(/\s+/g, " ");
 
-const escapeHtml = (value: string) =>
-  value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-
 const createAttractionMarkerIcon = (
   markerCategory?: string | null,
   markerType?: string | null,
@@ -188,7 +187,6 @@ const tileLayers: Record<
   },
 };
 
-/* Satellite imagery overlays. */
 const SATELLITE_LABELS_URL =
   "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
 
@@ -202,7 +200,78 @@ function getMappedPlaceCategory(tags: Record<string, string>) {
   if (tags.leisure) return `Leisure · ${tags.leisure.replace(/_/g, " ")}`;
   if (tags.amenity) return `Amenity · ${tags.amenity.replace(/_/g, " ")}`;
   if (tags.shop) return `Shop · ${tags.shop.replace(/_/g, " ")}`;
+  if (tags.place) return `Place · ${tags.place.replace(/_/g, " ")}`;
   return "Mapped place";
+}
+
+/*
+ * Query the public Overpass services directly.
+ * Each endpoint is tried in sequence if the previous one fails.
+ */
+async function fetchOverpassPlaces(
+  query: string,
+  signal: AbortSignal,
+): Promise<OverpassElement[]> {
+  const errors: string[] = [];
+
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    if (signal.aborted) {
+      throw new DOMException("Request cancelled.", "AbortError");
+    }
+
+    const requestController = new AbortController();
+
+    const forwardAbort = () => requestController.abort();
+    signal.addEventListener("abort", forwardAbort, { once: true });
+
+    const timeout = window.setTimeout(
+      () => requestController.abort(),
+      18000,
+    );
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+          Accept: "application/json",
+        },
+        body: new URLSearchParams({ data: query }).toString(),
+        signal: requestController.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = (await response.json()) as {
+        elements?: OverpassElement[];
+        remark?: string;
+      };
+
+      if (!Array.isArray(data.elements)) {
+        throw new Error(data.remark || "Invalid map data received.");
+      }
+
+      return data.elements;
+    } catch (error) {
+      if (signal.aborted) {
+        throw new DOMException("Request cancelled.", "AbortError");
+      }
+
+      const message =
+        error instanceof Error ? error.message : "Unknown network error";
+
+      errors.push(`${new URL(endpoint).hostname}: ${message}`);
+    } finally {
+      window.clearTimeout(timeout);
+      signal.removeEventListener("abort", forwardAbort);
+    }
+  }
+
+  throw new Error(
+    `All nearby-place services failed. ${errors.join(" | ")}`,
+  );
 }
 
 function MapClickHandler({
@@ -356,62 +425,35 @@ function OpenStreetMapPlaces({
       (
         node["name"]["tourism"](${bbox});
         way["name"]["tourism"](${bbox});
+
         node["name"]["historic"](${bbox});
         way["name"]["historic"](${bbox});
+
         node["name"]["natural"](${bbox});
         way["name"]["natural"](${bbox});
+
         node["name"]["leisure"](${bbox});
         way["name"]["leisure"](${bbox});
+
         node["name"]["amenity"](${bbox});
         way["name"]["amenity"](${bbox});
+
         node["name"]["shop"](${bbox});
         way["name"]["shop"](${bbox});
+
+        node["name"]["place"](${bbox});
+        way["name"]["place"](${bbox});
       );
       out center tags;
     `;
 
     try {
-      const response = await fetch(MAP_PLACES_API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ query }),
-        signal: controller.signal,
-      });
+      const elements = await fetchOverpassPlaces(
+        query,
+        controller.signal,
+      );
 
-      if (!response.ok) {
-        let serverMessage = "";
-
-        try {
-          const errorData = await response.json();
-          serverMessage =
-            typeof errorData.message === "string"
-              ? errorData.message
-              : "";
-        } catch {
-          // Use the HTTP status if the server did not return JSON.
-        }
-
-        throw new Error(
-          serverMessage || `The map service returned HTTP ${response.status}.`,
-        );
-      }
-
-      const data: {
-        success?: boolean;
-        elements?: OverpassElement[];
-        message?: string;
-      } = await response.json();
-
-      if (data.success === false) {
-        throw new Error(
-          data.message || "The map service could not load nearby places.",
-        );
-      }
-
-      const mappedPlaces = (data.elements || [])
+      const mappedPlaces = elements
         .map((element): OpenStreetMapPlace | null => {
           const latitude = Number(element.lat ?? element.center?.lat);
           const longitude = Number(element.lon ?? element.center?.lon);
