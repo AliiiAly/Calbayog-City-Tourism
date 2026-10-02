@@ -196,7 +196,7 @@ const DEVELOPMENT_LEVELS = ["Potential", "Emerging", "Existing", "Not Stated"];
 const MGT_OPTIONS = [
   "Government Operated",
   "Private Operator",
-  "Public Area - No operating centralized management",
+  "Public Area - No Operating Centralized Management",
   "Non-Government Organization",
   "Not Stated",
 ];
