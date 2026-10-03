@@ -100,6 +100,7 @@ app.use("/api/itinerary-requests", require("./src/routes/itinerary"));
 app.use("/api/feedback", require("./src/routes/feedback"));
 app.use("/api/upload", require("./src/routes/upload"));
 app.use("/api/admin-management", require("./src/routes/adminManagement"));
+app.use("/api/users", require("./src/routes/users"));
 
 /* =========================================================
    FEATURED VIDEOS AND OTHER ROUTES
