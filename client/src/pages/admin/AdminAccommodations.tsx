@@ -614,7 +614,18 @@ const ADMIN_ACCOMMODATIONS_STYLES = `
   .admin-form-title-text { display:block; color:#fff; font-family:"Poppins",sans-serif; font-size:1.05rem; font-weight:800; }
 
   .admin-accommodations-modal .modal-body { padding:22px !important; background:var(--admin-surface) !important; color:var(--admin-text) !important; }
-  .admin-accommodations-modal .modal-footer { gap:8px; padding:12px 20px !important; background:var(--admin-surface) !important; border-top:1px solid #EEF0F4 !important; }
+  .admin-accommodations-modal .modal-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 20px !important;
+    background: var(--admin-surface) !important;
+    border-top: 1px solid #EEF0F4 !important;
+    box-shadow: 0 -8px 20px rgba(26,30,53,.06);
+  }
   .admin-accommodations-modal .modal-body > hr { margin:24px 0 !important; border-color:var(--admin-border) !important; opacity:1; }
 
   .admin-form-intro {
@@ -673,6 +684,13 @@ const ADMIN_ACCOMMODATIONS_STYLES = `
   .admin-accommodations-modal .modal-footer .btn {
     min-height:39px; border-radius:11px !important; padding:8px 15px !important;
     font-family:"Nunito",sans-serif !important; font-size:.69rem !important; font-weight:900 !important;
+  }
+  .admin-accommodations-save-footer {
+    min-height: 64px;
+  }
+  .admin-accommodations-save-footer .btn {
+    position: relative;
+    z-index: 21;
   }
   .admin-accommodations-modal .modal-footer .btn-primary {
     border:0 !important; background:var(--admin-primary) !important; color:#fff !important;
@@ -2230,12 +2248,18 @@ const AdminAccommodations: React.FC = () => {
             </div>
           </Modal.Body>
 
-          <Modal.Footer>
-            <Button variant="secondary" onClick={closeForm} disabled={saving}>
+          <Modal.Footer className="admin-accommodations-save-footer">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={closeForm}
+              disabled={saving}
+            >
               Cancel
             </Button>
 
             <Button
+              type="button"
               variant="primary"
               onClick={() => void handleSave()}
               disabled={saving}
