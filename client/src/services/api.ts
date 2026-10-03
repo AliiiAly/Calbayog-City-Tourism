@@ -903,33 +903,14 @@ export const getEvent = (
     )}&select=*`,
   );
 
-export const createEvent = (
-  data: object,
-) =>
-  supabaseApi.post(
-    "/events",
-    data,
-  );
+export const createEvent = (data: object) =>
+  api.post("/events", data);
 
-export const updateEvent = (
-  id: string,
-  data: object,
-) =>
-  supabaseApi.patch(
-    `/events?id=eq.${encodeURIComponent(
-      id,
-    )}`,
-    data,
-  );
+export const updateEvent = (id: string, data: object) =>
+  api.put(`/events/${encodeURIComponent(id)}`, data);
 
-export const deleteEvent = (
-  id: string,
-) =>
-  supabaseApi.delete(
-    `/events?id=eq.${encodeURIComponent(
-      id,
-    )}`,
-  );
+export const deleteEvent = (id: string) =>
+  api.delete(`/events/${encodeURIComponent(id)}`);
 
 // =========================================================
 // ACCOMMODATIONS
