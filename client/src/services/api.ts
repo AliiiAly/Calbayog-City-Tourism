@@ -1633,15 +1633,43 @@ export const deleteGettingThere = (
 // USERS
 // =========================================================
 
+/*
+ * IMPORTANT:
+ *
+ * Admin user management MUST go through the Render backend.
+ *
+ * Do NOT use supabaseApi here.
+ *
+ * The regular "api" Axios instance automatically attaches:
+ *
+ * Authorization: Bearer <admin_token>
+ *
+ * through the ADMIN TOKEN interceptor above.
+ *
+ * The backend then:
+ *
+ * 1. verifies the admin JWT
+ * 2. verifies role === "admin"
+ * 3. uses the server-side Supabase service-role key
+ * 4. safely reads/writes public.users
+ *
+ * The backend also removes sensitive fields such as:
+ *
+ * - password
+ * - email_verification_token_hash
+ * - password_reset_token_hash
+ * - verification/reset expiration values
+ */
+
 export const getUsers = () =>
-  supabaseApi.get(
-    "/users?select=*&order=created_at.desc",
+  api.get(
+    "/users",
   );
 
 export const createUser = (
   data: object,
 ) =>
-  supabaseApi.post(
+  api.post(
     "/users",
     data,
   );
@@ -1650,8 +1678,8 @@ export const updateUser = (
   id: string,
   data: object,
 ) =>
-  supabaseApi.patch(
-    `/users?id=eq.${encodeURIComponent(
+  api.patch(
+    `/users/${encodeURIComponent(
       id,
     )}`,
     data,
@@ -1660,8 +1688,8 @@ export const updateUser = (
 export const deleteUser = (
   id: string,
 ) =>
-  supabaseApi.delete(
-    `/users?id=eq.${encodeURIComponent(
+  api.delete(
+    `/users/${encodeURIComponent(
       id,
     )}`,
   );
