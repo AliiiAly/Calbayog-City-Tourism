@@ -686,15 +686,59 @@ const ADMIN_ACCOMMODATIONS_STYLES = `
     font-family:"Nunito",sans-serif !important; font-size:.69rem !important; font-weight:900 !important;
   }
   .admin-accommodations-save-footer {
-    min-height: 64px;
+    position: relative !important;
+    z-index: 50 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 10px !important;
+    min-height: 72px !important;
+    padding: 14px 20px !important;
+    background: #ffffff !important;
+    border-top: 1px solid #e7e9f0 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
   }
   .admin-accommodations-save-footer .btn {
-    position: relative;
-    z-index: 21;
+    position: relative !important;
+    z-index: 51 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 42px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    white-space: nowrap !important;
+    text-indent: 0 !important;
+    letter-spacing: normal !important;
+    font-family: "Nunito", sans-serif !important;
+    font-size: .72rem !important;
+    font-weight: 900 !important;
+    line-height: 1.2 !important;
   }
-  .admin-accommodations-modal .modal-footer .btn-primary {
-    border:0 !important; background:var(--admin-primary) !important; color:#fff !important;
-    box-shadow:0 8px 18px rgba(45,49,149,.16);
+  .admin-accommodations-save-footer .btn-primary {
+    min-width: 165px !important;
+    color: #ffffff !important;
+    background: #2D3195 !important;
+    border: 1px solid #2D3195 !important;
+    box-shadow: 0 8px 18px rgba(45,49,149,.18) !important;
+  }
+  .admin-accommodations-save-footer .btn-primary:hover,
+  .admin-accommodations-save-footer .btn-primary:focus,
+  .admin-accommodations-save-footer .btn-primary:active {
+    color: #ffffff !important;
+    background: #242879 !important;
+    border-color: #242879 !important;
+  }
+  .admin-accommodations-save-footer .btn-primary:disabled {
+    color: #ffffff !important;
+    background: #777bb9 !important;
+    border-color: #777bb9 !important;
+    opacity: 1 !important;
+  }
+  .admin-accommodations-save-footer .btn-primary,
+  .admin-accommodations-save-footer .btn-primary * {
+    color: #ffffff !important;
   }
   .admin-accommodations-modal .modal-footer .btn-primary:hover { background:var(--admin-primary-dark) !important; transform:translateY(-1px); }
   .admin-accommodations-modal .modal-footer .btn-secondary {
@@ -2263,7 +2307,17 @@ const AdminAccommodations: React.FC = () => {
               variant="primary"
               onClick={() => void handleSave()}
               disabled={saving}
-              style={{ minWidth: 150 }}
+              style={{
+                minWidth: 165,
+                color: "#ffffff",
+                backgroundColor: "#2D3195",
+                borderColor: "#2D3195",
+                opacity: 1,
+                visibility: "visible",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
               {saving ? (
                 <>
