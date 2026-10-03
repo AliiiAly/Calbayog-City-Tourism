@@ -1062,8 +1062,11 @@ const AdminEvents: React.FC = () => {
   ========================================================= */
 
   const handleSave = async () => {
-    if (!form.title || !form.eventDate || !form.address) {
-      setError("Title, event date, and address are required.");
+    // Only the event name/title is required.
+    // Event date, address, category, description, images, ticket price,
+    // and featured status are optional.
+    if (!form.title.trim()) {
+      setError("Event name is required.");
 
       return;
     }
@@ -1765,7 +1768,7 @@ const AdminEvents: React.FC = () => {
 
             <Row className="g-3">
               <Col xs={12} md={5}>
-                <Form.Label>Event Date *</Form.Label>
+                <Form.Label>Event Date</Form.Label>
                 <Form.Control
                   type="date"
                   value={form.eventDate}
@@ -1774,7 +1777,7 @@ const AdminEvents: React.FC = () => {
               </Col>
 
               <Col xs={12} md={7}>
-                <Form.Label>Address *</Form.Label>
+                <Form.Label>Address</Form.Label>
                 <Form.Control
                   value={form.address}
                   onChange={(e) => fc("address", e.target.value)}
