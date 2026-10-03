@@ -1,13 +1,10 @@
 const express = require("express");
 const axios = require("axios");
+const bcrypt = require("bcrypt");
 
 const { protectAdmin } = require("../middleware/auth");
 
 const router = express.Router();
-
-/* =========================================================
-   SUPABASE CONFIG
-========================================================= */
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY =
@@ -20,7 +17,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 }
 
 /* =========================================================
-   SUPABASE REQUEST
+   SUPABASE REQUEST HELPER
 ========================================================= */
 
 const supabaseRequest = async ({
@@ -46,20 +43,6 @@ const supabaseRequest = async ({
 /* =========================================================
    SAFE USER RESPONSE
 ========================================================= */
-
-/*
- * IMPORTANT:
- *
- * Never send these fields to the browser:
- *
- * password
- * email_verification_token_hash
- * email_verification_expires_at
- * password_reset_token_hash
- * password_reset_expires_at
- *
- * AdminUsers only needs the safe account information.
- */
 
 const sanitizeUser = (user) => {
   if (!user) {
@@ -117,7 +100,7 @@ router.get("/", protectAdmin, async (req, res) => {
 });
 
 /* =========================================================
-   GET ONE USER
+   GET SINGLE USER
 ========================================================= */
 
 router.get("/:id", protectAdmin, async (req, res) => {
@@ -139,7 +122,9 @@ router.get("/:id", protectAdmin, async (req, res) => {
       });
     }
 
-    return res.status(200).json(sanitizeUser(user));
+    return res.status(200).json(
+      sanitizeUser(user)
+    );
   } catch (error) {
     console.error(
       "[Users Route] Failed to load user:",
@@ -167,6 +152,10 @@ router.post("/", protectAdmin, async (req, res) => {
       is_active,
     } = req.body || {};
 
+    /* -----------------------------------------------------
+       VALIDATION
+    ----------------------------------------------------- */
+
     if (!username || !String(username).trim()) {
       return res.status(400).json({
         success: false,
@@ -181,11 +170,11 @@ router.post("/", protectAdmin, async (req, res) => {
       });
     }
 
-    if (!password || String(password).length < 6) {
+    if (!password || String(password).length < 8) {
       return res.status(400).json({
         success: false,
         message:
-          "Password is required and must be at least 6 characters.",
+          "Password is required and must be at least 8 characters.",
       });
     }
 
@@ -197,11 +186,25 @@ router.post("/", protectAdmin, async (req, res) => {
         ? String(email).trim().toLowerCase()
         : normalizedUsername.toLowerCase();
 
+    /* -----------------------------------------------------
+       HASH PASSWORD
+    ----------------------------------------------------- */
+
+    const hashedPassword =
+      await bcrypt.hash(
+        String(password),
+        10
+      );
+
+    /* -----------------------------------------------------
+       CREATE USER
+    ----------------------------------------------------- */
+
     const payload = {
       username: normalizedUsername,
       email: normalizedEmail,
       name: String(name).trim(),
-      password: String(password),
+      password: hashedPassword,
       is_active:
         typeof is_active === "boolean"
           ? is_active
@@ -215,7 +218,15 @@ router.post("/", protectAdmin, async (req, res) => {
       data: payload,
     });
 
-    const createdUser = response.data?.[0];
+    const createdUser =
+      response.data?.[0];
+
+    if (!createdUser) {
+      return res.status(500).json({
+        success: false,
+        message: "User could not be created.",
+      });
+    }
 
     return res.status(201).json({
       success: true,
@@ -263,6 +274,10 @@ router.patch("/:id", protectAdmin, async (req, res) => {
 
     const updateData = {};
 
+    /* -----------------------------------------------------
+       USERNAME
+    ----------------------------------------------------- */
+
     if (
       username !== undefined &&
       String(username).trim()
@@ -271,12 +286,20 @@ router.patch("/:id", protectAdmin, async (req, res) => {
         String(username).trim();
     }
 
+    /* -----------------------------------------------------
+       EMAIL
+    ----------------------------------------------------- */
+
     if (email !== undefined) {
       updateData.email =
         email && String(email).trim()
           ? String(email).trim().toLowerCase()
           : null;
     }
+
+    /* -----------------------------------------------------
+       NAME
+    ----------------------------------------------------- */
 
     if (
       name !== undefined &&
@@ -286,50 +309,80 @@ router.patch("/:id", protectAdmin, async (req, res) => {
         String(name).trim();
     }
 
+    /* -----------------------------------------------------
+       ACTIVE STATUS
+    ----------------------------------------------------- */
+
     if (
       typeof is_active === "boolean"
     ) {
-      updateData.is_active = is_active;
+      updateData.is_active =
+        is_active;
     }
+
+    /* -----------------------------------------------------
+       PASSWORD
+    ----------------------------------------------------- */
 
     if (
       password !== undefined &&
       String(password).trim()
     ) {
-      if (String(password).length < 6) {
+      const plainPassword =
+        String(password);
+
+      if (plainPassword.length < 8) {
         return res.status(400).json({
           success: false,
           message:
-            "Password must be at least 6 characters.",
+            "Password must be at least 8 characters.",
         });
       }
 
+      const hashedPassword =
+        await bcrypt.hash(
+          plainPassword,
+          10
+        );
+
       updateData.password =
-        String(password);
+        hashedPassword;
+    }
+
+    /* -----------------------------------------------------
+       CHECK FOR CHANGES
+    ----------------------------------------------------- */
+
+    if (
+      Object.keys(updateData).length ===
+      0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "No user changes were provided.",
+      });
     }
 
     updateData.updated_at =
       new Date().toISOString();
 
-    if (
-      Object.keys(updateData).length === 1 &&
-      updateData.updated_at
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "No user changes were provided.",
-      });
-    }
+    /* -----------------------------------------------------
+       UPDATE
+    ----------------------------------------------------- */
 
     const response = await supabaseRequest({
       method: "PATCH",
       url:
         "users" +
-        `?id=eq.${encodeURIComponent(req.params.id)}`,
+        `?id=eq.${encodeURIComponent(
+          req.params.id
+        )}`,
       data: updateData,
     });
 
-    const updatedUser = response.data?.[0];
+    const updatedUser =
+      response.data?.[0];
 
     if (!updatedUser) {
       return res.status(404).json({
@@ -378,7 +431,9 @@ router.delete("/:id", protectAdmin, async (req, res) => {
       method: "DELETE",
       url:
         "users" +
-        `?id=eq.${encodeURIComponent(req.params.id)}`,
+        `?id=eq.${encodeURIComponent(
+          req.params.id
+        )}`,
     });
 
     if (!response.data?.length) {
@@ -404,5 +459,9 @@ router.delete("/:id", protectAdmin, async (req, res) => {
     });
   }
 });
+
+/* =========================================================
+   EXPORT
+========================================================= */
 
 module.exports = router;
