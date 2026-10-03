@@ -951,35 +951,38 @@ export const getAccommodations =
         },
       );
 
-    if (
-      params?.show_on_welcome !==
-      undefined
-    ) {
-      query = query.eq(
-        "show_on_welcome",
-        params.show_on_welcome,
-      );
-    }
-
-    if (
-      params?.type &&
-      params.type !== "All"
-    ) {
-      query = query.eq(
-        "type",
-        params.type,
-      );
-    }
-
-    if (
-      params?.dot_accredited !==
-      undefined
-    ) {
-      query = query.eq(
-        "dot_accredited",
-        params.dot_accredited,
-      );
-    }
+    /*
+     * IMPORTANT:
+     *
+     * The current accommodations table in Supabase contains:
+     *
+     * id
+     * name
+     * owner
+     * manager
+     * address
+     * contact_number
+     * website
+     * images
+     * created_at
+     * updated_at
+     * short_description
+     * description
+     * getting_there
+     * latitude
+     * longitude
+     * favorites
+     *
+     * We therefore only apply filters when those columns are
+     * actually supported by the current table.
+     *
+     * Do not send unsupported columns such as:
+     * show_on_welcome
+     * type
+     * dot_accredited
+     *
+     * to Supabase.
+     */
 
     const {
       data,
@@ -1006,6 +1009,12 @@ export const getAccommodations =
 
 export const getAccommodation =
   async (id: string) => {
+    if (!id) {
+      throw new Error(
+        "Accommodation ID is required.",
+      );
+    }
+
     const {
       data,
       error,
@@ -1022,10 +1031,36 @@ export const getAccommodation =
     return { data };
   };
 
+/*
+ * IMPORTANT:
+ *
+ * Accommodation CREATE / UPDATE / DELETE operations MUST go
+ * through the Render backend.
+ *
+ * The regular "api" Axios instance automatically attaches:
+ *
+ * Authorization: Bearer <admin_token>
+ *
+ * from localStorage.
+ *
+ * This means the Supabase anonymous key is NO LONGER used
+ * for accommodation writes.
+ *
+ * The Render backend will then:
+ *
+ * 1. verify the admin JWT
+ * 2. verify the user has role = "admin"
+ * 3. use the server-side Supabase service-role key
+ * 4. write to the accommodations table
+ *
+ * This keeps the Supabase service-role key out of Vercel
+ * and out of the browser.
+ */
+
 export const createAccommodation = (
   data: object,
 ) =>
-  supabaseApi.post(
+  api.post(
     "/accommodations",
     data,
   );
@@ -1033,22 +1068,36 @@ export const createAccommodation = (
 export const updateAccommodation = (
   id: string,
   data: object,
-) =>
-  supabaseApi.patch(
-    `/accommodations?id=eq.${encodeURIComponent(
+) => {
+  if (!id) {
+    throw new Error(
+      "Accommodation ID is required.",
+    );
+  }
+
+  return api.put(
+    `/accommodations/${encodeURIComponent(
       id,
     )}`,
     data,
   );
+};
 
 export const deleteAccommodation = (
   id: string,
-) =>
-  supabaseApi.delete(
-    `/accommodations?id=eq.${encodeURIComponent(
+) => {
+  if (!id) {
+    throw new Error(
+      "Accommodation ID is required.",
+    );
+  }
+
+  return api.delete(
+    `/accommodations/${encodeURIComponent(
       id,
     )}`,
   );
+};
 
 // =========================================================
 // FAVORITES
