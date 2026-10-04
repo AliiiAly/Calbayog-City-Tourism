@@ -111,9 +111,19 @@ const ATTRACTION_TYPES: Record<string, string[]> = {
     "Other",
   ],
 
-  "Industrial Tourism": ["Factories", "Farms", "Production Sites", "Other"],
+  "Industrial Tourism": [
+    "Factories",
+    "Farms",
+    "Production Sites",
+    "Other",
+  ],
 
-  Shopping: ["Markets", "Malls", "Local Craft Centers", "Other"],
+  Shopping: [
+    "Markets",
+    "Malls",
+    "Local Craft Centers",
+    "Other",
+  ],
 
   Other: ["Other"],
 };
@@ -191,7 +201,12 @@ const getCategoryIcon = (category: string) =>
    DEVELOPMENT / MANAGEMENT / CONNECTIVITY OPTIONS
 ========================================================= */
 
-const DEVELOPMENT_LEVELS = ["Potential", "Emerging", "Existing", "Not Stated"];
+const DEVELOPMENT_LEVELS = [
+  "Potential",
+  "Emerging",
+  "Existing",
+  "Not Stated",
+];
 
 const MGT_OPTIONS = [
   "Government Operated",
@@ -219,34 +234,37 @@ const buildGoogleMapsDirectionsUrl = (
   if (!attraction) return "";
 
   const name = String((attraction as any).name || "").trim();
-  const address = String((attraction as any).location_address || "").trim();
+  const address = String(
+    (attraction as any).location_address || "",
+  ).trim();
 
-  const destination = [name, address, "Calbayog City, Samar, Philippines"]
+  const destination = [
+    name,
+    address,
+    "Calbayog City, Samar, Philippines",
+  ]
     .filter(Boolean)
     .join(", ");
 
   if (!destination) return "";
 
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+    destination,
+  )}`;
 };
 
 const EMPTY_FORM = {
   name: "",
-
   category: "Nature",
-
   attraction_type: "Waterfalls",
-
   other_attraction_type: "",
-
   description: "",
-
   short_description: "",
 
   /* LOCATION / BASIC DETAILS */
-location_address: "",
-location_lat: null,
-location_lng: null,
+  location_address: "",
+  location_lat: null,
+  location_lng: null,
 
   /* IMAGES */
   images: "",
@@ -416,10 +434,6 @@ const ADMIN_ATTRACTIONS_STYLES = `
     box-shadow: 0 14px 28px rgba(45, 49, 149, 0.24);
   }
 
-  /* -------------------------------
-     STAT CARDS
-  -------------------------------- */
-
   .admin-attractions-stats {
     margin-bottom: 24px !important;
   }
@@ -488,10 +502,6 @@ const ADMIN_ATTRACTIONS_STYLES = `
     font-weight: 800 !important;
     line-height: 1;
   }
-
-  /* -------------------------------
-     SEARCH / FILTER TOOLBAR
-  -------------------------------- */
 
   .admin-attractions-toolbar {
     border: 1px solid var(--admin-border) !important;
@@ -567,10 +577,6 @@ const ADMIN_ATTRACTIONS_STYLES = `
     color: var(--admin-primary) !important;
     font-weight: 800 !important;
   }
-
-  /* -------------------------------
-     ATTRACTION CARDS
-  -------------------------------- */
 
   .admin-attraction-card {
     position: relative;
@@ -764,10 +770,6 @@ const ADMIN_ATTRACTIONS_STYLES = `
     transform: translateY(-1px);
   }
 
-  /* -------------------------------
-     MODALS / FORM UI
-  -------------------------------- */
-
   .admin-attractions-page .modal-content {
     overflow: hidden;
     border: 1px solid var(--admin-border) !important;
@@ -896,7 +898,6 @@ const ADMIN_ATTRACTIONS_STYLES = `
     font-weight: 700;
   }
 
-  /* Dynamic category strip */
   .admin-attractions-page .modal-body > div.mb-3[style*="background"] {
     border-radius: 13px !important;
     padding: 12px 15px !important;
@@ -912,14 +913,9 @@ const ADMIN_ATTRACTIONS_STYLES = `
     box-shadow: 0 8px 18px rgba(45, 49, 149, 0.13);
   }
 
-  /* Existing/new image preview polish */
   .admin-attractions-page .modal-body img {
     border-radius: 13px !important;
   }
-
-  /* -------------------------------
-     MODAL DETAIL VIEW
-  -------------------------------- */
 
   .admin-attractions-page .modal-body strong {
     color: var(--admin-text);
@@ -942,7 +938,6 @@ const ADMIN_ATTRACTIONS_STYLES = `
     font-weight: 900 !important;
   }
 
-  /* Category + active modal cards */
   .admin-attractions-page .modal-body .card {
     border: 1px solid var(--admin-border) !important;
     border-radius: 15px !important;
@@ -957,10 +952,6 @@ const ADMIN_ATTRACTIONS_STYLES = `
     transform: translateY(-2px);
     box-shadow: 0 12px 26px rgba(26, 30, 53, 0.09) !important;
   }
-
-  /* -------------------------------
-     DARK MODE
-  -------------------------------- */
 
   .admin-attractions-dark {
     --admin-bg: #121421;
@@ -1046,10 +1037,6 @@ const ADMIN_ATTRACTIONS_STYLES = `
     border-color: #2B3042 !important;
   }
 
-  /* =========================================================
-     ENHANCED FILTER + FORM UI
-  ========================================================= */
-
   .admin-attractions-toolbar-heading {
     display:flex;
     align-items:center;
@@ -1062,19 +1049,45 @@ const ADMIN_ATTRACTIONS_STYLES = `
     background:linear-gradient(135deg, #f8f8ff 0%, #ffffff 70%);
   }
 
-  .admin-filter-heading-main { display:flex; align-items:center; gap:11px; }
-  .admin-toolbar-heading-icon {
-    width:38px; height:38px; flex:0 0 38px;
-    display:inline-flex; align-items:center; justify-content:center;
-    border-radius:11px; background:#eef0ff; color:#2D3195;
+  .admin-filter-heading-main {
+    display:flex;
+    align-items:center;
+    gap:11px;
   }
-  .admin-attractions-toolbar-title { margin:0 0 2px !important; }
-  .admin-attractions-toolbar-caption { color:#858B98; font-size:.66rem; font-weight:600; }
+
+  .admin-toolbar-heading-icon {
+    width:38px;
+    height:38px;
+    flex:0 0 38px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:11px;
+    background:#eef0ff;
+    color:#2D3195;
+  }
+
+  .admin-attractions-toolbar-title {
+    margin:0 0 2px !important;
+  }
+
+  .admin-attractions-toolbar-caption {
+    color:#858B98;
+    font-size:.66rem;
+    font-weight:600;
+  }
+
   .admin-filter-status-pill {
-    display:inline-flex; align-items:center; gap:6px;
-    padding:7px 10px; border-radius:999px;
-    background:#fff5d9; color:#806000;
-    font-size:.62rem; font-weight:900; white-space:nowrap;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:7px 10px;
+    border-radius:999px;
+    background:#fff5d9;
+    color:#806000;
+    font-size:.62rem;
+    font-weight:900;
+    white-space:nowrap;
   }
 
   .admin-filter-group {
@@ -1082,134 +1095,301 @@ const ADMIN_ATTRACTIONS_STYLES = `
     border-radius:12px;
     box-shadow:0 4px 12px rgba(26,30,53,.035);
   }
+
   .admin-filter-group .admin-filter-icon {
-    width:42px; justify-content:center;
+    width:42px;
+    justify-content:center;
     border:1px solid #e1e4ec !important;
     border-right:0 !important;
     background:#f4f5fb !important;
     color:#2D3195 !important;
     border-radius:12px 0 0 12px !important;
   }
+
   .admin-filter-group .form-control,
   .admin-filter-group .form-select {
     min-height:44px !important;
     border-radius:0 12px 12px 0 !important;
   }
-  .admin-search-group .form-control { padding-left:12px !important; }
+
+  .admin-search-group .form-control {
+    padding-left:12px !important;
+  }
+
   .admin-search-group .btn {
-    min-width:43px; border-radius:0 12px 12px 0 !important;
-    border-color:#e1e4ec !important; background:#f8f8ff !important;
+    min-width:43px;
+    border-radius:0 12px 12px 0 !important;
+    border-color:#e1e4ec !important;
+    background:#f8f8ff !important;
     color:#2D3195 !important;
   }
+
   .admin-search-group:focus-within .admin-filter-icon,
   .admin-select-group:focus-within .admin-filter-icon {
     border-color:rgba(45,49,149,.5) !important;
     background:#eef0ff !important;
   }
+
   .admin-active-filters {
-    display:flex; align-items:center; gap:7px; flex-wrap:wrap;
-    margin-top:13px; padding-top:12px;
+    display:flex;
+    align-items:center;
+    gap:7px;
+    flex-wrap:wrap;
+    margin-top:13px;
+    padding-top:12px;
     border-top:1px dashed #e6e8ef;
   }
-  .admin-active-filters-label { color:#858B98; font-size:.62rem; font-weight:900; text-transform:uppercase; letter-spacing:.05em; }
-  .admin-filter-chip {
-    display:inline-flex; align-items:center; gap:5px;
-    padding:6px 9px; border-radius:999px;
-    background:#eef0ff; color:#2D3195; border:1px solid rgba(45,49,149,.1);
-    font-size:.61rem; font-weight:800;
+
+  .admin-active-filters-label {
+    color:#858B98;
+    font-size:.62rem;
+    font-weight:900;
+    text-transform:uppercase;
+    letter-spacing:.05em;
   }
 
-  /* Modal form */
+  .admin-filter-chip {
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    padding:6px 9px;
+    border-radius:999px;
+    background:#eef0ff;
+    color:#2D3195;
+    border:1px solid rgba(45,49,149,.1);
+    font-size:.61rem;
+    font-weight:800;
+  }
+
   .admin-attraction-form-header {
-    min-height:78px; padding:16px 20px !important;
-    position:relative; overflow:hidden;
+    min-height:78px;
+    padding:16px 20px !important;
+    position:relative;
+    overflow:hidden;
   }
+
   .admin-attraction-form-header::after {
-    content:""; position:absolute; width:170px; height:170px;
-    right:-55px; top:-75px; border-radius:50%;
-    background:rgba(255,255,255,.10); pointer-events:none;
+    content:"";
+    position:absolute;
+    width:170px;
+    height:170px;
+    right:-55px;
+    top:-75px;
+    border-radius:50%;
+    background:rgba(255,255,255,.10);
+    pointer-events:none;
   }
-  .admin-form-modal-title { position:relative; z-index:1; gap:11px; }
+
+  .admin-form-modal-title {
+    position:relative;
+    z-index:1;
+    gap:11px;
+  }
+
   .admin-form-title-icon {
-    width:40px; height:40px; display:inline-flex; align-items:center; justify-content:center;
-    border-radius:12px; background:rgba(255,255,255,.16);
+    width:40px;
+    height:40px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:12px;
+    background:rgba(255,255,255,.16);
     border:1px solid rgba(255,255,255,.22);
   }
-  .admin-form-title-kicker { display:block; color:rgba(255,255,255,.72); font-family:"Nunito",sans-serif; font-size:.58rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; margin-bottom:2px; }
-  .admin-form-title-text { display:block; color:#fff; font-family:"Poppins",sans-serif; font-size:1.05rem; font-weight:800; }
+
+  .admin-form-title-kicker {
+    display:block;
+    color:rgba(255,255,255,.72);
+    font-family:"Nunito",sans-serif;
+    font-size:.58rem;
+    font-weight:800;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    margin-bottom:2px;
+  }
+
+  .admin-form-title-text {
+    display:block;
+    color:#fff;
+    font-family:"Poppins",sans-serif;
+    font-size:1.05rem;
+    font-weight:800;
+  }
 
   .admin-form-intro {
-    display:flex; align-items:center; gap:11px;
-    padding:12px 14px; margin-bottom:20px;
-    border:1px solid rgba(45,49,149,.11); border-radius:13px;
+    display:flex;
+    align-items:center;
+    gap:11px;
+    padding:12px 14px;
+    margin-bottom:20px;
+    border:1px solid rgba(45,49,149,.11);
+    border-radius:13px;
     background:#f7f7ff;
   }
-  .admin-form-intro-icon {
-    width:34px; height:34px; flex:0 0 34px;
-    display:inline-flex; align-items:center; justify-content:center;
-    border-radius:10px; background:#eef0ff; color:#2D3195;
-  }
-  .admin-form-intro strong { display:block; color:#2D3195; font-size:.72rem; font-weight:900; }
-  .admin-form-intro span { display:block; margin-top:2px; color:#7c8290; font-size:.63rem; font-weight:600; }
 
-  .admin-attractions-modal .modal-body { padding:22px !important; }
+  .admin-form-intro-icon {
+    width:34px;
+    height:34px;
+    flex:0 0 34px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:10px;
+    background:#eef0ff;
+    color:#2D3195;
+  }
+
+  .admin-form-intro strong {
+    display:block;
+    color:#2D3195;
+    font-size:.72rem;
+    font-weight:900;
+  }
+
+  .admin-form-intro span {
+    display:block;
+    margin-top:2px;
+    color:#7c8290;
+    font-size:.63rem;
+    font-weight:600;
+  }
+
+  .admin-attractions-modal .modal-body {
+    padding:22px !important;
+  }
+
   .admin-attractions-modal .modal-body > .mb-3[style] {
-    display:flex !important; align-items:center; gap:8px;
-    padding:10px 12px !important; margin-top:4px;
+    display:flex !important;
+    align-items:center;
+    gap:8px;
+    padding:10px 12px !important;
+    margin-top:4px;
     margin-bottom:14px !important;
-    border-left:3px solid #2D3195; border-radius:0 10px 10px 0;
+    border-left:3px solid #2D3195;
+    border-radius:0 10px 10px 0;
     background:rgba(45,49,149,.055) !important;
     color:#2D3195 !important;
-    font-family:"Poppins",sans-serif; font-size:.78rem !important;
+    font-family:"Poppins",sans-serif;
+    font-size:.78rem !important;
     letter-spacing:.01em;
   }
+
   .admin-form-section-icon {
-    width:27px; height:27px; display:inline-flex; align-items:center; justify-content:center;
-    border-radius:8px; background:#eef0ff; color:#2D3195;
+    width:27px;
+    height:27px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:8px;
+    background:#eef0ff;
+    color:#2D3195;
   }
+
   .admin-dynamic-section-heading {
-    display:flex; align-items:center; gap:8px;
-    margin-bottom:10px; padding:10px 13px;
-    border-radius:11px; color:#fff; font-weight:800;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:10px;
+    padding:10px 13px;
+    border-radius:11px;
+    color:#fff;
+    font-weight:800;
     box-shadow:0 7px 18px rgba(26,95,74,.13);
   }
+
   .admin-attractions-modal .form-label {
-    color:#4e5564; font-family:"Nunito",sans-serif; font-size:.67rem; font-weight:900 !important;
+    color:#4e5564;
+    font-family:"Nunito",sans-serif;
+    font-size:.67rem;
+    font-weight:900 !important;
     margin-bottom:6px;
   }
+
   .admin-attractions-modal .form-control,
   .admin-attractions-modal .form-select {
-    min-height:42px; border:1px solid #e0e3ea !important;
-    border-radius:11px !important; background:#fff !important;
-    font-family:"Nunito",sans-serif !important; font-size:.70rem !important;
+    min-height:42px;
+    border:1px solid #e0e3ea !important;
+    border-radius:11px !important;
+    background:#fff !important;
+    font-family:"Nunito",sans-serif !important;
+    font-size:.70rem !important;
     box-shadow:0 3px 10px rgba(26,30,53,.025) !important;
   }
-  .admin-attractions-modal textarea.form-control { min-height:96px; resize:vertical; }
+
+  .admin-attractions-modal textarea.form-control {
+    min-height:96px;
+    resize:vertical;
+  }
+
   .admin-attractions-modal .form-control:focus,
   .admin-attractions-modal .form-select:focus {
     border-color:rgba(45,49,149,.52) !important;
     box-shadow:0 0 0 3px rgba(45,49,149,.08) !important;
   }
-  .admin-image-upload-label { display:inline-flex !important; align-items:center; gap:6px; color:#2D3195 !important; }
-  .admin-attractions-modal .modal-footer { padding:12px 20px !important; }
-  .admin-attractions-modal .modal-footer .btn { border-radius:10px !important; font-size:.68rem !important; font-weight:800 !important; min-height:38px; }
 
-  .admin-attractions-dark .admin-attractions-toolbar-heading { background:#202436; border-color:#343A4F; }
+  .admin-image-upload-label {
+    display:inline-flex !important;
+    align-items:center;
+    gap:6px;
+    color:#2D3195 !important;
+  }
+
+  .admin-attractions-modal .modal-footer {
+    padding:12px 20px !important;
+  }
+
+  .admin-attractions-modal .modal-footer .btn {
+    border-radius:10px !important;
+    font-size:.68rem !important;
+    font-weight:800 !important;
+    min-height:38px;
+  }
+
+  .admin-attractions-dark .admin-attractions-toolbar-heading {
+    background:#202436;
+    border-color:#343A4F;
+  }
+
   .admin-attractions-dark .admin-toolbar-heading-icon,
   .admin-attractions-dark .admin-filter-icon,
   .admin-attractions-dark .admin-form-intro-icon,
-  .admin-attractions-dark .admin-form-section-icon { background:#262B46 !important; color:#AEB4FF !important; }
-  .admin-attractions-dark .admin-filter-status-pill { background:#3b3217; color:#ffd86b; }
-  .admin-attractions-dark .admin-active-filters { border-color:#343A4F; }
-  .admin-attractions-dark .admin-filter-chip { background:#262B46; color:#c9ccff; border-color:#343A4F; }
-  .admin-attractions-dark .admin-form-intro { background:#202436; border-color:#343A4F; }
-  .admin-attractions-dark .admin-form-intro strong { color:#c9ccff; }
-  .admin-attractions-dark .admin-attractions-modal .modal-body > .mb-3[style] { background:#262B46 !important; color:#c9ccff !important; }
-  .admin-attractions-dark .admin-attractions-modal .form-label { color:#d9dce7; }
+  .admin-attractions-dark .admin-form-section-icon {
+    background:#262B46 !important;
+    color:#AEB4FF !important;
+  }
 
-  /* -------------------------------
-     KEYFRAMES
-  -------------------------------- */
+  .admin-attractions-dark .admin-filter-status-pill {
+    background:#3b3217;
+    color:#ffd86b;
+  }
+
+  .admin-attractions-dark .admin-active-filters {
+    border-color:#343A4F;
+  }
+
+  .admin-attractions-dark .admin-filter-chip {
+    background:#262B46;
+    color:#c9ccff;
+    border-color:#343A4F;
+  }
+
+  .admin-attractions-dark .admin-form-intro {
+    background:#202436;
+    border-color:#343A4F;
+  }
+
+  .admin-attractions-dark .admin-form-intro strong {
+    color:#c9ccff;
+  }
+
+  .admin-attractions-dark .admin-attractions-modal .modal-body > .mb-3[style] {
+    background:#262B46 !important;
+    color:#c9ccff !important;
+  }
+
+  .admin-attractions-dark .admin-attractions-modal .form-label {
+    color:#d9dce7;
+  }
 
   @keyframes adminAttractionCardIn {
     from {
@@ -1239,23 +1419,46 @@ const ADMIN_ATTRACTIONS_STYLES = `
     animation: adminDashboardFade 0.4s ease both;
   }
 
-  /* -------------------------------
-     RESPONSIVE
-  -------------------------------- */
-
   .admin-location-picker-heading {
-    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
     margin-bottom:9px;
     padding:11px 13px;
     border:1px solid rgba(45,49,149,.10);
     border-radius:12px;
     background:#f7f8ff;
   }
-  .admin-location-helper { color:#7a808e; font-size:.62rem; font-weight:600; line-height:1.45; }
-  .admin-location-ready-badge { background:#eaf8f1 !important; color:#167447 !important; border:1px solid #cbead9; white-space:nowrap; }
-  .admin-attractions-dark .admin-location-picker-heading { background:#202436; border-color:#343A4F; }
-  .admin-attractions-dark .admin-location-helper { color:#a8afbf; }
-  .admin-attractions-dark .admin-location-ready-badge { background:#19372a !important; color:#8fe0b5 !important; border-color:#2f624c; }
+
+  .admin-location-helper {
+    color:#7a808e;
+    font-size:.62rem;
+    font-weight:600;
+    line-height:1.45;
+  }
+
+  .admin-location-ready-badge {
+    background:#eaf8f1 !important;
+    color:#167447 !important;
+    border:1px solid #cbead9;
+    white-space:nowrap;
+  }
+
+  .admin-attractions-dark .admin-location-picker-heading {
+    background:#202436;
+    border-color:#343A4F;
+  }
+
+  .admin-attractions-dark .admin-location-helper {
+    color:#a8afbf;
+  }
+
+  .admin-attractions-dark .admin-location-ready-badge {
+    background:#19372a !important;
+    color:#8fe0b5 !important;
+    border-color:#2f624c;
+  }
 
   @media (max-width: 991.98px) {
     .admin-attractions-page {
@@ -1322,11 +1525,6 @@ const ADMIN_ATTRACTIONS_STYLES = `
     }
   }
 
-
-  /* =========================================================
-     FINAL UI REFINEMENTS
-  ========================================================= */
-
   .admin-attractions-page {
     min-height: 100vh !important;
     width: 100% !important;
@@ -1366,15 +1564,65 @@ const ADMIN_ATTRACTIONS_STYLES = `
     padding: 17px 18px 16px !important;
   }
 
-  .admin-stat-card-top { display:flex; align-items:center; gap:9px; }
-  .admin-stat-icon { width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border-radius:10px; flex:0 0 auto; }
-  .admin-stat-icon-blue { color:#2D3195; background:#eef0ff; }
-  .admin-stat-icon-yellow { color:#9a6900; background:#fff5d9; }
-  .admin-stat-icon-purple { color:#5f62b7; background:#f0efff; }
-  .admin-stat-icon-indigo { color:#3944a1; background:#eceeff; }
-  .admin-stat-label { color:var(--admin-muted); font-size:.66rem; font-weight:900; letter-spacing:.04em; text-transform:uppercase; }
-  .admin-stat-value { margin-top:11px; color:var(--admin-text); font-family:"Poppins",sans-serif; font-size:1.95rem; font-weight:800; line-height:1; }
-  .admin-stat-caption { margin-top:8px; color:var(--admin-muted); font-size:.62rem; font-weight:600; }
+  .admin-stat-card-top {
+    display:flex;
+    align-items:center;
+    gap:9px;
+  }
+
+  .admin-stat-icon {
+    width:34px;
+    height:34px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:10px;
+    flex:0 0 auto;
+  }
+
+  .admin-stat-icon-blue {
+    color:#2D3195;
+    background:#eef0ff;
+  }
+
+  .admin-stat-icon-yellow {
+    color:#9a6900;
+    background:#fff5d9;
+  }
+
+  .admin-stat-icon-purple {
+    color:#5f62b7;
+    background:#f0efff;
+  }
+
+  .admin-stat-icon-indigo {
+    color:#3944a1;
+    background:#eceeff;
+  }
+
+  .admin-stat-label {
+    color:var(--admin-muted);
+    font-size:.66rem;
+    font-weight:900;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+  }
+
+  .admin-stat-value {
+    margin-top:11px;
+    color:var(--admin-text);
+    font-family:"Poppins",sans-serif;
+    font-size:1.95rem;
+    font-weight:800;
+    line-height:1;
+  }
+
+  .admin-stat-caption {
+    margin-top:8px;
+    color:var(--admin-muted);
+    font-size:.62rem;
+    font-weight:600;
+  }
 
   .admin-attractions-toolbar {
     border:1px solid var(--admin-border) !important;
@@ -1383,11 +1631,40 @@ const ADMIN_ATTRACTIONS_STYLES = `
     box-shadow:0 8px 26px rgba(26,30,53,.05) !important;
   }
 
-  .admin-attractions-toolbar .card-body { padding:19px !important; }
-  .admin-attractions-toolbar-heading { display:flex; align-items:center; gap:11px; margin-bottom:16px; }
-  .admin-toolbar-heading-icon { width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; border-radius:10px; background:#eef0ff; color:#2D3195; }
-  .admin-attractions-toolbar-title { margin:0 !important; font-size:.86rem !important; font-weight:800 !important; }
-  .admin-attractions-toolbar-caption { margin-top:2px; color:var(--admin-muted); font-size:.64rem; font-weight:600; }
+  .admin-attractions-toolbar .card-body {
+    padding:19px !important;
+  }
+
+  .admin-attractions-toolbar-heading {
+    display:flex;
+    align-items:center;
+    gap:11px;
+    margin-bottom:16px;
+  }
+
+  .admin-toolbar-heading-icon {
+    width:36px;
+    height:36px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:10px;
+    background:#eef0ff;
+    color:#2D3195;
+  }
+
+  .admin-attractions-toolbar-title {
+    margin:0 !important;
+    font-size:.86rem !important;
+    font-weight:800 !important;
+  }
+
+  .admin-attractions-toolbar-caption {
+    margin-top:2px;
+    color:var(--admin-muted);
+    font-size:.64rem;
+    font-weight:600;
+  }
 
   .admin-filter-group > .form-control,
   .admin-filter-group > .form-select,
@@ -1398,68 +1675,330 @@ const ADMIN_ATTRACTIONS_STYLES = `
     color:var(--admin-text) !important;
     box-shadow:none !important;
   }
-  
-  .admin-filter-group > .form-control, .admin-filter-group > .form-select { font-size:.70rem !important; font-weight:700 !important; }
-  .admin-filter-group > .form-control:focus, .admin-filter-group > .form-select:focus { border-color:rgba(45,49,149,.48) !important; box-shadow:0 0 0 3px rgba(45,49,149,.08) !important; background:#fff !important; }
-  .admin-attractions-toolbar-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-top:14px; padding-top:12px; border-top:1px solid #eef0f4; }
-  .admin-toolbar-result-count { color:var(--admin-muted); font-size:.66rem; font-weight:700; }
-  .admin-toolbar-result-count strong { color:var(--admin-text); }
-  .admin-clear-filters { display:inline-flex !important; align-items:center; gap:5px; padding:0 !important; color:#2D3195 !important; font-size:.66rem !important; font-weight:800 !important; }
 
-  .admin-attractions-grid > .col { display:flex; }
-  .admin-attraction-card { border:1px solid var(--admin-border) !important; border-radius:18px !important; background:var(--admin-surface) !important; box-shadow:0 7px 24px rgba(26,30,53,.06) !important; }
-  .admin-attraction-card:hover { border-color:rgba(45,49,149,.17) !important; box-shadow:0 17px 38px rgba(26,30,53,.11) !important; }
-  .admin-attraction-image-shell { height:194px !important; border-radius:18px 18px 0 0 !important; }
-  .admin-attraction-image-count, .admin-attraction-welcome-badge { display:inline-flex !important; align-items:center; gap:5px; }
-  .admin-attraction-badge-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-height:24px; }
-  .admin-attraction-category-badge, .admin-attraction-type-badge, 
-  .admin-attraction-category-badge { background:#eef0ff !important; color:#2D3195 !important; }
-  .admin-attraction-type-badge { background:#f3f4f8 !important; color:#626978 !important; }
-  .admin-attraction-welcome-card-badge { background:#fff5d9 !important; color:#8e6200 !important; }
-  .admin-attraction-name { margin:9px 0 0 !important; font-size:.91rem !important; font-weight:800 !important; }
-  .admin-attraction-location { display:flex; align-items:flex-start; gap:6px; color:#818694; }
-  .admin-attraction-location svg { flex:0 0 auto; margin-top:1px; color:#2D3195; }
-  .admin-attraction-card-actions .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; }
-  .admin-attraction-card-actions .admin-edit-button { flex:1 1 auto !important; min-width:0 !important; }
-  .admin-delete-button { min-width:40px !important; width:40px !important; flex:0 0 40px !important; padding-left:0 !important; padding-right:0 !important; }
+  .admin-filter-group > .form-control,
+  .admin-filter-group > .form-select {
+    font-size:.70rem !important;
+    font-weight:700 !important;
+  }
 
-  .admin-attractions-loading { min-height:320px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; border:1px solid var(--admin-border); border-radius:18px; background:var(--admin-surface); text-align:center; }
-  .admin-loading-icon, .admin-empty-icon { display:inline-flex; align-items:center; justify-content:center; color:#2D3195; background:#eef0ff; }
-  .admin-loading-icon { width:52px; height:52px; border-radius:15px; }
-  .admin-empty-icon { width:62px; height:62px; border-radius:18px; }
-  .admin-loading-title, .admin-empty-title { margin-top:13px; color:var(--admin-text); font-family:"Poppins",sans-serif; font-size:.84rem; font-weight:800; }
-  .admin-loading-subtitle, .admin-empty-text { margin:5px 0 0; color:var(--admin-muted); font-size:.68rem; font-weight:600; }
-  .admin-attractions-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:300px; padding:40px 20px; border:1px solid var(--admin-border); border-radius:18px; background:var(--admin-surface); text-align:center; }
-  .admin-empty-button { display:inline-flex !important; align-items:center; gap:6px; margin-top:16px; border-color:rgba(45,49,149,.28) !important; color:#2D3195 !important; border-radius:10px !important; font-size:.68rem !important; font-weight:800 !important; }
+  .admin-filter-group > .form-control:focus,
+  .admin-filter-group > .form-select:focus {
+    border-color:rgba(45,49,149,.48) !important;
+    box-shadow:0 0 0 3px rgba(45,49,149,.08) !important;
+    background:#fff !important;
+  }
 
-  .admin-modal-title { display:inline-flex; align-items:center; gap:8px; font-family:"Poppins",sans-serif !important; font-weight:700 !important; }
-  .admin-attractions-modal .modal-content { border:1px solid var(--admin-border) !important; border-radius:18px !important; overflow:hidden; box-shadow:0 22px 60px rgba(26,30,53,.18) !important; }
-  .admin-attractions-modal .modal-header { background:#2D3195 !important; color:#fff !important; border-bottom:0 !important; }
-  .admin-attractions-modal .modal-header .btn-close { filter:brightness(0) invert(1); opacity:.85; }
-  .admin-attractions-modal .modal-body, .admin-attractions-modal .modal-footer { background:var(--admin-surface) !important; }
-  .admin-attractions-modal .modal-body > hr { border-color:var(--admin-border) !important; opacity:1; }
-  .admin-checkbox-label { display:inline-flex; align-items:center; gap:6px; }
-  .admin-detail-label { display:inline-flex; align-items:center; gap:5px; color:var(--admin-text); }
-  .admin-detail-label svg { color:#2D3195; }
+  .admin-attractions-toolbar-footer {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-top:14px;
+    padding-top:12px;
+    border-top:1px solid #eef0f4;
+  }
 
-  .admin-attractions-dark .admin-attractions-page { background:transparent !important; }
-  .admin-attractions-dark .admin-attractions-toolbar, .admin-attractions-dark .admin-attraction-card, .admin-attractions-dark .admin-attractions-loading, .admin-attractions-dark .admin-attractions-empty, .admin-attractions-dark .admin-attractions-stats .admin-stat-card { background:#191C2B !important; }
-  .admin-attractions-dark .admin-toolbar-heading-icon, .admin-attractions-dark .admin-stat-icon-blue, .admin-attractions-dark .admin-stat-icon-purple, .admin-attractions-dark .admin-stat-icon-indigo, .admin-attractions-dark .admin-empty-icon, .admin-attractions-dark .admin-loading-icon { background:#262B46 !important; }
-  .admin-attractions-dark .admin-filter-group > .form-control, .admin-attractions-dark .admin-filter-group > .form-select, .admin-attractions-dark .admin-filter-group > .btn { background:#202436 !important; border-color:#343A4F !important; color:#F1F3F8 !important; }
-  .admin-attractions-dark .admin-attractions-modal .modal-body, .admin-attractions-dark .admin-attractions-modal .modal-footer { background:#191C2B !important; }
+  .admin-toolbar-result-count {
+    color:var(--admin-muted);
+    font-size:.66rem;
+    font-weight:700;
+  }
+
+  .admin-toolbar-result-count strong {
+    color:var(--admin-text);
+  }
+
+  .admin-clear-filters {
+    display:inline-flex !important;
+    align-items:center;
+    gap:5px;
+    padding:0 !important;
+    color:#2D3195 !important;
+    font-size:.66rem !important;
+    font-weight:800 !important;
+  }
+
+  .admin-attractions-grid > .col {
+    display:flex;
+  }
+
+  .admin-attraction-card {
+    border:1px solid var(--admin-border) !important;
+    border-radius:18px !important;
+    background:var(--admin-surface) !important;
+    box-shadow:0 7px 24px rgba(26,30,53,.06) !important;
+  }
+
+  .admin-attraction-card:hover {
+    border-color:rgba(45,49,149,.17) !important;
+    box-shadow:0 17px 38px rgba(26,30,53,.11) !important;
+  }
+
+  .admin-attraction-image-shell {
+    height:194px !important;
+    border-radius:18px 18px 0 0 !important;
+  }
+
+  .admin-attraction-image-count,
+  .admin-attraction-welcome-badge {
+    display:inline-flex !important;
+    align-items:center;
+    gap:5px;
+  }
+
+  .admin-attraction-badge-row {
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-wrap:wrap;
+    min-height:24px;
+  }
+
+  .admin-attraction-category-badge {
+    background:#eef0ff !important;
+    color:#2D3195 !important;
+  }
+
+  .admin-attraction-type-badge {
+    background:#f3f4f8 !important;
+    color:#626978 !important;
+  }
+
+  .admin-attraction-welcome-card-badge {
+    background:#fff5d9 !important;
+    color:#8e6200 !important;
+  }
+
+  .admin-attraction-name {
+    margin:9px 0 0 !important;
+    font-size:.91rem !important;
+    font-weight:800 !important;
+  }
+
+  .admin-attraction-location {
+    display:flex;
+    align-items:flex-start;
+    gap:6px;
+    color:#818694;
+  }
+
+  .admin-attraction-location svg {
+    flex:0 0 auto;
+    margin-top:1px;
+    color:#2D3195;
+  }
+
+  .admin-attraction-card-actions .btn {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+  }
+
+  .admin-attraction-card-actions .admin-edit-button {
+    flex:1 1 auto !important;
+    min-width:0 !important;
+  }
+
+  .admin-delete-button {
+    min-width:40px !important;
+    width:40px !important;
+    flex:0 0 40px !important;
+    padding-left:0 !important;
+    padding-right:0 !important;
+  }
+
+  .admin-attractions-loading {
+    min-height:320px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:40px 20px;
+    border:1px solid var(--admin-border);
+    border-radius:18px;
+    background:var(--admin-surface);
+    text-align:center;
+  }
+
+  .admin-loading-icon,
+  .admin-empty-icon {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    color:#2D3195;
+    background:#eef0ff;
+  }
+
+  .admin-loading-icon {
+    width:52px;
+    height:52px;
+    border-radius:15px;
+  }
+
+  .admin-empty-icon {
+    width:62px;
+    height:62px;
+    border-radius:18px;
+  }
+
+  .admin-loading-title,
+  .admin-empty-title {
+    margin-top:13px;
+    color:var(--admin-text);
+    font-family:"Poppins",sans-serif;
+    font-size:.84rem;
+    font-weight:800;
+  }
+
+  .admin-loading-subtitle,
+  .admin-empty-text {
+    margin:5px 0 0;
+    color:var(--admin-muted);
+    font-size:.68rem;
+    font-weight:600;
+  }
+
+  .admin-attractions-empty {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height:300px;
+    padding:40px 20px;
+    border:1px solid var(--admin-border);
+    border-radius:18px;
+    background:var(--admin-surface);
+    text-align:center;
+  }
+
+  .admin-empty-button {
+    display:inline-flex !important;
+    align-items:center;
+    gap:6px;
+    margin-top:16px;
+    border-color:rgba(45,49,149,.28) !important;
+    color:#2D3195 !important;
+    border-radius:10px !important;
+    font-size:.68rem !important;
+    font-weight:800 !important;
+  }
+
+  .admin-modal-title {
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    font-family:"Poppins",sans-serif !important;
+    font-weight:700 !important;
+  }
+
+  .admin-attractions-modal .modal-content {
+    border:1px solid var(--admin-border) !important;
+    border-radius:18px !important;
+    overflow:hidden;
+    box-shadow:0 22px 60px rgba(26,30,53,.18) !important;
+  }
+
+  .admin-attractions-modal .modal-header {
+    background:#2D3195 !important;
+    color:#fff !important;
+    border-bottom:0 !important;
+  }
+
+  .admin-attractions-modal .modal-header .btn-close {
+    filter:brightness(0) invert(1);
+    opacity:.85;
+  }
+
+  .admin-attractions-modal .modal-body,
+  .admin-attractions-modal .modal-footer {
+    background:var(--admin-surface) !important;
+  }
+
+  .admin-attractions-modal .modal-body > hr {
+    border-color:var(--admin-border) !important;
+    opacity:1;
+  }
+
+  .admin-checkbox-label {
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+
+  .admin-detail-label {
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    color:var(--admin-text);
+  }
+
+  .admin-detail-label svg {
+    color:#2D3195;
+  }
+
+  .admin-attractions-dark .admin-attractions-page {
+    background:transparent !important;
+  }
+
+  .admin-attractions-dark .admin-attractions-toolbar,
+  .admin-attractions-dark .admin-attraction-card,
+  .admin-attractions-dark .admin-attractions-loading,
+  .admin-attractions-dark .admin-attractions-empty,
+  .admin-attractions-dark .admin-attractions-stats .admin-stat-card {
+    background:#191C2B !important;
+  }
+
+  .admin-attractions-dark .admin-toolbar-heading-icon,
+  .admin-attractions-dark .admin-stat-icon-blue,
+  .admin-attractions-dark .admin-stat-icon-purple,
+  .admin-attractions-dark .admin-stat-icon-indigo,
+  .admin-attractions-dark .admin-empty-icon,
+  .admin-attractions-dark .admin-loading-icon {
+    background:#262B46 !important;
+  }
+
+  .admin-attractions-dark .admin-filter-group > .form-control,
+  .admin-attractions-dark .admin-filter-group > .form-select,
+  .admin-attractions-dark .admin-filter-group > .btn {
+    background:#202436 !important;
+    border-color:#343A4F !important;
+    color:#F1F3F8 !important;
+  }
+
+  .admin-attractions-dark .admin-attractions-modal .modal-body,
+  .admin-attractions-dark .admin-attractions-modal .modal-footer {
+    background:#191C2B !important;
+  }
 
   @media (max-width: 991.98px) {
-    .admin-attractions-heading { align-items:flex-start !important; flex-direction:column; gap:14px; }
-    .admin-attractions-add-button { width:100%; }
-    .admin-attractions-title { font-size:clamp(1.65rem, 4.5vw, 2.25rem) !important; }
+    .admin-attractions-heading {
+      align-items:flex-start !important;
+      flex-direction:column;
+      gap:14px;
+    }
+
+    .admin-attractions-add-button {
+      width:100%;
+    }
+
+    .admin-attractions-title {
+      font-size:clamp(1.65rem, 4.5vw, 2.25rem) !important;
+    }
   }
 
   @media (max-width: 767.98px) {
-    .admin-attractions-title { font-size:1.9rem !important; }
+    .admin-attractions-title {
+      font-size:1.9rem !important;
+    }
   }
 
   @media (max-width: 479.98px) {
-    .admin-attractions-title { font-size:1.8rem !important; }
+    .admin-attractions-title {
+      font-size:1.8rem !important;
+    }
   }
 `;
 
@@ -1471,44 +2010,23 @@ const AdminAttractions: React.FC = () => {
   const { darkMode } = useDarkMode();
 
   const [items, setItems] = useState<Attraction[]>([]);
-
   const [filteredItems, setFilteredItems] = useState<Attraction[]>([]);
-
   const [loading, setLoading] = useState(true);
-
   const [showModal, setShowModal] = useState(false);
-
   const [editing, setEditing] = useState<Attraction | null>(null);
-
   const [form, setForm] = useState<any>(EMPTY_FORM);
-
   const [saving, setSaving] = useState(false);
-
   const [uploading, setUploading] = useState(false);
-
   const [error, setError] = useState("");
-
   const [searchTerm, setSearchTerm] = useState("");
-
   const [categoryFilter, setCategoryFilter] = useState("All");
-
   const [attractionFilter, setAttractionFilter] = useState("All");
-
   const [sortOption, setSortOption] = useState("name-asc");
-
   const [imageFiles, setImageFiles] = useState<File[]>([]);
-
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
-
   const [viewItem, setViewItem] = useState<Attraction | null>(null);
-
   const [showCategoriesModal, setShowCategoriesModal] = useState(false);
-
   const [showActiveModal, setShowActiveModal] = useState(false);
-
-  /* =========================================================
-     LOAD DESTINATIONS
-  ========================================================= */
 
   const load = async () => {
     setLoading(true);
@@ -1518,7 +2036,9 @@ const AdminAttractions: React.FC = () => {
 
       const response = await getAttractions();
 
-      const attractions = Array.isArray(response?.data) ? response.data : [];
+      const attractions = Array.isArray(response?.data)
+        ? response.data
+        : [];
 
       setItems(attractions);
       setFilteredItems(attractions);
@@ -1531,10 +2051,6 @@ const AdminAttractions: React.FC = () => {
       setLoading(false);
     }
   };
-
-  /* =========================================================
-     INITIAL LOAD + SUPABASE
-  ========================================================= */
 
   const subscribeToAttractions = (callback: () => void) => {
     return subscribeToTable("attractions", "*", callback);
@@ -1551,10 +2067,6 @@ const AdminAttractions: React.FC = () => {
       unsubscribeAll();
     };
   }, []);
-
-  /* =========================================================
-     SEARCH / FILTER / SORT
-  ========================================================= */
 
   useEffect(() => {
     let filtered = Array.isArray(items) ? [...items] : [];
@@ -1616,6 +2128,7 @@ const AdminAttractions: React.FC = () => {
 
       filtered = filtered.filter((attraction: any) => {
         const searchable = getSearchableText(attraction);
+
         return tokens.every((token) => searchable.includes(token));
       });
     }
@@ -1630,10 +2143,15 @@ const AdminAttractions: React.FC = () => {
     if (attractionFilter !== "All") {
       filtered = filtered.filter((attraction: any) => {
         const attractionType = normalize(attraction.attraction_type);
-        const otherAttractionType = normalize(attraction.other_attraction_type);
+        const otherAttractionType = normalize(
+          attraction.other_attraction_type,
+        );
         const selected = normalize(attractionFilter);
 
-        return attractionType === selected || otherAttractionType === selected;
+        return (
+          attractionType === selected ||
+          otherAttractionType === selected
+        );
       });
     }
 
@@ -1642,8 +2160,12 @@ const AdminAttractions: React.FC = () => {
       const nameB = normalize(b.name);
       const categoryA = normalize(a.category);
       const categoryB = normalize(b.category);
-      const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
-      const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+      const dateA = new Date(
+        a.created_at || a.createdAt || 0,
+      ).getTime();
+      const dateB = new Date(
+        b.created_at || b.createdAt || 0,
+      ).getTime();
 
       switch (sortOption) {
         case "name-desc":
@@ -1679,7 +2201,13 @@ const AdminAttractions: React.FC = () => {
     });
 
     setFilteredItems(filtered);
-  }, [items, searchTerm, categoryFilter, attractionFilter, sortOption]);
+  }, [
+    items,
+    searchTerm,
+    categoryFilter,
+    attractionFilter,
+    sortOption,
+  ]);
 
   const availableAttractionTypes = useMemo(() => {
     if (categoryFilter !== "All") {
@@ -1688,7 +2216,9 @@ const AdminAttractions: React.FC = () => {
 
     return Array.from(
       new Set(
-        CATEGORIES.flatMap((category) => ATTRACTION_TYPES[category] || []),
+        CATEGORIES.flatMap(
+          (category) => ATTRACTION_TYPES[category] || [],
+        ),
       ),
     ).sort((a, b) => a.localeCompare(b));
   }, [categoryFilter]);
@@ -1730,7 +2260,9 @@ const AdminAttractions: React.FC = () => {
   };
 
   useEffect(() => {
-    const urls = imageFiles.map((file) => URL.createObjectURL(file));
+    const urls = imageFiles.map((file) =>
+      URL.createObjectURL(file),
+    );
 
     setImagePreviewUrls(urls);
 
@@ -1743,7 +2275,8 @@ const AdminAttractions: React.FC = () => {
 
   const getAttractionPlaceholder = (attraction: any) => {
     const design =
-      CATEGORY_DESIGNS[attraction?.category] || CATEGORY_DESIGNS.Other;
+      CATEGORY_DESIGNS[attraction?.category] ||
+      CATEGORY_DESIGNS.Other;
 
     return (
       <div
@@ -1798,13 +2331,17 @@ const AdminAttractions: React.FC = () => {
               fontSize: "3rem",
               lineHeight: 1,
               marginBottom: "9px",
-              filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.18))",
+              filter:
+                "drop-shadow(0 3px 8px rgba(0,0,0,0.18))",
             }}
           >
-            {React.createElement(getCategoryIcon(attraction?.category), {
-              size: 48,
-              strokeWidth: 1.7,
-            })}
+            {React.createElement(
+              getCategoryIcon(attraction?.category),
+              {
+                size: 48,
+                strokeWidth: 1.7,
+              },
+            )}
           </div>
 
           <div
@@ -1833,10 +2370,6 @@ const AdminAttractions: React.FC = () => {
     );
   };
 
-  /* =========================================================
-     FORM HELPER
-  ========================================================= */
-
   const fc = (field: string, value: unknown) => {
     setForm((previous: any) => ({
       ...previous,
@@ -1844,30 +2377,19 @@ const AdminAttractions: React.FC = () => {
     }));
   };
 
-  /* =========================================================
-     OPEN CREATE
-  ========================================================= */
-
   const openCreate = () => {
     setEditing(null);
 
     setForm({
       ...EMPTY_FORM,
-
       attraction_type: ATTRACTION_TYPES.Nature[0],
     });
 
     setError("");
-
     setImageFiles([]);
     setImagePreviewUrls([]);
-
     setShowModal(true);
   };
-
-  /* =========================================================
-     OPEN EDIT
-  ========================================================= */
 
   const openEdit = (attraction: Attraction) => {
     const d: any = attraction;
@@ -1875,7 +2397,9 @@ const AdminAttractions: React.FC = () => {
     const category = d.category || "Nature";
 
     const attractionType =
-      d.attraction_type || ATTRACTION_TYPES[category]?.[0] || "";
+      d.attraction_type ||
+      ATTRACTION_TYPES[category]?.[0] ||
+      "";
 
     setEditing(attraction);
 
@@ -1883,174 +2407,148 @@ const AdminAttractions: React.FC = () => {
       ...EMPTY_FORM,
 
       name: d.name || "",
-
       category,
-
       attraction_type: attractionType,
-
       other_attraction_type: d.other_attraction_type || "",
-
       description: d.description || "",
-
       short_description: d.short_description || "",
 
       /* LOCATION / BASIC DETAILS */
       location_address: d.location_address || "",
-location_lat: d.location_lat ?? null,
-location_lng: d.location_lng ?? null,
+      location_lat: d.location_lat ?? null,
+      location_lng: d.location_lng ?? null,
 
       /* IMAGES */
-      images: Array.isArray(d.images) ? d.images.join(", ") : d.images || "",
+      images: Array.isArray(d.images)
+        ? d.images.join(", ")
+        : d.images || "",
 
       /* GENERAL */
       entrance_fee: d.entrance_fee || "",
-      operational_hours: d.operational_hours || d.opening_hours || "",
-      best_time_to_visit: d.best_time_to_visit || d.best_season || "",
+      operational_hours:
+        d.operational_hours || d.opening_hours || "",
+      best_time_to_visit:
+        d.best_time_to_visit || d.best_season || "",
       website: d.website || "",
+
       attractions: Array.isArray(d.attractions)
         ? d.attractions.join(", ")
         : d.attractions || "",
+
       things_to_do: Array.isArray(d.things_to_do)
         ? d.things_to_do.join(", ")
         : d.things_to_do || "",
 
-      tags: Array.isArray(d.tags) ? d.tags.join(", ") : d.tags || "",
+      tags: Array.isArray(d.tags)
+        ? d.tags.join(", ")
+        : d.tags || "",
 
       /* TOURISM */
       development_level: d.development_level || "",
-
       online_connectivity: d.online_connectivity || "",
-
       mgt: d.mgt || "",
 
       /* CONTACT */
       mobile: d.mobile || "",
       contact_person: d.contact_person || "",
 
-      show_on_welcome: Boolean(d.show_on_welcome ?? d.showOnWelcome ?? false),
+      show_on_welcome: Boolean(
+        d.show_on_welcome ?? d.showOnWelcome ?? false,
+      ),
 
       /* NATURE */
       waterfall_height: d.waterfall_height || "",
-
       swimming_allowed: Boolean(d.swimming_allowed),
-
       trekking_difficulty: d.trekking_difficulty || "",
-
       beach_type: d.beach_type || "",
-
       best_season: d.best_season || "",
-
       activities_allowed: d.activities_allowed || "",
 
       /* HISTORY */
       historical_period: d.historical_period || "",
-
       significance: d.significance || "",
 
       /* INDUSTRIAL */
       industrial_activity: d.industrial_activity || "",
-
       production_process: d.production_process || "",
-
       visitor_access: d.visitor_access || "",
 
       /* SHOPPING */
       products_available: d.products_available || "",
-
       local_products: d.local_products || "",
     });
 
     setImageFiles([]);
-
     setError("");
-
     setShowModal(true);
   };
 
-  /* =========================================================
-     CATEGORY CHANGE
-  ========================================================= */
-
   const handleCategoryChange = (category: string) => {
-    const firstAttraction = ATTRACTION_TYPES[category]?.[0] || "";
+    const firstAttraction =
+      ATTRACTION_TYPES[category]?.[0] || "";
 
     setForm((previous: any) => ({
       ...previous,
-
       category,
-
       attraction_type: firstAttraction,
-
       other_attraction_type: "",
     }));
   };
 
-  /* =========================================================
-     SAVE DESTINATION
-  ========================================================= */
-
   const handleSave = async () => {
     if (!form.name.trim()) {
       setError("Attraction name is required.");
-
       return;
     }
 
     if (!form.description.trim()) {
       setError("Description is required.");
-
       return;
     }
 
-    /* OTHER ATTRACTION TYPE */
     if (
       form.attraction_type === "Other" &&
       !form.other_attraction_type.trim()
     ) {
       setError("Please specify the attraction type for Other.");
-
       return;
     }
 
     setSaving(true);
-
     setUploading(false);
-
     setError("");
 
     try {
       let imageUrls: string[] = getFormImageUrls();
 
-      /* =====================================================
-         IMAGE UPLOAD
-      ===================================================== */
-
       if (imageFiles.length > 0) {
         setUploading(true);
 
         try {
-          const uploadResponse = await uploadMultipleImages(imageFiles);
+          const uploadResponse =
+            await uploadMultipleImages(imageFiles);
 
-          const uploadedUrls = Array.isArray(uploadResponse?.data?.urls)
+          const uploadedUrls = Array.isArray(
+            uploadResponse?.data?.urls,
+          )
             ? uploadResponse.data.urls
             : [];
 
-          /* Keep existing images and append the newly uploaded images. */
           imageUrls = Array.from(
-            new Set([...imageUrls, ...uploadedUrls].filter(Boolean)),
+            new Set(
+              [...imageUrls, ...uploadedUrls].filter(Boolean),
+            ),
           );
         } catch (uploadError) {
           console.error("Image upload failed:", uploadError);
 
-          setError("Image upload failed. The existing images were kept.");
+          setError(
+            "Image upload failed. The existing images were kept.",
+          );
         } finally {
           setUploading(false);
         }
       }
-
-      /* =====================================================
-         MAIN PAYLOAD
-      ===================================================== */
 
       const payload: any = {
         name: form.name.trim(),
@@ -2058,7 +2556,9 @@ location_lng: d.location_lng ?? null,
         category: form.category,
 
         attraction_type:
-          form.attraction_type === "Other" ? "Other" : form.attraction_type,
+          form.attraction_type === "Other"
+            ? "Other"
+            : form.attraction_type,
 
         other_attraction_type:
           form.attraction_type === "Other"
@@ -2068,18 +2568,23 @@ location_lng: d.location_lng ?? null,
         description: form.description.trim(),
 
         /* LOCATION / BASIC DETAILS */
-location_address: form.location_address?.trim() || "",
-location_lat: form.location_lat,
-location_lng: form.location_lng,
+        location_address:
+          form.location_address?.trim() || "",
+        location_lat: form.location_lat,
+        location_lng: form.location_lng,
 
         /* IMAGES */
         images: imageUrls,
 
         /* GENERAL */
-        entrance_fee: form.entrance_fee?.trim() || "",
-        operational_hours: form.operational_hours?.trim() || "",
-        best_time_to_visit: form.best_time_to_visit?.trim() || "",
-        things_to_do: form.things_to_do?.trim() || "",
+        entrance_fee:
+          form.entrance_fee?.trim() || "",
+        operational_hours:
+          form.operational_hours?.trim() || "",
+        best_time_to_visit:
+          form.best_time_to_visit?.trim() || "",
+        things_to_do:
+          form.things_to_do?.trim() || "",
 
         tags: (form.tags || "")
           .split(",")
@@ -2087,112 +2592,109 @@ location_lng: form.location_lng,
           .filter(Boolean),
 
         /* TOURISM */
-        development_level: form.development_level || null,
+        development_level:
+          form.development_level || null,
 
-        online_connectivity: form.online_connectivity || null,
+        online_connectivity:
+          form.online_connectivity || null,
 
         mgt: form.mgt || null,
 
         /* CONTACT */
         mobile: form.mobile?.trim() || "",
-        contact_person: form.contact_person?.trim() || "",
+        contact_person:
+          form.contact_person?.trim() || "",
 
         show_on_welcome: Boolean(form.show_on_welcome),
       };
 
-      /* =====================================================
-         NATURE
-      ===================================================== */
-
       if (form.category === "Nature") {
-        payload.waterfall_height = form.waterfall_height || "";
+        payload.waterfall_height =
+          form.waterfall_height || "";
 
-        payload.swimming_allowed = Boolean(form.swimming_allowed);
+        payload.swimming_allowed =
+          Boolean(form.swimming_allowed);
 
-        payload.trekking_difficulty = form.trekking_difficulty || "";
+        payload.trekking_difficulty =
+          form.trekking_difficulty || "";
 
         payload.beach_type = form.beach_type || "";
 
-        payload.best_season = form.best_season || "";
+        payload.best_season =
+          form.best_season || "";
 
-        payload.activities_allowed = form.activities_allowed || "";
+        payload.activities_allowed =
+          form.activities_allowed || "";
       }
-
-      /* =====================================================
-         HISTORY AND CULTURE
-      ===================================================== */
 
       if (form.category === "History and Culture") {
-        payload.historical_period = form.historical_period || "";
+        payload.historical_period =
+          form.historical_period || "";
 
-        payload.significance = form.significance || "";
+        payload.significance =
+          form.significance || "";
       }
-
-      /* =====================================================
-         INDUSTRIAL TOURISM
-      ===================================================== */
 
       if (form.category === "Industrial Tourism") {
-        payload.industrial_activity = form.industrial_activity || "";
+        payload.industrial_activity =
+          form.industrial_activity || "";
 
-        payload.production_process = form.production_process || "";
+        payload.production_process =
+          form.production_process || "";
 
-        payload.visitor_access = form.visitor_access || "";
+        payload.visitor_access =
+          form.visitor_access || "";
       }
-
-      /* =====================================================
-         SHOPPING
-      ===================================================== */
 
       if (form.category === "Shopping") {
-        payload.products_available = form.products_available || "";
+        payload.products_available =
+          form.products_available || "";
 
-        payload.local_products = form.local_products || "";
+        payload.local_products =
+          form.local_products || "";
       }
-
-      /* =====================================================
-         CREATE / UPDATE
-      ===================================================== */
 
       if (editing && editing.id) {
         await updateAttraction(editing.id, payload);
       } else {
-        const created = await createAttraction(payload);
+        const created =
+          await createAttraction(payload);
 
-        const newAttractionId = created?.data?._id || created?.data?.id;
+        const newAttractionId =
+          created?.data?._id ||
+          created?.data?.id;
 
         try {
           await createNotification({
             userId: "all",
-
             type: "attraction_added",
-
             title: "New Attraction Added!",
-
             message: `Check out the new attraction: ${form.name}`,
-
             data: {
               attractionId: newAttractionId,
-
               attractionName: form.name,
-
               category: form.category,
             },
           });
         } catch (notificationError) {
-          console.error("Failed to create notification:", notificationError);
+          console.error(
+            "Failed to create notification:",
+            notificationError,
+          );
         }
       }
 
       clearCache("attractions");
 
       setShowModal(false);
-
       setEditing(null);
 
       await load();
     } catch (err: any) {
-      console.error("Failed to save attraction:", err);
+      console.error(
+        "Failed to save attraction:",
+        err,
+      );
 
       setError(
         err?.response?.data?.message ||
@@ -2201,17 +2703,14 @@ location_lng: form.location_lng,
       );
     } finally {
       setSaving(false);
-
       setUploading(false);
     }
   };
 
-  /* =========================================================
-     DELETE
-  ========================================================= */
-
   const handleDelete = async (id: string) => {
-    const confirmed = window.confirm("Delete this attraction?");
+    const confirmed = window.confirm(
+      "Delete this attraction?",
+    );
 
     if (!confirmed) return;
 
@@ -2222,42 +2721,34 @@ location_lng: form.location_lng,
 
       await load();
     } catch (err) {
-      console.error("Failed to delete attraction:", err);
+      console.error(
+        "Failed to delete attraction:",
+        err,
+      );
     }
   };
-
-  /* =========================================================
-     CATEGORY COLOR
-  ========================================================= */
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
       Nature: "#1A7A4A",
-
       "History and Culture": "#765548",
-
       "Industrial Tourism": "#536878",
-
       Shopping: "#B56A00",
-
       Other: "#68736D",
     };
 
     return colors[category] || "#90A4AE";
   };
 
-  /* =========================================================
-     COUNTS
-  ========================================================= */
-
   const categoryCount = useMemo(
-    () => new Set(items.map((attraction: any) => attraction.category)).size,
+    () =>
+      new Set(
+        items.map(
+          (attraction: any) => attraction.category,
+        ),
+      ).size,
     [items],
   );
-
-  /* =========================================================
-     RENDER
-  ========================================================= */
 
   return (
     <AdminLayout>
@@ -2271,17 +2762,22 @@ location_lng: form.location_lng,
 
         {/* =====================================================
           HEADER
-      ===================================================== */}
+        ===================================================== */}
 
         <div className="admin-attractions-heading d-flex justify-content-between">
           <div className="admin-attractions-heading-copy">
-            <div className="admin-attractions-eyebrow">CONTENT MANAGEMENT</div>
+            <div className="admin-attractions-eyebrow">
+              CONTENT MANAGEMENT
+            </div>
 
-            <h2 className="admin-attractions-title">ATTRACTIONS</h2>
+            <h2 className="admin-attractions-title">
+              ATTRACTIONS
+            </h2>
 
             <p className="admin-attractions-subtitle">
-              Manage Calbayog City Tourism attractions, images, details, and
-              public visibility from one place.
+              Manage Calbayog City Tourism attractions,
+              images, details, and public visibility from one
+              place.
             </p>
           </div>
 
@@ -2297,7 +2793,7 @@ location_lng: form.location_lng,
 
         {/* =====================================================
           STATS
-      ===================================================== */}
+        ===================================================== */}
 
         <Row className="g-3 mb-4 admin-attractions-stats">
           <Col xs={12} sm={6} xl={3}>
@@ -2314,10 +2810,18 @@ location_lng: form.location_lng,
                   <span className="admin-stat-icon admin-stat-icon-blue">
                     <MapPinned size={18} strokeWidth={2} />
                   </span>
-                  <span className="admin-stat-label">Total Attractions</span>
+                  <span className="admin-stat-label">
+                    Total Attractions
+                  </span>
                 </div>
-                <div className="admin-stat-value">{items.length}</div>
-                <div className="admin-stat-caption">All attraction records</div>
+
+                <div className="admin-stat-value">
+                  {items.length}
+                </div>
+
+                <div className="admin-stat-caption">
+                  All attraction records
+                </div>
               </Card.Body>
             </Card>
           </Col>
@@ -2329,15 +2833,23 @@ location_lng: form.location_lng,
                   <span className="admin-stat-icon admin-stat-icon-yellow">
                     <Home size={18} strokeWidth={2} />
                   </span>
-                  <span className="admin-stat-label">Show on Welcome</span>
+
+                  <span className="admin-stat-label">
+                    Show on Welcome
+                  </span>
                 </div>
+
                 <div className="admin-stat-value">
                   {
                     items.filter((d: any) =>
-                      Boolean(d.show_on_welcome ?? d.showOnWelcome),
+                      Boolean(
+                        d.show_on_welcome ??
+                          d.showOnWelcome,
+                      ),
                     ).length
                   }
                 </div>
+
                 <div className="admin-stat-caption">
                   Visible on the public welcome page
                 </div>
@@ -2348,16 +2860,25 @@ location_lng: form.location_lng,
           <Col xs={12} sm={6} xl={3}>
             <Card
               className="border-0 h-100 admin-stat-card"
-              onClick={() => setShowCategoriesModal(true)}
+              onClick={() =>
+                setShowCategoriesModal(true)
+              }
             >
               <Card.Body>
                 <div className="admin-stat-card-top">
                   <span className="admin-stat-icon admin-stat-icon-purple">
                     <Layers3 size={18} strokeWidth={2} />
                   </span>
-                  <span className="admin-stat-label">Categories</span>
+
+                  <span className="admin-stat-label">
+                    Categories
+                  </span>
                 </div>
-                <div className="admin-stat-value">{categoryCount}</div>
+
+                <div className="admin-stat-value">
+                  {categoryCount}
+                </div>
+
                 <div className="admin-stat-caption">
                   Tourism categories in use
                 </div>
@@ -2375,9 +2896,16 @@ location_lng: form.location_lng,
                   <span className="admin-stat-icon admin-stat-icon-indigo">
                     <Eye size={18} strokeWidth={2} />
                   </span>
-                  <span className="admin-stat-label">Currently Showing</span>
+
+                  <span className="admin-stat-label">
+                    Currently Showing
+                  </span>
                 </div>
-                <div className="admin-stat-value">{filteredItems.length}</div>
+
+                <div className="admin-stat-value">
+                  {filteredItems.length}
+                </div>
+
                 <div className="admin-stat-caption">
                   Records matching current filters
                 </div>
@@ -2388,28 +2916,40 @@ location_lng: form.location_lng,
 
         {/* =====================================================
           SEARCH / FILTER / SORT
-      ===================================================== */}
+        ===================================================== */}
 
         <Card className="border-0 mb-4 admin-attractions-toolbar">
           <Card.Body>
             <div className="admin-attractions-toolbar-heading">
               <div className="admin-filter-heading-main">
                 <span className="admin-toolbar-heading-icon">
-                  <SlidersHorizontal size={18} strokeWidth={2.1} />
+                  <SlidersHorizontal
+                    size={18}
+                    strokeWidth={2.1}
+                  />
                 </span>
+
                 <div>
                   <div className="admin-attractions-toolbar-title">
                     Find an Attraction
                   </div>
+
                   <div className="admin-attractions-toolbar-caption">
-                    Search, filter, and organize your attraction records.
+                    Search, filter, and organize your
+                    attraction records.
                   </div>
                 </div>
               </div>
+
               <div className="admin-filter-status-pill">
-                <Search size={13} strokeWidth={2.2} />
+                <Search
+                  size={13}
+                  strokeWidth={2.2}
+                />
                 {filteredItems.length} result
-                {filteredItems.length !== 1 ? "s" : ""}
+                {filteredItems.length !== 1
+                  ? "s"
+                  : ""}
               </div>
             </div>
 
@@ -2417,40 +2957,64 @@ location_lng: form.location_lng,
               <Col xs={12} lg={5}>
                 <InputGroup className="admin-filter-group admin-search-group">
                   <InputGroup.Text className="admin-filter-icon">
-                    <Search size={16} strokeWidth={2.1} />
+                    <Search
+                      size={16}
+                      strokeWidth={2.1}
+                    />
                   </InputGroup.Text>
+
                   <Form.Control
                     placeholder="Search name, category, type, location, tags..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) =>
+                      setSearchTerm(e.target.value)
+                    }
                   />
+
                   {searchTerm && (
                     <Button
                       variant="outline-secondary"
-                      onClick={() => setSearchTerm("")}
+                      onClick={() =>
+                        setSearchTerm("")
+                      }
                       aria-label="Clear search"
                     >
-                      <X size={16} strokeWidth={2} />
+                      <X
+                        size={16}
+                        strokeWidth={2}
+                      />
                     </Button>
                   )}
                 </InputGroup>
               </Col>
 
-              <Col xs={12} sm={6} lg={2.5}>
+              <Col xs={12} sm={6} lg={2}>
                 <InputGroup className="admin-filter-group admin-select-group">
                   <InputGroup.Text className="admin-filter-icon">
-                    <Layers3 size={15} strokeWidth={2.1} />
+                    <Layers3
+                      size={15}
+                      strokeWidth={2.1}
+                    />
                   </InputGroup.Text>
+
                   <Form.Select
                     value={categoryFilter}
                     onChange={(e) => {
-                      setCategoryFilter(e.target.value);
+                      setCategoryFilter(
+                        e.target.value,
+                      );
                       setAttractionFilter("All");
                     }}
                   >
-                    <option value="All">All Categories</option>
+                    <option value="All">
+                      All Categories
+                    </option>
+
                     {CATEGORIES.map((category) => (
-                      <option key={category} value={category}>
+                      <option
+                        key={category}
+                        value={category}
+                      >
                         {category}
                       </option>
                     ))}
@@ -2458,39 +3022,73 @@ location_lng: form.location_lng,
                 </InputGroup>
               </Col>
 
-              <Col xs={12} sm={6} lg={2.5}>
+              <Col xs={12} sm={6} lg={2}>
                 <InputGroup className="admin-filter-group admin-select-group">
                   <InputGroup.Text className="admin-filter-icon">
-                    <Tag size={15} strokeWidth={2.1} />
+                    <Tag
+                      size={15}
+                      strokeWidth={2.1}
+                    />
                   </InputGroup.Text>
+
                   <Form.Select
                     value={attractionFilter}
-                    onChange={(e) => setAttractionFilter(e.target.value)}
+                    onChange={(e) =>
+                      setAttractionFilter(
+                        e.target.value,
+                      )
+                    }
                   >
-                    <option value="All">All Attraction Types</option>
-                    {availableAttractionTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
+                    <option value="All">
+                      All Attraction Types
+                    </option>
+
+                    {availableAttractionTypes.map(
+                      (type) => (
+                        <option
+                          key={type}
+                          value={type}
+                        >
+                          {type}
+                        </option>
+                      ),
+                    )}
                   </Form.Select>
                 </InputGroup>
               </Col>
 
-              <Col xs={12} lg={2}>
+              <Col xs={12} lg={3}>
                 <InputGroup className="admin-filter-group admin-select-group">
                   <InputGroup.Text className="admin-filter-icon">
-                    <ArrowUpDown size={15} strokeWidth={2.1} />
+                    <ArrowUpDown
+                      size={15}
+                      strokeWidth={2.1}
+                    />
                   </InputGroup.Text>
+
                   <Form.Select
                     value={sortOption}
-                    onChange={(e) => setSortOption(e.target.value)}
+                    onChange={(e) =>
+                      setSortOption(
+                        e.target.value,
+                      )
+                    }
                   >
-                    <option value="name-asc">A–Z: Name</option>
-                    <option value="name-desc">Z–A: Name</option>
-                    <option value="category-asc">Category A–Z</option>
-                    <option value="newest">Newest Added</option>
-                    <option value="oldest">Oldest Added</option>
+                    <option value="name-asc">
+                      A–Z: Name
+                    </option>
+                    <option value="name-desc">
+                      Z–A: Name
+                    </option>
+                    <option value="category-asc">
+                      Category A–Z
+                    </option>
+                    <option value="newest">
+                      Newest Added
+                    </option>
+                    <option value="oldest">
+                      Oldest Added
+                    </option>
                   </Form.Select>
                 </InputGroup>
               </Col>
@@ -2500,21 +3098,36 @@ location_lng: form.location_lng,
               categoryFilter !== "All" ||
               attractionFilter !== "All") && (
               <div className="admin-active-filters">
-                <span className="admin-active-filters-label">Active:</span>
+                <span className="admin-active-filters-label">
+                  Active:
+                </span>
+
                 {searchTerm && (
                   <span className="admin-filter-chip">
-                    <Search size={11} strokeWidth={2.2} />“{searchTerm}”
+                    <Search
+                      size={11}
+                      strokeWidth={2.2}
+                    />
+                    “{searchTerm}”
                   </span>
                 )}
+
                 {categoryFilter !== "All" && (
                   <span className="admin-filter-chip">
-                    <Layers3 size={11} strokeWidth={2.2} />
+                    <Layers3
+                      size={11}
+                      strokeWidth={2.2}
+                    />
                     {categoryFilter}
                   </span>
                 )}
+
                 {attractionFilter !== "All" && (
                   <span className="admin-filter-chip">
-                    <Tag size={11} strokeWidth={2.2} />
+                    <Tag
+                      size={11}
+                      strokeWidth={2.2}
+                    />
                     {attractionFilter}
                   </span>
                 )}
@@ -2523,9 +3136,13 @@ location_lng: form.location_lng,
 
             <div className="admin-attractions-toolbar-footer">
               <div className="admin-toolbar-result-count">
-                Showing <strong>{filteredItems.length}</strong> of{" "}
-                {items.length} attractions
+                Showing{" "}
+                <strong>
+                  {filteredItems.length}
+                </strong>{" "}
+                of {items.length} attractions
               </div>
+
               {(searchTerm ||
                 categoryFilter !== "All" ||
                 attractionFilter !== "All") && (
@@ -2539,7 +3156,10 @@ location_lng: form.location_lng,
                     setAttractionFilter("All");
                   }}
                 >
-                  <X size={14} strokeWidth={2.2} />
+                  <X
+                    size={14}
+                    strokeWidth={2.2}
+                  />
                   Clear filters
                 </Button>
               )}
@@ -2549,14 +3169,21 @@ location_lng: form.location_lng,
 
         {/* =====================================================
           DESTINATION CARDS
-      ===================================================== */}
+        ===================================================== */}
 
         {loading ? (
           <div className="admin-attractions-loading">
             <div className="admin-loading-icon">
-              <Spinner animation="border" size="sm" />
+              <Spinner
+                animation="border"
+                size="sm"
+              />
             </div>
-            <div className="admin-loading-title">Loading attractions...</div>
+
+            <div className="admin-loading-title">
+              Loading attractions...
+            </div>
+
             <div className="admin-loading-subtitle">
               Preparing Calbayog City Tourism records.
             </div>
@@ -2564,12 +3191,21 @@ location_lng: form.location_lng,
         ) : filteredItems.length === 0 ? (
           <div className="admin-attractions-empty">
             <div className="admin-empty-icon">
-              <MapPinned size={30} strokeWidth={1.7} />
+              <MapPinned
+                size={30}
+                strokeWidth={1.7}
+              />
             </div>
-            <div className="admin-empty-title">No attractions found</div>
+
+            <div className="admin-empty-title">
+              No attractions found
+            </div>
+
             <p className="admin-empty-text">
-              Try adjusting your search or filters to find another attraction.
+              Try adjusting your search or filters
+              to find another attraction.
             </p>
+
             <Button
               variant="outline-primary"
               className="admin-empty-button"
@@ -2579,133 +3215,190 @@ location_lng: form.location_lng,
                 setAttractionFilter("All");
               }}
             >
-              <Layers3 size={15} strokeWidth={2} />
+              <Layers3
+                size={15}
+                strokeWidth={2}
+              />
               View all attractions
             </Button>
           </div>
         ) : (
           <Row className="g-3 g-lg-4 admin-attractions-grid">
-            {filteredItems.map((attraction: any, index: number) => {
-              const attractionImages = getAttractionImages(attraction);
-              const firstImage = attractionImages[0];
-              const displayAttractionType =
-                attraction.attraction_type === "Other"
-                  ? attraction.other_attraction_type || "Other"
-                  : attraction.attraction_type;
+            {filteredItems.map(
+              (attraction: any, index: number) => {
+                const attractionImages =
+                  getAttractionImages(attraction);
 
-              return (
-                <Col xs={12} sm={6} lg={4} xl={3} key={attraction.id}>
-                  <Card
-                    className="h-100 border-0 admin-attraction-card"
-                    style={{ animationDelay: `${Math.min(index * 55, 440)}ms` }}
-                    onClick={() => setViewItem(attraction)}
+                const firstImage =
+                  attractionImages[0];
+
+                const displayAttractionType =
+                  attraction.attraction_type ===
+                  "Other"
+                    ? attraction.other_attraction_type ||
+                      "Other"
+                    : attraction.attraction_type;
+
+                return (
+                  <Col
+                    xs={12}
+                    sm={6}
+                    lg={4}
+                    xl={3}
+                    key={attraction.id}
                   >
-                    {firstImage ? (
-                      <div className="admin-attraction-image-shell">
-                        <img
-                          src={firstImage}
-                          alt={attraction.name}
-                          className="admin-attraction-card-image"
-                          onError={(e) => {
-                            e.currentTarget.onerror = null;
-                            e.currentTarget.src = DEFAULT_TOURISM_IMAGE;
-                          }}
-                        />
-                        <div className="admin-attraction-image-overlay" />
+                    <Card
+                      className="h-100 border-0 admin-attraction-card"
+                      style={{
+                        animationDelay: `${Math.min(
+                          index * 55,
+                          440,
+                        )}ms`,
+                      }}
+                      onClick={() =>
+                        setViewItem(attraction)
+                      }
+                    >
+                      {firstImage ? (
+                        <div className="admin-attraction-image-shell">
+                          <img
+                            src={firstImage}
+                            alt={attraction.name}
+                            className="admin-attraction-card-image"
+                            onError={(e) => {
+                              e.currentTarget.onerror =
+                                null;
+                              e.currentTarget.src =
+                                DEFAULT_TOURISM_IMAGE;
+                            }}
+                          />
 
-                        {(attraction.show_on_welcome ??
-                          attraction.showOnWelcome) && (
-                          <span className="admin-attraction-welcome-badge">
-                            <Home size={12} strokeWidth={2.2} />
-                            Welcome
-                          </span>
-                        )}
+                          <div className="admin-attraction-image-overlay" />
 
-                        {attractionImages.length > 1 && (
-                          <span className="admin-attraction-image-count">
-                            <ImageIcon size={13} strokeWidth={2} />
-                            {attractionImages.length}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      getAttractionPlaceholder(attraction)
-                    )}
+                          {(attraction.show_on_welcome ??
+                            attraction.showOnWelcome) && (
+                            <span className="admin-attraction-welcome-badge">
+                              <Home
+                                size={12}
+                                strokeWidth={2.2}
+                              />
+                              Welcome
+                            </span>
+                          )}
 
-                    <Card.Body className="p-3 d-flex flex-column">
-                      <div className="admin-attraction-badge-row">
-                        <Badge className="admin-attraction-category-badge">
-                          {attraction.category}
-                        </Badge>
-
-                        {displayAttractionType && (
-                          <Badge className="admin-attraction-type-badge">
-                            {displayAttractionType}
-                          </Badge>
-                        )}
-                      </div>
-
-                      <h5 className="admin-attraction-name">
-                        {attraction.name}
-                      </h5>
-
-                      {attraction.description && (
-                        <p className="admin-attraction-description">
-                          {attraction.description}
-                        </p>
+                          {attractionImages.length >
+                            1 && (
+                            <span className="admin-attraction-image-count">
+                              <ImageIcon
+                                size={13}
+                                strokeWidth={2}
+                              />
+                              {attractionImages.length}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        getAttractionPlaceholder(
+                          attraction,
+                        )
                       )}
 
-                      <p className="admin-attraction-location">
-                        <MapPin size={14} strokeWidth={2} />
-                        <span>
-                          {attraction.location_address || "Location not set"}
-                        </span>
-                      </p>
+                      <Card.Body className="p-3 d-flex flex-column">
+                        <div className="admin-attraction-badge-row">
+                          <Badge className="admin-attraction-category-badge">
+                            {attraction.category}
+                          </Badge>
 
-                      <div
-                        className="d-flex gap-2 flex-wrap mt-auto admin-attraction-card-actions"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Button
-                          size="sm"
-                          variant="outline-primary"
-                          onClick={() => openEdit(attraction)}
-                          className="admin-edit-button"
-                        >
-                          <Pencil size={14} strokeWidth={2} />
-                          Edit
-                        </Button>
+                          {displayAttractionType && (
+                            <Badge className="admin-attraction-type-badge">
+                              {displayAttractionType}
+                            </Badge>
+                          )}
+                        </div>
 
-                        <Button
-                          size="sm"
-                          variant="outline-danger"
-                          onClick={() => handleDelete(attraction.id)}
-                          className="admin-delete-button"
-                          aria-label={`Delete ${attraction.name}`}
-                          title="Delete attraction"
+                        <h5 className="admin-attraction-name">
+                          {attraction.name}
+                        </h5>
+
+                        {attraction.description && (
+                          <p className="admin-attraction-description">
+                            {attraction.description}
+                          </p>
+                        )}
+
+                        <p className="admin-attraction-location">
+                          <MapPin
+                            size={14}
+                            strokeWidth={2}
+                          />
+
+                          <span>
+                            {attraction.location_address ||
+                              "Location not set"}
+                          </span>
+                        </p>
+
+                        <div
+                          className="d-flex gap-2 flex-wrap mt-auto admin-attraction-card-actions"
+                          onClick={(e) =>
+                            e.stopPropagation()
+                          }
                         >
-                          <Trash2 size={14} strokeWidth={2} />
-                          <span className="visually-hidden">Delete</span>
-                        </Button>
-                      </div>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              );
-            })}
+                          <Button
+                            size="sm"
+                            variant="outline-primary"
+                            onClick={() =>
+                              openEdit(attraction)
+                            }
+                            className="admin-edit-button"
+                          >
+                            <Pencil
+                              size={14}
+                              strokeWidth={2}
+                            />
+                            Edit
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            variant="outline-danger"
+                            onClick={() =>
+                              handleDelete(
+                                attraction.id,
+                              )
+                            }
+                            className="admin-delete-button"
+                            aria-label={`Delete ${attraction.name}`}
+                            title="Delete attraction"
+                          >
+                            <Trash2
+                              size={14}
+                              strokeWidth={2}
+                            />
+
+                            <span className="visually-hidden">
+                              Delete
+                            </span>
+                          </Button>
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                );
+              },
+            )}
           </Row>
         )}
 
         {/* =====================================================
           ADD / EDIT DESTINATION MODAL
-      ===================================================== */}
+        ===================================================== */}
 
         <Modal
           className="admin-attractions-modal"
           show={showModal}
           onHide={() => {
             setShowModal(false);
-
             setError("");
           }}
           size="lg"
@@ -2716,23 +3409,32 @@ location_lng: form.location_lng,
             closeButton
             className="admin-attraction-form-header"
             style={{
-              background: CATEGORY_DESIGNS[form.category]?.gradient,
+              background:
+                CATEGORY_DESIGNS[form.category]
+                  ?.gradient,
               color: "#fff",
             }}
           >
             <Modal.Title className="admin-modal-title admin-form-modal-title">
               <span className="admin-form-title-icon">
-                {React.createElement(getCategoryIcon(form.category), {
-                  size: 20,
-                  strokeWidth: 2,
-                })}
+                {React.createElement(
+                  getCategoryIcon(form.category),
+                  {
+                    size: 20,
+                    strokeWidth: 2,
+                  },
+                )}
               </span>
+
               <span>
                 <span className="admin-form-title-kicker">
                   Attraction Management
                 </span>
+
                 <span className="admin-form-title-text">
-                  {editing ? "Edit Attraction" : "Add Attraction"}
+                  {editing
+                    ? "Edit Attraction"
+                    : "Add Attraction"}
                 </span>
               </span>
             </Modal.Title>
@@ -2740,51 +3442,62 @@ location_lng: form.location_lng,
 
           <Modal.Body
             style={{
-              background: CATEGORY_DESIGNS[form.category]?.bgPattern,
-
+              background:
+                CATEGORY_DESIGNS[form.category]
+                  ?.bgPattern,
               padding: "24px",
             }}
           >
             {error && (
-              <Alert variant="danger" className="mb-3">
+              <Alert
+                variant="danger"
+                className="mb-3"
+              >
                 {error}
               </Alert>
             )}
 
             <div className="admin-form-intro">
               <div className="admin-form-intro-icon">
-                <Info size={17} strokeWidth={2.1} />
+                <Info
+                  size={17}
+                  strokeWidth={2.1}
+                />
               </div>
+
               <div>
                 <strong>
                   {editing
                     ? "Update attraction details"
                     : "Create a new attraction"}
                 </strong>
+
                 <span>
-                  Keep the visitor-facing information clear, complete, and easy
-                  to scan.
+                  Keep the visitor-facing information
+                  clear, complete, and easy to scan.
                 </span>
               </div>
             </div>
 
-            {/* =================================================
-              BASIC INFORMATION
-          ================================================= */}
+            {/* BASIC INFORMATION */}
 
             <div
               className="mb-3"
               style={{
                 fontWeight: 700,
-
                 fontSize: "1.05rem",
-
-                color: darkMode ? "#e0e0e0" : "#1a5f4a",
+                color: darkMode
+                  ? "#e0e0e0"
+                  : "#1a5f4a",
               }}
             >
               <span className="admin-form-section-icon">
-                <FileText size={16} strokeWidth={2.1} />
+                <FileText
+                  size={16}
+                  strokeWidth={2.1}
+                />
               </span>
+
               <span>Basic Information</span>
             </div>
 
@@ -2796,21 +3509,34 @@ location_lng: form.location_lng,
 
                 <Form.Control
                   value={form.name}
-                  onChange={(e) => fc("name", e.target.value)}
+                  onChange={(e) =>
+                    fc("name", e.target.value)
+                  }
                   placeholder="Enter attraction name"
                 />
               </Col>
 
               <Col xs={12} md={4}>
-                <Form.Label className="fw-semibold">Category *</Form.Label>
+                <Form.Label className="fw-semibold">
+                  Category *
+                </Form.Label>
 
                 <Form.Select
                   value={form.category}
-                  onChange={(e) => handleCategoryChange(e.target.value)}
+                  onChange={(e) =>
+                    handleCategoryChange(
+                      e.target.value,
+                    )
+                  }
                 >
                   {CATEGORIES.map((category) => (
-                    <option key={category} value={category}>
-                      {CATEGORY_DESIGNS[category]?.icon} {category}
+                    <option
+                      key={category}
+                      value={category}
+                    >
+                      {CATEGORY_DESIGNS[category]
+                        ?.icon}{" "}
+                      {category}
                     </option>
                   ))}
                 </Form.Select>
@@ -2823,10 +3549,22 @@ location_lng: form.location_lng,
 
                 <Form.Select
                   value={form.attraction_type}
-                  onChange={(e) => fc("attraction_type", e.target.value)}
+                  onChange={(e) =>
+                    fc(
+                      "attraction_type",
+                      e.target.value,
+                    )
+                  }
                 >
-                  {(ATTRACTION_TYPES[form.category] || []).map((type) => (
-                    <option key={type} value={type}>
+                  {(
+                    ATTRACTION_TYPES[
+                      form.category
+                    ] || []
+                  ).map((type) => (
+                    <option
+                      key={type}
+                      value={type}
+                    >
                       {type}
                     </option>
                   ))}
@@ -2840,9 +3578,14 @@ location_lng: form.location_lng,
                   </Form.Label>
 
                   <Form.Control
-                    value={form.other_attraction_type}
+                    value={
+                      form.other_attraction_type
+                    }
                     onChange={(e) =>
-                      fc("other_attraction_type", e.target.value)
+                      fc(
+                        "other_attraction_type",
+                        e.target.value,
+                      )
                     }
                     placeholder="Specify attraction type"
                   />
@@ -2858,15 +3601,18 @@ location_lng: form.location_lng,
                   as="textarea"
                   rows={5}
                   value={form.description}
-                  onChange={(e) => fc("description", e.target.value)}
+                  onChange={(e) =>
+                    fc(
+                      "description",
+                      e.target.value,
+                    )
+                  }
                   placeholder="Describe the attraction..."
                 />
               </Col>
             </Row>
 
-            {/* =================================================
-              VISITOR INFORMATION
-          ================================================= */}
+            {/* VISITOR INFORMATION */}
 
             <hr className="my-4" />
 
@@ -2874,15 +3620,19 @@ location_lng: form.location_lng,
               className="mb-3"
               style={{
                 fontWeight: 700,
-
                 fontSize: "1.05rem",
-
-                color: darkMode ? "#e0e0e0" : "#1a5f4a",
+                color: darkMode
+                  ? "#e0e0e0"
+                  : "#1a5f4a",
               }}
             >
               <span className="admin-form-section-icon">
-                <MapPin size={16} strokeWidth={2.1} />
+                <MapPin
+                  size={16}
+                  strokeWidth={2.1}
+                />
               </span>
+
               <span>Visitor Information</span>
             </div>
 
@@ -2890,57 +3640,119 @@ location_lng: form.location_lng,
               <Col xs={12}>
                 <div className="admin-location-picker-heading">
                   <div>
-                    <Form.Label className="fw-semibold mb-1">Set Attraction Location</Form.Label>
-                    <div className="admin-location-helper">Search the attraction or address, choose a result, then drag/click the pin to fine-tune it.</div>
+                    <Form.Label className="fw-semibold mb-1">
+                      Set Attraction Location
+                    </Form.Label>
+
+                    <div className="admin-location-helper">
+                      Search the attraction or address,
+                      choose a result, then drag/click
+                      the pin to fine-tune it.
+                    </div>
                   </div>
-                  {typeof form.location_lat === "number" && typeof form.location_lng === "number" && (
-                    <Badge className="admin-location-ready-badge">Location set</Badge>
-                  )}
+
+                  {typeof form.location_lat ===
+                    "number" &&
+                    typeof form.location_lng ===
+                      "number" && (
+                      <Badge className="admin-location-ready-badge">
+                        Location set
+                      </Badge>
+                    )}
                 </div>
 
                 <LocationPicker
-  name={form.name}
-  latitude={form.location_lat}
-  longitude={form.location_lng}
-  address={form.location_address}
-  category={form.category}
-  attractionType={form.attraction_type}
-  searchablePlaces={items.map((item: any) => ({
-    id: item.id,
-    name: item.name,
-    address: item.location_address,
-    latitude: item.location_lat,
-    longitude: item.location_lng,
-  }))}
-  onChange={({ latitude, longitude, address }) => {
-    fc("location_lat", latitude);
-    fc("location_lng", longitude);
-    if (address) fc("location_address", address);
-  }}
-/>
+                  name={form.name}
+                  latitude={form.location_lat}
+                  longitude={form.location_lng}
+                  address={form.location_address}
+                  category={form.category}
+                  attractionType={
+                    form.attraction_type
+                  }
 
-                <Form.Label className="fw-semibold mt-3">Address</Form.Label>
+                  /*
+                   * IMPORTANT:
+                   * Existing attraction coordinates are
+                   * intentionally NOT passed here.
+                   *
+                   * This prevents an old/inaccurate
+                   * database pin from appearing as a
+                   * competing search result.
+                   *
+                   * The latitude/longitude above are still
+                   * passed directly to LocationPicker so the
+                   * currently saved pin remains visible
+                   * when editing.
+                   */
+                  searchablePlaces={items.map(
+                    (item: any) => ({
+                      id: item.id,
+                      name: item.name,
+                      address:
+                        item.location_address,
+                    }),
+                  )}
+
+                  onChange={({
+                    latitude,
+                    longitude,
+                    address,
+                  }) => {
+                    fc(
+                      "location_lat",
+                      latitude,
+                    );
+
+                    fc(
+                      "location_lng",
+                      longitude,
+                    );
+
+                    if (address) {
+                      fc(
+                        "location_address",
+                        address,
+                      );
+                    }
+                  }}
+                />
+
+                <Form.Label className="fw-semibold mt-3">
+                  Address
+                </Form.Label>
+
                 <Form.Control
                   value={form.location_address}
-                  onChange={(e) => fc("location_address", e.target.value)}
+                  onChange={(e) =>
+                    fc(
+                      "location_address",
+                      e.target.value,
+                    )
+                  }
                   placeholder="Address will be filled from the selected location, or enter it manually"
                 />
               </Col>
 
               <Col xs={12} md={4}>
-                <Form.Label className="fw-semibold">Entrance Fee</Form.Label>
+                <Form.Label className="fw-semibold">
+                  Entrance Fee
+                </Form.Label>
 
                 <Form.Control
                   value={form.entrance_fee}
-                  onChange={(e) => fc("entrance_fee", e.target.value)}
+                  onChange={(e) =>
+                    fc(
+                      "entrance_fee",
+                      e.target.value,
+                    )
+                  }
                   placeholder="₱50 / Free / Not Stated"
                 />
               </Col>
             </Row>
 
-            {/* =================================================
-              TOURISM INFORMATION
-          ================================================= */}
+            {/* TOURISM INFORMATION */}
 
             <hr className="my-4" />
 
@@ -2948,15 +3760,19 @@ location_lng: form.location_lng,
               className="mb-3"
               style={{
                 fontWeight: 700,
-
                 fontSize: "1.05rem",
-
-                color: darkMode ? "#e0e0e0" : "#1a5f4a",
+                color: darkMode
+                  ? "#e0e0e0"
+                  : "#1a5f4a",
               }}
             >
               <span className="admin-form-section-icon">
-                <Landmark size={16} strokeWidth={2.1} />
+                <Landmark
+                  size={16}
+                  strokeWidth={2.1}
+                />
               </span>
+
               <span>Tourism Information</span>
             </div>
 
@@ -2967,16 +3783,30 @@ location_lng: form.location_lng,
                 </Form.Label>
 
                 <Form.Select
-                  value={form.development_level}
-                  onChange={(e) => fc("development_level", e.target.value)}
+                  value={
+                    form.development_level
+                  }
+                  onChange={(e) =>
+                    fc(
+                      "development_level",
+                      e.target.value,
+                    )
+                  }
                 >
-                  <option value="">Select development level</option>
+                  <option value="">
+                    Select development level
+                  </option>
 
-                  {DEVELOPMENT_LEVELS.map((level) => (
-                    <option key={level} value={level}>
-                      {level}
-                    </option>
-                  ))}
+                  {DEVELOPMENT_LEVELS.map(
+                    (level) => (
+                      <option
+                        key={level}
+                        value={level}
+                      >
+                        {level}
+                      </option>
+                    ),
+                  )}
                 </Form.Select>
               </Col>
 
@@ -2986,30 +3816,56 @@ location_lng: form.location_lng,
                 </Form.Label>
 
                 <Form.Select
-                  value={form.online_connectivity}
-                  onChange={(e) => fc("online_connectivity", e.target.value)}
+                  value={
+                    form.online_connectivity
+                  }
+                  onChange={(e) =>
+                    fc(
+                      "online_connectivity",
+                      e.target.value,
+                    )
+                  }
                 >
-                  <option value="">Select connectivity</option>
+                  <option value="">
+                    Select connectivity
+                  </option>
 
-                  {ONLINE_CONNECTIVITY_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
+                  {ONLINE_CONNECTIVITY_OPTIONS.map(
+                    (option) => (
+                      <option
+                        key={option}
+                        value={option}
+                      >
+                        {option}
+                      </option>
+                    ),
+                  )}
                 </Form.Select>
               </Col>
 
               <Col xs={12} md={4}>
-                <Form.Label className="fw-semibold">MGT</Form.Label>
+                <Form.Label className="fw-semibold">
+                  MGT
+                </Form.Label>
 
                 <Form.Select
                   value={form.mgt}
-                  onChange={(e) => fc("mgt", e.target.value)}
+                  onChange={(e) =>
+                    fc(
+                      "mgt",
+                      e.target.value,
+                    )
+                  }
                 >
-                  <option value="">Select management type</option>
+                  <option value="">
+                    Select management type
+                  </option>
 
                   {MGT_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
+                    <option
+                      key={option}
+                      value={option}
+                    >
                       {option}
                     </option>
                   ))}
@@ -3017,9 +3873,7 @@ location_lng: form.location_lng,
               </Col>
             </Row>
 
-            {/* =================================================
-              CONTACT INFORMATION
-          ================================================= */}
+            {/* CONTACT INFORMATION */}
 
             <hr className="my-4" />
 
@@ -3028,40 +3882,60 @@ location_lng: form.location_lng,
               style={{
                 fontWeight: 700,
                 fontSize: "1.05rem",
-                color: darkMode ? "#e0e0e0" : "#1a5f4a",
+                color: darkMode
+                  ? "#e0e0e0"
+                  : "#1a5f4a",
               }}
             >
               <span className="admin-form-section-icon">
-                <Phone size={16} strokeWidth={2.1} />
+                <Phone
+                  size={16}
+                  strokeWidth={2.1}
+                />
               </span>
+
               <span>Contact Details</span>
             </div>
 
             <Row className="g-3">
               <Col xs={12} md={6}>
-                <Form.Label className="fw-semibold">Mobile</Form.Label>
+                <Form.Label className="fw-semibold">
+                  Mobile
+                </Form.Label>
+
                 <Form.Control
                   type="tel"
                   value={form.mobile}
-                  onChange={(e) => fc("mobile", e.target.value)}
+                  onChange={(e) =>
+                    fc(
+                      "mobile",
+                      e.target.value,
+                    )
+                  }
                   placeholder="09XX XXX XXXX"
                 />
               </Col>
 
               <Col xs={12} md={6}>
-                <Form.Label className="fw-semibold">Contact Person</Form.Label>
+                <Form.Label className="fw-semibold">
+                  Contact Person
+                </Form.Label>
+
                 <Form.Control
                   type="text"
                   value={form.contact_person}
-                  onChange={(e) => fc("contact_person", e.target.value)}
+                  onChange={(e) =>
+                    fc(
+                      "contact_person",
+                      e.target.value,
+                    )
+                  }
                   placeholder="Enter contact person name"
                 />
               </Col>
             </Row>
 
-            {/* =================================================
-              ATTRACTION DETAILS
-          ================================================= */}
+            {/* ATTRACTION DETAILS */}
 
             <hr className="my-4" />
 
@@ -3070,7 +3944,9 @@ location_lng: form.location_lng,
               style={{
                 fontWeight: 700,
                 fontSize: "1.05rem",
-                color: darkMode ? "#e0e0e0" : "#1a5f4a",
+                color: darkMode
+                  ? "#e0e0e0"
+                  : "#1a5f4a",
               }}
             >
               Attraction Information
@@ -3081,9 +3957,17 @@ location_lng: form.location_lng,
                 <Form.Label className="fw-semibold">
                   Operational Hours
                 </Form.Label>
+
                 <Form.Control
-                  value={form.operational_hours}
-                  onChange={(e) => fc("operational_hours", e.target.value)}
+                  value={
+                    form.operational_hours
+                  }
+                  onChange={(e) =>
+                    fc(
+                      "operational_hours",
+                      e.target.value,
+                    )
+                  }
                   placeholder="e.g. Monday–Sunday, 8:00 AM–5:00 PM"
                 />
               </Col>
@@ -3092,71 +3976,105 @@ location_lng: form.location_lng,
                 <Form.Label className="fw-semibold">
                   Best Time to Visit
                 </Form.Label>
+
                 <Form.Control
-                  value={form.best_time_to_visit}
-                  onChange={(e) => fc("best_time_to_visit", e.target.value)}
+                  value={
+                    form.best_time_to_visit
+                  }
+                  onChange={(e) =>
+                    fc(
+                      "best_time_to_visit",
+                      e.target.value,
+                    )
+                  }
                   placeholder="e.g. November to May / Morning"
                 />
               </Col>
 
               <Col xs={12}>
-                <Form.Label className="fw-semibold">Attractions</Form.Label>
+                <Form.Label className="fw-semibold">
+                  Attractions
+                </Form.Label>
+
                 <Form.Control
                   as="textarea"
                   rows={3}
                   value={form.attractions}
-                  onChange={(e) => fc("attractions", e.target.value)}
+                  onChange={(e) =>
+                    fc(
+                      "attractions",
+                      e.target.value,
+                    )
+                  }
                   placeholder="List the attractions or notable features visitors can see..."
                 />
               </Col>
 
               <Col xs={12}>
-                <Form.Label className="fw-semibold">Things to Do</Form.Label>
+                <Form.Label className="fw-semibold">
+                  Things to Do
+                </Form.Label>
+
                 <Form.Control
                   as="textarea"
                   rows={3}
                   value={form.things_to_do}
-                  onChange={(e) => fc("things_to_do", e.target.value)}
+                  onChange={(e) =>
+                    fc(
+                      "things_to_do",
+                      e.target.value,
+                    )
+                  }
                   placeholder="List the activities visitors can do..."
                 />
               </Col>
 
               <Col xs={12}>
-                <Form.Label className="fw-semibold">Website</Form.Label>
+                <Form.Label className="fw-semibold">
+                  Website
+                </Form.Label>
+
                 <Form.Control
                   type="url"
                   value={form.website}
-                  onChange={(e) => fc("website", e.target.value)}
+                  onChange={(e) =>
+                    fc(
+                      "website",
+                      e.target.value,
+                    )
+                  }
                   placeholder="https://example.com"
                 />
               </Col>
             </Row>
 
-            {/* =================================================
-              DYNAMIC ATTRACTION DETAILS
-          ================================================= */}
+            {/* DYNAMIC ATTRACTION DETAILS */}
 
             <hr className="my-4" />
 
             <div
               className="mb-3 admin-dynamic-section-heading"
               style={{
-                background: CATEGORY_DESIGNS[form.category]?.gradient,
-
+                background:
+                  CATEGORY_DESIGNS[form.category]
+                    ?.gradient,
                 color: "#fff",
-
                 padding: "12px 16px",
-
                 borderRadius: "8px",
-
                 fontWeight: 600,
               }}
             >
-              {React.createElement(getCategoryIcon(form.category), {
-                size: 16,
-                strokeWidth: 2.1,
-              })}
-              <span>{form.category} Attraction Details</span>
+              {React.createElement(
+                getCategoryIcon(form.category),
+                {
+                  size: 16,
+                  strokeWidth: 2.1,
+                },
+              )}
+
+              <span>
+                {form.category} Attraction Details
+              </span>
             </div>
 
             <p
@@ -3165,46 +4083,71 @@ location_lng: form.location_lng,
                 fontSize: "0.85rem",
               }}
             >
-              Fill in only the information relevant to this attraction.
+              Fill in only the information relevant to
+              this attraction.
             </p>
 
-            {/* =================================================
-              NATURE
-          ================================================= */}
+            {/* NATURE */}
 
             {form.category === "Nature" && (
               <Row className="g-3">
-                {form.attraction_type === "Waterfalls" && (
+                {form.attraction_type ===
+                  "Waterfalls" && (
                   <Col xs={12} md={6}>
                     <Form.Label className="fw-semibold">
                       Waterfall Height
                     </Form.Label>
 
                     <Form.Control
-                      value={form.waterfall_height}
-                      onChange={(e) => fc("waterfall_height", e.target.value)}
+                      value={
+                        form.waterfall_height
+                      }
+                      onChange={(e) =>
+                        fc(
+                          "waterfall_height",
+                          e.target.value,
+                        )
+                      }
                       placeholder="e.g. 50 meters"
                     />
                   </Col>
                 )}
 
-                {form.attraction_type === "Beaches" && (
+                {form.attraction_type ===
+                  "Beaches" && (
                   <Col xs={12} md={6}>
-                    <Form.Label className="fw-semibold">Beach Type</Form.Label>
+                    <Form.Label className="fw-semibold">
+                      Beach Type
+                    </Form.Label>
 
                     <Form.Select
                       value={form.beach_type}
-                      onChange={(e) => fc("beach_type", e.target.value)}
+                      onChange={(e) =>
+                        fc(
+                          "beach_type",
+                          e.target.value,
+                        )
+                      }
                     >
-                      <option value="">Select beach type</option>
+                      <option value="">
+                        Select beach type
+                      </option>
 
-                      <option value="White Sand">White Sand</option>
+                      <option value="White Sand">
+                        White Sand
+                      </option>
 
-                      <option value="Black Sand">Black Sand</option>
+                      <option value="Black Sand">
+                        Black Sand
+                      </option>
 
-                      <option value="Rocky">Rocky</option>
+                      <option value="Rocky">
+                        Rocky
+                      </option>
 
-                      <option value="Mixed">Mixed</option>
+                      <option value="Mixed">
+                        Mixed
+                      </option>
                     </Form.Select>
                   </Col>
                 )}
@@ -3216,7 +4159,9 @@ location_lng: form.location_lng,
                   "Hot Springs",
                   "Rivers",
                   "Dive Sites",
-                ].includes(form.attraction_type) && (
+                ].includes(
+                  form.attraction_type,
+                ) && (
                   <>
                     <Col xs={12} md={6}>
                       <Form.Label className="fw-semibold">
@@ -3225,7 +4170,12 @@ location_lng: form.location_lng,
 
                       <Form.Control
                         value={form.best_season}
-                        onChange={(e) => fc("best_season", e.target.value)}
+                        onChange={(e) =>
+                          fc(
+                            "best_season",
+                            e.target.value,
+                          )
+                        }
                         placeholder="e.g. March to May"
                       />
                     </Col>
@@ -3236,20 +4186,35 @@ location_lng: form.location_lng,
                       </Form.Label>
 
                       <Form.Select
-                        value={form.trekking_difficulty}
+                        value={
+                          form.trekking_difficulty
+                        }
                         onChange={(e) =>
-                          fc("trekking_difficulty", e.target.value)
+                          fc(
+                            "trekking_difficulty",
+                            e.target.value,
+                          )
                         }
                       >
-                        <option value="">Select difficulty</option>
+                        <option value="">
+                          Select difficulty
+                        </option>
 
-                        <option value="Easy">Easy</option>
+                        <option value="Easy">
+                          Easy
+                        </option>
 
-                        <option value="Moderate">Moderate</option>
+                        <option value="Moderate">
+                          Moderate
+                        </option>
 
-                        <option value="Difficult">Difficult</option>
+                        <option value="Difficult">
+                          Difficult
+                        </option>
 
-                        <option value="Extreme">Extreme</option>
+                        <option value="Extreme">
+                          Extreme
+                        </option>
                       </Form.Select>
                     </Col>
 
@@ -3259,9 +4224,14 @@ location_lng: form.location_lng,
                       </Form.Label>
 
                       <Form.Control
-                        value={form.activities_allowed}
+                        value={
+                          form.activities_allowed
+                        }
                         onChange={(e) =>
-                          fc("activities_allowed", e.target.value)
+                          fc(
+                            "activities_allowed",
+                            e.target.value,
+                          )
                         }
                         placeholder="Hiking, swimming, camping, diving..."
                       />
@@ -3271,9 +4241,14 @@ location_lng: form.location_lng,
                       <Form.Check
                         type="checkbox"
                         label="Swimming Allowed"
-                        checked={Boolean(form.swimming_allowed)}
+                        checked={Boolean(
+                          form.swimming_allowed,
+                        )}
                         onChange={(e) =>
-                          fc("swimming_allowed", e.target.checked)
+                          fc(
+                            "swimming_allowed",
+                            e.target.checked,
+                          )
                         }
                       />
                     </Col>
@@ -3282,11 +4257,10 @@ location_lng: form.location_lng,
               </Row>
             )}
 
-            {/* =================================================
-              HISTORY AND CULTURE
-          ================================================= */}
+            {/* HISTORY AND CULTURE */}
 
-            {form.category === "History and Culture" && (
+            {form.category ===
+              "History and Culture" && (
               <Row className="g-3">
                 <Col xs={12} md={6}>
                   <Form.Label className="fw-semibold">
@@ -3294,33 +4268,45 @@ location_lng: form.location_lng,
                   </Form.Label>
 
                   <Form.Control
-                    value={form.historical_period}
-                    onChange={(e) => fc("historical_period", e.target.value)}
+                    value={
+                      form.historical_period
+                    }
+                    onChange={(e) =>
+                      fc(
+                        "historical_period",
+                        e.target.value,
+                      )
+                    }
                     placeholder="e.g. Spanish Colonial Era"
                   />
                 </Col>
 
                 <Col xs={12}>
                   <Form.Label className="fw-semibold">
-                    Historical / Cultural Significance
+                    Historical / Cultural
+                    Significance
                   </Form.Label>
 
                   <Form.Control
                     as="textarea"
                     rows={3}
                     value={form.significance}
-                    onChange={(e) => fc("significance", e.target.value)}
+                    onChange={(e) =>
+                      fc(
+                        "significance",
+                        e.target.value,
+                      )
+                    }
                     placeholder="Explain the historical or cultural importance..."
                   />
                 </Col>
               </Row>
             )}
 
-            {/* =================================================
-              INDUSTRIAL TOURISM
-          ================================================= */}
+            {/* INDUSTRIAL TOURISM */}
 
-            {form.category === "Industrial Tourism" && (
+            {form.category ===
+              "Industrial Tourism" && (
               <Row className="g-3">
                 <Col xs={12}>
                   <Form.Label className="fw-semibold">
@@ -3328,8 +4314,15 @@ location_lng: form.location_lng,
                   </Form.Label>
 
                   <Form.Control
-                    value={form.industrial_activity}
-                    onChange={(e) => fc("industrial_activity", e.target.value)}
+                    value={
+                      form.industrial_activity
+                    }
+                    onChange={(e) =>
+                      fc(
+                        "industrial_activity",
+                        e.target.value,
+                      )
+                    }
                     placeholder="Describe the main industrial activity"
                   />
                 </Col>
@@ -3342,8 +4335,15 @@ location_lng: form.location_lng,
                   <Form.Control
                     as="textarea"
                     rows={3}
-                    value={form.production_process}
-                    onChange={(e) => fc("production_process", e.target.value)}
+                    value={
+                      form.production_process
+                    }
+                    onChange={(e) =>
+                      fc(
+                        "production_process",
+                        e.target.value,
+                      )
+                    }
                     placeholder="Describe the production process visitors can see"
                   />
                 </Col>
@@ -3357,16 +4357,19 @@ location_lng: form.location_lng,
                     as="textarea"
                     rows={2}
                     value={form.visitor_access}
-                    onChange={(e) => fc("visitor_access", e.target.value)}
+                    onChange={(e) =>
+                      fc(
+                        "visitor_access",
+                        e.target.value,
+                      )
+                    }
                     placeholder="Explain how visitors can access the site"
                   />
                 </Col>
               </Row>
             )}
 
-            {/* =================================================
-              SHOPPING
-          ================================================= */}
+            {/* SHOPPING */}
 
             {form.category === "Shopping" && (
               <Row className="g-3">
@@ -3376,8 +4379,15 @@ location_lng: form.location_lng,
                   </Form.Label>
 
                   <Form.Control
-                    value={form.products_available}
-                    onChange={(e) => fc("products_available", e.target.value)}
+                    value={
+                      form.products_available
+                    }
+                    onChange={(e) =>
+                      fc(
+                        "products_available",
+                        e.target.value,
+                      )
+                    }
                     placeholder="What can visitors buy here?"
                   />
                 </Col>
@@ -3391,16 +4401,19 @@ location_lng: form.location_lng,
                     as="textarea"
                     rows={3}
                     value={form.local_products}
-                    onChange={(e) => fc("local_products", e.target.value)}
+                    onChange={(e) =>
+                      fc(
+                        "local_products",
+                        e.target.value,
+                      )
+                    }
                     placeholder="Describe local products, crafts, or souvenirs"
                   />
                 </Col>
               </Row>
             )}
 
-            {/* =================================================
-              IMAGES
-          ================================================= */}
+            {/* IMAGES */}
 
             <hr className="my-4" />
 
@@ -3408,20 +4421,27 @@ location_lng: form.location_lng,
               className="mb-3"
               style={{
                 fontWeight: 700,
-
                 fontSize: "1.05rem",
-
-                color: darkMode ? "#e0e0e0" : "#1a5f4a",
+                color: darkMode
+                  ? "#e0e0e0"
+                  : "#1a5f4a",
               }}
             >
               <span className="admin-form-section-icon">
-                <ImageIcon size={16} strokeWidth={2.1} />
+                <ImageIcon
+                  size={16}
+                  strokeWidth={2.1}
+                />
               </span>
+
               <span>Images</span>
             </div>
 
             <Form.Label className="fw-semibold admin-image-upload-label">
-              <ImageIcon size={14} strokeWidth={2} />
+              <ImageIcon
+                size={14}
+                strokeWidth={2}
+              />
               Add Images
             </Form.Label>
 
@@ -3430,187 +4450,268 @@ location_lng: form.location_lng,
               multiple
               accept="image/*"
               onChange={(e) => {
-                const target = e.target as HTMLInputElement;
+                const target =
+                  e.target as HTMLInputElement;
 
-                setImageFiles(Array.from(target.files || []));
+                setImageFiles(
+                  Array.from(
+                    target.files || [],
+                  ),
+                );
               }}
             />
 
             <small className="text-muted d-block mt-2">
-              You can select one or multiple images at once.
+              You can select one or multiple images at
+              once.
             </small>
 
-            {editing && getFormImageUrls().length > 0 && (
-              <div className="mt-4">
-                <div
-                  className="fw-semibold mb-2"
-                  style={{
-                    color: darkMode ? "#e0e0e0" : "#495057",
-                  }}
-                >
-                  Current Images
-                </div>
+            {editing &&
+              getFormImageUrls().length > 0 && (
+                <div className="mt-4">
+                  <div
+                    className="fw-semibold mb-2"
+                    style={{
+                      color: darkMode
+                        ? "#e0e0e0"
+                        : "#495057",
+                    }}
+                  >
+                    Current Images
+                  </div>
 
-                <Row className="g-2">
-                  {getFormImageUrls().map((image, index) => (
-                    <Col xs={6} md={4} lg={3} key={`${image}-${index}`}>
-                      <div
-                        style={{
-                          position: "relative",
-                          borderRadius: "10px",
-                          overflow: "hidden",
-                          border: darkMode
-                            ? "1px solid #3a3a50"
-                            : "1px solid #e5e9e6",
-                          background: darkMode ? "#252538" : "#f8f9fa",
-                        }}
-                      >
-                        <img
-                          src={image}
-                          alt={`Current attraction image ${index + 1}`}
-                          style={{
-                            width: "100%",
-                            height: 120,
-                            objectFit: "cover",
-                            display: "block",
-                          }}
-                          onError={(event) => {
-                            event.currentTarget.style.opacity = "0.35";
-                          }}
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => removeExistingImage(index)}
-                          style={{
-                            position: "absolute",
-                            top: 6,
-                            right: 6,
-                            width: 28,
-                            height: 28,
-                            border: "none",
-                            borderRadius: "50%",
-                            background: "rgba(220,53,69,0.92)",
-                            color: "#fff",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            cursor: "pointer",
-                            fontWeight: 800,
-                            fontSize: "0.85rem",
-                            lineHeight: 1,
-                          }}
-                          aria-label={`Remove image ${index + 1}`}
+                  <Row className="g-2">
+                    {getFormImageUrls().map(
+                      (image, index) => (
+                        <Col
+                          xs={6}
+                          md={4}
+                          lg={3}
+                          key={`${image}-${index}`}
                         >
-                          ×
-                        </button>
-
-                        {index === 0 && (
-                          <span
+                          <div
                             style={{
-                              position: "absolute",
-                              left: 6,
-                              bottom: 6,
-                              padding: "4px 7px",
-                              borderRadius: "999px",
-                              background: "rgba(26,95,74,0.92)",
-                              color: "#fff",
-                              fontSize: "0.62rem",
-                              fontWeight: 700,
+                              position:
+                                "relative",
+                              borderRadius:
+                                "10px",
+                              overflow:
+                                "hidden",
+                              border: darkMode
+                                ? "1px solid #3a3a50"
+                                : "1px solid #e5e9e6",
+                              background:
+                                darkMode
+                                  ? "#252538"
+                                  : "#f8f9fa",
                             }}
                           >
-                            Main Image
-                          </span>
-                        )}
-                      </div>
-                    </Col>
-                  ))}
-                </Row>
-              </div>
-            )}
+                            <img
+                              src={image}
+                              alt={`Current attraction image ${
+                                index + 1
+                              }`}
+                              style={{
+                                width: "100%",
+                                height: 120,
+                                objectFit:
+                                  "cover",
+                                display:
+                                  "block",
+                              }}
+                              onError={(
+                                event,
+                              ) => {
+                                event.currentTarget.style.opacity =
+                                  "0.35";
+                              }}
+                            />
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeExistingImage(
+                                  index,
+                                )
+                              }
+                              style={{
+                                position:
+                                  "absolute",
+                                top: 6,
+                                right: 6,
+                                width: 28,
+                                height: 28,
+                                border: "none",
+                                borderRadius:
+                                  "50%",
+                                background:
+                                  "rgba(220,53,69,0.92)",
+                                color: "#fff",
+                                display: "flex",
+                                alignItems:
+                                  "center",
+                                justifyContent:
+                                  "center",
+                                cursor:
+                                  "pointer",
+                                fontWeight: 800,
+                                fontSize:
+                                  "0.85rem",
+                                lineHeight: 1,
+                              }}
+                              aria-label={`Remove image ${
+                                index + 1
+                              }`}
+                            >
+                              ×
+                            </button>
+
+                            {index === 0 && (
+                              <span
+                                style={{
+                                  position:
+                                    "absolute",
+                                  left: 6,
+                                  bottom: 6,
+                                  padding:
+                                    "4px 7px",
+                                  borderRadius:
+                                    "999px",
+                                  background:
+                                    "rgba(26,95,74,0.92)",
+                                  color: "#fff",
+                                  fontSize:
+                                    "0.62rem",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                Main Image
+                              </span>
+                            )}
+                          </div>
+                        </Col>
+                      ),
+                    )}
+                  </Row>
+                </div>
+              )}
 
             {imageFiles.length > 0 && (
               <div className="mt-4">
                 <div
                   className="fw-semibold mb-2"
                   style={{
-                    color: darkMode ? "#e0e0e0" : "#495057",
+                    color: darkMode
+                      ? "#e0e0e0"
+                      : "#495057",
                   }}
                 >
                   New Images
                 </div>
 
                 <Row className="g-2">
-                  {imagePreviewUrls.map((preview, index) => (
-                    <Col xs={6} md={4} lg={3} key={`${preview}-${index}`}>
-                      <div
-                        style={{
-                          borderRadius: "10px",
-                          overflow: "hidden",
-                          border: darkMode
-                            ? "1px solid #3a3a50"
-                            : "1px solid #e5e9e6",
-                          background: darkMode ? "#252538" : "#f8f9fa",
-                        }}
+                  {imagePreviewUrls.map(
+                    (preview, index) => (
+                      <Col
+                        xs={6}
+                        md={4}
+                        lg={3}
+                        key={`${preview}-${index}`}
                       >
-                        <img
-                          src={preview}
-                          alt={`New image ${index + 1}`}
+                        <div
                           style={{
-                            width: "100%",
-                            height: 120,
-                            objectFit: "cover",
-                            display: "block",
+                            borderRadius:
+                              "10px",
+                            overflow:
+                              "hidden",
+                            border: darkMode
+                              ? "1px solid #3a3a50"
+                              : "1px solid #e5e9e6",
+                            background:
+                              darkMode
+                                ? "#252538"
+                                : "#f8f9fa",
                           }}
-                        />
-                      </div>
+                        >
+                          <img
+                            src={preview}
+                            alt={`New image ${
+                              index + 1
+                            }`}
+                            style={{
+                              width: "100%",
+                              height: 120,
+                              objectFit:
+                                "cover",
+                              display: "block",
+                            }}
+                          />
+                        </div>
 
-                      <small
-                        className="text-muted d-block mt-1"
-                        style={{
-                          fontSize: "0.65rem",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                        title={imageFiles[index]?.name}
-                      >
-                        {imageFiles[index]?.name}
-                      </small>
-                    </Col>
-                  ))}
+                        <small
+                          className="text-muted d-block mt-1"
+                          style={{
+                            fontSize:
+                              "0.65rem",
+                            overflow:
+                              "hidden",
+                            textOverflow:
+                              "ellipsis",
+                            whiteSpace:
+                              "nowrap",
+                          }}
+                          title={
+                            imageFiles[index]
+                              ?.name
+                          }
+                        >
+                          {
+                            imageFiles[index]
+                              ?.name
+                          }
+                        </small>
+                      </Col>
+                    ),
+                  )}
                 </Row>
 
                 <small className="text-muted d-block mt-2">
                   {imageFiles.length} new image
-                  {imageFiles.length !== 1 ? "s" : ""} selected.
+                  {imageFiles.length !== 1
+                    ? "s"
+                    : ""}{" "}
+                  selected.
                 </small>
               </div>
             )}
 
-            {/* =================================================
-              TAGS
-          ================================================= */}
+            {/* TAGS */}
 
             <div className="mt-3">
-              <Form.Label className="fw-semibold">Tags</Form.Label>
+              <Form.Label className="fw-semibold">
+                Tags
+              </Form.Label>
 
               <Form.Control
                 value={form.tags}
-                onChange={(e) => fc("tags", e.target.value)}
+                onChange={(e) =>
+                  fc(
+                    "tags",
+                    e.target.value,
+                  )
+                }
                 placeholder="nature, family-friendly, adventure"
               />
             </div>
 
-            {/* =================================================
-              SHOW ON WELCOME
-          ================================================= */}
+            {/* SHOW ON WELCOME */}
 
             <div
               className="mt-4 p-3"
               style={{
-                background: darkMode ? "#252538" : "#f8f9fa",
-
+                background: darkMode
+                  ? "#252538"
+                  : "#f8f9fa",
                 borderRadius: "10px",
               }}
             >
@@ -3621,16 +4722,23 @@ location_lng: form.location_lng,
                     Show on Welcome Page
                   </span>
                 }
-                checked={Boolean(form.show_on_welcome)}
-                onChange={(e) => fc("show_on_welcome", e.target.checked)}
+                checked={Boolean(
+                  form.show_on_welcome,
+                )}
+                onChange={(e) =>
+                  fc(
+                    "show_on_welcome",
+                    e.target.checked,
+                  )
+                }
                 style={{
                   fontWeight: 600,
                 }}
               />
 
               <small className="text-muted d-block mt-1">
-                Enable this if this attraction should appear on the public
-                welcome page.
+                Enable this if this attraction should
+                appear on the public welcome page.
               </small>
             </div>
           </Modal.Body>
@@ -3640,7 +4748,6 @@ location_lng: form.location_lng,
               variant="secondary"
               onClick={() => {
                 setShowModal(false);
-
                 setError("");
               }}
               style={{
@@ -3655,14 +4762,12 @@ location_lng: form.location_lng,
               onClick={handleSave}
               disabled={saving || uploading}
               style={{
-                background: CATEGORY_DESIGNS[form.category]?.gradient,
-
+                background:
+                  CATEGORY_DESIGNS[form.category]
+                    ?.gradient,
                 border: "none",
-
                 borderRadius: "8px",
-
                 padding: "10px 24px",
-
                 fontWeight: 600,
               }}
             >
@@ -3679,7 +4784,7 @@ location_lng: form.location_lng,
 
         {/* =====================================================
           DETAIL VIEW
-      ===================================================== */}
+        ===================================================== */}
 
         {viewItem && (
           <Modal
@@ -3697,19 +4802,18 @@ location_lng: form.location_lng,
             </Modal.Header>
 
             <Modal.Body>
-              {(viewItem as any).images?.length > 0 && (
+              {(viewItem as any).images?.length >
+                0 && (
                 <img
-                  src={(viewItem as any).images[0]}
+                  src={
+                    (viewItem as any).images[0]
+                  }
                   alt={(viewItem as any).name}
                   style={{
                     width: "100%",
-
                     height: 300,
-
                     objectFit: "cover",
-
                     borderRadius: "12px",
-
                     marginBottom: "20px",
                   }}
                 />
@@ -3718,139 +4822,202 @@ location_lng: form.location_lng,
               <div className="d-flex gap-2 flex-wrap mb-3">
                 <Badge
                   style={{
-                    background: getCategoryColor((viewItem as any).category),
+                    background:
+                      getCategoryColor(
+                        (viewItem as any)
+                          .category,
+                      ),
                   }}
                 >
                   {(viewItem as any).category}
                 </Badge>
 
-                {(viewItem as any).attraction_type && (
-                  <Badge bg="light" text="dark">
-                    {(viewItem as any).attraction_type === "Other"
-                      ? (viewItem as any).other_attraction_type || "Other"
-                      : (viewItem as any).attraction_type}
+                {(viewItem as any)
+                  .attraction_type && (
+                  <Badge
+                    bg="light"
+                    text="dark"
+                  >
+                    {(viewItem as any)
+                      .attraction_type ===
+                    "Other"
+                      ? (viewItem as any)
+                          .other_attraction_type ||
+                        "Other"
+                      : (viewItem as any)
+                          .attraction_type}
                   </Badge>
                 )}
 
-                {((viewItem as any).show_on_welcome ??
-                  (viewItem as any).showOnWelcome) && (
+                {((viewItem as any)
+                  .show_on_welcome ??
+                  (viewItem as any)
+                    .showOnWelcome) && (
                   <Badge
                     style={{
                       background: "#20c997",
                     }}
                   >
-                    <Home size={12} strokeWidth={2.1} />
+                    <Home
+                      size={12}
+                      strokeWidth={2.1}
+                    />
                     Welcome Page
                   </Badge>
                 )}
               </div>
 
-              <p>{(viewItem as any).description}</p>
+              <p>
+                {(viewItem as any).description}
+              </p>
 
               <hr />
 
               <p>
-                <strong className="admin-detail-label">Address:</strong>{" "}
-                {(viewItem as any).location_address || "Address not specified"}
+                <strong className="admin-detail-label">
+                  Address:
+                </strong>{" "}
+                {(viewItem as any)
+                  .location_address ||
+                  "Address not specified"}
               </p>
 
               <p>
-                <strong className="admin-detail-label">Entrance Fee:</strong>{" "}
-                {(viewItem as any).entrance_fee || "Not specified"}
+                <strong className="admin-detail-label">
+                  Entrance Fee:
+                </strong>{" "}
+                {(viewItem as any).entrance_fee ||
+                  "Not specified"}
               </p>
 
               <p>
                 <strong className="admin-detail-label">
                   Operational Hours:
                 </strong>{" "}
-                {(viewItem as any).operational_hours ||
-                  (viewItem as any).opening_hours ||
+                {(viewItem as any)
+                  .operational_hours ||
+                  (viewItem as any)
+                    .opening_hours ||
                   "Not specified"}
               </p>
 
-              {(viewItem as any).best_time_to_visit && (
+              {(viewItem as any)
+                .best_time_to_visit && (
                 <p>
                   <strong className="admin-detail-label">
                     Best Time to Visit:
                   </strong>{" "}
-                  {(viewItem as any).best_time_to_visit}
+                  {(viewItem as any)
+                    .best_time_to_visit}
                 </p>
               )}
 
               {(viewItem as any).mobile && (
                 <p>
-                  <strong className="admin-detail-label">Mobile:</strong>{" "}
+                  <strong className="admin-detail-label">
+                    Mobile:
+                  </strong>{" "}
                   {(viewItem as any).mobile}
                 </p>
               )}
 
-              {(viewItem as any).contact_person && (
+              {(viewItem as any)
+                .contact_person && (
                 <p>
                   <strong className="admin-detail-label">
                     Contact Person:
                   </strong>{" "}
-                  {(viewItem as any).contact_person}
+                  {(viewItem as any)
+                    .contact_person}
                 </p>
               )}
 
               {(viewItem as any).attractions && (
                 <div className="mb-3">
-                  <strong className="admin-detail-label">Attractions:</strong>
-                  <p className="mt-1">{(viewItem as any).attractions}</p>
+                  <strong className="admin-detail-label">
+                    Attractions:
+                  </strong>
+
+                  <p className="mt-1">
+                    {(viewItem as any)
+                      .attractions}
+                  </p>
                 </div>
               )}
 
               {(viewItem as any).things_to_do && (
                 <div className="mb-3">
-                  <strong className="admin-detail-label">Things to Do:</strong>
-                  <p className="mt-1">{(viewItem as any).things_to_do}</p>
+                  <strong className="admin-detail-label">
+                    Things to Do:
+                  </strong>
+
+                  <p className="mt-1">
+                    {(viewItem as any)
+                      .things_to_do}
+                  </p>
                 </div>
               )}
 
               {(viewItem as any).website && (
                 <p>
-                  <strong className="admin-detail-label">Website:</strong>{" "}
+                  <strong className="admin-detail-label">
+                    Website:
+                  </strong>{" "}
                   <a
-                    href={(viewItem as any).website}
+                    href={
+                      (viewItem as any)
+                        .website
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    {(viewItem as any).website}
+                    {(viewItem as any)
+                      .website}
                   </a>
                 </p>
               )}
 
-              {(viewItem as any).development_level && (
+              {(viewItem as any)
+                .development_level && (
                 <p>
                   <strong className="admin-detail-label">
                     Development Level:
                   </strong>{" "}
-                  {(viewItem as any).development_level}
+                  {(viewItem as any)
+                    .development_level}
                 </p>
               )}
 
-              {(viewItem as any).online_connectivity && (
+              {(viewItem as any)
+                .online_connectivity && (
                 <p>
                   <strong className="admin-detail-label">
                     Online Connectivity:
                   </strong>{" "}
-                  {(viewItem as any).online_connectivity}
+                  {(viewItem as any)
+                    .online_connectivity}
                 </p>
               )}
 
               {(viewItem as any).mgt && (
                 <p>
-                  <strong className="admin-detail-label">MGT:</strong>{" "}
+                  <strong className="admin-detail-label">
+                    MGT:
+                  </strong>{" "}
                   {(viewItem as any).mgt}
                 </p>
               )}
 
-              {buildGoogleMapsDirectionsUrl(viewItem) && (
+              {buildGoogleMapsDirectionsUrl(
+                viewItem,
+              ) && (
                 <div className="mt-4">
                   <Button
                     variant="success"
                     as="a"
-                    href={buildGoogleMapsDirectionsUrl(viewItem)}
+                    href={buildGoogleMapsDirectionsUrl(
+                      viewItem,
+                    )}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
@@ -3859,7 +5026,10 @@ location_lng: form.location_lng,
                       fontWeight: 600,
                     }}
                   >
-                    <Navigation size={15} strokeWidth={2} />
+                    <Navigation
+                      size={15}
+                      strokeWidth={2}
+                    />
                     Get Directions
                   </Button>
                 </div>
@@ -3867,7 +5037,12 @@ location_lng: form.location_lng,
             </Modal.Body>
 
             <Modal.Footer>
-              <Button variant="secondary" onClick={() => setViewItem(null)}>
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  setViewItem(null)
+                }
+              >
                 Close
               </Button>
             </Modal.Footer>
@@ -3876,42 +5051,55 @@ location_lng: form.location_lng,
 
         {/* =====================================================
           CATEGORIES MODAL
-      ===================================================== */}
+        ===================================================== */}
 
         <Modal
           className="admin-attractions-modal"
           show={showCategoriesModal}
-          onHide={() => setShowCategoriesModal(false)}
+          onHide={() =>
+            setShowCategoriesModal(false)
+          }
           centered
         >
           <Modal.Header closeButton>
-            <Modal.Title className="admin-modal-title">Categories</Modal.Title>
+            <Modal.Title className="admin-modal-title">
+              Categories
+            </Modal.Title>
           </Modal.Header>
 
           <Modal.Body>
             <Row className="g-3">
               {CATEGORIES.map((category) => {
                 const count = items.filter(
-                  (attraction: any) => attraction.category === category,
+                  (attraction: any) =>
+                    attraction.category ===
+                    category,
                 ).length;
 
                 return (
-                  <Col xs={6} key={category}>
+                  <Col
+                    xs={6}
+                    key={category}
+                  >
                     <Card
                       className="border-0 h-100"
                       style={{
                         borderRadius: "12px",
-
-                        background: CATEGORY_DESIGNS[category]?.gradient,
-
+                        background:
+                          CATEGORY_DESIGNS[
+                            category
+                          ]?.gradient,
                         color: "#fff",
-
                         cursor: "pointer",
                       }}
                       onClick={() => {
-                        setCategoryFilter(category);
+                        setCategoryFilter(
+                          category,
+                        );
 
-                        setShowCategoriesModal(false);
+                        setShowCategoriesModal(
+                          false,
+                        );
                       }}
                     >
                       <Card.Body className="text-center">
@@ -3920,10 +5108,15 @@ location_lng: form.location_lng,
                             fontSize: "2rem",
                           }}
                         >
-                          {React.createElement(getCategoryIcon(category), {
-                            size: 29,
-                            strokeWidth: 1.7,
-                          })}
+                          {React.createElement(
+                            getCategoryIcon(
+                              category,
+                            ),
+                            {
+                              size: 29,
+                              strokeWidth: 1.7,
+                            },
+                          )}
                         </div>
 
                         <div
@@ -3937,7 +5130,6 @@ location_lng: form.location_lng,
                         <div
                           style={{
                             fontSize: "1.5rem",
-
                             fontWeight: 700,
                           }}
                         >
@@ -3954,7 +5146,9 @@ location_lng: form.location_lng,
           <Modal.Footer>
             <Button
               variant="secondary"
-              onClick={() => setShowCategoriesModal(false)}
+              onClick={() =>
+                setShowCategoriesModal(false)
+              }
             >
               Close
             </Button>
@@ -3963,70 +5157,98 @@ location_lng: form.location_lng,
 
         {/* =====================================================
           ACTIVE DESTINATIONS MODAL
-      ===================================================== */}
+        ===================================================== */}
 
         <Modal
           className="admin-attractions-modal"
           show={showActiveModal}
-          onHide={() => setShowActiveModal(false)}
+          onHide={() =>
+            setShowActiveModal(false)
+          }
           size="lg"
           centered
         >
           <Modal.Header closeButton>
-            <Modal.Title className="admin-modal-title">Attractions</Modal.Title>
+            <Modal.Title className="admin-modal-title">
+              Attractions
+            </Modal.Title>
           </Modal.Header>
 
           <Modal.Body>
             <Row className="g-3">
-              {filteredItems.map((attraction: any) => (
-                <Col xs={12} sm={6} key={attraction.id}>
-                  <Card
-                    className="border-0"
-                    style={{
-                      borderRadius: "12px",
-
-                      cursor: "pointer",
-                    }}
-                    onClick={() => {
-                      setViewItem(attraction);
-
-                      setShowActiveModal(false);
-                    }}
+              {filteredItems.map(
+                (attraction: any) => (
+                  <Col
+                    xs={12}
+                    sm={6}
+                    key={attraction.id}
                   >
-                    <Card.Body>
-                      <div className="d-flex align-items-center gap-3">
-                        {attraction.images?.length > 0 && (
-                          <img
-                            src={attraction.images[0]}
-                            alt={attraction.name}
-                            style={{
-                              width: 60,
+                    <Card
+                      className="border-0"
+                      style={{
+                        borderRadius: "12px",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => {
+                        setViewItem(
+                          attraction,
+                        );
 
-                              height: 60,
+                        setShowActiveModal(
+                          false,
+                        );
+                      }}
+                    >
+                      <Card.Body>
+                        <div className="d-flex align-items-center gap-3">
+                          {attraction.images
+                            ?.length >
+                            0 && (
+                            <img
+                              src={
+                                attraction
+                                  .images[0]
+                              }
+                              alt={
+                                attraction.name
+                              }
+                              style={{
+                                width: 60,
+                                height: 60,
+                                borderRadius:
+                                  "8px",
+                                objectFit:
+                                  "cover",
+                              }}
+                            />
+                          )}
 
-                              borderRadius: "8px",
+                          <div>
+                            <h6 className="fw-bold mb-1">
+                              {
+                                attraction.name
+                              }
+                            </h6>
 
-                              objectFit: "cover",
-                            }}
-                          />
-                        )}
-
-                        <div>
-                          <h6 className="fw-bold mb-1">{attraction.name}</h6>
-
-                          <Badge
-                            style={{
-                              background: getCategoryColor(attraction.category),
-                            }}
-                          >
-                            {attraction.category}
-                          </Badge>
+                            <Badge
+                              style={{
+                                background:
+                                  getCategoryColor(
+                                    attraction.category,
+                                  ),
+                              }}
+                            >
+                              {
+                                attraction.category
+                              }
+                            </Badge>
+                          </div>
                         </div>
-                      </div>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              ))}
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                ),
+              )}
             </Row>
 
             {filteredItems.length === 0 && (
@@ -4035,19 +5257,29 @@ location_lng: form.location_lng,
                   style={{
                     width: 58,
                     height: 58,
-                    margin: "0 auto 12px",
+                    margin:
+                      "0 auto 12px",
                     borderRadius: 16,
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: "#eef0ff",
-                    color: CALBAYOG_BLUE,
+                    alignItems:
+                      "center",
+                    justifyContent:
+                      "center",
+                    background:
+                      "#eef0ff",
+                    color:
+                      CALBAYOG_BLUE,
                   }}
                 >
-                  <MapPinned size={29} strokeWidth={1.7} />
+                  <MapPinned
+                    size={29}
+                    strokeWidth={1.7}
+                  />
                 </div>
 
-                <p className="text-muted">No attractions found.</p>
+                <p className="text-muted">
+                  No attractions found.
+                </p>
               </div>
             )}
           </Modal.Body>
@@ -4055,7 +5287,11 @@ location_lng: form.location_lng,
           <Modal.Footer>
             <Button
               variant="secondary"
-              onClick={() => setShowActiveModal(false)}
+              onClick={() =>
+                setShowActiveModal(
+                  false,
+                )
+              }
             >
               Close
             </Button>
