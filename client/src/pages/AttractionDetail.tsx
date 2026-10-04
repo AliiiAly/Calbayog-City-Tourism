@@ -49,6 +49,7 @@ import {
   TileLayer,
   Tooltip,
   LayersControl,
+  LayerGroup,
   useMap,
   useMapEvents,
 } from "react-leaflet";
@@ -178,6 +179,7 @@ interface AttractionMapPlace {
   name: string;
   category: string;
   subcategory: string;
+  markerType: string;
   address: string;
   coordinates: MapCoordinates;
   isCurrent: boolean;
@@ -425,71 +427,65 @@ const getImageArray = (
 };
 
 /* =========================================================
-   PIN SYMBOLS
+   PIN DESIGN
 
-   Pins use the SUBCATEGORY (attraction type) of each
-   attraction: Waterfalls, Beaches, Caves, Churches, etc.
-   If the subcategory is unknown or custom ("Other" + typed
-   name), the pin falls back to the main category symbol.
+   Same pin design used by the Admin LocationPicker:
+   - pin COLOR comes from the main category
+   - pin SYMBOL comes from the subcategory (attraction type)
+   - if the type has no symbol, the category symbol is used
 ========================================================= */
 
-const CATEGORY_PIN_SYMBOLS: Record<string, string> = {
-  Nature: "🌿",
-  "History and Culture": "🏛️",
-  "Industrial Tourism": "🏭",
-  Shopping: "🛍️",
-  Other: "📍",
+const CATEGORY_MARKER_DESIGNS: Record<
+  string,
+  { color: string; icon: string; label: string }
+> = {
+  Nature: { color: "#16845B", icon: "🌿", label: "Nature" },
+  "History and Culture": {
+    color: "#A66A3F",
+    icon: "🏛️",
+    label: "History and Culture",
+  },
+  "Industrial Tourism": {
+    color: "#526477",
+    icon: "🏭",
+    label: "Industrial Tourism",
+  },
+  Shopping: { color: "#D9468F", icon: "🛍️", label: "Shopping" },
+  Other: { color: CALBAYOG_BLUE, icon: "📍", label: "Other" },
 };
 
-const SUBCATEGORY_PIN_SYMBOLS: Record<
-  string,
-  Record<string, string>
-> = {
-  Nature: {
-    Waterfalls: "💧",
-    Beaches: "🏖️",
-    Caves: "🕳️",
-    "Hot Springs": "♨️",
-    Rivers: "🏞️",
-    "Dive Sites": "🤿",
-    Other: "🌿",
-  },
-
-  "History and Culture": {
-    Churches: "⛪",
-    Museums: "🏛️",
-    "Historic Buildings": "🏰",
-    Monuments: "🗿",
-    Parks: "🌳",
-    Other: "📜",
-  },
-
-  "Industrial Tourism": {
-    Factories: "🏭",
-    Farms: "🌾",
-    "Production Sites": "⚙️",
-    Other: "🏗️",
-  },
-
-  Shopping: {
-    Markets: "🧺",
-    Malls: "🛍️",
-    "Local Craft Centers": "🧵",
-    Other: "🛒",
-  },
-
-  Other: {
-    Other: "📍",
-  },
+const SUBCATEGORY_MARKER_ICONS: Record<string, string> = {
+  waterfalls: "💧",
+  beaches: "🏖️",
+  caves: "🪨",
+  "hot springs": "♨️",
+  rivers: "🌊",
+  "dive sites": "🤿",
+  churches: "⛪",
+  museums: "🏛️",
+  "historic buildings": "🏛️",
+  monuments: "🗿",
+  parks: "🌳",
+  factories: "🏭",
+  farms: "🌾",
+  "production sites": "⚙️",
+  markets: "🛒",
+  malls: "🛍️",
+  "local craft centers": "🧺",
+  other: "📍",
 };
 
 const normalizeLabel = (
-  value: string,
+  value: unknown,
 ): string =>
-  value
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(/[^a-z]/g, "")
-    .replace(/s$/, "");
+    .trim()
+    .replace(/\s+/g, " ");
+
+/* Display name of the subcategory (shows the typed name when "Other") */
 
 const getAttractionSubcategory = (
   item: any,
@@ -515,43 +511,17 @@ const getAttractionSubcategory = (
   return type;
 };
 
-const getPinSymbol = (
-  category: string,
-  subcategory: string,
-): string => {
-  const key =
-    normalizeLabel(subcategory);
+/* Raw type used to pick the pin symbol (same as the admin map) */
 
-  const ownGroup =
-    SUBCATEGORY_PIN_SYMBOLS[category];
-
-  const groups = [
-    ...(ownGroup ? [ownGroup] : []),
-    ...Object.values(
-      SUBCATEGORY_PIN_SYMBOLS,
-    ),
-  ];
-
-  if (key && key !== "other") {
-    for (const group of groups) {
-      for (const [label, symbol] of Object.entries(
-        group,
-      )) {
-        if (
-          label !== "Other" &&
-          normalizeLabel(label) === key
-        ) {
-          return symbol;
-        }
-      }
-    }
-  }
-
-  return (
-    CATEGORY_PIN_SYMBOLS[category] ||
-    CATEGORY_PIN_SYMBOLS.Other
-  );
-};
+const getAttractionMarkerType = (
+  item: any,
+): string =>
+  getFirstValue(item, [
+    "attraction_type",
+    "subcategory",
+    "sub_category",
+    "type",
+  ]);
 
 /* =========================================================
    LEAFLET MARKERS
@@ -560,74 +530,110 @@ const getPinSymbol = (
 ========================================================= */
 
 const createAttractionMarkerIcon = (
+  category: string,
+  markerType: string,
   isCurrent: boolean,
-  symbol: string,
-) =>
-  L.divIcon({
-    className:
-      "calbayog-map-marker-wrapper",
+) => {
+  const design =
+    CATEGORY_MARKER_DESIGNS[category] ||
+    CATEGORY_MARKER_DESIGNS.Other;
+
+  const glyph =
+    SUBCATEGORY_MARKER_ICONS[
+      normalizeLabel(markerType)
+    ] || design.icon;
+
+  return L.divIcon({
+    className: "calbayog-location-marker",
 
     html: `
-      <div
-        class="${
-          isCurrent
-            ? "calbayog-map-marker current"
-            : "calbayog-map-marker attraction"
-        }"
-      >
-        <div class="calbayog-map-marker-inner">
-          <span class="calbayog-map-marker-symbol">
-            ${symbol}
-          </span>
-        </div>
+      <div class="calbayog-marker-shell ${
+        isCurrent ? "is-current" : ""
+      }">
+        <div class="calbayog-marker-pin" style="background:${design.color}"></div>
+        <div class="calbayog-marker-icon">${glyph}</div>
       </div>
     `,
 
-    iconSize: isCurrent
-      ? [44, 54]
-      : [34, 42],
-
-    iconAnchor: isCurrent
-      ? [22, 54]
-      : [17, 42],
-
-    popupAnchor: [
-      0,
-      isCurrent
-        ? -48
-        : -38,
-    ],
-
-    tooltipAnchor: [0, 4],
+    iconSize: [44, 52],
+    iconAnchor: [22, 49],
+    popupAnchor: [0, -47],
+    tooltipAnchor: [0, -43],
   });
+};
 
 const createAccommodationMarkerIcon =
   () =>
     L.divIcon({
       className:
-        "calbayog-map-marker-wrapper",
+        "calbayog-accommodation-marker",
 
       html: `
         <div
-          class="calbayog-map-marker accommodation"
-          title="Accommodation"
+          aria-label="Hotels and Resorts"
+          style="
+            position:relative;
+            width:44px;
+            height:52px;
+            display:flex;
+            align-items:flex-start;
+            justify-content:center;
+            filter:drop-shadow(0 3px 4px rgba(15,23,42,.30));
+          "
         >
-          <div class="calbayog-map-marker-inner">
-            <span class="calbayog-map-marker-symbol">
-              🏨
-            </span>
+          <div
+            style="
+              position:absolute;
+              top:0;
+              left:3px;
+              width:38px;
+              height:38px;
+              border-radius:50% 50% 50% 0;
+              transform:rotate(-45deg);
+              background:#2563EB;
+              border:3px solid #fff;
+              box-shadow:0 1px 2px rgba(15,23,42,.18);
+            "
+          ></div>
+          <div
+            style="
+              position:absolute;
+              top:7px;
+              left:10px;
+              width:24px;
+              height:24px;
+              border-radius:50%;
+              background:#fff;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              z-index:2;
+            "
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#2563EB"
+              stroke-width="2.1"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M3 21h18"/>
+              <path d="M5 21V7l7-4 7 4v14"/>
+              <path d="M9 21v-4h6v4"/>
+              <path d="M8 9h.01M12 9h.01M16 9h.01M8 12h.01M12 12h.01M16 12h.01"/>
+            </svg>
           </div>
         </div>
       `,
 
-      iconSize: [36, 44],
-
-      iconAnchor: [18, 44],
-
-      popupAnchor: [
-        0,
-        -39,
-      ],
+      iconSize: [44, 52],
+      iconAnchor: [22, 49],
+      popupAnchor: [0, -47],
+      tooltipAnchor: [0, -43],
     });
 
 /* =========================================================
@@ -703,6 +709,18 @@ const InfoItem: React.FC<
 
 const LABEL_MIN_ZOOM = 13;
 
+/*
+ * Satellite imagery has no text on it, so Esri's reference layers
+ * are stacked on top (same as the admin LocationPicker):
+ * - place + boundary names (barangays, towns, islands, water)
+ * - roads and street names
+ */
+const SATELLITE_LABELS_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
+
+const SATELLITE_ROADS_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}";
+
 const MapRecenter: React.FC<{
   center: [number, number];
 }> = ({ center }) => {
@@ -760,11 +778,9 @@ const TourismMap: React.FC<
         attractions.map((place) => [
           place.id,
           createAttractionMarkerIcon(
+            place.category,
+            place.markerType,
             place.isCurrent,
-            getPinSymbol(
-              place.category,
-              place.subcategory,
-            ),
           ),
         ]),
       ),
@@ -815,10 +831,25 @@ const TourismMap: React.FC<
             </LayersControl.BaseLayer>
 
             <LayersControl.BaseLayer name="Satellite">
-              <TileLayer
-                attribution="Tiles &copy; Esri"
-                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-              />
+              <LayerGroup>
+                <TileLayer
+                  attribution="Tiles &copy; Esri"
+                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                  zIndex={1}
+                />
+
+                <TileLayer
+                  attribution="Place and boundary labels &copy; Esri"
+                  url={SATELLITE_LABELS_URL}
+                  zIndex={2}
+                />
+
+                <TileLayer
+                  attribution="Transportation labels &copy; Esri"
+                  url={SATELLITE_ROADS_URL}
+                  zIndex={3}
+                />
+              </LayerGroup>
             </LayersControl.BaseLayer>
 
             <LayersControl.BaseLayer name="Terrain">
@@ -852,7 +883,9 @@ const TourismMap: React.FC<
           >
             <Tooltip
               permanent
-              direction="bottom"
+              direction="top"
+              offset={[0, -4]}
+              opacity={1}
               className={`calbayog-map-label ${
                 place.isCurrent
                   ? "current"
@@ -1724,6 +1757,11 @@ const AttractionDetail: React.FC =
 
                 subcategory:
                   getAttractionSubcategory(
+                    item,
+                  ),
+
+                markerType:
+                  getAttractionMarkerType(
                     item,
                   ),
 
@@ -2893,43 +2931,46 @@ const AttractionDetail: React.FC =
           }
 
           /* =================================================
-             MAP NAME LABELS
+             MAP NAME LABELS (same look as the admin map)
           ================================================= */
 
           .leaflet-tooltip.calbayog-map-label {
-            max-width: 160px;
-            padding: 3px 9px;
+            max-width: 190px;
+            padding: 5px 9px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
             border: 0;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.96);
-            color: ${TEXT};
-            box-shadow: 0 2px 8px rgba(20, 29, 57, 0.25);
+            border-radius: 8px;
+            background: #20263a;
+            color: #ffffff;
+            box-shadow: 0 4px 14px rgba(17, 24, 39, 0.25);
             font-family:
               "Nunito",
               "Poppins",
               "Segoe UI",
               sans-serif;
-            font-size: 0.62rem;
-            font-weight: 900;
+            font-size: 0.64rem;
+            font-weight: 850;
             pointer-events: none;
           }
 
-          .leaflet-tooltip.calbayog-map-label::before {
-            display: none;
+          .leaflet-tooltip-top.calbayog-map-label::before {
+            border-top-color: #20263a;
           }
 
           .leaflet-tooltip.calbayog-map-label.current {
             background: #e33f5f;
-            color: #ffffff;
+          }
+
+          .leaflet-tooltip-top.calbayog-map-label.current::before {
+            border-top-color: #e33f5f;
           }
 
           .detail-location-map-wrap
             .leaflet-tooltip.calbayog-map-label {
-            max-width: 120px;
-            padding: 2px 7px;
+            max-width: 130px;
+            padding: 3px 7px;
             font-size: 0.56rem;
           }
 
@@ -2939,129 +2980,58 @@ const AttractionDetail: React.FC =
           }
 
           /* =================================================
-             MAP MARKERS
+             MAP MARKERS (same pin design as the admin map)
           ================================================= */
 
-          .calbayog-map-marker-wrapper {
+          .calbayog-location-marker,
+          .calbayog-accommodation-marker {
             background: transparent !important;
             border: 0 !important;
           }
 
-          .calbayog-map-marker {
+          .calbayog-marker-shell {
             position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 44px;
+            height: 52px;
+            filter: drop-shadow(0 3px 4px rgba(16, 24, 40, 0.25));
+          }
+
+          .calbayog-marker-pin {
+            position: absolute;
+            top: 1px;
+            left: 5px;
             width: 34px;
-            height: 42px;
-            filter:
-              drop-shadow(
-                0 3px 4px
-                rgba(
-                  0,
-                  0,
-                  0,
-                  0.25
-                )
-              );
-          }
-
-          .calbayog-map-marker::after {
-            content: "";
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            width: 0;
-            height: 0;
-            transform: translateX(-50%);
-            border-left: 8px solid transparent;
-            border-right: 8px solid transparent;
-            border-top: 12px solid #2d3195;
-          }
-
-          .calbayog-map-marker-inner {
-            position: absolute;
-            top: 0;
-            left: 50%;
-            width: 29px;
-            height: 29px;
-            transform: translateX(-50%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            height: 34px;
             border: 3px solid #ffffff;
             border-radius: 50% 50% 50% 0;
-            background: ${CALBAYOG_BLUE};
-            box-shadow:
-              0 2px 5px
-              rgba(
-                0,
-                0,
-                0,
-                0.22
-              );
+            transform: rotate(-45deg);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
           }
 
-          .calbayog-map-marker-symbol {
-            color: #ffffff;
-            font-size: 0.82rem;
+          .calbayog-marker-icon {
+            position: absolute;
+            top: 6px;
+            left: 10px;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: #ffffff;
+            font-size: 13px;
             line-height: 1;
-            font-weight: 900;
           }
 
-          .calbayog-map-marker.current {
-            width: 44px;
-            height: 54px;
+          .calbayog-marker-shell.is-current {
+            transform: scale(1.16);
+            transform-origin: 50% 94%;
           }
 
-          .calbayog-map-marker.current::after {
-            border-top-color: #e33f5f;
-            border-left-width: 10px;
-            border-right-width: 10px;
-            border-top-width: 14px;
-          }
-
-          .calbayog-map-marker.current
-            .calbayog-map-marker-inner {
-            width: 38px;
-            height: 38px;
-            background: #e33f5f;
-            border-width: 4px;
+          .calbayog-marker-shell.is-current
+            .calbayog-marker-pin {
             box-shadow:
-              0 3px 8px
-              rgba(
-                227,
-                63,
-                95,
-                0.35
-              );
-          }
-
-          .calbayog-map-marker.current
-            .calbayog-map-marker-symbol {
-            font-size: 1.1rem;
-          }
-
-          .calbayog-map-marker.accommodation {
-            width: 36px;
-            height: 44px;
-          }
-
-          .calbayog-map-marker.accommodation::after {
-            border-top-color: #008f83;
-          }
-
-          .calbayog-map-marker.accommodation
-            .calbayog-map-marker-inner {
-            width: 31px;
-            height: 31px;
-            background: #008f83;
-            border-radius: 50% 50% 50% 0;
-          }
-
-          .calbayog-map-marker.accommodation
-            .calbayog-map-marker-symbol {
-            font-size: 0.82rem;
+              0 0 0 3px rgba(227, 63, 95, 0.6);
           }
 
           /* =================================================
@@ -3094,8 +3064,8 @@ const AttractionDetail: React.FC =
           }
 
           .detail-map-popup-badge.accommodation {
-            background: #e7f7f5;
-            color: #007b72;
+            background: #e8f0ff;
+            color: #2563eb;
           }
 
           .detail-map-popup-title {
@@ -3155,18 +3125,6 @@ const AttractionDetail: React.FC =
                 0,
                 0.25
               );
-          }
-
-          .detail-map-legend-dot.current {
-            background: #e33f5f;
-          }
-
-          .detail-map-legend-dot.attraction {
-            background: ${CALBAYOG_BLUE};
-          }
-
-          .detail-map-legend-dot.accommodation {
-            background: #008f83;
           }
 
           /* =================================================
@@ -4650,19 +4608,44 @@ const AttractionDetail: React.FC =
                 </div>
 
                 <div className="detail-map-legend">
-                  <span className="detail-map-legend-item">
-                    <span className="detail-map-legend-dot current" />
-                    Current attraction
-                  </span>
+                  {Object.values(
+                    CATEGORY_MARKER_DESIGNS,
+                  ).map((design) => (
+                    <span
+                      key={design.label}
+                      className="detail-map-legend-item"
+                    >
+                      <span
+                        className="detail-map-legend-dot"
+                        style={{
+                          background:
+                            design.color,
+                        }}
+                      />
+                      {design.label}
+                    </span>
+                  ))}
 
                   <span className="detail-map-legend-item">
-                    <span className="detail-map-legend-dot attraction" />
-                    Other attraction
-                  </span>
-
-                  <span className="detail-map-legend-item">
-                    <span className="detail-map-legend-dot accommodation" />
+                    <span
+                      className="detail-map-legend-dot"
+                      style={{
+                        background:
+                          "#2563EB",
+                      }}
+                    />
                     Accommodation
+                  </span>
+
+                  <span className="detail-map-legend-item">
+                    <span
+                      className="detail-map-legend-dot"
+                      style={{
+                        background:
+                          "#e33f5f",
+                      }}
+                    />
+                    Current attraction (red label)
                   </span>
                 </div>
 
