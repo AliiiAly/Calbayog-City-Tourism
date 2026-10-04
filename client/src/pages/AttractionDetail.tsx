@@ -139,6 +139,9 @@ const CATEGORY_TINTS: Record<
 ========================================================= */
 
 type Attraction = Destination & {
+  location_lat?: number | string | null;
+  location_lng?: number | string | null;
+
   latitude?: number | string | null;
   longitude?: number | string | null;
 
@@ -246,26 +249,28 @@ const getFirstValue = (
 const getCoordinates = (
   item: any,
 ): MapCoordinates | null => {
+  /*
+   * AdminAttractions saves the exact selected map pin in
+   * location_lat / location_lng. Those fields are therefore
+   * always preferred over address-derived or legacy fields.
+   */
   const latitudeValue =
     item?.location_lat ??
+    item?.locationLat ??
     item?.latitude ??
     item?.location?.lat ??
     item?.lat;
 
   const longitudeValue =
     item?.location_lng ??
+    item?.locationLng ??
     item?.longitude ??
     item?.location?.lng ??
     item?.lng ??
     item?.lon;
 
-  const lat = Number(
-    latitudeValue,
-  );
-
-  const lng = Number(
-    longitudeValue,
-  );
+  const lat = Number(latitudeValue);
+  const lng = Number(longitudeValue);
 
   if (
     !Number.isFinite(lat) ||
@@ -1569,13 +1574,36 @@ const AttractionDetail: React.FC =
       useMemo<
         AttractionMapPlace[]
       >(() => {
-        const source =
-          allAttractionsForMap.length >
-          0
-            ? allAttractionsForMap
-            : attraction
-              ? [attraction]
-              : [];
+        /*
+         * AdminAttractions is the source of truth for saved pins.
+         * Merge the currently opened attraction into the fetched
+         * list as well, so the detail page can never lose its exact
+         * saved coordinates if the map request is temporarily stale
+         * or does not include the current row.
+         *
+         * If the same attraction exists in both sources, the current
+         * detail record wins because it is the record already loaded
+         * for this page.
+         */
+        const sourceById = new Map<string, Attraction>();
+
+        allAttractionsForMap.forEach((item) => {
+          const itemId = normalizeId(item?.id);
+
+          if (itemId) {
+            sourceById.set(itemId, item);
+          }
+        });
+
+        const currentId = normalizeId(attraction?.id);
+
+        if (currentId && attraction) {
+          sourceById.set(currentId, attraction);
+        }
+
+        const source = Array.from(
+          sourceById.values(),
+        );
 
         return source
           .map(
