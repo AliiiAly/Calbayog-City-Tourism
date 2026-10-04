@@ -38,7 +38,6 @@ import {
   Landmark,
   Leaf,
   ShoppingBag,
-  Hotel,
   MapPinned,
 } from "lucide-react";
 
@@ -60,7 +59,6 @@ import "leaflet/dist/leaflet.css";
 
 import {
   createMyMemory,
-  getAccommodations,
   getAttractions,
 } from "../services/api";
 
@@ -72,7 +70,6 @@ import {
 
 import {
   Destination,
-  Accommodation,
 } from "../types";
 
 import { useAuth } from "../context/AuthContext";
@@ -183,14 +180,6 @@ interface AttractionMapPlace {
   address: string;
   coordinates: MapCoordinates;
   isCurrent: boolean;
-}
-
-interface AccommodationMapPlace {
-  id: string;
-  name: string;
-  type: string;
-  address: string;
-  coordinates: MapCoordinates;
 }
 
 /* =========================================================
@@ -562,80 +551,6 @@ const createAttractionMarkerIcon = (
   });
 };
 
-const createAccommodationMarkerIcon =
-  () =>
-    L.divIcon({
-      className:
-        "calbayog-accommodation-marker",
-
-      html: `
-        <div
-          aria-label="Hotels and Resorts"
-          style="
-            position:relative;
-            width:44px;
-            height:52px;
-            display:flex;
-            align-items:flex-start;
-            justify-content:center;
-            filter:drop-shadow(0 3px 4px rgba(15,23,42,.30));
-          "
-        >
-          <div
-            style="
-              position:absolute;
-              top:0;
-              left:3px;
-              width:38px;
-              height:38px;
-              border-radius:50% 50% 50% 0;
-              transform:rotate(-45deg);
-              background:#2563EB;
-              border:3px solid #fff;
-              box-shadow:0 1px 2px rgba(15,23,42,.18);
-            "
-          ></div>
-          <div
-            style="
-              position:absolute;
-              top:7px;
-              left:10px;
-              width:24px;
-              height:24px;
-              border-radius:50%;
-              background:#fff;
-              display:flex;
-              align-items:center;
-              justify-content:center;
-              z-index:2;
-            "
-          >
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#2563EB"
-              stroke-width="2.1"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M3 21h18"/>
-              <path d="M5 21V7l7-4 7 4v14"/>
-              <path d="M9 21v-4h6v4"/>
-              <path d="M8 9h.01M12 9h.01M16 9h.01M8 12h.01M12 12h.01M16 12h.01"/>
-            </svg>
-          </div>
-        </div>
-      `,
-
-      iconSize: [44, 52],
-      iconAnchor: [22, 49],
-      popupAnchor: [0, -47],
-      tooltipAnchor: [0, -43],
-    });
-
 /* =========================================================
    INFO ITEM
 ========================================================= */
@@ -751,24 +666,92 @@ const MapZoomWatcher: React.FC<{
 interface TourismMapProps {
   center: [number, number];
   attractions: AttractionMapPlace[];
-  accommodations: AccommodationMapPlace[];
   interactive: boolean;
 }
 
-const TourismMap: React.FC<
-  TourismMapProps
-> = ({
+const MapScaleControl: React.FC = () => {
+  const map = useMap();
+
+  useEffect(() => {
+    const control = L.control.scale({
+      imperial: false,
+      metric: true,
+      position: "bottomleft",
+      maxWidth: 120,
+    });
+
+    control.addTo(map);
+
+    return () => {
+      control.remove();
+    };
+  }, [map]);
+
+  return null;
+};
+
+const MapLocateControl: React.FC = () => {
+  const map = useMap();
+  const [locating, setLocating] = useState(false);
+
+  const locate = useCallback(() => {
+    if (!navigator.geolocation) {
+      window.alert("Location services are not available in this browser.");
+      return;
+    }
+
+    setLocating(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const next: [number, number] = [
+          position.coords.latitude,
+          position.coords.longitude,
+        ];
+
+        map.flyTo(next, Math.max(map.getZoom(), 16), {
+          duration: 0.8,
+        });
+        setLocating(false);
+      },
+      () => {
+        window.alert(
+          "Unable to get your location. Please allow location access and try again.",
+        );
+        setLocating(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      },
+    );
+  }, [map]);
+
+  return (
+    <div className="leaflet-control leaflet-bar calbayog-map-custom-control">
+      <button
+        type="button"
+        onClick={locate}
+        title="My location"
+        aria-label="Show my location"
+        disabled={locating}
+      >
+        {locating ? "…" : "⌾"}
+      </button>
+    </div>
+  );
+};
+
+const TourismMap: React.FC<TourismMapProps> = ({
   center,
   attractions,
-  accommodations,
   interactive,
 }) => {
-  const [zoom, setZoom] =
-    useState(15);
+  const [zoom, setZoom] = useState(15);
 
   const handleZoom = useCallback(
-    (value: number) =>
-      setZoom(value),
+    (value: number) => setZoom(value),
     [],
   );
 
@@ -787,17 +770,10 @@ const TourismMap: React.FC<
     [attractions],
   );
 
-  const accommodationIcon = useMemo(
-    () => createAccommodationMarkerIcon(),
-    [],
-  );
-
   return (
     <div
       className={`detail-map-canvas ${
-        zoom < LABEL_MIN_ZOOM
-          ? "labels-compact"
-          : ""
+        zoom < LABEL_MIN_ZOOM ? "labels-compact" : ""
       }`}
     >
       <MapContainer
@@ -813,73 +789,63 @@ const TourismMap: React.FC<
         className="detail-map"
       >
         <MapRecenter center={center} />
-
-        <MapZoomWatcher
-          onZoom={handleZoom}
-        />
+        <MapZoomWatcher onZoom={handleZoom} />
+        <MapScaleControl />
 
         {interactive ? (
-          <LayersControl position="topright">
-            <LayersControl.BaseLayer
-              checked
-              name="Street"
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-            </LayersControl.BaseLayer>
-
-            <LayersControl.BaseLayer name="Satellite">
-              <LayerGroup>
+          <>
+            <LayersControl position="topright">
+              <LayersControl.BaseLayer checked name="Street">
                 <TileLayer
-                  attribution="Tiles &copy; Esri"
-                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                  zIndex={1}
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
+              </LayersControl.BaseLayer>
 
+              <LayersControl.BaseLayer name="Satellite">
+                <LayerGroup>
+                  <TileLayer
+                    attribution="Tiles &copy; Esri"
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                    zIndex={1}
+                  />
+                  <TileLayer
+                    attribution="Place and boundary labels &copy; Esri"
+                    url={SATELLITE_LABELS_URL}
+                    zIndex={2}
+                  />
+                  <TileLayer
+                    attribution="Transportation labels &copy; Esri"
+                    url={SATELLITE_ROADS_URL}
+                    zIndex={3}
+                  />
+                </LayerGroup>
+              </LayersControl.BaseLayer>
+
+              <LayersControl.BaseLayer name="Terrain">
                 <TileLayer
-                  attribution="Place and boundary labels &copy; Esri"
-                  url={SATELLITE_LABELS_URL}
-                  zIndex={2}
+                  attribution='Map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors, <a href="https://opentopomap.org" target="_blank" rel="noopener noreferrer">OpenTopoMap</a>'
+                  url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
                 />
+              </LayersControl.BaseLayer>
+            </LayersControl>
 
-                <TileLayer
-                  attribution="Transportation labels &copy; Esri"
-                  url={SATELLITE_ROADS_URL}
-                  zIndex={3}
-                />
-              </LayerGroup>
-            </LayersControl.BaseLayer>
-
-            <LayersControl.BaseLayer name="Terrain">
-              <TileLayer
-                attribution='Map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors, <a href="https://opentopomap.org" target="_blank" rel="noopener noreferrer">OpenTopoMap</a>'
-                url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
-              />
-            </LayersControl.BaseLayer>
-          </LayersControl>
+            <MapLocateControl />
+          </>
         ) : (
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
         )}
 
-        {/* ATTRACTION PINS + NAME LABELS */}
-
         {attractions.map((place) => (
           <Marker
             key={`attraction-${place.id}-${place.isCurrent}`}
-            position={[
-              place.coordinates.lat,
-              place.coordinates.lng,
-            ]}
+            position={[place.coordinates.lat, place.coordinates.lng]}
             icon={attractionIcons.get(place.id)}
             interactive={interactive}
-            zIndexOffset={
-              place.isCurrent ? 1000 : 0
-            }
+            zIndexOffset={place.isCurrent ? 1000 : 0}
           >
             <Tooltip
               permanent
@@ -887,9 +853,7 @@ const TourismMap: React.FC<
               offset={[0, -4]}
               opacity={1}
               className={`calbayog-map-label ${
-                place.isCurrent
-                  ? "current"
-                  : ""
+                place.isCurrent ? "current" : ""
               }`}
             >
               {place.name}
@@ -900,75 +864,22 @@ const TourismMap: React.FC<
                 <div className="detail-map-popup">
                   <div
                     className={`detail-map-popup-badge ${
-                      place.isCurrent
-                        ? "current"
-                        : ""
+                      place.isCurrent ? "current" : ""
                     }`}
                   >
                     <MapPin size={10} />
-
-                    {place.isCurrent
-                      ? "Current attraction"
-                      : "Attraction"}
+                    {place.isCurrent ? "Current attraction" : "Attraction"}
                   </div>
-
                   <h3 className="detail-map-popup-title">
                     {place.name}
                   </h3>
-
-                  {(place.category ||
-                    place.subcategory) && (
+                  {(place.category || place.subcategory) && (
                     <p className="detail-map-popup-category">
-                      {[
-                        place.category,
-                        place.subcategory,
-                      ]
+                      {[place.category, place.subcategory]
                         .filter(Boolean)
                         .join(" • ")}
                     </p>
                   )}
-
-                  {place.address && (
-                    <p className="detail-map-popup-address">
-                      {place.address}
-                    </p>
-                  )}
-                </div>
-              </Popup>
-            )}
-          </Marker>
-        ))}
-
-        {/* ACCOMMODATION PINS */}
-
-        {accommodations.map((place) => (
-          <Marker
-            key={`accommodation-${place.id}`}
-            position={[
-              place.coordinates.lat,
-              place.coordinates.lng,
-            ]}
-            icon={accommodationIcon}
-            interactive={interactive}
-          >
-            {interactive && (
-              <Popup>
-                <div className="detail-map-popup">
-                  <div className="detail-map-popup-badge accommodation">
-                    <Hotel size={10} />
-                    Accommodation
-                  </div>
-
-                  <h3 className="detail-map-popup-title">
-                    {place.name}
-                  </h3>
-
-                  {place.type && (
-                    <p className="detail-map-popup-category">
-                      {place.type}
-                    </p>
-                  )}
-
                   {place.address && (
                     <p className="detail-map-popup-address">
                       {place.address}
@@ -981,6 +892,23 @@ const TourismMap: React.FC<
         ))}
       </MapContainer>
     </div>
+  );
+};
+
+const openStreetLevelView = (
+  coordinates: MapCoordinates | null,
+): void => {
+  if (!coordinates) {
+    return;
+  }
+
+  const url =
+    `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${coordinates.lat},${coordinates.lng}`;
+
+  window.open(
+    url,
+    "_blank",
+    "noopener,noreferrer",
   );
 };
 
@@ -1048,27 +976,7 @@ const AttractionDetail: React.FC =
        MAP STATE
     ===================================================== */
 
-    const [
-      accommodationPlaces,
-      setAccommodationPlaces,
-    ] = useState<
-      AccommodationMapPlace[]
-    >([]);
-
-    const [
-      mapLoading,
-      setMapLoading,
-    ] = useState(false);
-
-    const [
-      mapError,
-      setMapError,
-    ] = useState("");
-
-    const [
-      mapOpen,
-      setMapOpen,
-    ] = useState(false);
+    const [mapOpen, setMapOpen] = useState(false);
 
     /* =====================================================
        GALLERY
@@ -1277,132 +1185,6 @@ const AttractionDetail: React.FC =
       id,
       setFavoriteCount,
     ]);
-
-    /* =====================================================
-       LOAD ACCOMMODATIONS FOR MAP
-
-       These are the SAME accommodation records used by
-       the Admin Dashboard.
-
-       We are NOT creating another location database.
-    ===================================================== */
-
-    useEffect(() => {
-      let mounted = true;
-
-      const fetchAccommodationPlaces =
-        async () => {
-          try {
-            setMapLoading(true);
-            setMapError("");
-
-            const response =
-              await getAccommodations();
-
-            const data =
-              Array.isArray(
-                response?.data,
-              )
-                ? response.data
-                : [];
-
-            const places =
-              data
-                .map(
-                  (
-                    accommodation: Accommodation,
-                  ) => {
-                    const coordinates =
-                      getCoordinates(
-                        accommodation,
-                      );
-
-                    if (
-                      !coordinates
-                    ) {
-                      return null;
-                    }
-
-                    const name =
-                      cleanString(
-                        (accommodation as any)
-                          ?.name,
-                      ) ||
-                      "Accommodation";
-
-                    const type =
-                      getFirstValue(
-                        accommodation,
-                        [
-                          "type",
-                          "accommodation_type",
-                        ],
-                      ) ||
-                      "Accommodation";
-
-                    const address =
-                      getAddress(
-                        accommodation,
-                      );
-
-                    return {
-                      id:
-                        cleanString(
-                          (accommodation as any)
-                            ?.id,
-                        ),
-                      name,
-                      type,
-                      address,
-                      coordinates,
-                    };
-                  },
-                )
-                .filter(
-                  (
-                    place: AccommodationMapPlace | null,
-                  ): place is AccommodationMapPlace =>
-                    Boolean(
-                      place &&
-                        place.id,
-                    ),
-                );
-
-            if (mounted) {
-              setAccommodationPlaces(
-                places,
-              );
-            }
-          } catch (error) {
-            console.error(
-              "Failed to load accommodations for map:",
-              error,
-            );
-
-            if (mounted) {
-              setAccommodationPlaces(
-                [],
-              );
-
-              setMapError(
-                "Accommodation locations could not be loaded.",
-              );
-            }
-          } finally {
-            if (mounted) {
-              setMapLoading(
-                false,
-              );
-            }
-          }
-        };
-
-      void fetchAccommodationPlaces();
-
-      return () => {
-        mounted = false;
-      };
-    }, []);
 
     /* =====================================================
        RESET IMAGE + NOTICES
@@ -1817,8 +1599,7 @@ const AttractionDetail: React.FC =
           ];
 
     const hasMapPlaces =
-      mapAttractions.length > 0 ||
-      accommodationPlaces.length > 0;
+      mapAttractions.length > 0;
 
     /* =====================================================
        ENLARGED MAP (close with Esc, lock page scroll)
@@ -2787,6 +2568,76 @@ const AttractionDetail: React.FC =
             inset: 0;
           }
 
+          .detail-location-map-actions {
+            position: absolute;
+            right: 10px;
+            bottom: 10px;
+            z-index: 25;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 7px;
+            pointer-events: none;
+          }
+
+          .detail-location-map-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 31px;
+            padding: 6px 10px;
+            border: 0;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.96);
+            color: ${CALBAYOG_BLUE};
+            box-shadow: 0 4px 14px rgba(20, 29, 57, 0.2);
+            font-size: 0.6rem;
+            font-weight: 900;
+            cursor: pointer;
+            pointer-events: auto;
+          }
+
+          .detail-location-map-action:hover {
+            background: ${CALBAYOG_BLUE};
+            color: #ffffff;
+          }
+
+          .detail-location-map-action:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+          }
+
+          .detail-map-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+
+          .detail-map-street-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 36px;
+            padding: 7px 11px;
+            border: 1px solid ${BORDER};
+            border-radius: 999px;
+            background: #ffffff;
+            color: ${CALBAYOG_BLUE};
+            font-size: 0.6rem;
+            font-weight: 900;
+            cursor: pointer;
+          }
+
+          .detail-map-street-button:hover {
+            border-color: ${CALBAYOG_BLUE};
+            background: ${CALBAYOG_BLUE_SOFT};
+          }
+
+          .detail-map-street-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+
           .detail-location-map-overlay {
             position: absolute;
             inset: 0;
@@ -2797,7 +2648,8 @@ const AttractionDetail: React.FC =
             padding: 10px;
             border: 0;
             background: transparent;
-            cursor: zoom-in;
+            cursor: default;
+            pointer-events: none;
           }
 
           .detail-location-map-expand {
@@ -2812,6 +2664,8 @@ const AttractionDetail: React.FC =
             box-shadow: 0 4px 14px rgba(20, 29, 57, 0.2);
             font-size: 0.6rem;
             font-weight: 900;
+            pointer-events: auto;
+            cursor: pointer;
             transition:
               background 0.2s ease,
               color 0.2s ease;
@@ -2928,6 +2782,52 @@ const AttractionDetail: React.FC =
             to {
               opacity: 1;
             }
+          }
+
+          .calbayog-map-custom-control {
+            margin-top: 10px;
+          }
+
+          .calbayog-map-custom-control button {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 0;
+            background: #ffffff;
+            color: #3f4652;
+            font-size: 18px;
+            font-weight: 900;
+            cursor: pointer;
+          }
+
+          .calbayog-map-custom-control button:hover {
+            background: #f4f5f7;
+            color: ${CALBAYOG_BLUE};
+          }
+
+          .calbayog-map-custom-control button:disabled {
+            cursor: wait;
+            opacity: 0.65;
+          }
+
+          .detail-map .leaflet-control-layers {
+            border: 0;
+            border-radius: 10px;
+            box-shadow: 0 3px 14px rgba(20, 29, 57, 0.18);
+          }
+
+          .detail-map .leaflet-control-zoom,
+          .detail-map .leaflet-control-scale {
+            box-shadow: 0 3px 14px rgba(20, 29, 57, 0.18);
+          }
+
+          .detail-map .leaflet-control-zoom a,
+          .detail-map .leaflet-control-layers-toggle {
+            width: 32px;
+            height: 32px;
+            line-height: 32px;
           }
 
           /* =================================================
@@ -3650,6 +3550,11 @@ const AttractionDetail: React.FC =
             .detail-map-stats {
               justify-content: flex-start;
             }
+
+            .detail-map-header-actions {
+              width: 100%;
+              justify-content: flex-end;
+            }
           }
 
           @media (max-width: 767.98px) {
@@ -4011,27 +3916,37 @@ const AttractionDetail: React.FC =
                       attractions={
                         mapAttractions
                       }
-                      accommodations={
-                        accommodationPlaces
-                      }
-                      interactive={false}
+                      interactive
                     />
 
-                    <button
-                      type="button"
-                      className="detail-location-map-overlay"
-                      onClick={() =>
-                        setMapOpen(true)
-                      }
-                      aria-label="View larger map"
-                    >
-                      <span className="detail-location-map-expand">
-                        <Maximize2
-                          size={13}
-                        />
-                        Click to enlarge
-                      </span>
-                    </button>
+                    <div className="detail-location-map-actions">
+                      <button
+                        type="button"
+                        className="detail-location-map-action street-level"
+                        onClick={() =>
+                          openStreetLevelView(
+                            currentMapCoordinates,
+                          )
+                        }
+                        disabled={!currentMapCoordinates}
+                        aria-label="Open street-level view"
+                      >
+                        <MapPinned size={13} />
+                        Street View
+                      </button>
+
+                      <button
+                        type="button"
+                        className="detail-location-map-action"
+                        onClick={() =>
+                          setMapOpen(true)
+                        }
+                        aria-label="View larger map"
+                      >
+                        <Maximize2 size={13} />
+                        Larger map
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="detail-location-map-empty">
@@ -4542,14 +4457,11 @@ const AttractionDetail: React.FC =
                       </p>
 
                       <h2 className="detail-map-title">
-                        Attractions &
-                        Accommodations
+                        Calbayog Attractions
                       </h2>
 
                       <p className="detail-map-subtitle">
-                        Pin symbols show each
-                        attraction type. Tap a
-                        pin for details.
+                        Drag the map, switch map styles, use your location, or open street-level imagery.
                       </p>
                     </div>
                   </div>
@@ -4561,24 +4473,32 @@ const AttractionDetail: React.FC =
                       attractions
                     </span>
 
-                    <span className="detail-map-stat">
-                      <Hotel size={12} />
-                      {
-                        accommodationPlaces.length
-                      }{" "}
-                      accommodations
-                    </span>
+                    <div className="detail-map-header-actions">
+                      <button
+                        type="button"
+                        className="detail-map-street-button"
+                        onClick={() =>
+                          openStreetLevelView(
+                            currentMapCoordinates,
+                          )
+                        }
+                        disabled={!currentMapCoordinates}
+                      >
+                        <MapPinned size={14} />
+                        Street View
+                      </button>
 
-                    <button
-                      type="button"
-                      className="detail-map-modal-close"
-                      onClick={() =>
-                        setMapOpen(false)
-                      }
-                      aria-label="Close map"
-                    >
-                      <X size={16} />
-                    </button>
+                      <button
+                        type="button"
+                        className="detail-map-modal-close"
+                        onClick={() =>
+                          setMapOpen(false)
+                        }
+                        aria-label="Close map"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -4588,23 +4508,10 @@ const AttractionDetail: React.FC =
                     attractions={
                       mapAttractions
                     }
-                    accommodations={
-                      accommodationPlaces
-                    }
                     interactive
                   />
 
-                  {mapLoading && (
-                    <div className="detail-map-loading">
-                      <div className="detail-map-loading-card">
-                        <Spinner
-                          animation="border"
-                          size="sm"
-                        />
-                        Loading map locations...
-                      </div>
-                    </div>
-                  )}
+
                 </div>
 
                 <div className="detail-map-legend">
@@ -4631,17 +4538,6 @@ const AttractionDetail: React.FC =
                       className="detail-map-legend-dot"
                       style={{
                         background:
-                          "#2563EB",
-                      }}
-                    />
-                    Accommodation
-                  </span>
-
-                  <span className="detail-map-legend-item">
-                    <span
-                      className="detail-map-legend-dot"
-                      style={{
-                        background:
                           "#e33f5f",
                       }}
                     />
@@ -4649,11 +4545,6 @@ const AttractionDetail: React.FC =
                   </span>
                 </div>
 
-                {mapError && (
-                  <div className="detail-map-error">
-                    {mapError}
-                  </div>
-                )}
               </div>
             </div>,
             document.body,
