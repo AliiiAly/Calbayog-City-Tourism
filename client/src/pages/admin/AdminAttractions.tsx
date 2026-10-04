@@ -3647,7 +3647,9 @@ const AdminAttractions: React.FC = () => {
                     <div className="admin-location-helper">
                       Search the attraction or address,
                       choose a result, then drag/click
-                      the pin to fine-tune it.
+                      the pin to fine-tune it. You can also
+                      enter exact latitude and longitude
+                      coordinates manually below the map.
                     </div>
                   </div>
 
@@ -3691,22 +3693,6 @@ const AdminAttractions: React.FC = () => {
                       name: item.name,
                       address:
                         item.location_address,
-                      latitude:
-                        typeof item.location_lat === "number"
-                          ? item.location_lat
-                          : Number.isFinite(
-                              Number(item.location_lat),
-                            )
-                            ? Number(item.location_lat)
-                            : null,
-                      longitude:
-                        typeof item.location_lng === "number"
-                          ? item.location_lng
-                          : Number.isFinite(
-                              Number(item.location_lng),
-                            )
-                            ? Number(item.location_lng)
-                            : null,
                     }),
                   )}
 
