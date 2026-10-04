@@ -45,7 +45,6 @@ import {
   Popup,
   TileLayer,
   LayersControl,
-  Tooltip,
 } from "react-leaflet";
 
 import L from "leaflet";
@@ -470,66 +469,74 @@ const getImageArray = (
    No external marker image files are required.
 ========================================================= */
 
-const getAttractionMarkerSymbol = (category: string): string => {
-  const normalized = cleanString(category).toLowerCase();
+const createAttractionMarkerIcon = (category: string = "Other") => {
+  const colors: Record<string, string> = {
+    Nature: "#4caf50",
+    "History and Culture": "#8B4513",
+    "Industrial Tourism": "#607d8b",
+    Shopping: "#e91e63",
+    Other: "#795548",
+  };
 
-  if (normalized === "nature") return "🌿";
-  if (normalized === "history and culture") return "🏛️";
-  if (normalized === "industrial tourism") return "🏭";
-  if (normalized === "shopping") return "🛍️";
+  const icons: Record<string, string> = {
+    Nature: "🌿",
+    "History and Culture": "🏛️",
+    "Industrial Tourism": "🏭",
+    Shopping: "🛍️",
+    Other: "📍",
+  };
 
-  return "📍";
-};
-
-const createAttractionMarkerIcon = (
-  isCurrent: boolean,
-  category = "Other",
-) => {
-  const symbol = isCurrent
-    ? "★"
-    : getAttractionMarkerSymbol(category);
+  const color = colors[category] || "#1a5f4a";
+  const icon = icons[category] || "📍";
 
   return L.divIcon({
-    className:
-      "calbayog-map-marker-wrapper",
-
+    className: "custom-marker",
     html: `
-      <div
-        class="${
-          isCurrent
-            ? "calbayog-map-marker current"
-            : "calbayog-map-marker attraction"
-        }"
-        title="${
-          isCurrent
-            ? "Current attraction"
-            : "Attraction"
-        }"
-      >
-        <div class="calbayog-map-marker-inner">
-          <span class="calbayog-map-marker-symbol">
-            ${symbol}
-          </span>
-        </div>
+      <div style="
+        background:${color};
+        color:white;
+        width:36px;
+        height:36px;
+        border-radius:50%;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-size:18px;
+        border:3px solid white;
+        box-shadow:0 2px 8px rgba(0,0,0,0.4);
+      ">
+        ${icon}
       </div>
     `,
-
-    iconSize: isCurrent
-      ? [44, 54]
-      : [34, 42],
-
-    iconAnchor: isCurrent
-      ? [22, 54]
-      : [17, 42],
-
-    popupAnchor: [
-      0,
-      isCurrent
-        ? -48
-        : -38,
-    ],
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -18],
   });
 };
+
+const createCurrentAttractionMarkerIcon = L.divIcon({
+  className: "selected-marker",
+  html: `
+    <div style="
+      background:#dc3545;
+      color:white;
+      width:40px;
+      height:40px;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:20px;
+      border:3px solid white;
+      box-shadow:0 2px 10px rgba(220,53,69,0.5);
+    ">
+      📍
+    </div>
+  `,
+  iconSize: [40, 40],
+  iconAnchor: [20, 20],
+  popupAnchor: [0, -20],
+});
 
 const createAccommodationMarkerIcon =
   () =>
@@ -2531,32 +2538,6 @@ const AttractionDetail: React.FC =
             font-size: 0.72rem;
           }
 
-          .detail-map-tooltip {
-            border: 0 !important;
-            border-radius: 999px !important;
-            padding: 5px 9px !important;
-            background: rgba(255, 255, 255, 0.96) !important;
-            color: ${TEXT} !important;
-            box-shadow: 0 3px 12px rgba(20, 29, 57, 0.16) !important;
-            font-size: 0.58rem !important;
-            line-height: 1.25 !important;
-            font-weight: 900 !important;
-            white-space: nowrap;
-          }
-
-          .detail-map-tooltip::before {
-            border-top-color: rgba(255, 255, 255, 0.96) !important;
-          }
-
-          .detail-map-tooltip.accommodation {
-            background: #e7f7f5 !important;
-            color: #007b72 !important;
-          }
-
-          .detail-map-tooltip.accommodation::before {
-            border-top-color: #e7f7f5 !important;
-          }
-
           /* =================================================
              MAP POPUP
           ================================================= */
@@ -3663,37 +3644,64 @@ const AttractionDetail: React.FC =
                     <LayersControl
                       position="topright"
                     >
-                      {/* STREET */}
+                      {/* SATELLITE + LABELS — SAME AS ADMIN ATTRACTIONS */}
 
                       <LayersControl.BaseLayer
                         checked
-                        name="Street"
+                        name="🛰️ Satellite + Labels"
                       >
                         <TileLayer
-                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
-                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          attribution="&copy; Google Maps"
+                          url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+                          maxZoom={21}
                         />
                       </LayersControl.BaseLayer>
 
-                      {/* SATELLITE */}
+                      {/* SATELLITE ONLY */}
 
                       <LayersControl.BaseLayer
-                        name="Satellite"
+                        name="🛰️ Satellite Only"
                       >
                         <TileLayer
-                          attribution="Tiles &copy; Esri"
-                          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                          attribution="&copy; Google Maps"
+                          url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
+                          maxZoom={21}
+                        />
+                      </LayersControl.BaseLayer>
+
+                      {/* STREET MAP */}
+
+                      <LayersControl.BaseLayer
+                        name="🗺️ Street Map"
+                      >
+                        <TileLayer
+                          attribution="&copy; OpenStreetMap contributors"
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          maxZoom={19}
+                        />
+                      </LayersControl.BaseLayer>
+
+                      {/* ROADS + LABELS */}
+
+                      <LayersControl.BaseLayer
+                        name="🗺️ Roads + Labels"
+                      >
+                        <TileLayer
+                          attribution="&copy; Google Maps"
+                          url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+                          maxZoom={21}
                         />
                       </LayersControl.BaseLayer>
 
                       {/* TERRAIN */}
 
                       <LayersControl.BaseLayer
-                        name="Terrain"
+                        name="⛰️ Terrain"
                       >
                         <TileLayer
-                          attribution='Map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors, <a href="https://opentopomap.org" target="_blank" rel="noopener noreferrer">OpenTopoMap</a>'
-                          url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+                          attribution="&copy; Google Maps"
+                          url="https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}"
+                          maxZoom={21}
                         />
                       </LayersControl.BaseLayer>
                     </LayersControl>
@@ -3717,21 +3725,12 @@ const AttractionDetail: React.FC =
                               .coordinates
                               .lng,
                           ]}
-                          icon={createAttractionMarkerIcon(
-                            place.isCurrent,
-                            place.category,
-                          )}
+                          icon={
+                            place.isCurrent
+                              ? createCurrentAttractionMarkerIcon
+                              : createAttractionMarkerIcon(place.category)
+                          }
                         >
-                          <Tooltip
-                            permanent
-                            direction="top"
-                            offset={[0, place.isCurrent ? -49 : -39]}
-                            className="detail-map-tooltip"
-                          >
-                            {place.isCurrent
-                              ? `★ ${place.name}`
-                              : place.name}
-                          </Tooltip>
 
                           <Popup>
                             <div className="detail-map-popup">
@@ -3801,14 +3800,6 @@ const AttractionDetail: React.FC =
                           ]}
                           icon={createAccommodationMarkerIcon()}
                         >
-                          <Tooltip
-                            permanent
-                            direction="top"
-                            offset={[0, -39]}
-                            className="detail-map-tooltip accommodation"
-                          >
-                            🏨 {place.name}
-                          </Tooltip>
 
                           <Popup>
                             <div className="detail-map-popup">
