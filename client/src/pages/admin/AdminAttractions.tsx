@@ -13,33 +13,39 @@ import {
 } from "react-bootstrap";
 
 import {
-  ArrowDownUp,
-  BarChart3,
+  Activity,
+  ArrowUpDown,
   Building2,
-  CheckCircle2,
+  Check,
   Clock3,
-  Compass,
-  Edit3,
+  Eye,
   Factory,
   FileText,
   Globe2,
-  House,
+  Home,
   Image as ImageIcon,
   Info,
   Landmark,
+  Layers3,
   Leaf,
   Mail,
   MapPin,
+  MapPinned,
+  Navigation,
+  Pencil,
   Phone,
   Plus,
   Search,
-  SearchX,
   ShoppingBag,
-  Sparkles,
+  SlidersHorizontal,
+  Smartphone,
+  Sun,
+  Tag,
   Ticket,
   Trash2,
+  UsersRound,
+  Wifi,
   X,
-  type LucideIcon,
 } from "lucide-react";
 
 import AdminLayout from "../../components/admin/AdminLayout";
@@ -80,18 +86,6 @@ const CATEGORIES = [
 ];
 
 /* =========================================================
-   CATEGORY ICONS — MATCHES PUBLIC ATTRACTIONS UI
-========================================================= */
-
-const categoryIcons = {
-  Nature: Leaf,
-  "History and Culture": Landmark,
-  "Industrial Tourism": Factory,
-  Shopping: ShoppingBag,
-  Other: MapPin,
-};
-
-/* =========================================================
    ATTRACTION TYPES
 
    "Other" is available under EVERY category.
@@ -117,9 +111,19 @@ const ATTRACTION_TYPES: Record<string, string[]> = {
     "Other",
   ],
 
-  "Industrial Tourism": ["Factories", "Farms", "Production Sites", "Other"],
+  "Industrial Tourism": [
+    "Factories",
+    "Farms",
+    "Production Sites",
+    "Other",
+  ],
 
-  Shopping: ["Markets", "Malls", "Local Craft Centers", "Other"],
+  Shopping: [
+    "Markets",
+    "Malls",
+    "Local Craft Centers",
+    "Other",
+  ],
 
   Other: ["Other"],
 };
@@ -131,58 +135,78 @@ const ATTRACTION_TYPES: Record<string, string[]> = {
 const CATEGORY_DESIGNS: Record<
   string,
   {
-    icon: LucideIcon;
+    icon: string;
     color: string;
     gradient: string;
     bgPattern: string;
   }
 > = {
   Nature: {
-    icon: Leaf,
-    color: "#2D3195",
-    gradient: "linear-gradient(135deg, #2D3195 0%, #545AC2 100%)",
+    icon: "🌿",
+    color: "#1a5f4a",
+    gradient: "linear-gradient(135deg, #1a5f4a 0%, #0d3d2e 100%)",
     bgPattern:
-      "linear-gradient(135deg, rgba(45,49,149,0.06), rgba(84,90,194,0.025))",
+      "linear-gradient(135deg, rgba(26,95,74,0.05), rgba(13,61,46,0.02))",
   },
 
   "History and Culture": {
-    icon: Landmark,
-    color: "#5256A8",
-    gradient: "linear-gradient(135deg, #40458F 0%, #777CC9 100%)",
+    icon: "🏛️",
+    color: "#1a5f4a",
+    gradient: "linear-gradient(135deg, #1a5f4a 0%, #0d3d2e 100%)",
     bgPattern:
-      "linear-gradient(135deg, rgba(64,69,143,0.06), rgba(119,124,201,0.025))",
+      "linear-gradient(135deg, rgba(26,95,74,0.05), rgba(13,61,46,0.02))",
   },
 
   "Industrial Tourism": {
-    icon: Factory,
-    color: "#486181",
-    gradient: "linear-gradient(135deg, #344D78 0%, #6985A9 100%)",
+    icon: "🏭",
+    color: "#1a5f4a",
+    gradient: "linear-gradient(135deg, #1a5f4a 0%, #0d3d2e 100%)",
     bgPattern:
-      "linear-gradient(135deg, rgba(52,77,120,0.06), rgba(105,133,169,0.025))",
+      "linear-gradient(135deg, rgba(26,95,74,0.05), rgba(13,61,46,0.02))",
   },
 
   Shopping: {
-    icon: ShoppingBag,
-    color: "#6B5AA8",
-    gradient: "linear-gradient(135deg, #51448F 0%, #8B7BCC 100%)",
+    icon: "🛍️",
+    color: "#1a5f4a",
+    gradient: "linear-gradient(135deg, #1a5f4a 0%, #0d3d2e 100%)",
     bgPattern:
-      "linear-gradient(135deg, rgba(81,68,143,0.06), rgba(139,123,204,0.025))",
+      "linear-gradient(135deg, rgba(26,95,74,0.05), rgba(13,61,46,0.02))",
   },
 
   Other: {
-    icon: MapPin,
-    color: "#5E658E",
-    gradient: "linear-gradient(135deg, #47506F 0%, #7D86A6 100%)",
+    icon: "📍",
+    color: "#1a5f4a",
+    gradient: "linear-gradient(135deg, #1a5f4a 0%, #0d3d2e 100%)",
     bgPattern:
-      "linear-gradient(135deg, rgba(71,80,111,0.06), rgba(125,134,166,0.025))",
+      "linear-gradient(135deg, rgba(26,95,74,0.05), rgba(13,61,46,0.02))",
   },
 };
+
+/* =========================================================
+   LUCIDE CATEGORY ICONS
+========================================================= */
+
+const CATEGORY_ICONS = {
+  Nature: Leaf,
+  "History and Culture": Landmark,
+  "Industrial Tourism": Factory,
+  Shopping: ShoppingBag,
+  Other: MapPin,
+};
+
+const getCategoryIcon = (category: string) =>
+  CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS] || MapPin;
 
 /* =========================================================
    DEVELOPMENT / MANAGEMENT / CONNECTIVITY OPTIONS
 ========================================================= */
 
-const DEVELOPMENT_LEVELS = ["Potential", "Emerging", "Existing", "Not Stated"];
+const DEVELOPMENT_LEVELS = [
+  "Potential",
+  "Emerging",
+  "Existing",
+  "Not Stated",
+];
 
 const MGT_OPTIONS = [
   "Government Operated",
@@ -210,32 +234,37 @@ const buildGoogleMapsDirectionsUrl = (
   if (!attraction) return "";
 
   const name = String((attraction as any).name || "").trim();
-  const address = String((attraction as any).location_address || "").trim();
+  const address = String(
+    (attraction as any).location_address || "",
+  ).trim();
 
-  const destination = [name, address, "Calbayog City, Samar, Philippines"]
+  const destination = [
+    name,
+    address,
+    "Calbayog City, Samar, Philippines",
+  ]
     .filter(Boolean)
     .join(", ");
 
   if (!destination) return "";
 
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+    destination,
+  )}`;
 };
 
 const EMPTY_FORM = {
   name: "",
-
   category: "Nature",
-
   attraction_type: "Waterfalls",
-
   other_attraction_type: "",
-
   description: "",
+  short_description: "",
 
   /* LOCATION / BASIC DETAILS */
   location_address: "",
-  location_lat: null as number | null,
-  location_lng: null as number | null,
+  location_lat: null,
+  location_lng: null,
 
   /* IMAGES */
   images: "",
@@ -257,7 +286,7 @@ const EMPTY_FORM = {
 
   /* CONTACT */
   mobile: "",
-  email: "",
+  contact_person: "",
 
   show_on_welcome: false,
 
@@ -284,7 +313,7 @@ const EMPTY_FORM = {
 };
 
 const DEFAULT_TOURISM_IMAGE =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 500'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%231a5f4a'/%3E%3Cstop offset='100%25' stop-color='%230d3d2e'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='500' fill='url(%23g)'/%3E%3Ccircle cx='690' cy='95' r='110' fill='rgba(255,255,255,0.08)'/%3E%3Cpath d='M-20 360 Q180 250 390 340 T820 350 L820 500 L-20 500 Z' fill='rgba(0,0,0,0.18)'/%3E%3Ctext x='400' y='210' text-anchor='middle' font-size='62' font-family='Arial, sans-serif' font-weight='700' fill='white'%3ECalbayog City Tourism%3C/text%3E%3C/svg%3E";
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 500'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%231a5f4a'/%3E%3Cstop offset='100%25' stop-color='%230d3d2e'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='500' fill='url(%23g)'/%3E%3Ccircle cx='690' cy='95' r='110' fill='rgba(255,255,255,0.08)'/%3E%3Cpath d='M-20 360 Q180 250 390 340 T820 350 L820 500 L-20 500 Z' fill='rgba(0,0,0,0.18)'/%3E%3Ctext x='400' y='210' text-anchor='middle' font-size='62' font-family='Arial, sans-serif' font-weight='700' fill='white'%3ECalbayog%3C/text%3E%3Ctext x='400' y='278' text-anchor='middle' font-size='30' font-family='Arial, sans-serif' fill='rgba(255,255,255,0.8)'%3ETourism%3C/text%3E%3C/svg%3E";
 
 const DESTINATION_CARD_ANIMATION = `
   @keyframes destinationCardPulse {
@@ -320,13 +349,14 @@ const ADMIN_ATTRACTIONS_STYLES = `
     --admin-primary: #2D3195;
     --admin-primary-dark: #242879;
     --admin-yellow: #FFB71B;
-    --admin-bg: transparent;
+    --admin-bg: #F7F8FC;
     --admin-surface: #FFFFFF;
     --admin-border: #E8EAF1;
     --admin-text: #1B1D24;
     --admin-muted: #737886;
 
     min-height: 100vh;
+    width: 100%;
     padding: 0 0 56px;
     background: transparent;
     color: var(--admin-text);
@@ -346,8 +376,8 @@ const ADMIN_ATTRACTIONS_STYLES = `
   .admin-attractions-heading {
     align-items: flex-end !important;
     gap: 24px;
-    margin-bottom: 24px !important;
-    padding: 0 0 4px;
+    margin-bottom: 26px !important;
+    padding-bottom: 6px;
   }
 
   .admin-attractions-eyebrow {
@@ -367,7 +397,7 @@ const ADMIN_ATTRACTIONS_STYLES = `
     font-size: clamp(1.65rem, 2.8vw, 2.4rem) !important;
     font-weight: 400 !important;
     line-height: 0.95 !important;
-    letter-spacing: 0.015em;
+    letter-spacing: 0.02em;
   }
 
   .admin-attractions-subtitle {
@@ -404,28 +434,45 @@ const ADMIN_ATTRACTIONS_STYLES = `
     box-shadow: 0 14px 28px rgba(45, 49, 149, 0.24);
   }
 
-  /* -------------------------------
-     STAT CARDS
-  -------------------------------- */
-
   .admin-attractions-stats {
     margin-bottom: 24px !important;
   }
 
   .admin-attractions-stats .admin-stat-card {
     position: relative;
-    min-height: 142px;
+    min-height: 116px;
     overflow: hidden;
     border: 1px solid var(--admin-border) !important;
     border-radius: 18px !important;
     background: var(--admin-surface) !important;
     color: var(--admin-text) !important;
     box-shadow: 0 7px 24px rgba(26, 30, 53, 0.055);
-    cursor: pointer;
     transition:
       transform 0.25s ease,
       box-shadow 0.25s ease,
       border-color 0.25s ease;
+  }
+
+  .admin-attractions-stats .admin-stat-card::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--admin-primary);
+  }
+
+  .admin-attractions-stats > .col:nth-child(2) .admin-stat-card::before {
+    background: var(--admin-yellow);
+  }
+
+  .admin-attractions-stats > .col:nth-child(3) .admin-stat-card::before {
+    background: #7076D8;
+  }
+
+  .admin-attractions-stats > .col:nth-child(4) .admin-stat-card::before {
+    background: #5A60B6;
   }
 
   .admin-attractions-stats .admin-stat-card:hover {
@@ -435,116 +482,45 @@ const ADMIN_ATTRACTIONS_STYLES = `
   }
 
   .admin-attractions-stats .admin-stat-card .card-body {
-    position: relative;
-    padding: 17px 18px 16px !important;
+    padding: 18px 18px 16px !important;
   }
 
-  .admin-stat-icon {
-    width: 34px;
-    height: 34px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 10px;
-    border-radius: 10px;
-  }
-
-  .admin-stat-icon-primary {
-    background: #EEF0FF;
-    color: var(--admin-primary);
-  }
-
-  .admin-stat-icon-yellow {
-    background: #FFF6DD;
-    color: #B27600;
-  }
-
-  .admin-stat-icon-indigo {
-    background: #F1F0FF;
-    color: #625FB3;
-  }
-
-  .admin-stat-icon-purple {
-    background: #F4F0FF;
-    color: #7857B8;
-  }
-
-  .admin-stat-label {
+  .admin-attractions-stats .admin-stat-card .card-body > div:first-child {
     color: var(--admin-muted) !important;
     font-family: "Nunito", sans-serif !important;
-    font-size: 0.64rem !important;
+    font-size: 0.67rem !important;
     font-weight: 900 !important;
-    letter-spacing: 0.045em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
   }
 
-  .admin-stat-value {
-    margin-top: 4px;
+  .admin-attractions-stats .admin-stat-card .card-body > div:nth-child(2) {
+    margin-top: 7px;
     color: var(--admin-text) !important;
     font-family: "Poppins", sans-serif !important;
-    font-size: 1.85rem !important;
+    font-size: 1.95rem !important;
     font-weight: 800 !important;
     line-height: 1;
   }
 
-  .admin-stat-note {
-    margin-top: 7px;
-    color: #9AA0AC;
-    font-family: "Nunito", sans-serif;
-    font-size: 0.58rem;
-    font-weight: 700;
-    line-height: 1.35;
-  }
-
-  /* -------------------------------
-     SEARCH / FILTER TOOLBAR
-  -------------------------------- */
-
   .admin-attractions-toolbar {
     border: 1px solid var(--admin-border) !important;
     border-radius: 19px !important;
-    background: #FFFFFF !important;
+    background: rgba(255, 255, 255, 0.92) !important;
     box-shadow: 0 10px 30px rgba(26, 30, 53, 0.055) !important;
     overflow: visible !important;
   }
 
   .admin-attractions-toolbar .card-body {
-    padding: 19px 20px 16px !important;
-  }
-
-  .admin-toolbar-heading {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-
-  .admin-toolbar-heading-icon {
-    width: 33px;
-    height: 33px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-    border-radius: 10px;
-    background: #EEF0FF;
-    color: var(--admin-primary);
+    padding: 20px !important;
   }
 
   .admin-attractions-toolbar-title {
-    margin: 0 !important;
+    margin-bottom: 14px !important;
     color: var(--admin-text) !important;
     font-family: "Poppins", sans-serif !important;
-    font-size: 0.82rem !important;
+    font-size: 0.84rem !important;
     font-weight: 800 !important;
-  }
-
-  .admin-toolbar-subtitle {
-    margin-top: 2px;
-    color: #9AA0AC;
-    font-family: "Nunito", sans-serif;
-    font-size: 0.60rem;
-    font-weight: 700;
   }
 
   .admin-attractions-page .input-group,
@@ -553,121 +529,54 @@ const ADMIN_ATTRACTIONS_STYLES = `
     font-family: "Nunito", sans-serif !important;
   }
 
-  .admin-search-group .input-group-text,
-  .admin-search-group .form-control,
-  .admin-search-group .btn {
+  .admin-attractions-toolbar .form-control,
+  .admin-attractions-toolbar .form-select,
+  .admin-attractions-toolbar .input-group-text {
     min-height: 42px !important;
     border-color: #E1E4EC !important;
-    background: #FBFBFD !important;
-    color: var(--admin-text) !important;
-    box-shadow: none !important;
-  }
-
-  .admin-search-group .input-group-text {
-    width: 43px;
-    justify-content: center;
-    border-radius: 11px 0 0 11px !important;
-    color: var(--admin-primary) !important;
-  }
-
-  .admin-search-group .form-control {
-    border-left: 0 !important;
-    border-radius: 0 !important;
-  }
-
-  .admin-search-group .btn {
-    border-left: 0 !important;
-    border-radius: 0 11px 11px 0 !important;
-    color: #8A909C !important;
-  }
-
-  .admin-search-group .form-control:focus {
-    border-color: rgba(45, 49, 149, 0.50) !important;
-    box-shadow: 0 0 0 3px rgba(45, 49, 149, 0.08) !important;
-    background: #fff !important;
-  }
-
-  .admin-search-group .form-control::placeholder {
-    color: #A0A5B0 !important;
-  }
-
-  .admin-filter-wrap {
-    position: relative;
-  }
-
-  .admin-filter-icon {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 2;
-    display: inline-flex;
-    color: #808695;
-    pointer-events: none;
-  }
-
-  .admin-filter-wrap .form-select {
-    width: 100%;
-    min-height: 42px !important;
-    padding-left: 34px !important;
-    border: 1px solid #E1E4EC !important;
     border-radius: 11px !important;
     background: #FBFBFD !important;
     color: var(--admin-text) !important;
     box-shadow: none !important;
-    font-size: 0.69rem !important;
-    font-weight: 700 !important;
   }
 
-  .admin-filter-wrap .form-select:focus {
-    border-color: rgba(45, 49, 149, 0.50) !important;
+  .admin-attractions-toolbar .input-group > .input-group-text {
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+  }
+
+  .admin-attractions-toolbar .input-group > .form-control {
+    border-left: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .admin-attractions-toolbar .input-group > .btn {
+    border-radius: 0 11px 11px 0 !important;
+    border-color: #E1E4EC !important;
+    background: #FBFBFD !important;
+  }
+
+  .admin-attractions-toolbar .form-control:focus,
+  .admin-attractions-toolbar .form-select:focus {
+    border-color: rgba(45, 49, 149, 0.55) !important;
     box-shadow: 0 0 0 3px rgba(45, 49, 149, 0.08) !important;
     background: #fff !important;
   }
 
-  .admin-toolbar-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-top: 13px;
-    padding-top: 12px;
-    border-top: 1px solid #EFF1F5;
+  .admin-attractions-toolbar .form-control::placeholder {
+    color: #A0A5B0 !important;
   }
 
-  .admin-toolbar-result {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: #8D93A0;
-    font-family: "Nunito", sans-serif;
-    font-size: 0.61rem;
-    font-weight: 700;
-  }
-
-  .admin-toolbar-result svg {
-    color: #7080C6;
-  }
-
-  .admin-toolbar-result strong {
-    color: var(--admin-text);
-    font-weight: 900;
-  }
-
-  .admin-clear-filters {
-    margin: 0;
-    padding: 0 !important;
-    color: var(--admin-primary) !important;
+  .admin-attractions-toolbar .text-muted,
+  .admin-attractions-toolbar small {
+    color: var(--admin-muted) !important;
     font-family: "Nunito", sans-serif !important;
-    font-size: 0.62rem !important;
-    font-weight: 900 !important;
-    text-decoration: none !important;
   }
 
-  /* -------------------------------
-     ATTRACTION CARDS
-  -------------------------------- */
+  .admin-attractions-toolbar .btn-link {
+    color: var(--admin-primary) !important;
+    font-weight: 800 !important;
+  }
 
   .admin-attraction-card {
     position: relative;
@@ -758,6 +667,7 @@ const ADMIN_ATTRACTIONS_STYLES = `
 
   .admin-attraction-card .card-body {
     padding: 16px !important;
+    min-height: 176px;
   }
 
   .admin-attraction-card .badge {
@@ -817,6 +727,7 @@ const ADMIN_ATTRACTIONS_STYLES = `
   .admin-attraction-card-actions {
     padding-top: 12px;
     border-top: 1px solid #EEF0F4;
+    margin-top: auto;
   }
 
   .admin-attraction-card-actions .btn {
@@ -859,40 +770,6 @@ const ADMIN_ATTRACTIONS_STYLES = `
     transform: translateY(-1px);
   }
 
-  .admin-attractions-page .admin-attraction-card .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  .admin-attraction-welcome-inline-badge {
-    background: #FFF6DD !important;
-    color: #9A6B00 !important;
-  }
-
-  .admin-attraction-card-actions .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-  }
-
-  .admin-empty-icon {
-    width: 64px;
-    height: 64px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 12px;
-    border-radius: 18px;
-    background: #EEF0FF;
-    color: var(--admin-primary);
-  }
-
-  /* -------------------------------
-     MODALS / FORM UI
-  -------------------------------- */
-
   .admin-attractions-page .modal-content {
     overflow: hidden;
     border: 1px solid var(--admin-border) !important;
@@ -909,9 +786,6 @@ const ADMIN_ATTRACTIONS_STYLES = `
   }
 
   .admin-attractions-page .modal-header .modal-title {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
     color: var(--admin-primary) !important;
     font-family: "Poppins", sans-serif !important;
     font-size: 0.98rem !important;
@@ -938,9 +812,6 @@ const ADMIN_ATTRACTIONS_STYLES = `
   }
 
   .admin-attractions-page .modal-body > div.mb-3[style] {
-    display: flex;
-    align-items: center;
-    gap: 7px;
     color: var(--admin-primary) !important;
     font-family: "Poppins", sans-serif !important;
     font-size: 0.82rem !important;
@@ -1027,7 +898,6 @@ const ADMIN_ATTRACTIONS_STYLES = `
     font-weight: 700;
   }
 
-  /* Dynamic category strip */
   .admin-attractions-page .modal-body > div.mb-3[style*="background"] {
     border-radius: 13px !important;
     padding: 12px 15px !important;
@@ -1043,14 +913,9 @@ const ADMIN_ATTRACTIONS_STYLES = `
     box-shadow: 0 8px 18px rgba(45, 49, 149, 0.13);
   }
 
-  /* Existing/new image preview polish */
   .admin-attractions-page .modal-body img {
     border-radius: 13px !important;
   }
-
-  /* -------------------------------
-     MODAL DETAIL VIEW
-  -------------------------------- */
 
   .admin-attractions-page .modal-body strong {
     color: var(--admin-text);
@@ -1073,7 +938,6 @@ const ADMIN_ATTRACTIONS_STYLES = `
     font-weight: 900 !important;
   }
 
-  /* Category + active modal cards */
   .admin-attractions-page .modal-body .card {
     border: 1px solid var(--admin-border) !important;
     border-radius: 15px !important;
@@ -1089,17 +953,23 @@ const ADMIN_ATTRACTIONS_STYLES = `
     box-shadow: 0 12px 26px rgba(26, 30, 53, 0.09) !important;
   }
 
-  /* -------------------------------
-     DARK MODE
-  -------------------------------- */
-
   .admin-attractions-dark {
-    --admin-bg: transparent;
+    --admin-bg: #121421;
     --admin-surface: #191C2B;
     --admin-border: #2B3042;
     --admin-text: #F1F3F8;
     --admin-muted: #A8AFBF;
-    background: transparent;
+    background:
+      radial-gradient(
+        circle at 8% 0%,
+        rgba(100, 106, 212, 0.12),
+        transparent 28%
+      ),
+      linear-gradient(
+        180deg,
+        #151827 0%,
+        #10121C 100%
+      );
   }
 
   .admin-attractions-dark .admin-attraction-card,
@@ -1167,9 +1037,359 @@ const ADMIN_ATTRACTIONS_STYLES = `
     border-color: #2B3042 !important;
   }
 
-  /* -------------------------------
-     KEYFRAMES
-  -------------------------------- */
+  .admin-attractions-toolbar-heading {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:16px;
+    padding:14px 16px;
+    border:1px solid rgba(45,49,149,.09);
+    border-radius:14px;
+    background:linear-gradient(135deg, #f8f8ff 0%, #ffffff 70%);
+  }
+
+  .admin-filter-heading-main {
+    display:flex;
+    align-items:center;
+    gap:11px;
+  }
+
+  .admin-toolbar-heading-icon {
+    width:38px;
+    height:38px;
+    flex:0 0 38px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:11px;
+    background:#eef0ff;
+    color:#2D3195;
+  }
+
+  .admin-attractions-toolbar-title {
+    margin:0 0 2px !important;
+  }
+
+  .admin-attractions-toolbar-caption {
+    color:#858B98;
+    font-size:.66rem;
+    font-weight:600;
+  }
+
+  .admin-filter-status-pill {
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:7px 10px;
+    border-radius:999px;
+    background:#fff5d9;
+    color:#806000;
+    font-size:.62rem;
+    font-weight:900;
+    white-space:nowrap;
+  }
+
+  .admin-filter-group {
+    min-height:44px;
+    border-radius:12px;
+    box-shadow:0 4px 12px rgba(26,30,53,.035);
+  }
+
+  .admin-filter-group .admin-filter-icon {
+    width:42px;
+    justify-content:center;
+    border:1px solid #e1e4ec !important;
+    border-right:0 !important;
+    background:#f4f5fb !important;
+    color:#2D3195 !important;
+    border-radius:12px 0 0 12px !important;
+  }
+
+  .admin-filter-group .form-control,
+  .admin-filter-group .form-select {
+    min-height:44px !important;
+    border-radius:0 12px 12px 0 !important;
+  }
+
+  .admin-search-group .form-control {
+    padding-left:12px !important;
+  }
+
+  .admin-search-group .btn {
+    min-width:43px;
+    border-radius:0 12px 12px 0 !important;
+    border-color:#e1e4ec !important;
+    background:#f8f8ff !important;
+    color:#2D3195 !important;
+  }
+
+  .admin-search-group:focus-within .admin-filter-icon,
+  .admin-select-group:focus-within .admin-filter-icon {
+    border-color:rgba(45,49,149,.5) !important;
+    background:#eef0ff !important;
+  }
+
+  .admin-active-filters {
+    display:flex;
+    align-items:center;
+    gap:7px;
+    flex-wrap:wrap;
+    margin-top:13px;
+    padding-top:12px;
+    border-top:1px dashed #e6e8ef;
+  }
+
+  .admin-active-filters-label {
+    color:#858B98;
+    font-size:.62rem;
+    font-weight:900;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+  }
+
+  .admin-filter-chip {
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    padding:6px 9px;
+    border-radius:999px;
+    background:#eef0ff;
+    color:#2D3195;
+    border:1px solid rgba(45,49,149,.1);
+    font-size:.61rem;
+    font-weight:800;
+  }
+
+  .admin-attraction-form-header {
+    min-height:78px;
+    padding:16px 20px !important;
+    position:relative;
+    overflow:hidden;
+  }
+
+  .admin-attraction-form-header::after {
+    content:"";
+    position:absolute;
+    width:170px;
+    height:170px;
+    right:-55px;
+    top:-75px;
+    border-radius:50%;
+    background:rgba(255,255,255,.10);
+    pointer-events:none;
+  }
+
+  .admin-form-modal-title {
+    position:relative;
+    z-index:1;
+    gap:11px;
+  }
+
+  .admin-form-title-icon {
+    width:40px;
+    height:40px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:12px;
+    background:rgba(255,255,255,.16);
+    border:1px solid rgba(255,255,255,.22);
+  }
+
+  .admin-form-title-kicker {
+    display:block;
+    color:rgba(255,255,255,.72);
+    font-family:"Nunito",sans-serif;
+    font-size:.58rem;
+    font-weight:800;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    margin-bottom:2px;
+  }
+
+  .admin-form-title-text {
+    display:block;
+    color:#fff;
+    font-family:"Poppins",sans-serif;
+    font-size:1.05rem;
+    font-weight:800;
+  }
+
+  .admin-form-intro {
+    display:flex;
+    align-items:center;
+    gap:11px;
+    padding:12px 14px;
+    margin-bottom:20px;
+    border:1px solid rgba(45,49,149,.11);
+    border-radius:13px;
+    background:#f7f7ff;
+  }
+
+  .admin-form-intro-icon {
+    width:34px;
+    height:34px;
+    flex:0 0 34px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:10px;
+    background:#eef0ff;
+    color:#2D3195;
+  }
+
+  .admin-form-intro strong {
+    display:block;
+    color:#2D3195;
+    font-size:.72rem;
+    font-weight:900;
+  }
+
+  .admin-form-intro span {
+    display:block;
+    margin-top:2px;
+    color:#7c8290;
+    font-size:.63rem;
+    font-weight:600;
+  }
+
+  .admin-attractions-modal .modal-body {
+    padding:22px !important;
+  }
+
+  .admin-attractions-modal .modal-body > .mb-3[style] {
+    display:flex !important;
+    align-items:center;
+    gap:8px;
+    padding:10px 12px !important;
+    margin-top:4px;
+    margin-bottom:14px !important;
+    border-left:3px solid #2D3195;
+    border-radius:0 10px 10px 0;
+    background:rgba(45,49,149,.055) !important;
+    color:#2D3195 !important;
+    font-family:"Poppins",sans-serif;
+    font-size:.78rem !important;
+    letter-spacing:.01em;
+  }
+
+  .admin-form-section-icon {
+    width:27px;
+    height:27px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:8px;
+    background:#eef0ff;
+    color:#2D3195;
+  }
+
+  .admin-dynamic-section-heading {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:10px;
+    padding:10px 13px;
+    border-radius:11px;
+    color:#fff;
+    font-weight:800;
+    box-shadow:0 7px 18px rgba(26,95,74,.13);
+  }
+
+  .admin-attractions-modal .form-label {
+    color:#4e5564;
+    font-family:"Nunito",sans-serif;
+    font-size:.67rem;
+    font-weight:900 !important;
+    margin-bottom:6px;
+  }
+
+  .admin-attractions-modal .form-control,
+  .admin-attractions-modal .form-select {
+    min-height:42px;
+    border:1px solid #e0e3ea !important;
+    border-radius:11px !important;
+    background:#fff !important;
+    font-family:"Nunito",sans-serif !important;
+    font-size:.70rem !important;
+    box-shadow:0 3px 10px rgba(26,30,53,.025) !important;
+  }
+
+  .admin-attractions-modal textarea.form-control {
+    min-height:96px;
+    resize:vertical;
+  }
+
+  .admin-attractions-modal .form-control:focus,
+  .admin-attractions-modal .form-select:focus {
+    border-color:rgba(45,49,149,.52) !important;
+    box-shadow:0 0 0 3px rgba(45,49,149,.08) !important;
+  }
+
+  .admin-image-upload-label {
+    display:inline-flex !important;
+    align-items:center;
+    gap:6px;
+    color:#2D3195 !important;
+  }
+
+  .admin-attractions-modal .modal-footer {
+    padding:12px 20px !important;
+  }
+
+  .admin-attractions-modal .modal-footer .btn {
+    border-radius:10px !important;
+    font-size:.68rem !important;
+    font-weight:800 !important;
+    min-height:38px;
+  }
+
+  .admin-attractions-dark .admin-attractions-toolbar-heading {
+    background:#202436;
+    border-color:#343A4F;
+  }
+
+  .admin-attractions-dark .admin-toolbar-heading-icon,
+  .admin-attractions-dark .admin-filter-icon,
+  .admin-attractions-dark .admin-form-intro-icon,
+  .admin-attractions-dark .admin-form-section-icon {
+    background:#262B46 !important;
+    color:#AEB4FF !important;
+  }
+
+  .admin-attractions-dark .admin-filter-status-pill {
+    background:#3b3217;
+    color:#ffd86b;
+  }
+
+  .admin-attractions-dark .admin-active-filters {
+    border-color:#343A4F;
+  }
+
+  .admin-attractions-dark .admin-filter-chip {
+    background:#262B46;
+    color:#c9ccff;
+    border-color:#343A4F;
+  }
+
+  .admin-attractions-dark .admin-form-intro {
+    background:#202436;
+    border-color:#343A4F;
+  }
+
+  .admin-attractions-dark .admin-form-intro strong {
+    color:#c9ccff;
+  }
+
+  .admin-attractions-dark .admin-attractions-modal .modal-body > .mb-3[style] {
+    background:#262B46 !important;
+    color:#c9ccff !important;
+  }
+
+  .admin-attractions-dark .admin-attractions-modal .form-label {
+    color:#d9dce7;
+  }
 
   @keyframes adminAttractionCardIn {
     from {
@@ -1199,13 +1419,50 @@ const ADMIN_ATTRACTIONS_STYLES = `
     animation: adminDashboardFade 0.4s ease both;
   }
 
-  /* -------------------------------
-     RESPONSIVE
-  -------------------------------- */
+  .admin-location-picker-heading {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:9px;
+    padding:11px 13px;
+    border:1px solid rgba(45,49,149,.10);
+    border-radius:12px;
+    background:#f7f8ff;
+  }
+
+  .admin-location-helper {
+    color:#7a808e;
+    font-size:.62rem;
+    font-weight:600;
+    line-height:1.45;
+  }
+
+  .admin-location-ready-badge {
+    background:#eaf8f1 !important;
+    color:#167447 !important;
+    border:1px solid #cbead9;
+    white-space:nowrap;
+  }
+
+  .admin-attractions-dark .admin-location-picker-heading {
+    background:#202436;
+    border-color:#343A4F;
+  }
+
+  .admin-attractions-dark .admin-location-helper {
+    color:#a8afbf;
+  }
+
+  .admin-attractions-dark .admin-location-ready-badge {
+    background:#19372a !important;
+    color:#8fe0b5 !important;
+    border-color:#2f624c;
+  }
 
   @media (max-width: 991.98px) {
     .admin-attractions-page {
-      padding: 0 0 48px;
+      padding: 24px 20px 48px;
     }
 
     .admin-attractions-heading {
@@ -1221,7 +1478,11 @@ const ADMIN_ATTRACTIONS_STYLES = `
 
   @media (max-width: 767.98px) {
     .admin-attractions-page {
-      padding: 0 0 42px;
+      padding: 20px 15px 42px;
+    }
+
+    .admin-attractions-title {
+      font-size: 2rem !important;
     }
 
     .admin-attractions-stats .admin-stat-card {
@@ -1251,16 +1512,495 @@ const ADMIN_ATTRACTIONS_STYLES = `
 
   @media (max-width: 479.98px) {
     .admin-attractions-page {
-      padding-left: 0;
-      padding-right: 0;
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+
+    .admin-attractions-title {
+      font-size: 1.8rem !important;
     }
 
     .admin-attraction-image-shell {
       height: 180px;
     }
   }
-`;
 
+  .admin-attractions-page {
+    min-height: 100vh !important;
+    width: 100% !important;
+    padding: 0 0 56px !important;
+    background: transparent !important;
+  }
+
+  .admin-attractions-heading {
+    align-items: flex-end !important;
+    margin: 0 0 26px !important;
+    gap: 22px;
+  }
+
+  .admin-attractions-title {
+    font-family: "Barabara", sans-serif !important;
+    font-size: clamp(1.65rem, 2.8vw, 2.4rem) !important;
+    line-height: 0.95 !important;
+    font-weight: 400 !important;
+    color: #2D3195 !important;
+  }
+
+  .admin-attractions-subtitle {
+    max-width: 780px;
+    font-size: 0.80rem !important;
+  }
+
+  .admin-attractions-stats .admin-stat-card {
+    min-height: 132px !important;
+    border-radius: 18px !important;
+    border: 1px solid var(--admin-border) !important;
+    background: var(--admin-surface) !important;
+    color: var(--admin-text) !important;
+    box-shadow: 0 7px 24px rgba(26,30,53,0.055) !important;
+  }
+
+  .admin-attractions-stats .admin-stat-card .card-body {
+    padding: 17px 18px 16px !important;
+  }
+
+  .admin-stat-card-top {
+    display:flex;
+    align-items:center;
+    gap:9px;
+  }
+
+  .admin-stat-icon {
+    width:34px;
+    height:34px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:10px;
+    flex:0 0 auto;
+  }
+
+  .admin-stat-icon-blue {
+    color:#2D3195;
+    background:#eef0ff;
+  }
+
+  .admin-stat-icon-yellow {
+    color:#9a6900;
+    background:#fff5d9;
+  }
+
+  .admin-stat-icon-purple {
+    color:#5f62b7;
+    background:#f0efff;
+  }
+
+  .admin-stat-icon-indigo {
+    color:#3944a1;
+    background:#eceeff;
+  }
+
+  .admin-stat-label {
+    color:var(--admin-muted);
+    font-size:.66rem;
+    font-weight:900;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+  }
+
+  .admin-stat-value {
+    margin-top:11px;
+    color:var(--admin-text);
+    font-family:"Poppins",sans-serif;
+    font-size:1.95rem;
+    font-weight:800;
+    line-height:1;
+  }
+
+  .admin-stat-caption {
+    margin-top:8px;
+    color:var(--admin-muted);
+    font-size:.62rem;
+    font-weight:600;
+  }
+
+  .admin-attractions-toolbar {
+    border:1px solid var(--admin-border) !important;
+    border-radius:18px !important;
+    background:var(--admin-surface) !important;
+    box-shadow:0 8px 26px rgba(26,30,53,.05) !important;
+  }
+
+  .admin-attractions-toolbar .card-body {
+    padding:19px !important;
+  }
+
+  .admin-attractions-toolbar-heading {
+    display:flex;
+    align-items:center;
+    gap:11px;
+    margin-bottom:16px;
+  }
+
+  .admin-toolbar-heading-icon {
+    width:36px;
+    height:36px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:10px;
+    background:#eef0ff;
+    color:#2D3195;
+  }
+
+  .admin-attractions-toolbar-title {
+    margin:0 !important;
+    font-size:.86rem !important;
+    font-weight:800 !important;
+  }
+
+  .admin-attractions-toolbar-caption {
+    margin-top:2px;
+    color:var(--admin-muted);
+    font-size:.64rem;
+    font-weight:600;
+  }
+
+  .admin-filter-group > .form-control,
+  .admin-filter-group > .form-select,
+  .admin-filter-group > .btn {
+    min-height:42px !important;
+    border-color:#e1e4ec !important;
+    background:#fbfbfd !important;
+    color:var(--admin-text) !important;
+    box-shadow:none !important;
+  }
+
+  .admin-filter-group > .form-control,
+  .admin-filter-group > .form-select {
+    font-size:.70rem !important;
+    font-weight:700 !important;
+  }
+
+  .admin-filter-group > .form-control:focus,
+  .admin-filter-group > .form-select:focus {
+    border-color:rgba(45,49,149,.48) !important;
+    box-shadow:0 0 0 3px rgba(45,49,149,.08) !important;
+    background:#fff !important;
+  }
+
+  .admin-attractions-toolbar-footer {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-top:14px;
+    padding-top:12px;
+    border-top:1px solid #eef0f4;
+  }
+
+  .admin-toolbar-result-count {
+    color:var(--admin-muted);
+    font-size:.66rem;
+    font-weight:700;
+  }
+
+  .admin-toolbar-result-count strong {
+    color:var(--admin-text);
+  }
+
+  .admin-clear-filters {
+    display:inline-flex !important;
+    align-items:center;
+    gap:5px;
+    padding:0 !important;
+    color:#2D3195 !important;
+    font-size:.66rem !important;
+    font-weight:800 !important;
+  }
+
+  .admin-attractions-grid > .col {
+    display:flex;
+  }
+
+  .admin-attraction-card {
+    border:1px solid var(--admin-border) !important;
+    border-radius:18px !important;
+    background:var(--admin-surface) !important;
+    box-shadow:0 7px 24px rgba(26,30,53,.06) !important;
+  }
+
+  .admin-attraction-card:hover {
+    border-color:rgba(45,49,149,.17) !important;
+    box-shadow:0 17px 38px rgba(26,30,53,.11) !important;
+  }
+
+  .admin-attraction-image-shell {
+    height:194px !important;
+    border-radius:18px 18px 0 0 !important;
+  }
+
+  .admin-attraction-image-count,
+  .admin-attraction-welcome-badge {
+    display:inline-flex !important;
+    align-items:center;
+    gap:5px;
+  }
+
+  .admin-attraction-badge-row {
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-wrap:wrap;
+    min-height:24px;
+  }
+
+  .admin-attraction-category-badge {
+    background:#eef0ff !important;
+    color:#2D3195 !important;
+  }
+
+  .admin-attraction-type-badge {
+    background:#f3f4f8 !important;
+    color:#626978 !important;
+  }
+
+  .admin-attraction-welcome-card-badge {
+    background:#fff5d9 !important;
+    color:#8e6200 !important;
+  }
+
+  .admin-attraction-name {
+    margin:9px 0 0 !important;
+    font-size:.91rem !important;
+    font-weight:800 !important;
+  }
+
+  .admin-attraction-location {
+    display:flex;
+    align-items:flex-start;
+    gap:6px;
+    color:#818694;
+  }
+
+  .admin-attraction-location svg {
+    flex:0 0 auto;
+    margin-top:1px;
+    color:#2D3195;
+  }
+
+  .admin-attraction-card-actions .btn {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+  }
+
+  .admin-attraction-card-actions .admin-edit-button {
+    flex:1 1 auto !important;
+    min-width:0 !important;
+  }
+
+  .admin-delete-button {
+    min-width:40px !important;
+    width:40px !important;
+    flex:0 0 40px !important;
+    padding-left:0 !important;
+    padding-right:0 !important;
+  }
+
+  .admin-attractions-loading {
+    min-height:320px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:40px 20px;
+    border:1px solid var(--admin-border);
+    border-radius:18px;
+    background:var(--admin-surface);
+    text-align:center;
+  }
+
+  .admin-loading-icon,
+  .admin-empty-icon {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    color:#2D3195;
+    background:#eef0ff;
+  }
+
+  .admin-loading-icon {
+    width:52px;
+    height:52px;
+    border-radius:15px;
+  }
+
+  .admin-empty-icon {
+    width:62px;
+    height:62px;
+    border-radius:18px;
+  }
+
+  .admin-loading-title,
+  .admin-empty-title {
+    margin-top:13px;
+    color:var(--admin-text);
+    font-family:"Poppins",sans-serif;
+    font-size:.84rem;
+    font-weight:800;
+  }
+
+  .admin-loading-subtitle,
+  .admin-empty-text {
+    margin:5px 0 0;
+    color:var(--admin-muted);
+    font-size:.68rem;
+    font-weight:600;
+  }
+
+  .admin-attractions-empty {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height:300px;
+    padding:40px 20px;
+    border:1px solid var(--admin-border);
+    border-radius:18px;
+    background:var(--admin-surface);
+    text-align:center;
+  }
+
+  .admin-empty-button {
+    display:inline-flex !important;
+    align-items:center;
+    gap:6px;
+    margin-top:16px;
+    border-color:rgba(45,49,149,.28) !important;
+    color:#2D3195 !important;
+    border-radius:10px !important;
+    font-size:.68rem !important;
+    font-weight:800 !important;
+  }
+
+  .admin-modal-title {
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    font-family:"Poppins",sans-serif !important;
+    font-weight:700 !important;
+  }
+
+  .admin-attractions-modal .modal-content {
+    border:1px solid var(--admin-border) !important;
+    border-radius:18px !important;
+    overflow:hidden;
+    box-shadow:0 22px 60px rgba(26,30,53,.18) !important;
+  }
+
+  .admin-attractions-modal .modal-header {
+    background:#2D3195 !important;
+    color:#fff !important;
+    border-bottom:0 !important;
+  }
+
+  .admin-attractions-modal .modal-header .btn-close {
+    filter:brightness(0) invert(1);
+    opacity:.85;
+  }
+
+  .admin-attractions-modal .modal-body,
+  .admin-attractions-modal .modal-footer {
+    background:var(--admin-surface) !important;
+  }
+
+  .admin-attractions-modal .modal-body > hr {
+    border-color:var(--admin-border) !important;
+    opacity:1;
+  }
+
+  .admin-checkbox-label {
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+
+  .admin-detail-label {
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    color:var(--admin-text);
+  }
+
+  .admin-detail-label svg {
+    color:#2D3195;
+  }
+
+  .admin-attractions-dark .admin-attractions-page {
+    background:transparent !important;
+  }
+
+  .admin-attractions-dark .admin-attractions-toolbar,
+  .admin-attractions-dark .admin-attraction-card,
+  .admin-attractions-dark .admin-attractions-loading,
+  .admin-attractions-dark .admin-attractions-empty,
+  .admin-attractions-dark .admin-attractions-stats .admin-stat-card {
+    background:#191C2B !important;
+  }
+
+  .admin-attractions-dark .admin-toolbar-heading-icon,
+  .admin-attractions-dark .admin-stat-icon-blue,
+  .admin-attractions-dark .admin-stat-icon-purple,
+  .admin-attractions-dark .admin-stat-icon-indigo,
+  .admin-attractions-dark .admin-empty-icon,
+  .admin-attractions-dark .admin-loading-icon {
+    background:#262B46 !important;
+  }
+
+  .admin-attractions-dark .admin-filter-group > .form-control,
+  .admin-attractions-dark .admin-filter-group > .form-select,
+  .admin-attractions-dark .admin-filter-group > .btn {
+    background:#202436 !important;
+    border-color:#343A4F !important;
+    color:#F1F3F8 !important;
+  }
+
+  .admin-attractions-dark .admin-attractions-modal .modal-body,
+  .admin-attractions-dark .admin-attractions-modal .modal-footer {
+    background:#191C2B !important;
+  }
+
+  @media (max-width: 991.98px) {
+    .admin-attractions-heading {
+      align-items:flex-start !important;
+      flex-direction:column;
+      gap:14px;
+    }
+
+    .admin-attractions-add-button {
+      width:100%;
+    }
+
+    .admin-attractions-title {
+      font-size:clamp(1.65rem, 4.5vw, 2.25rem) !important;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .admin-attractions-title {
+      font-size:1.9rem !important;
+    }
+  }
+
+  @media (max-width: 479.98px) {
+    .admin-attractions-title {
+      font-size:1.8rem !important;
+    }
+  }
+`;
 
 /* =========================================================
    COMPONENT
@@ -1270,44 +2010,23 @@ const AdminAttractions: React.FC = () => {
   const { darkMode } = useDarkMode();
 
   const [items, setItems] = useState<Attraction[]>([]);
-
   const [filteredItems, setFilteredItems] = useState<Attraction[]>([]);
-
   const [loading, setLoading] = useState(true);
-
   const [showModal, setShowModal] = useState(false);
-
   const [editing, setEditing] = useState<Attraction | null>(null);
-
   const [form, setForm] = useState<any>(EMPTY_FORM);
-
   const [saving, setSaving] = useState(false);
-
   const [uploading, setUploading] = useState(false);
-
   const [error, setError] = useState("");
-
   const [searchTerm, setSearchTerm] = useState("");
-
   const [categoryFilter, setCategoryFilter] = useState("All");
-
   const [attractionFilter, setAttractionFilter] = useState("All");
-
   const [sortOption, setSortOption] = useState("name-asc");
-
   const [imageFiles, setImageFiles] = useState<File[]>([]);
-
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
-
   const [viewItem, setViewItem] = useState<Attraction | null>(null);
-
   const [showCategoriesModal, setShowCategoriesModal] = useState(false);
-
   const [showActiveModal, setShowActiveModal] = useState(false);
-
-  /* =========================================================
-     LOAD DESTINATIONS
-  ========================================================= */
 
   const load = async () => {
     setLoading(true);
@@ -1317,7 +2036,9 @@ const AdminAttractions: React.FC = () => {
 
       const response = await getAttractions();
 
-      const attractions = Array.isArray(response?.data) ? response.data : [];
+      const attractions = Array.isArray(response?.data)
+        ? response.data
+        : [];
 
       setItems(attractions);
       setFilteredItems(attractions);
@@ -1330,10 +2051,6 @@ const AdminAttractions: React.FC = () => {
       setLoading(false);
     }
   };
-
-  /* =========================================================
-     INITIAL LOAD + SUPABASE
-  ========================================================= */
 
   const subscribeToAttractions = (callback: () => void) => {
     return subscribeToTable("attractions", "*", callback);
@@ -1350,10 +2067,6 @@ const AdminAttractions: React.FC = () => {
       unsubscribeAll();
     };
   }, []);
-
-  /* =========================================================
-     SEARCH / FILTER / SORT
-  ========================================================= */
 
   useEffect(() => {
     let filtered = Array.isArray(items) ? [...items] : [];
@@ -1387,7 +2100,7 @@ const AdminAttractions: React.FC = () => {
           attraction.things_to_do,
           attraction.website,
           attraction.mobile,
-          attraction.email,
+          attraction.contact_person,
           attraction.development_level,
           attraction.online_connectivity,
           attraction.mgt,
@@ -1415,6 +2128,7 @@ const AdminAttractions: React.FC = () => {
 
       filtered = filtered.filter((attraction: any) => {
         const searchable = getSearchableText(attraction);
+
         return tokens.every((token) => searchable.includes(token));
       });
     }
@@ -1429,10 +2143,15 @@ const AdminAttractions: React.FC = () => {
     if (attractionFilter !== "All") {
       filtered = filtered.filter((attraction: any) => {
         const attractionType = normalize(attraction.attraction_type);
-        const otherAttractionType = normalize(attraction.other_attraction_type);
+        const otherAttractionType = normalize(
+          attraction.other_attraction_type,
+        );
         const selected = normalize(attractionFilter);
 
-        return attractionType === selected || otherAttractionType === selected;
+        return (
+          attractionType === selected ||
+          otherAttractionType === selected
+        );
       });
     }
 
@@ -1441,8 +2160,12 @@ const AdminAttractions: React.FC = () => {
       const nameB = normalize(b.name);
       const categoryA = normalize(a.category);
       const categoryB = normalize(b.category);
-      const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
-      const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+      const dateA = new Date(
+        a.created_at || a.createdAt || 0,
+      ).getTime();
+      const dateB = new Date(
+        b.created_at || b.createdAt || 0,
+      ).getTime();
 
       switch (sortOption) {
         case "name-desc":
@@ -1478,7 +2201,13 @@ const AdminAttractions: React.FC = () => {
     });
 
     setFilteredItems(filtered);
-  }, [items, searchTerm, categoryFilter, attractionFilter, sortOption]);
+  }, [
+    items,
+    searchTerm,
+    categoryFilter,
+    attractionFilter,
+    sortOption,
+  ]);
 
   const availableAttractionTypes = useMemo(() => {
     if (categoryFilter !== "All") {
@@ -1487,7 +2216,9 @@ const AdminAttractions: React.FC = () => {
 
     return Array.from(
       new Set(
-        CATEGORIES.flatMap((category) => ATTRACTION_TYPES[category] || []),
+        CATEGORIES.flatMap(
+          (category) => ATTRACTION_TYPES[category] || [],
+        ),
       ),
     ).sort((a, b) => a.localeCompare(b));
   }, [categoryFilter]);
@@ -1544,7 +2275,8 @@ const AdminAttractions: React.FC = () => {
 
   const getAttractionPlaceholder = (attraction: any) => {
     const design =
-      CATEGORY_DESIGNS[attraction?.category] || CATEGORY_DESIGNS.Other;
+      CATEGORY_DESIGNS[attraction?.category] ||
+      CATEGORY_DESIGNS.Other;
 
     return (
       <div
@@ -1596,16 +2328,20 @@ const AdminAttractions: React.FC = () => {
         >
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: "10px",
+              fontSize: "3rem",
+              lineHeight: 1,
+              marginBottom: "9px",
+              filter:
+                "drop-shadow(0 3px 8px rgba(0,0,0,0.18))",
             }}
           >
-            {React.createElement(design.icon, {
-              size: 48,
-              strokeWidth: 1.7,
-            })}
+            {React.createElement(
+              getCategoryIcon(attraction?.category),
+              {
+                size: 48,
+                strokeWidth: 1.7,
+              },
+            )}
           </div>
 
           <div
@@ -1634,10 +2370,6 @@ const AdminAttractions: React.FC = () => {
     );
   };
 
-  /* =========================================================
-     FORM HELPER
-  ========================================================= */
-
   const fc = (field: string, value: unknown) => {
     setForm((previous: any) => ({
       ...previous,
@@ -1645,55 +2377,19 @@ const AdminAttractions: React.FC = () => {
     }));
   };
 
-  /* =========================================================
-     AUTO-FILL SAVED ADDRESS WHEN THE ATTRACTION NAME ALREADY EXISTS
-  ========================================================= */
-
-  useEffect(() => {
-    const typedName = String(form.name || "").trim();
-    const currentAddress = String(form.location_address || "").trim();
-
-    if (!typedName || currentAddress) return;
-
-    const normalizedName = typedName.toLowerCase().replace(/\s+/g, " ");
-    const existing = items.find((item: any) => {
-      return String(item.name || "").trim().toLowerCase().replace(/\s+/g, " ") === normalizedName;
-    }) as any;
-
-    const existingAddress = String(existing?.location_address || "").trim();
-
-    if (existingAddress) {
-      setForm((previous: any) => {
-        if (String(previous.location_address || "").trim()) return previous;
-        return { ...previous, location_address: existingAddress };
-      });
-    }
-  }, [form.name, form.location_address, items]);
-
-  /* =========================================================
-     OPEN CREATE
-  ========================================================= */
-
   const openCreate = () => {
     setEditing(null);
 
     setForm({
       ...EMPTY_FORM,
-
       attraction_type: ATTRACTION_TYPES.Nature[0],
     });
 
     setError("");
-
     setImageFiles([]);
     setImagePreviewUrls([]);
-
     setShowModal(true);
   };
-
-  /* =========================================================
-     OPEN EDIT
-  ========================================================= */
 
   const openEdit = (attraction: Attraction) => {
     const d: any = attraction;
@@ -1701,7 +2397,9 @@ const AdminAttractions: React.FC = () => {
     const category = d.category || "Nature";
 
     const attractionType =
-      d.attraction_type || ATTRACTION_TYPES[category]?.[0] || "";
+      d.attraction_type ||
+      ATTRACTION_TYPES[category]?.[0] ||
+      "";
 
     setEditing(attraction);
 
@@ -1709,157 +2407,133 @@ const AdminAttractions: React.FC = () => {
       ...EMPTY_FORM,
 
       name: d.name || "",
-
       category,
-
       attraction_type: attractionType,
-
       other_attraction_type: d.other_attraction_type || "",
-
       description: d.description || "",
+      short_description: d.short_description || "",
 
       /* LOCATION / BASIC DETAILS */
       location_address: d.location_address || "",
-      location_lat: typeof d.location_lat === "number" ? d.location_lat : Number.isFinite(Number(d.location_lat)) ? Number(d.location_lat) : null,
-      location_lng: typeof d.location_lng === "number" ? d.location_lng : Number.isFinite(Number(d.location_lng)) ? Number(d.location_lng) : null,
+      location_lat: d.location_lat ?? null,
+      location_lng: d.location_lng ?? null,
 
       /* IMAGES */
-      images: Array.isArray(d.images) ? d.images.join(", ") : d.images || "",
+      images: Array.isArray(d.images)
+        ? d.images.join(", ")
+        : d.images || "",
 
       /* GENERAL */
       entrance_fee: d.entrance_fee || "",
-      operational_hours: d.operational_hours || d.opening_hours || "",
-      best_time_to_visit: d.best_time_to_visit || d.best_season || "",
+      operational_hours:
+        d.operational_hours || d.opening_hours || "",
+      best_time_to_visit:
+        d.best_time_to_visit || d.best_season || "",
       website: d.website || "",
+
       attractions: Array.isArray(d.attractions)
         ? d.attractions.join(", ")
         : d.attractions || "",
+
       things_to_do: Array.isArray(d.things_to_do)
         ? d.things_to_do.join(", ")
         : d.things_to_do || "",
 
-      tags: Array.isArray(d.tags) ? d.tags.join(", ") : d.tags || "",
+      tags: Array.isArray(d.tags)
+        ? d.tags.join(", ")
+        : d.tags || "",
 
       /* TOURISM */
       development_level: d.development_level || "",
-
       online_connectivity: d.online_connectivity || "",
-
       mgt: d.mgt || "",
 
       /* CONTACT */
       mobile: d.mobile || "",
-      email: d.email || "",
+      contact_person: d.contact_person || "",
 
-      show_on_welcome: Boolean(d.show_on_welcome ?? d.showOnWelcome ?? false),
+      show_on_welcome: Boolean(
+        d.show_on_welcome ?? d.showOnWelcome ?? false,
+      ),
 
       /* NATURE */
       waterfall_height: d.waterfall_height || "",
-
       swimming_allowed: Boolean(d.swimming_allowed),
-
       trekking_difficulty: d.trekking_difficulty || "",
-
       beach_type: d.beach_type || "",
-
       best_season: d.best_season || "",
-
       activities_allowed: d.activities_allowed || "",
 
       /* HISTORY */
       historical_period: d.historical_period || "",
-
       significance: d.significance || "",
 
       /* INDUSTRIAL */
       industrial_activity: d.industrial_activity || "",
-
       production_process: d.production_process || "",
-
       visitor_access: d.visitor_access || "",
 
       /* SHOPPING */
       products_available: d.products_available || "",
-
       local_products: d.local_products || "",
     });
 
     setImageFiles([]);
-
     setError("");
-
     setShowModal(true);
   };
 
-  /* =========================================================
-     CATEGORY CHANGE
-  ========================================================= */
-
   const handleCategoryChange = (category: string) => {
-    const firstAttraction = ATTRACTION_TYPES[category]?.[0] || "";
+    const firstAttraction =
+      ATTRACTION_TYPES[category]?.[0] || "";
 
     setForm((previous: any) => ({
       ...previous,
-
       category,
-
       attraction_type: firstAttraction,
-
       other_attraction_type: "",
     }));
   };
 
-  /* =========================================================
-     SAVE DESTINATION
-  ========================================================= */
-
   const handleSave = async () => {
     if (!form.name.trim()) {
       setError("Attraction name is required.");
-
       return;
     }
 
     if (!form.description.trim()) {
       setError("Description is required.");
-
       return;
     }
 
-    /* OTHER ATTRACTION TYPE */
     if (
       form.attraction_type === "Other" &&
       !form.other_attraction_type.trim()
     ) {
       setError("Please specify the attraction type for Other.");
-
       return;
     }
 
     setSaving(true);
-
     setUploading(false);
-
     setError("");
 
     try {
       let imageUrls: string[] = getFormImageUrls();
 
-      /* =====================================================
-         IMAGE UPLOAD
-      ===================================================== */
-
       if (imageFiles.length > 0) {
         setUploading(true);
 
         try {
-          const uploadResponse = await uploadMultipleImages(imageFiles);
+          const uploadResponse =
+            await uploadMultipleImages(imageFiles);
 
-          const uploadedUrls = Array.isArray(uploadResponse?.data?.urls)
+          const uploadedUrls = Array.isArray(
+            uploadResponse?.data?.urls,
+          )
             ? uploadResponse.data.urls
             : [];
 
-          /* Keep existing images and append the newly uploaded images. */
           imageUrls = Array.from(
             new Set(
               [...imageUrls, ...uploadedUrls].filter(Boolean),
@@ -1876,17 +2550,15 @@ const AdminAttractions: React.FC = () => {
         }
       }
 
-      /* =====================================================
-         MAIN PAYLOAD
-      ===================================================== */
-
       const payload: any = {
         name: form.name.trim(),
 
         category: form.category,
 
         attraction_type:
-          form.attraction_type === "Other" ? "Other" : form.attraction_type,
+          form.attraction_type === "Other"
+            ? "Other"
+            : form.attraction_type,
 
         other_attraction_type:
           form.attraction_type === "Other"
@@ -1896,20 +2568,23 @@ const AdminAttractions: React.FC = () => {
         description: form.description.trim(),
 
         /* LOCATION / BASIC DETAILS */
-        location_address: form.location_address?.trim() || "",
-        location_lat: typeof form.location_lat === "number" ? form.location_lat : null,
-        location_lng: typeof form.location_lng === "number" ? form.location_lng : null,
+        location_address:
+          form.location_address?.trim() || "",
+        location_lat: form.location_lat,
+        location_lng: form.location_lng,
 
         /* IMAGES */
         images: imageUrls,
 
         /* GENERAL */
-        entrance_fee: form.entrance_fee?.trim() || "",
-        operational_hours: form.operational_hours?.trim() || "",
-        best_time_to_visit: form.best_time_to_visit?.trim() || "",
-        website: form.website?.trim() || "",
-        attractions: form.attractions?.trim() || "",
-        things_to_do: form.things_to_do?.trim() || "",
+        entrance_fee:
+          form.entrance_fee?.trim() || "",
+        operational_hours:
+          form.operational_hours?.trim() || "",
+        best_time_to_visit:
+          form.best_time_to_visit?.trim() || "",
+        things_to_do:
+          form.things_to_do?.trim() || "",
 
         tags: (form.tags || "")
           .split(",")
@@ -1917,112 +2592,109 @@ const AdminAttractions: React.FC = () => {
           .filter(Boolean),
 
         /* TOURISM */
-        development_level: form.development_level || null,
+        development_level:
+          form.development_level || null,
 
-        online_connectivity: form.online_connectivity || null,
+        online_connectivity:
+          form.online_connectivity || null,
 
         mgt: form.mgt || null,
 
         /* CONTACT */
         mobile: form.mobile?.trim() || "",
-        email: form.email?.trim() || "",
+        contact_person:
+          form.contact_person?.trim() || "",
 
         show_on_welcome: Boolean(form.show_on_welcome),
       };
 
-      /* =====================================================
-         NATURE
-      ===================================================== */
-
       if (form.category === "Nature") {
-        payload.waterfall_height = form.waterfall_height || "";
+        payload.waterfall_height =
+          form.waterfall_height || "";
 
-        payload.swimming_allowed = Boolean(form.swimming_allowed);
+        payload.swimming_allowed =
+          Boolean(form.swimming_allowed);
 
-        payload.trekking_difficulty = form.trekking_difficulty || "";
+        payload.trekking_difficulty =
+          form.trekking_difficulty || "";
 
         payload.beach_type = form.beach_type || "";
 
-        payload.best_season = form.best_season || "";
+        payload.best_season =
+          form.best_season || "";
 
-        payload.activities_allowed = form.activities_allowed || "";
+        payload.activities_allowed =
+          form.activities_allowed || "";
       }
-
-      /* =====================================================
-         HISTORY AND CULTURE
-      ===================================================== */
 
       if (form.category === "History and Culture") {
-        payload.historical_period = form.historical_period || "";
+        payload.historical_period =
+          form.historical_period || "";
 
-        payload.significance = form.significance || "";
+        payload.significance =
+          form.significance || "";
       }
-
-      /* =====================================================
-         INDUSTRIAL TOURISM
-      ===================================================== */
 
       if (form.category === "Industrial Tourism") {
-        payload.industrial_activity = form.industrial_activity || "";
+        payload.industrial_activity =
+          form.industrial_activity || "";
 
-        payload.production_process = form.production_process || "";
+        payload.production_process =
+          form.production_process || "";
 
-        payload.visitor_access = form.visitor_access || "";
+        payload.visitor_access =
+          form.visitor_access || "";
       }
-
-      /* =====================================================
-         SHOPPING
-      ===================================================== */
 
       if (form.category === "Shopping") {
-        payload.products_available = form.products_available || "";
+        payload.products_available =
+          form.products_available || "";
 
-        payload.local_products = form.local_products || "";
+        payload.local_products =
+          form.local_products || "";
       }
-
-      /* =====================================================
-         CREATE / UPDATE
-      ===================================================== */
 
       if (editing && editing.id) {
         await updateAttraction(editing.id, payload);
       } else {
-        const created = await createAttraction(payload);
+        const created =
+          await createAttraction(payload);
 
-        const newAttractionId = created?.data?._id || created?.data?.id;
+        const newAttractionId =
+          created?.data?._id ||
+          created?.data?.id;
 
         try {
           await createNotification({
             userId: "all",
-
             type: "attraction_added",
-
             title: "New Attraction Added!",
-
             message: `Check out the new attraction: ${form.name}`,
-
             data: {
               attractionId: newAttractionId,
-
               attractionName: form.name,
-
               category: form.category,
             },
           });
         } catch (notificationError) {
-          console.error("Failed to create notification:", notificationError);
+          console.error(
+            "Failed to create notification:",
+            notificationError,
+          );
         }
       }
 
       clearCache("attractions");
 
       setShowModal(false);
-
       setEditing(null);
 
       await load();
     } catch (err: any) {
-      console.error("Failed to save attraction:", err);
+      console.error(
+        "Failed to save attraction:",
+        err,
+      );
 
       setError(
         err?.response?.data?.message ||
@@ -2031,17 +2703,14 @@ const AdminAttractions: React.FC = () => {
       );
     } finally {
       setSaving(false);
-
       setUploading(false);
     }
   };
 
-  /* =========================================================
-     DELETE
-  ========================================================= */
-
   const handleDelete = async (id: string) => {
-    const confirmed = window.confirm("Delete this attraction?");
+    const confirmed = window.confirm(
+      "Delete this attraction?",
+    );
 
     if (!confirmed) return;
 
@@ -2052,38 +2721,34 @@ const AdminAttractions: React.FC = () => {
 
       await load();
     } catch (err) {
-      console.error("Failed to delete attraction:", err);
+      console.error(
+        "Failed to delete attraction:",
+        err,
+      );
     }
   };
 
-  /* =========================================================
-     CATEGORY COLOR
-  ========================================================= */
-
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
-      Nature: "#2D3195",
-      "History and Culture": "#575CAA",
-      "Industrial Tourism": "#536E90",
-      Shopping: "#6F5AA8",
-      Other: "#687294",
+      Nature: "#1A7A4A",
+      "History and Culture": "#765548",
+      "Industrial Tourism": "#536878",
+      Shopping: "#B56A00",
+      Other: "#68736D",
     };
 
-    return colors[category] || CALBAYOG_BLUE;
+    return colors[category] || "#90A4AE";
   };
 
-  /* =========================================================
-     COUNTS
-  ========================================================= */
-
   const categoryCount = useMemo(
-    () => new Set(items.map((attraction: any) => attraction.category)).size,
+    () =>
+      new Set(
+        items.map(
+          (attraction: any) => attraction.category,
+        ),
+      ).size,
     [items],
   );
-
-  /* =========================================================
-     RENDER
-  ========================================================= */
 
   return (
     <AdminLayout>
@@ -2096,1716 +2761,2543 @@ const AdminAttractions: React.FC = () => {
         <style>{ADMIN_ATTRACTIONS_STYLES}</style>
 
         {/* =====================================================
-            HEADER
+          HEADER
         ===================================================== */}
 
-      <div className="admin-attractions-heading d-flex justify-content-between align-items-center">
-        <div>
-          <div className="admin-attractions-eyebrow">
-            CONTENT MANAGEMENT
+        <div className="admin-attractions-heading d-flex justify-content-between">
+          <div className="admin-attractions-heading-copy">
+            <div className="admin-attractions-eyebrow">
+              CONTENT MANAGEMENT
+            </div>
+
+            <h2 className="admin-attractions-title">
+              ATTRACTIONS
+            </h2>
+
+            <p className="admin-attractions-subtitle">
+              Manage Calbayog City Tourism attractions,
+              images, details, and public visibility from one
+              place.
+            </p>
           </div>
 
-          <h2
-            className="admin-attractions-title"
+          <Button
+            variant="primary"
+            onClick={openCreate}
+            className="admin-attractions-add-button"
           >
-            ATTRACTIONS
-          </h2>
-
-          <p className="admin-attractions-subtitle">
-            Manage Calbayog City tourism attractions, images, details,
-            and public visibility from one place.
-          </p>
+            <Plus size={17} strokeWidth={2.2} />
+            <span>Add Attraction</span>
+          </Button>
         </div>
 
-        <Button
-          variant="primary"
-          onClick={openCreate}
-          className="admin-attractions-add-button"
-        >
-          <Plus size={16} strokeWidth={2.2} />
-          Add Attraction
-        </Button>
-      </div>
-
-      {/* =====================================================
+        {/* =====================================================
           STATS
-      ===================================================== */}
+        ===================================================== */}
 
-      <Row className="g-3 mb-4 admin-attractions-stats">
-        <Col xs={6} md={3}>
-          <Card
-            className="border-0 h-100 admin-stat-card"
-            onClick={() => {
-              setSearchTerm("");
-              setCategoryFilter("All");
-              setAttractionFilter("All");
-            }}
-          >
-            <Card.Body>
-              <div className="admin-stat-icon admin-stat-icon-primary">
-                <MapPin size={17} strokeWidth={1.9} />
-              </div>
-              <div className="admin-stat-label">Total Attractions</div>
-              <div className="admin-stat-value">{items.length}</div>
-              <div className="admin-stat-note">Published in the tourism directory</div>
-            </Card.Body>
-          </Card>
-        </Col>
+        <Row className="g-3 mb-4 admin-attractions-stats">
+          <Col xs={12} sm={6} xl={3}>
+            <Card
+              className="border-0 h-100 admin-stat-card"
+              onClick={() => {
+                setSearchTerm("");
+                setCategoryFilter("All");
+                setAttractionFilter("All");
+              }}
+            >
+              <Card.Body>
+                <div className="admin-stat-card-top">
+                  <span className="admin-stat-icon admin-stat-icon-blue">
+                    <MapPinned size={18} strokeWidth={2} />
+                  </span>
+                  <span className="admin-stat-label">
+                    Total Attractions
+                  </span>
+                </div>
 
-        <Col xs={6} md={3}>
-          <Card className="border-0 h-100 admin-stat-card">
-            <Card.Body>
-              <div className="admin-stat-icon admin-stat-icon-yellow">
-                <House size={17} strokeWidth={1.9} />
-              </div>
-              <div className="admin-stat-label">Show on Welcome</div>
-              <div className="admin-stat-value">
-                {items.filter((d: any) =>
-                  Boolean(d.show_on_welcome ?? d.showOnWelcome),
-                ).length}
-              </div>
-              <div className="admin-stat-note">Featured on the welcome page</div>
-            </Card.Body>
-          </Card>
-        </Col>
+                <div className="admin-stat-value">
+                  {items.length}
+                </div>
 
-        <Col xs={6} md={3}>
-          <Card
-            className="border-0 h-100 admin-stat-card"
-            onClick={() => setShowCategoriesModal(true)}
-          >
-            <Card.Body>
-              <div className="admin-stat-icon admin-stat-icon-indigo">
-                <Landmark size={17} strokeWidth={1.9} />
-              </div>
-              <div className="admin-stat-label">Categories</div>
-              <div className="admin-stat-value">{categoryCount}</div>
-              <div className="admin-stat-note">Tourism categories in use</div>
-            </Card.Body>
-          </Card>
-        </Col>
+                <div className="admin-stat-caption">
+                  All attraction records
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
 
-        <Col xs={6} md={3}>
-          <Card
-            className="border-0 h-100 admin-stat-card"
-            onClick={() => setShowActiveModal(true)}
-          >
-            <Card.Body>
-              <div className="admin-stat-icon admin-stat-icon-purple">
-                <BarChart3 size={17} strokeWidth={1.9} />
-              </div>
-              <div className="admin-stat-label">Currently Showing</div>
-              <div className="admin-stat-value">{filteredItems.length}</div>
-              <div className="admin-stat-note">Matches current filters</div>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+          <Col xs={12} sm={6} xl={3}>
+            <Card className="border-0 h-100 admin-stat-card">
+              <Card.Body>
+                <div className="admin-stat-card-top">
+                  <span className="admin-stat-icon admin-stat-icon-yellow">
+                    <Home size={18} strokeWidth={2} />
+                  </span>
 
-      {/* =====================================================
+                  <span className="admin-stat-label">
+                    Show on Welcome
+                  </span>
+                </div>
+
+                <div className="admin-stat-value">
+                  {
+                    items.filter((d: any) =>
+                      Boolean(
+                        d.show_on_welcome ??
+                          d.showOnWelcome,
+                      ),
+                    ).length
+                  }
+                </div>
+
+                <div className="admin-stat-caption">
+                  Visible on the public welcome page
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+
+          <Col xs={12} sm={6} xl={3}>
+            <Card
+              className="border-0 h-100 admin-stat-card"
+              onClick={() =>
+                setShowCategoriesModal(true)
+              }
+            >
+              <Card.Body>
+                <div className="admin-stat-card-top">
+                  <span className="admin-stat-icon admin-stat-icon-purple">
+                    <Layers3 size={18} strokeWidth={2} />
+                  </span>
+
+                  <span className="admin-stat-label">
+                    Categories
+                  </span>
+                </div>
+
+                <div className="admin-stat-value">
+                  {categoryCount}
+                </div>
+
+                <div className="admin-stat-caption">
+                  Tourism categories in use
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+
+          <Col xs={12} sm={6} xl={3}>
+            <Card
+              className="border-0 h-100 admin-stat-card"
+              onClick={() => setShowActiveModal(true)}
+            >
+              <Card.Body>
+                <div className="admin-stat-card-top">
+                  <span className="admin-stat-icon admin-stat-icon-indigo">
+                    <Eye size={18} strokeWidth={2} />
+                  </span>
+
+                  <span className="admin-stat-label">
+                    Currently Showing
+                  </span>
+                </div>
+
+                <div className="admin-stat-value">
+                  {filteredItems.length}
+                </div>
+
+                <div className="admin-stat-caption">
+                  Records matching current filters
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+
+        {/* =====================================================
           SEARCH / FILTER / SORT
-      ===================================================== */}
+        ===================================================== */}
 
-      <Card className="border-0 mb-4 admin-attractions-toolbar">
-        <Card.Body>
-          <div className="admin-toolbar-heading">
-            <div className="admin-toolbar-heading-icon">
-              <Search size={16} strokeWidth={2} />
-            </div>
-            <div>
-              <div className="admin-attractions-toolbar-title">Find an Attraction</div>
-              <div className="admin-toolbar-subtitle">Search, filter, and organize attraction records.</div>
-            </div>
-          </div>
+        <Card className="border-0 mb-4 admin-attractions-toolbar">
+          <Card.Body>
+            <div className="admin-attractions-toolbar-heading">
+              <div className="admin-filter-heading-main">
+                <span className="admin-toolbar-heading-icon">
+                  <SlidersHorizontal
+                    size={18}
+                    strokeWidth={2.1}
+                  />
+                </span>
 
-          <Row className="g-3">
-            <Col xs={12} lg={5}>
-              <InputGroup className="admin-search-group">
-                <InputGroup.Text>
-                  <Search size={16} strokeWidth={1.9} />
-                </InputGroup.Text>
+                <div>
+                  <div className="admin-attractions-toolbar-title">
+                    Find an Attraction
+                  </div>
 
-                <Form.Control
-                  placeholder="Search name, category, type, location, tags..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  <div className="admin-attractions-toolbar-caption">
+                    Search, filter, and organize your
+                    attraction records.
+                  </div>
+                </div>
+              </div>
+
+              <div className="admin-filter-status-pill">
+                <Search
+                  size={13}
+                  strokeWidth={2.2}
                 />
-
-                {searchTerm && (
-                  <Button
-                    variant="outline-secondary"
-                    onClick={() => setSearchTerm("")}
-                    aria-label="Clear search"
-                  >
-                    <X size={15} strokeWidth={2} />
-                  </Button>
-                )}
-              </InputGroup>
-            </Col>
-
-            <Col xs={12} sm={6} lg={2.5}>
-              <div className="admin-filter-wrap">
-                <div className="admin-filter-icon">
-                  <Globe2 size={14} strokeWidth={1.9} />
-                </div>
-                <Form.Select
-                  value={categoryFilter}
-                  onChange={(e) => {
-                    setCategoryFilter(e.target.value);
-                    setAttractionFilter("All");
-                  }}
-                >
-                  <option value="All">All Categories</option>
-                  {CATEGORIES.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </Form.Select>
+                {filteredItems.length} result
+                {filteredItems.length !== 1
+                  ? "s"
+                  : ""}
               </div>
-            </Col>
-
-            <Col xs={12} sm={6} lg={2.5}>
-              <div className="admin-filter-wrap">
-                <div className="admin-filter-icon">
-                  <Sparkles size={14} strokeWidth={1.9} />
-                </div>
-                <Form.Select
-                  value={attractionFilter}
-                  onChange={(e) => setAttractionFilter(e.target.value)}
-                >
-                  <option value="All">All Attraction Types</option>
-                  {availableAttractionTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </Form.Select>
-              </div>
-            </Col>
-
-            <Col xs={12} lg={2}>
-              <div className="admin-filter-wrap">
-                <div className="admin-filter-icon">
-                  <ArrowDownUp size={14} strokeWidth={1.9} />
-                </div>
-                <Form.Select
-                  value={sortOption}
-                  onChange={(e) => setSortOption(e.target.value)}
-                >
-                  <option value="name-asc">A–Z: Name</option>
-                  <option value="name-desc">Z–A: Name</option>
-                  <option value="category-asc">Category A–Z</option>
-                  <option value="newest">Newest Added</option>
-                  <option value="oldest">Oldest Added</option>
-                </Form.Select>
-              </div>
-            </Col>
-          </Row>
-
-          <div className="admin-toolbar-footer">
-            <div className="admin-toolbar-result">
-              <CheckCircle2 size={14} strokeWidth={1.9} />
-              <span>Showing <strong>{filteredItems.length}</strong> of {items.length} attractions</span>
             </div>
+
+            <Row className="g-3">
+              <Col xs={12} lg={5}>
+                <InputGroup className="admin-filter-group admin-search-group">
+                  <InputGroup.Text className="admin-filter-icon">
+                    <Search
+                      size={16}
+                      strokeWidth={2.1}
+                    />
+                  </InputGroup.Text>
+
+                  <Form.Control
+                    placeholder="Search name, category, type, location, tags..."
+                    value={searchTerm}
+                    onChange={(e) =>
+                      setSearchTerm(e.target.value)
+                    }
+                  />
+
+                  {searchTerm && (
+                    <Button
+                      variant="outline-secondary"
+                      onClick={() =>
+                        setSearchTerm("")
+                      }
+                      aria-label="Clear search"
+                    >
+                      <X
+                        size={16}
+                        strokeWidth={2}
+                      />
+                    </Button>
+                  )}
+                </InputGroup>
+              </Col>
+
+              <Col xs={12} sm={6} lg={2}>
+                <InputGroup className="admin-filter-group admin-select-group">
+                  <InputGroup.Text className="admin-filter-icon">
+                    <Layers3
+                      size={15}
+                      strokeWidth={2.1}
+                    />
+                  </InputGroup.Text>
+
+                  <Form.Select
+                    value={categoryFilter}
+                    onChange={(e) => {
+                      setCategoryFilter(
+                        e.target.value,
+                      );
+                      setAttractionFilter("All");
+                    }}
+                  >
+                    <option value="All">
+                      All Categories
+                    </option>
+
+                    {CATEGORIES.map((category) => (
+                      <option
+                        key={category}
+                        value={category}
+                      >
+                        {category}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </InputGroup>
+              </Col>
+
+              <Col xs={12} sm={6} lg={2}>
+                <InputGroup className="admin-filter-group admin-select-group">
+                  <InputGroup.Text className="admin-filter-icon">
+                    <Tag
+                      size={15}
+                      strokeWidth={2.1}
+                    />
+                  </InputGroup.Text>
+
+                  <Form.Select
+                    value={attractionFilter}
+                    onChange={(e) =>
+                      setAttractionFilter(
+                        e.target.value,
+                      )
+                    }
+                  >
+                    <option value="All">
+                      All Attraction Types
+                    </option>
+
+                    {availableAttractionTypes.map(
+                      (type) => (
+                        <option
+                          key={type}
+                          value={type}
+                        >
+                          {type}
+                        </option>
+                      ),
+                    )}
+                  </Form.Select>
+                </InputGroup>
+              </Col>
+
+              <Col xs={12} lg={3}>
+                <InputGroup className="admin-filter-group admin-select-group">
+                  <InputGroup.Text className="admin-filter-icon">
+                    <ArrowUpDown
+                      size={15}
+                      strokeWidth={2.1}
+                    />
+                  </InputGroup.Text>
+
+                  <Form.Select
+                    value={sortOption}
+                    onChange={(e) =>
+                      setSortOption(
+                        e.target.value,
+                      )
+                    }
+                  >
+                    <option value="name-asc">
+                      A–Z: Name
+                    </option>
+                    <option value="name-desc">
+                      Z–A: Name
+                    </option>
+                    <option value="category-asc">
+                      Category A–Z
+                    </option>
+                    <option value="newest">
+                      Newest Added
+                    </option>
+                    <option value="oldest">
+                      Oldest Added
+                    </option>
+                  </Form.Select>
+                </InputGroup>
+              </Col>
+            </Row>
 
             {(searchTerm ||
               categoryFilter !== "All" ||
               attractionFilter !== "All") && (
-              <Button
-                variant="link"
-                size="sm"
-                className="admin-clear-filters"
-                onClick={() => {
-                  setSearchTerm("");
-                  setCategoryFilter("All");
-                  setAttractionFilter("All");
-                }}
-              >
-                Clear filters
-              </Button>
+              <div className="admin-active-filters">
+                <span className="admin-active-filters-label">
+                  Active:
+                </span>
+
+                {searchTerm && (
+                  <span className="admin-filter-chip">
+                    <Search
+                      size={11}
+                      strokeWidth={2.2}
+                    />
+                    “{searchTerm}”
+                  </span>
+                )}
+
+                {categoryFilter !== "All" && (
+                  <span className="admin-filter-chip">
+                    <Layers3
+                      size={11}
+                      strokeWidth={2.2}
+                    />
+                    {categoryFilter}
+                  </span>
+                )}
+
+                {attractionFilter !== "All" && (
+                  <span className="admin-filter-chip">
+                    <Tag
+                      size={11}
+                      strokeWidth={2.2}
+                    />
+                    {attractionFilter}
+                  </span>
+                )}
+              </div>
             )}
-          </div>
-        </Card.Body>
-      </Card>
 
-      {/* =====================================================
-          DESTINATION CARDS
-      ===================================================== */}
+            <div className="admin-attractions-toolbar-footer">
+              <div className="admin-toolbar-result-count">
+                Showing{" "}
+                <strong>
+                  {filteredItems.length}
+                </strong>{" "}
+                of {items.length} attractions
+              </div>
 
-      {loading ? (
-        <div className="text-center py-5">
-          <Spinner
-            animation="border"
-            style={{
-              color: darkMode ? "#4ade80" : "#1a5f4a",
-            }}
-          />
-
-          <p className="mt-3">Loading attractions...</p>
-        </div>
-      ) : filteredItems.length === 0 ? (
-        <div
-          className="text-center py-5"
-          style={{
-            background: darkMode ? "#1e1e2e" : "#fff",
-
-            borderRadius: "12px",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "3rem",
-            }}
-          >
-            <SearchX size={34} strokeWidth={1.6} />
-          </div>
-
-          <p
-            className="mb-0"
-            style={{
-              color: darkMode ? "#e0e0e0" : "#495057",
-
-              fontWeight: 600,
-            }}
-          >
-            No attractions found
-          </p>
-        </div>
-      ) : (
-        <Row className="g-3 g-md-4">
-          {filteredItems.map((attraction: any, index: number) => {
-            const attractionImages = getAttractionImages(attraction);
-            const firstImage = attractionImages[0];
-
-            return (
-              <Col xs={12} sm={6} lg={4} xl={3} key={attraction.id}>
-                <Card
-                  className="h-100 border-0 admin-attraction-card"
-                  style={{
-                    animationDelay: `${Math.min(index * 55, 440)}ms`,
+              {(searchTerm ||
+                categoryFilter !== "All" ||
+                attractionFilter !== "All") && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="admin-clear-filters"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setCategoryFilter("All");
+                    setAttractionFilter("All");
                   }}
-                  onClick={() => setViewItem(attraction)}
-
                 >
-                  {firstImage ? (
-                    <div className="admin-attraction-image-shell">
-                      <img
-                        src={firstImage}
-                        alt={attraction.name}
-                        className="admin-attraction-card-image"
-                        onError={(e) => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src = DEFAULT_TOURISM_IMAGE;
-                        }}
-                        style={{
-                          height: "100%",
-                          width: "100%",
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                      />
+                  <X
+                    size={14}
+                    strokeWidth={2.2}
+                  />
+                  Clear filters
+                </Button>
+              )}
+            </div>
+          </Card.Body>
+        </Card>
 
-                      <div className="admin-attraction-image-overlay" />
+        {/* =====================================================
+          DESTINATION CARDS
+        ===================================================== */}
 
-                      {(attraction.show_on_welcome ??
-                        attraction.showOnWelcome) && (
-                        <span className="admin-attraction-welcome-badge">
-                          Welcome
-                        </span>
-                      )}
-
-                      {attractionImages.length > 1 && (
-                        <span className="admin-attraction-image-count">
-                          <ImageIcon size={13} strokeWidth={1.9} />
-                          {attractionImages.length}
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    getAttractionPlaceholder(attraction)
-                  )}
-
-                  <Card.Body className="p-3 d-flex flex-column">
-                    <div className="d-flex gap-1 flex-wrap mb-2">
-                      <Badge
-                        style={{
-                          background: "#EEF0FF",
-                          color: CALBAYOG_BLUE,
-                        }}
-                      >
-                        {(() => {
-                          const CategoryIcon =
-                            categoryIcons[attraction.category as keyof typeof categoryIcons] || MapPin;
-                          return <CategoryIcon size={12} strokeWidth={1.9} />;
-                        })()}
-                        {attraction.category}
-                      </Badge>
-
-                      {attraction.attraction_type && (
-                        <Badge
-                          bg="light"
-                          text="dark"
-                          style={{
-                            borderRadius: "999px",
-                            padding: "5px 9px",
-                            fontWeight: 500,
-                          }}
-                        >
-                          {attraction.attraction_type}
-                        </Badge>
-                      )}
-
-                      {(attraction.show_on_welcome ??
-                        attraction.showOnWelcome) && (
-                        <Badge className="admin-attraction-welcome-inline-badge">
-                          <House size={11} strokeWidth={1.9} />
-                          Welcome
-                        </Badge>
-                      )}
-                    </div>
-
-                    <h5 className="admin-attraction-name">
-                      {attraction.name}
-                    </h5>
-
-                    {attraction.description && (
-                      <p className="admin-attraction-description">
-                        {attraction.description}
-                      </p>
-                    )}
-
-                    <p className="admin-attraction-location">
-                      <MapPin size={14} strokeWidth={1.9} />
-                      <span>
-                        {attraction.location_address || "Location not set"}
-                      </span>
-                    </p>
-
-                    <div
-                      className="d-flex gap-2 flex-wrap mt-auto admin-attraction-card-actions"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Button
-                        size="sm"
-                        variant="outline-primary"
-                        onClick={() => openEdit(attraction)}
-                        style={{
-                          borderRadius: "7px",
-                          flex: 1,
-                          fontWeight: 600,
-                          fontSize: "0.76rem",
-                        }}
-                      >
-                        <Edit3 size={14} strokeWidth={1.9} />
-                        Edit
-                      </Button>
-
-                      <Button
-                        size="sm"
-                        variant="outline-danger"
-                        onClick={() => handleDelete(attraction.id)}
-                        style={{
-                          borderRadius: "7px",
-                          fontWeight: 600,
-                          minWidth: "42px",
-                        }}
-                      >
-                        <Trash2 size={14} strokeWidth={1.9} />
-                      </Button>
-                    </div>
-                  </Card.Body>
-                </Card>
-              </Col>
-            );
-          })}
-        </Row>
-      )}
-
-      {/* =====================================================
-          ADD / EDIT DESTINATION MODAL
-      ===================================================== */}
-
-      <Modal
-        className="admin-attractions-modal"
-        show={showModal}
-        onHide={() => {
-          setShowModal(false);
-
-          setError("");
-        }}
-        size="lg"
-        centered
-        scrollable
-      >
-        <Modal.Header closeButton>
-          <Modal.Title
-            style={{
-              fontFamily: "Poppins, serif",
-
-              fontWeight: 600,
-            }}
-          >
-            {React.createElement(
-              CATEGORY_DESIGNS[form.category]?.icon || MapPin,
-              { size: 18, strokeWidth: 1.9 },
-            )}
-            {editing ? "Edit Attraction" : "Add Attraction"}
-          </Modal.Title>
-        </Modal.Header>
-
-        <Modal.Body>
-          {error && (
-            <Alert variant="danger" className="mb-3">
-              {error}
-            </Alert>
-          )}
-
-          {/* =================================================
-              BASIC INFORMATION
-          ================================================= */}
-
-          <div
-            className="mb-3"
-            style={{
-              fontWeight: 700,
-
-              fontSize: "1.05rem",
-
-              color: darkMode ? "#e0e0e0" : "#1a5f4a",
-            }}
-          >
-            <><FileText size={16} strokeWidth={1.9} /> Basic Information</>
-          </div>
-
-          <Row className="g-3">
-            <Col xs={12} md={8}>
-              <Form.Label className="fw-semibold">Attraction Name *</Form.Label>
-
-              <Form.Control
-                value={form.name}
-                onChange={(e) => fc("name", e.target.value)}
-                placeholder="Enter attraction name"
+        {loading ? (
+          <div className="admin-attractions-loading">
+            <div className="admin-loading-icon">
+              <Spinner
+                animation="border"
+                size="sm"
               />
-            </Col>
+            </div>
 
-            <Col xs={12} md={4}>
-              <Form.Label className="fw-semibold">Category *</Form.Label>
+            <div className="admin-loading-title">
+              Loading attractions...
+            </div>
 
-              <Form.Select
-                value={form.category}
-                onChange={(e) => handleCategoryChange(e.target.value)}
+            <div className="admin-loading-subtitle">
+              Preparing Calbayog City Tourism records.
+            </div>
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="admin-attractions-empty">
+            <div className="admin-empty-icon">
+              <MapPinned
+                size={30}
+                strokeWidth={1.7}
+              />
+            </div>
+
+            <div className="admin-empty-title">
+              No attractions found
+            </div>
+
+            <p className="admin-empty-text">
+              Try adjusting your search or filters
+              to find another attraction.
+            </p>
+
+            <Button
+              variant="outline-primary"
+              className="admin-empty-button"
+              onClick={() => {
+                setSearchTerm("");
+                setCategoryFilter("All");
+                setAttractionFilter("All");
+              }}
+            >
+              <Layers3
+                size={15}
+                strokeWidth={2}
+              />
+              View all attractions
+            </Button>
+          </div>
+        ) : (
+          <Row className="g-3 g-lg-4 admin-attractions-grid">
+            {filteredItems.map(
+              (attraction: any, index: number) => {
+                const attractionImages =
+                  getAttractionImages(attraction);
+
+                const firstImage =
+                  attractionImages[0];
+
+                const displayAttractionType =
+                  attraction.attraction_type ===
+                  "Other"
+                    ? attraction.other_attraction_type ||
+                      "Other"
+                    : attraction.attraction_type;
+
+                return (
+                  <Col
+                    xs={12}
+                    sm={6}
+                    lg={4}
+                    xl={3}
+                    key={attraction.id}
+                  >
+                    <Card
+                      className="h-100 border-0 admin-attraction-card"
+                      style={{
+                        animationDelay: `${Math.min(
+                          index * 55,
+                          440,
+                        )}ms`,
+                      }}
+                      onClick={() =>
+                        setViewItem(attraction)
+                      }
+                    >
+                      {firstImage ? (
+                        <div className="admin-attraction-image-shell">
+                          <img
+                            src={firstImage}
+                            alt={attraction.name}
+                            className="admin-attraction-card-image"
+                            onError={(e) => {
+                              e.currentTarget.onerror =
+                                null;
+                              e.currentTarget.src =
+                                DEFAULT_TOURISM_IMAGE;
+                            }}
+                          />
+
+                          <div className="admin-attraction-image-overlay" />
+
+                          {(attraction.show_on_welcome ??
+                            attraction.showOnWelcome) && (
+                            <span className="admin-attraction-welcome-badge">
+                              <Home
+                                size={12}
+                                strokeWidth={2.2}
+                              />
+                              Welcome
+                            </span>
+                          )}
+
+                          {attractionImages.length >
+                            1 && (
+                            <span className="admin-attraction-image-count">
+                              <ImageIcon
+                                size={13}
+                                strokeWidth={2}
+                              />
+                              {attractionImages.length}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        getAttractionPlaceholder(
+                          attraction,
+                        )
+                      )}
+
+                      <Card.Body className="p-3 d-flex flex-column">
+                        <div className="admin-attraction-badge-row">
+                          <Badge className="admin-attraction-category-badge">
+                            {attraction.category}
+                          </Badge>
+
+                          {displayAttractionType && (
+                            <Badge className="admin-attraction-type-badge">
+                              {displayAttractionType}
+                            </Badge>
+                          )}
+                        </div>
+
+                        <h5 className="admin-attraction-name">
+                          {attraction.name}
+                        </h5>
+
+                        {attraction.description && (
+                          <p className="admin-attraction-description">
+                            {attraction.description}
+                          </p>
+                        )}
+
+                        <p className="admin-attraction-location">
+                          <MapPin
+                            size={14}
+                            strokeWidth={2}
+                          />
+
+                          <span>
+                            {attraction.location_address ||
+                              "Location not set"}
+                          </span>
+                        </p>
+
+                        <div
+                          className="d-flex gap-2 flex-wrap mt-auto admin-attraction-card-actions"
+                          onClick={(e) =>
+                            e.stopPropagation()
+                          }
+                        >
+                          <Button
+                            size="sm"
+                            variant="outline-primary"
+                            onClick={() =>
+                              openEdit(attraction)
+                            }
+                            className="admin-edit-button"
+                          >
+                            <Pencil
+                              size={14}
+                              strokeWidth={2}
+                            />
+                            Edit
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            variant="outline-danger"
+                            onClick={() =>
+                              handleDelete(
+                                attraction.id,
+                              )
+                            }
+                            className="admin-delete-button"
+                            aria-label={`Delete ${attraction.name}`}
+                            title="Delete attraction"
+                          >
+                            <Trash2
+                              size={14}
+                              strokeWidth={2}
+                            />
+
+                            <span className="visually-hidden">
+                              Delete
+                            </span>
+                          </Button>
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                );
+              },
+            )}
+          </Row>
+        )}
+
+        {/* =====================================================
+          ADD / EDIT DESTINATION MODAL
+        ===================================================== */}
+
+        <Modal
+          className="admin-attractions-modal"
+          show={showModal}
+          onHide={() => {
+            setShowModal(false);
+            setError("");
+          }}
+          size="lg"
+          centered
+          scrollable
+        >
+          <Modal.Header
+            closeButton
+            className="admin-attraction-form-header"
+            style={{
+              background:
+                CATEGORY_DESIGNS[form.category]
+                  ?.gradient,
+              color: "#fff",
+            }}
+          >
+            <Modal.Title className="admin-modal-title admin-form-modal-title">
+              <span className="admin-form-title-icon">
+                {React.createElement(
+                  getCategoryIcon(form.category),
+                  {
+                    size: 20,
+                    strokeWidth: 2,
+                  },
+                )}
+              </span>
+
+              <span>
+                <span className="admin-form-title-kicker">
+                  Attraction Management
+                </span>
+
+                <span className="admin-form-title-text">
+                  {editing
+                    ? "Edit Attraction"
+                    : "Add Attraction"}
+                </span>
+              </span>
+            </Modal.Title>
+          </Modal.Header>
+
+          <Modal.Body
+            style={{
+              background:
+                CATEGORY_DESIGNS[form.category]
+                  ?.bgPattern,
+              padding: "24px",
+            }}
+          >
+            {error && (
+              <Alert
+                variant="danger"
+                className="mb-3"
               >
-                {CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </Form.Select>
-            </Col>
+                {error}
+              </Alert>
+            )}
 
-            <Col xs={12} md={6}>
-              <Form.Label className="fw-semibold">Attraction Type *</Form.Label>
+            <div className="admin-form-intro">
+              <div className="admin-form-intro-icon">
+                <Info
+                  size={17}
+                  strokeWidth={2.1}
+                />
+              </div>
 
-              <Form.Select
-                value={form.attraction_type}
-                onChange={(e) => fc("attraction_type", e.target.value)}
-              >
-                {(ATTRACTION_TYPES[form.category] || []).map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </Form.Select>
-            </Col>
+              <div>
+                <strong>
+                  {editing
+                    ? "Update attraction details"
+                    : "Create a new attraction"}
+                </strong>
 
-            {form.attraction_type === "Other" && (
-              <Col xs={12} md={6}>
+                <span>
+                  Keep the visitor-facing information
+                  clear, complete, and easy to scan.
+                </span>
+              </div>
+            </div>
+
+            {/* BASIC INFORMATION */}
+
+            <div
+              className="mb-3"
+              style={{
+                fontWeight: 700,
+                fontSize: "1.05rem",
+                color: darkMode
+                  ? "#e0e0e0"
+                  : "#1a5f4a",
+              }}
+            >
+              <span className="admin-form-section-icon">
+                <FileText
+                  size={16}
+                  strokeWidth={2.1}
+                />
+              </span>
+
+              <span>Basic Information</span>
+            </div>
+
+            <Row className="g-3">
+              <Col xs={12} md={8}>
                 <Form.Label className="fw-semibold">
-                  Other Attraction Type *
+                  Attraction Name *
                 </Form.Label>
 
                 <Form.Control
-                  value={form.other_attraction_type}
-                  onChange={(e) => fc("other_attraction_type", e.target.value)}
-                  placeholder="Specify attraction type"
+                  value={form.name}
+                  onChange={(e) =>
+                    fc("name", e.target.value)
+                  }
+                  placeholder="Enter attraction name"
                 />
               </Col>
-            )}
 
-            <Col xs={12}>
-              <Form.Label className="fw-semibold">
-                Full Description *
-              </Form.Label>
+              <Col xs={12} md={4}>
+                <Form.Label className="fw-semibold">
+                  Category *
+                </Form.Label>
 
-              <Form.Control
-                as="textarea"
-                rows={5}
-                value={form.description}
-                onChange={(e) => fc("description", e.target.value)}
-                placeholder="Describe the attraction..."
-              />
-            </Col>
-          </Row>
+                <Form.Select
+                  value={form.category}
+                  onChange={(e) =>
+                    handleCategoryChange(
+                      e.target.value,
+                    )
+                  }
+                >
+                  {CATEGORIES.map((category) => (
+                    <option
+                      key={category}
+                      value={category}
+                    >
+                      {CATEGORY_DESIGNS[category]
+                        ?.icon}{" "}
+                      {category}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Col>
 
-          {/* =================================================
-              VISITOR INFORMATION
-          ================================================= */}
+              <Col xs={12} md={6}>
+                <Form.Label className="fw-semibold">
+                  Attraction Type *
+                </Form.Label>
 
-          <hr className="my-4" />
+                <Form.Select
+                  value={form.attraction_type}
+                  onChange={(e) =>
+                    fc(
+                      "attraction_type",
+                      e.target.value,
+                    )
+                  }
+                >
+                  {(
+                    ATTRACTION_TYPES[
+                      form.category
+                    ] || []
+                  ).map((type) => (
+                    <option
+                      key={type}
+                      value={type}
+                    >
+                      {type}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Col>
 
-          <div
-            className="mb-3"
-            style={{
-              fontWeight: 700,
-
-              fontSize: "1.05rem",
-
-              color: darkMode ? "#e0e0e0" : "#1a5f4a",
-            }}
-          >
-            <><Compass size={16} strokeWidth={1.9} /> Visitor Information</>
-          </div>
-
-          <Row className="g-3">
-            <Col xs={12}>
-              <Form.Label className="fw-semibold">Address</Form.Label>
-
-              <Form.Control
-                value={form.location_address}
-                onChange={(e) => fc("location_address", e.target.value)}
-                placeholder="Enter attraction address"
-              />
-              <Form.Text className="text-muted">
-                If this attraction already exists in the system, its saved address can be filled automatically when the attraction name matches.
-              </Form.Text>
-            </Col>
-
-            <Col xs={12}>
-              <LocationPicker
-                name={form.name}
-                latitude={typeof form.location_lat === "number" ? form.location_lat : null}
-                longitude={typeof form.location_lng === "number" ? form.location_lng : null}
-                address={form.location_address}
-                category={form.category}
-                attractionType={form.attraction_type}
-                searchablePlaces={items.map((item: any) => ({
-                  id: item.id,
-                  name: item.name,
-                  address: item.location_address,
-                }))}
-                onChange={(location: {
-                  latitude: number;
-                  longitude: number;
-                  address?: string;
-                }) => {
-                  fc("location_lat", location.latitude);
-                  fc("location_lng", location.longitude);
-                  if (location.address) fc("location_address", location.address);
-                }}
-              />
-            </Col>
-
-            <Col xs={12} md={4}>
-              <Form.Label className="fw-semibold">Entrance Fee</Form.Label>
-
-              <Form.Control
-                value={form.entrance_fee}
-                onChange={(e) => fc("entrance_fee", e.target.value)}
-                placeholder="₱50 / Free / Not Stated"
-              />
-            </Col>
-          </Row>
-
-          {/* =================================================
-              TOURISM INFORMATION
-          ================================================= */}
-
-          <hr className="my-4" />
-
-          <div
-            className="mb-3"
-            style={{
-              fontWeight: 700,
-
-              fontSize: "1.05rem",
-
-              color: darkMode ? "#e0e0e0" : "#1a5f4a",
-            }}
-          >
-            <><Globe2 size={16} strokeWidth={1.9} /> Tourism Information</>
-          </div>
-
-          <Row className="g-3">
-            <Col xs={12} md={4}>
-              <Form.Label className="fw-semibold">Development Level</Form.Label>
-
-              <Form.Select
-                value={form.development_level}
-                onChange={(e) => fc("development_level", e.target.value)}
-              >
-                <option value="">Select development level</option>
-
-                {DEVELOPMENT_LEVELS.map((level) => (
-                  <option key={level} value={level}>
-                    {level}
-                  </option>
-                ))}
-              </Form.Select>
-            </Col>
-
-            <Col xs={12} md={4}>
-              <Form.Label className="fw-semibold">
-                Online Connectivity
-              </Form.Label>
-
-              <Form.Select
-                value={form.online_connectivity}
-                onChange={(e) => fc("online_connectivity", e.target.value)}
-              >
-                <option value="">Select connectivity</option>
-
-                {ONLINE_CONNECTIVITY_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </Form.Select>
-            </Col>
-
-            <Col xs={12} md={4}>
-              <Form.Label className="fw-semibold">MGT</Form.Label>
-
-              <Form.Select
-                value={form.mgt}
-                onChange={(e) => fc("mgt", e.target.value)}
-              >
-                <option value="">Select management type</option>
-
-                {MGT_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </Form.Select>
-            </Col>
-          </Row>
-
-          {/* =================================================
-              CONTACT INFORMATION
-          ================================================= */}
-
-          <hr className="my-4" />
-
-          <div
-            className="mb-3"
-            style={{
-              fontWeight: 700,
-              fontSize: "1.05rem",
-              color: darkMode ? "#e0e0e0" : "#1a5f4a",
-            }}
-          >
-            <><Phone size={16} strokeWidth={1.9} /> Contact Details</>
-          </div>
-
-          <Row className="g-3">
-            <Col xs={12} md={6}>
-              <Form.Label className="fw-semibold">Mobile</Form.Label>
-              <Form.Control
-                type="tel"
-                value={form.mobile}
-                onChange={(e) => fc("mobile", e.target.value)}
-                placeholder="09XX XXX XXXX"
-              />
-            </Col>
-
-            <Col xs={12} md={6}>
-              <Form.Label className="fw-semibold">Email</Form.Label>
-              <Form.Control
-                type="email"
-                value={form.email}
-                onChange={(e) => fc("email", e.target.value)}
-                placeholder="example@email.com"
-              />
-            </Col>
-          </Row>
-
-          {/* =================================================
-              ATTRACTION DETAILS
-          ================================================= */}
-
-          <hr className="my-4" />
-
-          <div
-            className="mb-3"
-            style={{
-              fontWeight: 700,
-              fontSize: "1.05rem",
-              color: darkMode ? "#e0e0e0" : "#1a5f4a",
-            }}
-          >
-            <><Info size={16} strokeWidth={1.9} /> Attraction Information</>
-          </div>
-
-          <Row className="g-3">
-            <Col xs={12} md={6}>
-              <Form.Label className="fw-semibold">Operational Hours</Form.Label>
-              <Form.Control
-                value={form.operational_hours}
-                onChange={(e) => fc("operational_hours", e.target.value)}
-                placeholder="e.g. Monday–Sunday, 8:00 AM–5:00 PM"
-              />
-            </Col>
-
-            <Col xs={12} md={6}>
-              <Form.Label className="fw-semibold">
-                Best Time to Visit
-              </Form.Label>
-              <Form.Control
-                value={form.best_time_to_visit}
-                onChange={(e) => fc("best_time_to_visit", e.target.value)}
-                placeholder="e.g. November to May / Morning"
-              />
-            </Col>
-
-            <Col xs={12}>
-              <Form.Label className="fw-semibold">Attractions</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                value={form.attractions}
-                onChange={(e) => fc("attractions", e.target.value)}
-                placeholder="List the attractions or notable features visitors can see..."
-              />
-            </Col>
-
-            <Col xs={12}>
-              <Form.Label className="fw-semibold">Things to Do</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                value={form.things_to_do}
-                onChange={(e) => fc("things_to_do", e.target.value)}
-                placeholder="List the activities visitors can do..."
-              />
-            </Col>
-
-            <Col xs={12}>
-              <Form.Label className="fw-semibold">Website</Form.Label>
-              <Form.Control
-                type="url"
-                value={form.website}
-                onChange={(e) => fc("website", e.target.value)}
-                placeholder="https://example.com"
-              />
-            </Col>
-          </Row>
-
-          {/* =================================================
-              DYNAMIC ATTRACTION DETAILS
-          ================================================= */}
-
-          <hr className="my-4" />
-
-          <div
-            className="mb-3"
-            style={{
-              background: CATEGORY_DESIGNS[form.category]?.gradient,
-
-              color: "#fff",
-
-              padding: "12px 16px",
-
-              borderRadius: "8px",
-
-              fontWeight: 600,
-            }}
-          >
-            {CATEGORY_DESIGNS[form.category]?.icon} {form.category}
-            Attraction Details
-          </div>
-
-          <p
-            className="text-muted"
-            style={{
-              fontSize: "0.85rem",
-            }}
-          >
-            Fill in only the information relevant to this attraction.
-          </p>
-
-          {/* =================================================
-              NATURE
-          ================================================= */}
-
-          {form.category === "Nature" && (
-            <Row className="g-3">
-              {form.attraction_type === "Waterfalls" && (
+              {form.attraction_type === "Other" && (
                 <Col xs={12} md={6}>
                   <Form.Label className="fw-semibold">
-                    Waterfall Height
+                    Other Attraction Type *
                   </Form.Label>
 
                   <Form.Control
-                    value={form.waterfall_height}
-                    onChange={(e) => fc("waterfall_height", e.target.value)}
-                    placeholder="e.g. 50 meters"
+                    value={
+                      form.other_attraction_type
+                    }
+                    onChange={(e) =>
+                      fc(
+                        "other_attraction_type",
+                        e.target.value,
+                      )
+                    }
+                    placeholder="Specify attraction type"
                   />
                 </Col>
               )}
 
-              {form.attraction_type === "Beaches" && (
-                <Col xs={12} md={6}>
-                  <Form.Label className="fw-semibold">Beach Type</Form.Label>
+              <Col xs={12}>
+                <Form.Label className="fw-semibold">
+                  Full Description *
+                </Form.Label>
 
-                  <Form.Select
-                    value={form.beach_type}
-                    onChange={(e) => fc("beach_type", e.target.value)}
-                  >
-                    <option value="">Select beach type</option>
-
-                    <option value="White Sand">White Sand</option>
-
-                    <option value="Black Sand">Black Sand</option>
-
-                    <option value="Rocky">Rocky</option>
-
-                    <option value="Mixed">Mixed</option>
-                  </Form.Select>
-                </Col>
-              )}
-
-              {[
-                "Waterfalls",
-                "Beaches",
-                "Caves",
-                "Hot Springs",
-                "Rivers",
-                "Dive Sites",
-              ].includes(form.attraction_type) && (
-                <>
-                  <Col xs={12} md={6}>
-                    <Form.Label className="fw-semibold">Best Season</Form.Label>
-
-                    <Form.Control
-                      value={form.best_season}
-                      onChange={(e) => fc("best_season", e.target.value)}
-                      placeholder="e.g. March to May"
-                    />
-                  </Col>
-
-                  <Col xs={12} md={6}>
-                    <Form.Label className="fw-semibold">
-                      Trekking Difficulty
-                    </Form.Label>
-
-                    <Form.Select
-                      value={form.trekking_difficulty}
-                      onChange={(e) =>
-                        fc("trekking_difficulty", e.target.value)
-                      }
-                    >
-                      <option value="">Select difficulty</option>
-
-                      <option value="Easy">Easy</option>
-
-                      <option value="Moderate">Moderate</option>
-
-                      <option value="Difficult">Difficult</option>
-
-                      <option value="Extreme">Extreme</option>
-                    </Form.Select>
-                  </Col>
-
-                  <Col xs={12}>
-                    <Form.Label className="fw-semibold">
-                      Activities Allowed
-                    </Form.Label>
-
-                    <Form.Control
-                      value={form.activities_allowed}
-                      onChange={(e) => fc("activities_allowed", e.target.value)}
-                      placeholder="Hiking, swimming, camping, diving..."
-                    />
-                  </Col>
-
-                  <Col xs={12}>
-                    <Form.Check
-                      type="checkbox"
-                      label="Swimming Allowed"
-                      checked={Boolean(form.swimming_allowed)}
-                      onChange={(e) => fc("swimming_allowed", e.target.checked)}
-                    />
-                  </Col>
-                </>
-              )}
+                <Form.Control
+                  as="textarea"
+                  rows={5}
+                  value={form.description}
+                  onChange={(e) =>
+                    fc(
+                      "description",
+                      e.target.value,
+                    )
+                  }
+                  placeholder="Describe the attraction..."
+                />
+              </Col>
             </Row>
-          )}
 
-          {/* =================================================
-              HISTORY AND CULTURE
-          ================================================= */}
+            {/* VISITOR INFORMATION */}
 
-          {form.category === "History and Culture" && (
+            <hr className="my-4" />
+
+            <div
+              className="mb-3"
+              style={{
+                fontWeight: 700,
+                fontSize: "1.05rem",
+                color: darkMode
+                  ? "#e0e0e0"
+                  : "#1a5f4a",
+              }}
+            >
+              <span className="admin-form-section-icon">
+                <MapPin
+                  size={16}
+                  strokeWidth={2.1}
+                />
+              </span>
+
+              <span>Visitor Information</span>
+            </div>
+
+            <Row className="g-3">
+              <Col xs={12}>
+                <div className="admin-location-picker-heading">
+                  <div>
+                    <Form.Label className="fw-semibold mb-1">
+                      Set Attraction Location
+                    </Form.Label>
+
+                    <div className="admin-location-helper">
+                      Search the attraction or address,
+                      choose a result, then drag/click
+                      the pin to fine-tune it.
+                    </div>
+                  </div>
+
+                  {typeof form.location_lat ===
+                    "number" &&
+                    typeof form.location_lng ===
+                      "number" && (
+                      <Badge className="admin-location-ready-badge">
+                        Location set
+                      </Badge>
+                    )}
+                </div>
+
+                <LocationPicker
+                  name={form.name}
+                  latitude={form.location_lat}
+                  longitude={form.location_lng}
+                  address={form.location_address}
+                  category={form.category}
+                  attractionType={
+                    form.attraction_type
+                  }
+
+                  /*
+                   * IMPORTANT:
+                   * Existing attraction coordinates are
+                   * intentionally NOT passed here.
+                   *
+                   * This prevents an old/inaccurate
+                   * database pin from appearing as a
+                   * competing search result.
+                   *
+                   * The latitude/longitude above are still
+                   * passed directly to LocationPicker so the
+                   * currently saved pin remains visible
+                   * when editing.
+                   */
+                  searchablePlaces={items.map(
+                    (item: any) => ({
+                      id: item.id,
+                      name: item.name,
+                      address:
+                        item.location_address,
+                    }),
+                  )}
+
+                  onChange={({
+                    latitude,
+                    longitude,
+                    address,
+                  }) => {
+                    fc(
+                      "location_lat",
+                      latitude,
+                    );
+
+                    fc(
+                      "location_lng",
+                      longitude,
+                    );
+
+                    if (address) {
+                      fc(
+                        "location_address",
+                        address,
+                      );
+                    }
+                  }}
+                />
+
+                <Form.Label className="fw-semibold mt-3">
+                  Address
+                </Form.Label>
+
+                <Form.Control
+                  value={form.location_address}
+                  onChange={(e) =>
+                    fc(
+                      "location_address",
+                      e.target.value,
+                    )
+                  }
+                  placeholder="Address will be filled from the selected location, or enter it manually"
+                />
+              </Col>
+
+              <Col xs={12} md={4}>
+                <Form.Label className="fw-semibold">
+                  Entrance Fee
+                </Form.Label>
+
+                <Form.Control
+                  value={form.entrance_fee}
+                  onChange={(e) =>
+                    fc(
+                      "entrance_fee",
+                      e.target.value,
+                    )
+                  }
+                  placeholder="₱50 / Free / Not Stated"
+                />
+              </Col>
+            </Row>
+
+            {/* TOURISM INFORMATION */}
+
+            <hr className="my-4" />
+
+            <div
+              className="mb-3"
+              style={{
+                fontWeight: 700,
+                fontSize: "1.05rem",
+                color: darkMode
+                  ? "#e0e0e0"
+                  : "#1a5f4a",
+              }}
+            >
+              <span className="admin-form-section-icon">
+                <Landmark
+                  size={16}
+                  strokeWidth={2.1}
+                />
+              </span>
+
+              <span>Tourism Information</span>
+            </div>
+
+            <Row className="g-3">
+              <Col xs={12} md={4}>
+                <Form.Label className="fw-semibold">
+                  Development Level
+                </Form.Label>
+
+                <Form.Select
+                  value={
+                    form.development_level
+                  }
+                  onChange={(e) =>
+                    fc(
+                      "development_level",
+                      e.target.value,
+                    )
+                  }
+                >
+                  <option value="">
+                    Select development level
+                  </option>
+
+                  {DEVELOPMENT_LEVELS.map(
+                    (level) => (
+                      <option
+                        key={level}
+                        value={level}
+                      >
+                        {level}
+                      </option>
+                    ),
+                  )}
+                </Form.Select>
+              </Col>
+
+              <Col xs={12} md={4}>
+                <Form.Label className="fw-semibold">
+                  Online Connectivity
+                </Form.Label>
+
+                <Form.Select
+                  value={
+                    form.online_connectivity
+                  }
+                  onChange={(e) =>
+                    fc(
+                      "online_connectivity",
+                      e.target.value,
+                    )
+                  }
+                >
+                  <option value="">
+                    Select connectivity
+                  </option>
+
+                  {ONLINE_CONNECTIVITY_OPTIONS.map(
+                    (option) => (
+                      <option
+                        key={option}
+                        value={option}
+                      >
+                        {option}
+                      </option>
+                    ),
+                  )}
+                </Form.Select>
+              </Col>
+
+              <Col xs={12} md={4}>
+                <Form.Label className="fw-semibold">
+                  MGT
+                </Form.Label>
+
+                <Form.Select
+                  value={form.mgt}
+                  onChange={(e) =>
+                    fc(
+                      "mgt",
+                      e.target.value,
+                    )
+                  }
+                >
+                  <option value="">
+                    Select management type
+                  </option>
+
+                  {MGT_OPTIONS.map((option) => (
+                    <option
+                      key={option}
+                      value={option}
+                    >
+                      {option}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Col>
+            </Row>
+
+            {/* CONTACT INFORMATION */}
+
+            <hr className="my-4" />
+
+            <div
+              className="mb-3"
+              style={{
+                fontWeight: 700,
+                fontSize: "1.05rem",
+                color: darkMode
+                  ? "#e0e0e0"
+                  : "#1a5f4a",
+              }}
+            >
+              <span className="admin-form-section-icon">
+                <Phone
+                  size={16}
+                  strokeWidth={2.1}
+                />
+              </span>
+
+              <span>Contact Details</span>
+            </div>
+
             <Row className="g-3">
               <Col xs={12} md={6}>
                 <Form.Label className="fw-semibold">
-                  Historical Period
+                  Mobile
                 </Form.Label>
 
                 <Form.Control
-                  value={form.historical_period}
-                  onChange={(e) => fc("historical_period", e.target.value)}
-                  placeholder="e.g. Spanish Colonial Era"
+                  type="tel"
+                  value={form.mobile}
+                  onChange={(e) =>
+                    fc(
+                      "mobile",
+                      e.target.value,
+                    )
+                  }
+                  placeholder="09XX XXX XXXX"
                 />
               </Col>
 
-              <Col xs={12}>
+              <Col xs={12} md={6}>
                 <Form.Label className="fw-semibold">
-                  Historical / Cultural Significance
+                  Contact Person
                 </Form.Label>
 
                 <Form.Control
-                  as="textarea"
-                  rows={3}
-                  value={form.significance}
-                  onChange={(e) => fc("significance", e.target.value)}
-                  placeholder="Explain the historical or cultural importance..."
+                  type="text"
+                  value={form.contact_person}
+                  onChange={(e) =>
+                    fc(
+                      "contact_person",
+                      e.target.value,
+                    )
+                  }
+                  placeholder="Enter contact person name"
                 />
               </Col>
             </Row>
-          )}
 
-          {/* =================================================
-              INDUSTRIAL TOURISM
-          ================================================= */}
+            {/* ATTRACTION DETAILS */}
 
-          {form.category === "Industrial Tourism" && (
+            <hr className="my-4" />
+
+            <div
+              className="mb-3"
+              style={{
+                fontWeight: 700,
+                fontSize: "1.05rem",
+                color: darkMode
+                  ? "#e0e0e0"
+                  : "#1a5f4a",
+              }}
+            >
+              Attraction Information
+            </div>
+
             <Row className="g-3">
-              <Col xs={12}>
+              <Col xs={12} md={6}>
                 <Form.Label className="fw-semibold">
-                  Industrial Activity
+                  Operational Hours
                 </Form.Label>
 
                 <Form.Control
-                  value={form.industrial_activity}
-                  onChange={(e) => fc("industrial_activity", e.target.value)}
-                  placeholder="Describe the main industrial activity"
+                  value={
+                    form.operational_hours
+                  }
+                  onChange={(e) =>
+                    fc(
+                      "operational_hours",
+                      e.target.value,
+                    )
+                  }
+                  placeholder="e.g. Monday–Sunday, 8:00 AM–5:00 PM"
                 />
               </Col>
 
-              <Col xs={12}>
+              <Col xs={12} md={6}>
                 <Form.Label className="fw-semibold">
-                  Production Process
+                  Best Time to Visit
                 </Form.Label>
 
                 <Form.Control
-                  as="textarea"
-                  rows={3}
-                  value={form.production_process}
-                  onChange={(e) => fc("production_process", e.target.value)}
-                  placeholder="Describe the production process visitors can see"
-                />
-              </Col>
-
-              <Col xs={12}>
-                <Form.Label className="fw-semibold">Visitor Access</Form.Label>
-
-                <Form.Control
-                  as="textarea"
-                  rows={2}
-                  value={form.visitor_access}
-                  onChange={(e) => fc("visitor_access", e.target.value)}
-                  placeholder="Explain how visitors can access the site"
-                />
-              </Col>
-            </Row>
-          )}
-
-          {/* =================================================
-              SHOPPING
-          ================================================= */}
-
-          {form.category === "Shopping" && (
-            <Row className="g-3">
-              <Col xs={12}>
-                <Form.Label className="fw-semibold">
-                  Products Available
-                </Form.Label>
-
-                <Form.Control
-                  value={form.products_available}
-                  onChange={(e) => fc("products_available", e.target.value)}
-                  placeholder="What can visitors buy here?"
+                  value={
+                    form.best_time_to_visit
+                  }
+                  onChange={(e) =>
+                    fc(
+                      "best_time_to_visit",
+                      e.target.value,
+                    )
+                  }
+                  placeholder="e.g. November to May / Morning"
                 />
               </Col>
 
               <Col xs={12}>
                 <Form.Label className="fw-semibold">
-                  Local Products / Crafts
+                  Attractions
                 </Form.Label>
 
                 <Form.Control
                   as="textarea"
                   rows={3}
-                  value={form.local_products}
-                  onChange={(e) => fc("local_products", e.target.value)}
-                  placeholder="Describe local products, crafts, or souvenirs"
+                  value={form.attractions}
+                  onChange={(e) =>
+                    fc(
+                      "attractions",
+                      e.target.value,
+                    )
+                  }
+                  placeholder="List the attractions or notable features visitors can see..."
+                />
+              </Col>
+
+              <Col xs={12}>
+                <Form.Label className="fw-semibold">
+                  Things to Do
+                </Form.Label>
+
+                <Form.Control
+                  as="textarea"
+                  rows={3}
+                  value={form.things_to_do}
+                  onChange={(e) =>
+                    fc(
+                      "things_to_do",
+                      e.target.value,
+                    )
+                  }
+                  placeholder="List the activities visitors can do..."
+                />
+              </Col>
+
+              <Col xs={12}>
+                <Form.Label className="fw-semibold">
+                  Website
+                </Form.Label>
+
+                <Form.Control
+                  type="url"
+                  value={form.website}
+                  onChange={(e) =>
+                    fc(
+                      "website",
+                      e.target.value,
+                    )
+                  }
+                  placeholder="https://example.com"
                 />
               </Col>
             </Row>
-          )}
 
-          {/* =================================================
-              IMAGES
-          ================================================= */}
+            {/* DYNAMIC ATTRACTION DETAILS */}
 
-          <hr className="my-4" />
+            <hr className="my-4" />
 
-          <div
-            className="mb-3"
-            style={{
-              fontWeight: 700,
+            <div
+              className="mb-3 admin-dynamic-section-heading"
+              style={{
+                background:
+                  CATEGORY_DESIGNS[form.category]
+                    ?.gradient,
+                color: "#fff",
+                padding: "12px 16px",
+                borderRadius: "8px",
+                fontWeight: 600,
+              }}
+            >
+              {React.createElement(
+                getCategoryIcon(form.category),
+                {
+                  size: 16,
+                  strokeWidth: 2.1,
+                },
+              )}
 
-              fontSize: "1.05rem",
+              <span>
+                {form.category} Attraction Details
+              </span>
+            </div>
 
-              color: darkMode ? "#e0e0e0" : "#1a5f4a",
-            }}
-          >
-            <><ImageIcon size={16} strokeWidth={1.9} /> Images</>
-          </div>
+            <p
+              className="text-muted"
+              style={{
+                fontSize: "0.85rem",
+              }}
+            >
+              Fill in only the information relevant to
+              this attraction.
+            </p>
 
-          <Form.Label className="fw-semibold">
-            Add Images
-          </Form.Label>
+            {/* NATURE */}
 
-          <Form.Control
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={(e) => {
-              const target = e.target as HTMLInputElement;
+            {form.category === "Nature" && (
+              <Row className="g-3">
+                {form.attraction_type ===
+                  "Waterfalls" && (
+                  <Col xs={12} md={6}>
+                    <Form.Label className="fw-semibold">
+                      Waterfall Height
+                    </Form.Label>
 
-              setImageFiles(
-                Array.from(target.files || []),
-              );
-            }}
-          />
+                    <Form.Control
+                      value={
+                        form.waterfall_height
+                      }
+                      onChange={(e) =>
+                        fc(
+                          "waterfall_height",
+                          e.target.value,
+                        )
+                      }
+                      placeholder="e.g. 50 meters"
+                    />
+                  </Col>
+                )}
 
-          <small className="text-muted d-block mt-2">
-            You can select one or multiple images at once.
-          </small>
+                {form.attraction_type ===
+                  "Beaches" && (
+                  <Col xs={12} md={6}>
+                    <Form.Label className="fw-semibold">
+                      Beach Type
+                    </Form.Label>
 
-          {editing && getFormImageUrls().length > 0 && (
-            <div className="mt-4">
-              <div
-                className="fw-semibold mb-2"
-                style={{
-                  color: darkMode ? "#e0e0e0" : "#495057",
-                }}
-              >
-                Current Images
-              </div>
-
-              <Row className="g-2">
-                {getFormImageUrls().map((image, index) => (
-                  <Col
-                    xs={6}
-                    md={4}
-                    lg={3}
-                    key={`${image}-${index}`}
-                  >
-                    <div
-                      style={{
-                        position: "relative",
-                        borderRadius: "10px",
-                        overflow: "hidden",
-                        border: darkMode
-                          ? "1px solid #3a3a50"
-                          : "1px solid #e5e9e6",
-                        background: darkMode
-                          ? "#252538"
-                          : "#f8f9fa",
-                      }}
+                    <Form.Select
+                      value={form.beach_type}
+                      onChange={(e) =>
+                        fc(
+                          "beach_type",
+                          e.target.value,
+                        )
+                      }
                     >
-                      <img
-                        src={image}
-                        alt={`Current attraction image ${index + 1}`}
-                        style={{
-                          width: "100%",
-                          height: 120,
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                        onError={(event) => {
-                          event.currentTarget.style.opacity = "0.35";
-                        }}
-                      />
+                      <option value="">
+                        Select beach type
+                      </option>
 
-                      <button
-                        type="button"
-                        onClick={() => removeExistingImage(index)}
-                        style={{
-                          position: "absolute",
-                          top: 6,
-                          right: 6,
-                          width: 28,
-                          height: 28,
-                          border: "none",
-                          borderRadius: "50%",
-                          background: "rgba(220,53,69,0.92)",
-                          color: "#fff",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                          fontWeight: 800,
-                          fontSize: "0.85rem",
-                          lineHeight: 1,
-                        }}
-                        aria-label={`Remove image ${index + 1}`}
+                      <option value="White Sand">
+                        White Sand
+                      </option>
+
+                      <option value="Black Sand">
+                        Black Sand
+                      </option>
+
+                      <option value="Rocky">
+                        Rocky
+                      </option>
+
+                      <option value="Mixed">
+                        Mixed
+                      </option>
+                    </Form.Select>
+                  </Col>
+                )}
+
+                {[
+                  "Waterfalls",
+                  "Beaches",
+                  "Caves",
+                  "Hot Springs",
+                  "Rivers",
+                  "Dive Sites",
+                ].includes(
+                  form.attraction_type,
+                ) && (
+                  <>
+                    <Col xs={12} md={6}>
+                      <Form.Label className="fw-semibold">
+                        Best Season
+                      </Form.Label>
+
+                      <Form.Control
+                        value={form.best_season}
+                        onChange={(e) =>
+                          fc(
+                            "best_season",
+                            e.target.value,
+                          )
+                        }
+                        placeholder="e.g. March to May"
+                      />
+                    </Col>
+
+                    <Col xs={12} md={6}>
+                      <Form.Label className="fw-semibold">
+                        Trekking Difficulty
+                      </Form.Label>
+
+                      <Form.Select
+                        value={
+                          form.trekking_difficulty
+                        }
+                        onChange={(e) =>
+                          fc(
+                            "trekking_difficulty",
+                            e.target.value,
+                          )
+                        }
                       >
-                        ×
-                      </button>
+                        <option value="">
+                          Select difficulty
+                        </option>
 
-                      {index === 0 && (
-                        <span
-                          style={{
-                            position: "absolute",
-                            left: 6,
-                            bottom: 6,
-                            padding: "4px 7px",
-                            borderRadius: "999px",
-                            background: "rgba(26,95,74,0.92)",
-                            color: "#fff",
-                            fontSize: "0.62rem",
-                            fontWeight: 700,
-                          }}
-                        >
-                          Main Image
-                        </span>
-                      )}
-                    </div>
-                  </Col>
-                ))}
-              </Row>
-            </div>
-          )}
+                        <option value="Easy">
+                          Easy
+                        </option>
 
-          {imageFiles.length > 0 && (
-            <div className="mt-4">
-              <div
-                className="fw-semibold mb-2"
-                style={{
-                  color: darkMode ? "#e0e0e0" : "#495057",
-                }}
-              >
-                New Images
-              </div>
+                        <option value="Moderate">
+                          Moderate
+                        </option>
 
-              <Row className="g-2">
-                {imagePreviewUrls.map((preview, index) => (
-                  <Col
-                    xs={6}
-                    md={4}
-                    lg={3}
-                    key={`${preview}-${index}`}
-                  >
-                    <div
-                      style={{
-                        borderRadius: "10px",
-                        overflow: "hidden",
-                        border: darkMode
-                          ? "1px solid #3a3a50"
-                          : "1px solid #e5e9e6",
-                        background: darkMode
-                          ? "#252538"
-                          : "#f8f9fa",
-                      }}
-                    >
-                      <img
-                        src={preview}
-                        alt={`New image ${index + 1}`}
-                        style={{
-                          width: "100%",
-                          height: 120,
-                          objectFit: "cover",
-                          display: "block",
-                        }}
+                        <option value="Difficult">
+                          Difficult
+                        </option>
+
+                        <option value="Extreme">
+                          Extreme
+                        </option>
+                      </Form.Select>
+                    </Col>
+
+                    <Col xs={12}>
+                      <Form.Label className="fw-semibold">
+                        Activities Allowed
+                      </Form.Label>
+
+                      <Form.Control
+                        value={
+                          form.activities_allowed
+                        }
+                        onChange={(e) =>
+                          fc(
+                            "activities_allowed",
+                            e.target.value,
+                          )
+                        }
+                        placeholder="Hiking, swimming, camping, diving..."
                       />
-                    </div>
+                    </Col>
 
-                    <small
-                      className="text-muted d-block mt-1"
-                      style={{
-                        fontSize: "0.65rem",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                      title={imageFiles[index]?.name}
-                    >
-                      {imageFiles[index]?.name}
-                    </small>
-                  </Col>
-                ))}
+                    <Col xs={12}>
+                      <Form.Check
+                        type="checkbox"
+                        label="Swimming Allowed"
+                        checked={Boolean(
+                          form.swimming_allowed,
+                        )}
+                        onChange={(e) =>
+                          fc(
+                            "swimming_allowed",
+                            e.target.checked,
+                          )
+                        }
+                      />
+                    </Col>
+                  </>
+                )}
               </Row>
+            )}
 
-              <small className="text-muted d-block mt-2">
-                {imageFiles.length} new image
-                {imageFiles.length !== 1 ? "s" : ""} selected.
-              </small>
+            {/* HISTORY AND CULTURE */}
+
+            {form.category ===
+              "History and Culture" && (
+              <Row className="g-3">
+                <Col xs={12} md={6}>
+                  <Form.Label className="fw-semibold">
+                    Historical Period
+                  </Form.Label>
+
+                  <Form.Control
+                    value={
+                      form.historical_period
+                    }
+                    onChange={(e) =>
+                      fc(
+                        "historical_period",
+                        e.target.value,
+                      )
+                    }
+                    placeholder="e.g. Spanish Colonial Era"
+                  />
+                </Col>
+
+                <Col xs={12}>
+                  <Form.Label className="fw-semibold">
+                    Historical / Cultural
+                    Significance
+                  </Form.Label>
+
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    value={form.significance}
+                    onChange={(e) =>
+                      fc(
+                        "significance",
+                        e.target.value,
+                      )
+                    }
+                    placeholder="Explain the historical or cultural importance..."
+                  />
+                </Col>
+              </Row>
+            )}
+
+            {/* INDUSTRIAL TOURISM */}
+
+            {form.category ===
+              "Industrial Tourism" && (
+              <Row className="g-3">
+                <Col xs={12}>
+                  <Form.Label className="fw-semibold">
+                    Industrial Activity
+                  </Form.Label>
+
+                  <Form.Control
+                    value={
+                      form.industrial_activity
+                    }
+                    onChange={(e) =>
+                      fc(
+                        "industrial_activity",
+                        e.target.value,
+                      )
+                    }
+                    placeholder="Describe the main industrial activity"
+                  />
+                </Col>
+
+                <Col xs={12}>
+                  <Form.Label className="fw-semibold">
+                    Production Process
+                  </Form.Label>
+
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    value={
+                      form.production_process
+                    }
+                    onChange={(e) =>
+                      fc(
+                        "production_process",
+                        e.target.value,
+                      )
+                    }
+                    placeholder="Describe the production process visitors can see"
+                  />
+                </Col>
+
+                <Col xs={12}>
+                  <Form.Label className="fw-semibold">
+                    Visitor Access
+                  </Form.Label>
+
+                  <Form.Control
+                    as="textarea"
+                    rows={2}
+                    value={form.visitor_access}
+                    onChange={(e) =>
+                      fc(
+                        "visitor_access",
+                        e.target.value,
+                      )
+                    }
+                    placeholder="Explain how visitors can access the site"
+                  />
+                </Col>
+              </Row>
+            )}
+
+            {/* SHOPPING */}
+
+            {form.category === "Shopping" && (
+              <Row className="g-3">
+                <Col xs={12}>
+                  <Form.Label className="fw-semibold">
+                    Products Available
+                  </Form.Label>
+
+                  <Form.Control
+                    value={
+                      form.products_available
+                    }
+                    onChange={(e) =>
+                      fc(
+                        "products_available",
+                        e.target.value,
+                      )
+                    }
+                    placeholder="What can visitors buy here?"
+                  />
+                </Col>
+
+                <Col xs={12}>
+                  <Form.Label className="fw-semibold">
+                    Local Products / Crafts
+                  </Form.Label>
+
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    value={form.local_products}
+                    onChange={(e) =>
+                      fc(
+                        "local_products",
+                        e.target.value,
+                      )
+                    }
+                    placeholder="Describe local products, crafts, or souvenirs"
+                  />
+                </Col>
+              </Row>
+            )}
+
+            {/* IMAGES */}
+
+            <hr className="my-4" />
+
+            <div
+              className="mb-3"
+              style={{
+                fontWeight: 700,
+                fontSize: "1.05rem",
+                color: darkMode
+                  ? "#e0e0e0"
+                  : "#1a5f4a",
+              }}
+            >
+              <span className="admin-form-section-icon">
+                <ImageIcon
+                  size={16}
+                  strokeWidth={2.1}
+                />
+              </span>
+
+              <span>Images</span>
             </div>
-          )}
 
-          {/* =================================================
-              TAGS
-          ================================================= */}
-
-          <div className="mt-3">
-            <Form.Label className="fw-semibold">Tags</Form.Label>
+            <Form.Label className="fw-semibold admin-image-upload-label">
+              <ImageIcon
+                size={14}
+                strokeWidth={2}
+              />
+              Add Images
+            </Form.Label>
 
             <Form.Control
-              value={form.tags}
-              onChange={(e) => fc("tags", e.target.value)}
-              placeholder="nature, family-friendly, adventure"
-            />
-          </div>
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={(e) => {
+                const target =
+                  e.target as HTMLInputElement;
 
-          {/* =================================================
-              SHOW ON WELCOME
-          ================================================= */}
-
-          <div
-            className="mt-4 p-3"
-            style={{
-              background: darkMode ? "#252538" : "#f8f9fa",
-
-              borderRadius: "10px",
-            }}
-          >
-            <Form.Check
-              type="checkbox"
-              label={
-                <>
-                  <House size={14} strokeWidth={1.9} /> Show on Welcome Page
-                </>
-              }
-              checked={Boolean(form.show_on_welcome)}
-              onChange={(e) => fc("show_on_welcome", e.target.checked)}
-              style={{
-                fontWeight: 600,
+                setImageFiles(
+                  Array.from(
+                    target.files || [],
+                  ),
+                );
               }}
             />
 
-            <small className="text-muted d-block mt-1">
-              Enable this if this attraction should appear on the public welcome
-              page.
+            <small className="text-muted d-block mt-2">
+              You can select one or multiple images at
+              once.
             </small>
-          </div>
-        </Modal.Body>
 
-        <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setShowModal(false);
+            {editing &&
+              getFormImageUrls().length > 0 && (
+                <div className="mt-4">
+                  <div
+                    className="fw-semibold mb-2"
+                    style={{
+                      color: darkMode
+                        ? "#e0e0e0"
+                        : "#495057",
+                    }}
+                  >
+                    Current Images
+                  </div>
 
-              setError("");
-            }}
-            style={{
-              borderRadius: "8px",
-            }}
-          >
-            Cancel
-          </Button>
+                  <Row className="g-2">
+                    {getFormImageUrls().map(
+                      (image, index) => (
+                        <Col
+                          xs={6}
+                          md={4}
+                          lg={3}
+                          key={`${image}-${index}`}
+                        >
+                          <div
+                            style={{
+                              position:
+                                "relative",
+                              borderRadius:
+                                "10px",
+                              overflow:
+                                "hidden",
+                              border: darkMode
+                                ? "1px solid #3a3a50"
+                                : "1px solid #e5e9e6",
+                              background:
+                                darkMode
+                                  ? "#252538"
+                                  : "#f8f9fa",
+                            }}
+                          >
+                            <img
+                              src={image}
+                              alt={`Current attraction image ${
+                                index + 1
+                              }`}
+                              style={{
+                                width: "100%",
+                                height: 120,
+                                objectFit:
+                                  "cover",
+                                display:
+                                  "block",
+                              }}
+                              onError={(
+                                event,
+                              ) => {
+                                event.currentTarget.style.opacity =
+                                  "0.35";
+                              }}
+                            />
 
-          <Button
-            variant="primary"
-            onClick={handleSave}
-            disabled={saving || uploading}
-            style={{
-              background: CATEGORY_DESIGNS[form.category]?.gradient,
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeExistingImage(
+                                  index,
+                                )
+                              }
+                              style={{
+                                position:
+                                  "absolute",
+                                top: 6,
+                                right: 6,
+                                width: 28,
+                                height: 28,
+                                border: "none",
+                                borderRadius:
+                                  "50%",
+                                background:
+                                  "rgba(220,53,69,0.92)",
+                                color: "#fff",
+                                display: "flex",
+                                alignItems:
+                                  "center",
+                                justifyContent:
+                                  "center",
+                                cursor:
+                                  "pointer",
+                                fontWeight: 800,
+                                fontSize:
+                                  "0.85rem",
+                                lineHeight: 1,
+                              }}
+                              aria-label={`Remove image ${
+                                index + 1
+                              }`}
+                            >
+                              ×
+                            </button>
 
-              border: "none",
+                            {index === 0 && (
+                              <span
+                                style={{
+                                  position:
+                                    "absolute",
+                                  left: 6,
+                                  bottom: 6,
+                                  padding:
+                                    "4px 7px",
+                                  borderRadius:
+                                    "999px",
+                                  background:
+                                    "rgba(26,95,74,0.92)",
+                                  color: "#fff",
+                                  fontSize:
+                                    "0.62rem",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                Main Image
+                              </span>
+                            )}
+                          </div>
+                        </Col>
+                      ),
+                    )}
+                  </Row>
+                </div>
+              )}
 
-              borderRadius: "8px",
+            {imageFiles.length > 0 && (
+              <div className="mt-4">
+                <div
+                  className="fw-semibold mb-2"
+                  style={{
+                    color: darkMode
+                      ? "#e0e0e0"
+                      : "#495057",
+                  }}
+                >
+                  New Images
+                </div>
 
-              padding: "10px 24px",
+                <Row className="g-2">
+                  {imagePreviewUrls.map(
+                    (preview, index) => (
+                      <Col
+                        xs={6}
+                        md={4}
+                        lg={3}
+                        key={`${preview}-${index}`}
+                      >
+                        <div
+                          style={{
+                            borderRadius:
+                              "10px",
+                            overflow:
+                              "hidden",
+                            border: darkMode
+                              ? "1px solid #3a3a50"
+                              : "1px solid #e5e9e6",
+                            background:
+                              darkMode
+                                ? "#252538"
+                                : "#f8f9fa",
+                          }}
+                        >
+                          <img
+                            src={preview}
+                            alt={`New image ${
+                              index + 1
+                            }`}
+                            style={{
+                              width: "100%",
+                              height: 120,
+                              objectFit:
+                                "cover",
+                              display: "block",
+                            }}
+                          />
+                        </div>
 
-              fontWeight: 600,
-            }}
-          >
-            {uploading
-              ? "Uploading Images..."
-              : saving
-                ? "Saving..."
-                : editing
-                  ? "Save Changes"
-                  : "Save Attraction"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+                        <small
+                          className="text-muted d-block mt-1"
+                          style={{
+                            fontSize:
+                              "0.65rem",
+                            overflow:
+                              "hidden",
+                            textOverflow:
+                              "ellipsis",
+                            whiteSpace:
+                              "nowrap",
+                          }}
+                          title={
+                            imageFiles[index]
+                              ?.name
+                          }
+                        >
+                          {
+                            imageFiles[index]
+                              ?.name
+                          }
+                        </small>
+                      </Col>
+                    ),
+                  )}
+                </Row>
 
-      {/* =====================================================
+                <small className="text-muted d-block mt-2">
+                  {imageFiles.length} new image
+                  {imageFiles.length !== 1
+                    ? "s"
+                    : ""}{" "}
+                  selected.
+                </small>
+              </div>
+            )}
+
+            {/* TAGS */}
+
+            <div className="mt-3">
+              <Form.Label className="fw-semibold">
+                Tags
+              </Form.Label>
+
+              <Form.Control
+                value={form.tags}
+                onChange={(e) =>
+                  fc(
+                    "tags",
+                    e.target.value,
+                  )
+                }
+                placeholder="nature, family-friendly, adventure"
+              />
+            </div>
+
+            {/* SHOW ON WELCOME */}
+
+            <div
+              className="mt-4 p-3"
+              style={{
+                background: darkMode
+                  ? "#252538"
+                  : "#f8f9fa",
+                borderRadius: "10px",
+              }}
+            >
+              <Form.Check
+                type="checkbox"
+                label={
+                  <span className="admin-checkbox-label">
+                    Show on Welcome Page
+                  </span>
+                }
+                checked={Boolean(
+                  form.show_on_welcome,
+                )}
+                onChange={(e) =>
+                  fc(
+                    "show_on_welcome",
+                    e.target.checked,
+                  )
+                }
+                style={{
+                  fontWeight: 600,
+                }}
+              />
+
+              <small className="text-muted d-block mt-1">
+                Enable this if this attraction should
+                appear on the public welcome page.
+              </small>
+            </div>
+          </Modal.Body>
+
+          <Modal.Footer>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowModal(false);
+                setError("");
+              }}
+              style={{
+                borderRadius: "8px",
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              variant="primary"
+              onClick={handleSave}
+              disabled={saving || uploading}
+              style={{
+                background:
+                  CATEGORY_DESIGNS[form.category]
+                    ?.gradient,
+                border: "none",
+                borderRadius: "8px",
+                padding: "10px 24px",
+                fontWeight: 600,
+              }}
+            >
+              {uploading
+                ? "Uploading Images..."
+                : saving
+                  ? "Saving..."
+                  : editing
+                    ? "Save Changes"
+                    : "Save Attraction"}
+            </Button>
+          </Modal.Footer>
+        </Modal>
+
+        {/* =====================================================
           DETAIL VIEW
-      ===================================================== */}
+        ===================================================== */}
 
-      {viewItem && (
+        {viewItem && (
+          <Modal
+            className="admin-attractions-modal admin-attractions-detail-modal"
+            show={!!viewItem}
+            onHide={() => setViewItem(null)}
+            size="lg"
+            centered
+            fullscreen="sm-down"
+          >
+            <Modal.Header closeButton>
+              <Modal.Title className="admin-modal-title">
+                {(viewItem as any).name}
+              </Modal.Title>
+            </Modal.Header>
+
+            <Modal.Body>
+              {(viewItem as any).images?.length >
+                0 && (
+                <img
+                  src={
+                    (viewItem as any).images[0]
+                  }
+                  alt={(viewItem as any).name}
+                  style={{
+                    width: "100%",
+                    height: 300,
+                    objectFit: "cover",
+                    borderRadius: "12px",
+                    marginBottom: "20px",
+                  }}
+                />
+              )}
+
+              <div className="d-flex gap-2 flex-wrap mb-3">
+                <Badge
+                  style={{
+                    background:
+                      getCategoryColor(
+                        (viewItem as any)
+                          .category,
+                      ),
+                  }}
+                >
+                  {(viewItem as any).category}
+                </Badge>
+
+                {(viewItem as any)
+                  .attraction_type && (
+                  <Badge
+                    bg="light"
+                    text="dark"
+                  >
+                    {(viewItem as any)
+                      .attraction_type ===
+                    "Other"
+                      ? (viewItem as any)
+                          .other_attraction_type ||
+                        "Other"
+                      : (viewItem as any)
+                          .attraction_type}
+                  </Badge>
+                )}
+
+                {((viewItem as any)
+                  .show_on_welcome ??
+                  (viewItem as any)
+                    .showOnWelcome) && (
+                  <Badge
+                    style={{
+                      background: "#20c997",
+                    }}
+                  >
+                    <Home
+                      size={12}
+                      strokeWidth={2.1}
+                    />
+                    Welcome Page
+                  </Badge>
+                )}
+              </div>
+
+              <p>
+                {(viewItem as any).description}
+              </p>
+
+              <hr />
+
+              <p>
+                <strong className="admin-detail-label">
+                  Address:
+                </strong>{" "}
+                {(viewItem as any)
+                  .location_address ||
+                  "Address not specified"}
+              </p>
+
+              <p>
+                <strong className="admin-detail-label">
+                  Entrance Fee:
+                </strong>{" "}
+                {(viewItem as any).entrance_fee ||
+                  "Not specified"}
+              </p>
+
+              <p>
+                <strong className="admin-detail-label">
+                  Operational Hours:
+                </strong>{" "}
+                {(viewItem as any)
+                  .operational_hours ||
+                  (viewItem as any)
+                    .opening_hours ||
+                  "Not specified"}
+              </p>
+
+              {(viewItem as any)
+                .best_time_to_visit && (
+                <p>
+                  <strong className="admin-detail-label">
+                    Best Time to Visit:
+                  </strong>{" "}
+                  {(viewItem as any)
+                    .best_time_to_visit}
+                </p>
+              )}
+
+              {(viewItem as any).mobile && (
+                <p>
+                  <strong className="admin-detail-label">
+                    Mobile:
+                  </strong>{" "}
+                  {(viewItem as any).mobile}
+                </p>
+              )}
+
+              {(viewItem as any)
+                .contact_person && (
+                <p>
+                  <strong className="admin-detail-label">
+                    Contact Person:
+                  </strong>{" "}
+                  {(viewItem as any)
+                    .contact_person}
+                </p>
+              )}
+
+              {(viewItem as any).attractions && (
+                <div className="mb-3">
+                  <strong className="admin-detail-label">
+                    Attractions:
+                  </strong>
+
+                  <p className="mt-1">
+                    {(viewItem as any)
+                      .attractions}
+                  </p>
+                </div>
+              )}
+
+              {(viewItem as any).things_to_do && (
+                <div className="mb-3">
+                  <strong className="admin-detail-label">
+                    Things to Do:
+                  </strong>
+
+                  <p className="mt-1">
+                    {(viewItem as any)
+                      .things_to_do}
+                  </p>
+                </div>
+              )}
+
+              {(viewItem as any).website && (
+                <p>
+                  <strong className="admin-detail-label">
+                    Website:
+                  </strong>{" "}
+                  <a
+                    href={
+                      (viewItem as any)
+                        .website
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {(viewItem as any)
+                      .website}
+                  </a>
+                </p>
+              )}
+
+              {(viewItem as any)
+                .development_level && (
+                <p>
+                  <strong className="admin-detail-label">
+                    Development Level:
+                  </strong>{" "}
+                  {(viewItem as any)
+                    .development_level}
+                </p>
+              )}
+
+              {(viewItem as any)
+                .online_connectivity && (
+                <p>
+                  <strong className="admin-detail-label">
+                    Online Connectivity:
+                  </strong>{" "}
+                  {(viewItem as any)
+                    .online_connectivity}
+                </p>
+              )}
+
+              {(viewItem as any).mgt && (
+                <p>
+                  <strong className="admin-detail-label">
+                    MGT:
+                  </strong>{" "}
+                  {(viewItem as any).mgt}
+                </p>
+              )}
+
+              {buildGoogleMapsDirectionsUrl(
+                viewItem,
+              ) && (
+                <div className="mt-4">
+                  <Button
+                    variant="success"
+                    as="a"
+                    href={buildGoogleMapsDirectionsUrl(
+                      viewItem,
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      border: "none",
+                      borderRadius: "8px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    <Navigation
+                      size={15}
+                      strokeWidth={2}
+                    />
+                    Get Directions
+                  </Button>
+                </div>
+              )}
+            </Modal.Body>
+
+            <Modal.Footer>
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  setViewItem(null)
+                }
+              >
+                Close
+              </Button>
+            </Modal.Footer>
+          </Modal>
+        )}
+
+        {/* =====================================================
+          CATEGORIES MODAL
+        ===================================================== */}
+
         <Modal
-          className="admin-attractions-modal admin-attractions-detail-modal"
-          show={!!viewItem}
-          onHide={() => setViewItem(null)}
-          size="lg"
+          className="admin-attractions-modal"
+          show={showCategoriesModal}
+          onHide={() =>
+            setShowCategoriesModal(false)
+          }
           centered
-          fullscreen="sm-down"
         >
           <Modal.Header closeButton>
-            <Modal.Title>
-              {CATEGORY_DESIGNS[(viewItem as any).category]?.icon}{" "}
-              {(viewItem as any).name}
+            <Modal.Title className="admin-modal-title">
+              Categories
             </Modal.Title>
           </Modal.Header>
 
           <Modal.Body>
-            {(viewItem as any).images?.length > 0 && (
-              <img
-                src={(viewItem as any).images[0]}
-                alt={(viewItem as any).name}
-                style={{
-                  width: "100%",
+            <Row className="g-3">
+              {CATEGORIES.map((category) => {
+                const count = items.filter(
+                  (attraction: any) =>
+                    attraction.category ===
+                    category,
+                ).length;
 
-                  height: 300,
+                return (
+                  <Col
+                    xs={6}
+                    key={category}
+                  >
+                    <Card
+                      className="border-0 h-100"
+                      style={{
+                        borderRadius: "12px",
+                        background:
+                          CATEGORY_DESIGNS[
+                            category
+                          ]?.gradient,
+                        color: "#fff",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => {
+                        setCategoryFilter(
+                          category,
+                        );
 
-                  objectFit: "cover",
+                        setShowCategoriesModal(
+                          false,
+                        );
+                      }}
+                    >
+                      <Card.Body className="text-center">
+                        <div
+                          style={{
+                            fontSize: "2rem",
+                          }}
+                        >
+                          {React.createElement(
+                            getCategoryIcon(
+                              category,
+                            ),
+                            {
+                              size: 29,
+                              strokeWidth: 1.7,
+                            },
+                          )}
+                        </div>
 
-                  borderRadius: "12px",
+                        <div
+                          style={{
+                            fontWeight: 600,
+                          }}
+                        >
+                          {category}
+                        </div>
 
-                  marginBottom: "20px",
-                }}
-              />
-            )}
+                        <div
+                          style={{
+                            fontSize: "1.5rem",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {count}
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                );
+              })}
+            </Row>
+          </Modal.Body>
 
-            <div className="d-flex gap-2 flex-wrap mb-3">
-              <Badge
-                style={{
-                  background: getCategoryColor((viewItem as any).category),
-                }}
-              >
-                {(viewItem as any).category}
-              </Badge>
+          <Modal.Footer>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                setShowCategoriesModal(false)
+              }
+            >
+              Close
+            </Button>
+          </Modal.Footer>
+        </Modal>
 
-              {(viewItem as any).attraction_type && (
-                <Badge bg="light" text="dark">
-                  {(viewItem as any).attraction_type === "Other"
-                    ? (viewItem as any).other_attraction_type || "Other"
-                    : (viewItem as any).attraction_type}
-                </Badge>
+        {/* =====================================================
+          ACTIVE DESTINATIONS MODAL
+        ===================================================== */}
+
+        <Modal
+          className="admin-attractions-modal"
+          show={showActiveModal}
+          onHide={() =>
+            setShowActiveModal(false)
+          }
+          size="lg"
+          centered
+        >
+          <Modal.Header closeButton>
+            <Modal.Title className="admin-modal-title">
+              Attractions
+            </Modal.Title>
+          </Modal.Header>
+
+          <Modal.Body>
+            <Row className="g-3">
+              {filteredItems.map(
+                (attraction: any) => (
+                  <Col
+                    xs={12}
+                    sm={6}
+                    key={attraction.id}
+                  >
+                    <Card
+                      className="border-0"
+                      style={{
+                        borderRadius: "12px",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => {
+                        setViewItem(
+                          attraction,
+                        );
+
+                        setShowActiveModal(
+                          false,
+                        );
+                      }}
+                    >
+                      <Card.Body>
+                        <div className="d-flex align-items-center gap-3">
+                          {attraction.images
+                            ?.length >
+                            0 && (
+                            <img
+                              src={
+                                attraction
+                                  .images[0]
+                              }
+                              alt={
+                                attraction.name
+                              }
+                              style={{
+                                width: 60,
+                                height: 60,
+                                borderRadius:
+                                  "8px",
+                                objectFit:
+                                  "cover",
+                              }}
+                            />
+                          )}
+
+                          <div>
+                            <h6 className="fw-bold mb-1">
+                              {
+                                attraction.name
+                              }
+                            </h6>
+
+                            <Badge
+                              style={{
+                                background:
+                                  getCategoryColor(
+                                    attraction.category,
+                                  ),
+                              }}
+                            >
+                              {
+                                attraction.category
+                              }
+                            </Badge>
+                          </div>
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                ),
               )}
+            </Row>
 
-              {((viewItem as any).show_on_welcome ??
-                (viewItem as any).showOnWelcome) && (
-                <Badge
+            {filteredItems.length === 0 && (
+              <div className="text-center py-5">
+                <div
                   style={{
-                    background: "#20c997",
+                    width: 58,
+                    height: 58,
+                    margin:
+                      "0 auto 12px",
+                    borderRadius: 16,
+                    display: "flex",
+                    alignItems:
+                      "center",
+                    justifyContent:
+                      "center",
+                    background:
+                      "#eef0ff",
+                    color:
+                      CALBAYOG_BLUE,
                   }}
                 >
-                  <><House size={12} strokeWidth={1.9} /> Welcome Page</>
-                </Badge>
-              )}
-            </div>
+                  <MapPinned
+                    size={29}
+                    strokeWidth={1.7}
+                  />
+                </div>
 
-            <p>{(viewItem as any).description}</p>
-
-            <hr />
-
-            <p>
-              <strong><MapPin size={13} strokeWidth={1.9} /> Address:</strong>{" "}
-              {(viewItem as any).location_address || "Address not specified"}
-            </p>
-
-            <p>
-              <strong><Ticket size={13} strokeWidth={1.9} /> Entrance Fee:</strong>{" "}
-              {(viewItem as any).entrance_fee || "Not specified"}
-            </p>
-
-            <p>
-              <strong><Clock3 size={13} strokeWidth={1.9} /> Operational Hours:</strong>{" "}
-              {(viewItem as any).operational_hours ||
-                (viewItem as any).opening_hours ||
-                "Not specified"}
-            </p>
-
-            {(viewItem as any).best_time_to_visit && (
-              <p>
-                <strong><Leaf size={13} strokeWidth={1.9} /> Best Time to Visit:</strong>{" "}
-                {(viewItem as any).best_time_to_visit}
-              </p>
-            )}
-
-            {(viewItem as any).mobile && (
-              <p>
-                <strong><Phone size={13} strokeWidth={1.9} /> Mobile:</strong> {(viewItem as any).mobile}
-              </p>
-            )}
-
-            {(viewItem as any).email && (
-              <p>
-                <strong><Mail size={13} strokeWidth={1.9} /> Email:</strong> {(viewItem as any).email}
-              </p>
-            )}
-
-            {(viewItem as any).attractions && (
-              <div className="mb-3">
-                <strong><Landmark size={13} strokeWidth={1.9} /> Attractions:</strong>
-                <p className="mt-1">{(viewItem as any).attractions}</p>
-              </div>
-            )}
-
-            {(viewItem as any).things_to_do && (
-              <div className="mb-3">
-                <strong><Compass size={13} strokeWidth={1.9} /> Things to Do:</strong>
-                <p className="mt-1">{(viewItem as any).things_to_do}</p>
-              </div>
-            )}
-
-            {(viewItem as any).website && (
-              <p>
-                <strong><Globe2 size={13} strokeWidth={1.9} /> Website:</strong>{" "}
-                <a
-                  href={(viewItem as any).website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {(viewItem as any).website}
-                </a>
-              </p>
-            )}
-
-            {(viewItem as any).development_level && (
-              <p>
-                <strong><BarChart3 size={13} strokeWidth={1.9} /> Development Level:</strong>{" "}
-                {(viewItem as any).development_level}
-              </p>
-            )}
-
-            {(viewItem as any).online_connectivity && (
-              <p>
-                <strong><Globe2 size={13} strokeWidth={1.9} /> Online Connectivity:</strong>{" "}
-                {(viewItem as any).online_connectivity}
-              </p>
-            )}
-
-            {(viewItem as any).mgt && (
-              <p>
-                <strong><Building2 size={13} strokeWidth={1.9} /> MGT:</strong> {(viewItem as any).mgt}
-              </p>
-            )}
-
-            {buildGoogleMapsDirectionsUrl(viewItem) && (
-              <div className="mt-4">
-                <Button
-                  variant="success"
-                  as="a"
-                  href={buildGoogleMapsDirectionsUrl(viewItem)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    border: "none",
-                    borderRadius: "8px",
-                    fontWeight: 600,
-                  }}
-                >
-                  <><Compass size={14} strokeWidth={1.9} /> Get Directions</>
-                </Button>
+                <p className="text-muted">
+                  No attractions found.
+                </p>
               </div>
             )}
           </Modal.Body>
 
           <Modal.Footer>
-            <Button variant="secondary" onClick={() => setViewItem(null)}>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                setShowActiveModal(
+                  false,
+                )
+              }
+            >
               Close
             </Button>
           </Modal.Footer>
         </Modal>
-      )}
-
-      {/* =====================================================
-          CATEGORIES MODAL
-      ===================================================== */}
-
-      <Modal
-        className="admin-attractions-modal"
-        show={showCategoriesModal}
-        onHide={() => setShowCategoriesModal(false)}
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title><Landmark size={18} strokeWidth={1.9} /> Categories</Modal.Title>
-        </Modal.Header>
-
-        <Modal.Body>
-          <Row className="g-3">
-            {CATEGORIES.map((category) => {
-              const count = items.filter(
-                (attraction: any) => attraction.category === category,
-              ).length;
-
-              return (
-                <Col xs={6} key={category}>
-                  <Card
-                    className="border-0 h-100"
-                    style={{
-                      borderRadius: "12px",
-
-                      background: CATEGORY_DESIGNS[category]?.gradient,
-
-                      color: "#fff",
-
-                      cursor: "pointer",
-                    }}
-                    onClick={() => {
-                      setCategoryFilter(category);
-
-                      setShowCategoriesModal(false);
-                    }}
-                  >
-                    <Card.Body className="text-center">
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          marginBottom: "7px",
-                        }}
-                      >
-                        {React.createElement(
-                          CATEGORY_DESIGNS[category]?.icon || MapPin,
-                          { size: 30, strokeWidth: 1.7 },
-                        )}
-                      </div>
-
-                      <div
-                        style={{
-                          fontWeight: 600,
-                        }}
-                      >
-                        {category}
-                      </div>
-
-                      <div
-                        style={{
-                          fontSize: "1.5rem",
-
-                          fontWeight: 700,
-                        }}
-                      >
-                        {count}
-                      </div>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              );
-            })}
-          </Row>
-        </Modal.Body>
-
-        <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() => setShowCategoriesModal(false)}
-          >
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* =====================================================
-          ACTIVE DESTINATIONS MODAL
-      ===================================================== */}
-
-      <Modal
-        className="admin-attractions-modal"
-        show={showActiveModal}
-        onHide={() => setShowActiveModal(false)}
-        size="lg"
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title><MapPin size={18} strokeWidth={1.9} /> Attractions</Modal.Title>
-        </Modal.Header>
-
-        <Modal.Body>
-          <Row className="g-3">
-            {filteredItems.map((attraction: any) => (
-              <Col xs={12} sm={6} key={attraction.id}>
-                <Card
-                  className="border-0"
-                  style={{
-                    borderRadius: "12px",
-
-                    cursor: "pointer",
-                  }}
-                  onClick={() => {
-                    setViewItem(attraction);
-
-                    setShowActiveModal(false);
-                  }}
-                >
-                  <Card.Body>
-                    <div className="d-flex align-items-center gap-3">
-                      {attraction.images?.length > 0 && (
-                        <img
-                          src={attraction.images[0]}
-                          alt={attraction.name}
-                          style={{
-                            width: 60,
-
-                            height: 60,
-
-                            borderRadius: "8px",
-
-                            objectFit: "cover",
-                          }}
-                        />
-                      )}
-
-                      <div>
-                        <h6 className="fw-bold mb-1">{attraction.name}</h6>
-
-                        <Badge
-                          style={{
-                            background: getCategoryColor(attraction.category),
-                          }}
-                        >
-                          {attraction.category}
-                        </Badge>
-                      </div>
-                    </div>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-
-          {filteredItems.length === 0 && (
-            <div className="text-center py-5">
-              <div className="admin-empty-icon">
-                <SearchX size={30} strokeWidth={1.7} />
-              </div>
-
-              <p className="text-muted">No attractions found.</p>
-            </div>
-          )}
-        </Modal.Body>
-
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowActiveModal(false)}>
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
-        </div>
+      </div>
     </AdminLayout>
   );
 };
