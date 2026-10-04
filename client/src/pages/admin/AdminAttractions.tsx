@@ -3691,6 +3691,22 @@ const AdminAttractions: React.FC = () => {
                       name: item.name,
                       address:
                         item.location_address,
+                      latitude:
+                        typeof item.location_lat === "number"
+                          ? item.location_lat
+                          : Number.isFinite(
+                              Number(item.location_lat),
+                            )
+                            ? Number(item.location_lat)
+                            : null,
+                      longitude:
+                        typeof item.location_lng === "number"
+                          ? item.location_lng
+                          : Number.isFinite(
+                              Number(item.location_lng),
+                            )
+                            ? Number(item.location_lng)
+                            : null,
                     }),
                   )}
 
