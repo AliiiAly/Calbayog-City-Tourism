@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 
 import AdminLayout from "../../components/admin/AdminLayout";
-import LocationPicker from "../../components/LocationPicker";
+import LocationPicker from "../../components/admin/LocationPicker";
 
 import {
   getAccommodations,
@@ -387,7 +387,7 @@ const ADMIN_ACCOMMODATIONS_STYLES = `
   .admin-clear-filters { display:inline-flex !important; align-items:center; gap:5px; padding:0 !important; color:#2D3195 !important; font-size:.66rem !important; font-weight:800 !important; text-decoration:none !important; }
 
   /* -------------------------------
-     CARDS
+     ACCOMMODATION CARDS — MATCHES ADMINATTRACTIONS
   -------------------------------- */
 
   .admin-accommodations-grid > .col { display:flex; }
@@ -398,24 +398,28 @@ const ADMIN_ACCOMMODATIONS_STYLES = `
     min-height: 100%;
     overflow: hidden;
     border: 1px solid var(--admin-border) !important;
-    border-radius: 18px !important;
-    background: var(--admin-surface) !important;
-    box-shadow: 0 7px 24px rgba(26, 30, 53, .06) !important;
-    animation: adminAccommodationCardIn .55s ease both;
-    transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease, border-color .25s ease;
+    border-radius: 19px !important;
+    background: #fff !important;
+    box-shadow: 0 7px 24px rgba(26, 30, 53, 0.065) !important;
+    cursor: pointer;
+    animation: adminAccommodationCardIn 0.55s ease both;
+    transition:
+      transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 0.25s ease,
+      border-color 0.25s ease;
   }
 
   .admin-accommodation-card:hover {
     transform: translateY(-5px);
-    border-color: rgba(45, 49, 149, .17) !important;
-    box-shadow: 0 17px 38px rgba(26, 30, 53, .11) !important;
+    border-color: rgba(45, 49, 149, 0.18) !important;
+    box-shadow: 0 18px 40px rgba(26, 30, 53, 0.12) !important;
   }
 
   .admin-accommodation-image-shell {
     position: relative;
-    height: 194px;
+    height: 196px;
     overflow: hidden;
-    border-radius: 18px 18px 0 0;
+    border-radius: 19px 19px 0 0;
     background: #EEF0FF;
   }
 
@@ -424,126 +428,250 @@ const ADMIN_ACCOMMODATIONS_STYLES = `
     height: 100% !important;
     display: block;
     object-fit: cover;
-    transition: transform .65s cubic-bezier(.2,.65,.3,1);
+    transition: transform 0.65s cubic-bezier(0.2, 0.65, 0.3, 1);
   }
 
-  .admin-accommodation-card:hover .admin-accommodation-card-image { transform: scale(1.045); }
+  .admin-accommodation-card:hover .admin-accommodation-card-image {
+    transform: scale(1.045);
+  }
 
   .admin-accommodation-image-overlay {
-    position: absolute; inset: auto 0 0; height: 72px;
-    background: linear-gradient(180deg, transparent 0%, rgba(10,12,25,.38) 100%);
+    position: absolute;
+    inset: auto 0 0;
+    height: 72px;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(10, 12, 25, 0.38) 100%
+    );
     pointer-events: none;
   }
 
   .admin-accommodation-image-count {
-    position:absolute; right:11px; bottom:10px; z-index:3;
-    display:inline-flex; align-items:center; gap:4px;
-    min-height:25px; padding:5px 8px; border-radius:999px;
-    background:rgba(15,17,28,.56); color:#fff; backdrop-filter:blur(9px);
-    font-size:.61rem; font-weight:900;
+    position: absolute;
+    right: 11px;
+    bottom: 10px;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 25px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: rgba(15, 17, 28, 0.56);
+    color: #fff;
+    backdrop-filter: blur(9px);
+    font-size: 0.61rem;
+    font-weight: 900;
   }
 
   .admin-accommodation-website-badge {
-    position:absolute; top:12px; right:12px; z-index:4;
-    display:inline-flex; align-items:center; gap:4px;
-    padding:6px 9px; border-radius:999px;
-    background:rgba(255,183,27,.95); color:#4D3500;
-    box-shadow:0 7px 18px rgba(0,0,0,.11);
-    font-size:.61rem; font-weight:900;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 4;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 9px;
+    border-radius: 999px;
+    background: rgba(255, 183, 27, 0.95);
+    color: #4D3500;
+    box-shadow: 0 7px 18px rgba(0, 0, 0, 0.11);
+    font-size: 0.61rem;
+    font-weight: 900;
   }
 
-  .admin-accommodation-card .card-body { padding:16px !important; min-height:176px; }
+  .admin-accommodation-card .card-body {
+    padding: 16px !important;
+  }
 
-  .admin-accommodation-badge-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-height:24px; }
+  .admin-accommodation-badge-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    min-height: 24px;
+  }
 
   .admin-accommodation-card .badge {
-    display:inline-flex; align-items:center; gap:4px;
-    border-radius:999px !important; padding:5px 9px !important;
-    font-family:"Nunito",sans-serif !important; font-size:.58rem !important; font-weight:900 !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 999px !important;
+    padding: 5px 9px !important;
+    font-family: "Nunito", sans-serif !important;
+    font-size: 0.58rem !important;
+    font-weight: 900 !important;
   }
 
-  .admin-accommodation-primary-badge { background:#eef0ff !important; color:#2D3195 !important; }
-  .admin-accommodation-soft-badge { background:#f3f4f8 !important; color:#626978 !important; }
-  .admin-accommodation-price-badge { background:#e7f8ee !important; color:#177a45 !important; }
+  .admin-accommodation-primary-badge {
+    background: #EEF0FF !important;
+    color: var(--admin-primary) !important;
+  }
+
+  .admin-accommodation-soft-badge {
+    background: #F3F4F8 !important;
+    color: #656A78 !important;
+  }
+
+  .admin-accommodation-price-badge {
+    background: #e7f8ee !important;
+    color: #177a45 !important;
+  }
 
   .admin-accommodation-name {
-    margin:9px 0 0 !important;
-    color:var(--admin-text) !important;
-    font-family:"Poppins",sans-serif !important;
-    font-size:.91rem !important; font-weight:800 !important; line-height:1.3 !important;
+    margin: 6px 0 0 !important;
+    color: var(--admin-text) !important;
+    font-family: "Poppins", sans-serif !important;
+    font-size: 0.94rem !important;
+    font-weight: 800 !important;
+    line-height: 1.3 !important;
   }
 
   .admin-accommodation-description {
-    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
-    min-height:36px; overflow:hidden; margin:6px 0 8px;
-    color:var(--admin-muted); font-family:"Nunito",sans-serif;
-    font-size:.69rem; font-weight:600; line-height:1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    min-height: 54px;
+    overflow: hidden;
+    margin: 6px 0 10px;
+    color: var(--admin-muted);
+    font-family: "Nunito", sans-serif;
+    font-size: 0.69rem;
+    font-weight: 600;
+    line-height: 1.55;
   }
 
   .admin-accommodation-location {
-    display:flex; gap:6px; align-items:flex-start;
-    min-height:32px; margin-bottom:8px;
-    color:#818694; font-family:"Nunito",sans-serif;
-    font-size:.65rem; font-weight:700; line-height:1.45;
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+    min-height: 32px;
+    margin-bottom: 14px;
+    color: #818694;
+    font-family: "Nunito", sans-serif;
+    font-size: 0.65rem;
+    font-weight: 700;
+    line-height: 1.45;
   }
-  .admin-accommodation-location svg { flex:0 0 auto; margin-top:1px; color:#2D3195; }
+
+  .admin-accommodation-location svg {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    color: #2D3195;
+  }
 
   .admin-accommodation-meta {
-    display:flex; align-items:center; gap:6px;
-    margin-bottom:5px; color:var(--admin-muted);
-    font-family:"Nunito",sans-serif; font-size:.64rem; font-weight:700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 5px;
+    color: var(--admin-muted);
+    font-family: "Nunito", sans-serif;
+    font-size: 0.64rem;
+    font-weight: 700;
   }
-  .admin-accommodation-meta svg { flex:0 0 auto; color:#8a90a0; }
-  .admin-accommodation-meta span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .admin-accommodation-meta svg {
+    flex: 0 0 auto;
+    color: #8a90a0;
+  }
+
+  .admin-accommodation-meta span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   .admin-accommodation-website-link {
-    display:inline-flex; align-items:center; gap:5px;
-    margin-bottom:12px; color:#2D3195; text-decoration:none;
-    font-size:.64rem; font-weight:800;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 12px;
+    color: #2D3195;
+    text-decoration: none;
+    font-size: 0.64rem;
+    font-weight: 800;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .admin-accommodation-card-actions {
-    display:flex; gap:8px; flex-wrap:wrap;
-    padding-top:12px; margin-top:auto;
-    border-top:1px solid #EEF0F4;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding-top: 12px;
+    margin-top: auto;
+    border-top: 1px solid #EEF0F4;
   }
 
   .admin-accommodation-card-actions .btn {
-    display:inline-flex; align-items:center; justify-content:center; gap:6px;
-    min-height:36px; border-radius:10px !important;
-    font-family:"Nunito",sans-serif !important;
-    font-size:.67rem !important; font-weight:900 !important;
-    transition:transform .18s ease, box-shadow .18s ease, background .18s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 36px;
+    border-radius: 10px !important;
+    font-family: "Nunito", sans-serif !important;
+    font-size: 0.67rem !important;
+    font-weight: 900 !important;
+    transition:
+      transform 0.18s ease,
+      box-shadow 0.18s ease,
+      background 0.18s ease;
   }
 
   .admin-accommodation-card-actions .admin-edit-button,
-  .admin-accommodation-card-actions .admin-map-link-button { flex:1 1 auto !important; min-width:0 !important; }
+  .admin-accommodation-card-actions .admin-map-link-button {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
 
   .admin-accommodation-card-actions .btn-outline-primary {
-    color:#2D3195 !important; border-color:rgba(45,49,149,.25) !important; background:#F8F8FF !important;
+    color: var(--admin-primary) !important;
+    border-color: rgba(45, 49, 149, 0.25) !important;
+    background: #F8F8FF !important;
   }
+
   .admin-accommodation-card-actions .btn-outline-primary:hover {
-    color:#fff !important; border-color:#2D3195 !important; background:#2D3195 !important;
-    transform:translateY(-1px); box-shadow:0 7px 16px rgba(45,49,149,.16);
+    color: #fff !important;
+    border-color: var(--admin-primary) !important;
+    background: var(--admin-primary) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 7px 16px rgba(45, 49, 149, 0.16);
   }
 
   .admin-accommodation-card-actions .btn-outline-warning {
-    color:#8e6200 !important; border-color:rgba(255,183,27,.45) !important; background:#FFFBF0 !important;
+    color: #8e6200 !important;
+    border-color: rgba(255, 183, 27, 0.45) !important;
+    background: #FFFBF0 !important;
   }
+
   .admin-accommodation-card-actions .btn-outline-warning:hover {
-    color:#4D3500 !important; border-color:#FFB71B !important; background:#FFB71B !important;
-    transform:translateY(-1px);
+    color: #4D3500 !important;
+    border-color: #FFB71B !important;
+    background: #FFB71B !important;
+    transform: translateY(-1px);
   }
 
   .admin-accommodation-card-actions .btn-outline-danger {
-    width:40px; min-width:40px; flex:0 0 40px;
-    padding-left:0 !important; padding-right:0 !important;
-    color:#C74350 !important; border-color:rgba(199,67,80,.20) !important; background:#FFF7F8 !important;
+    width: 40px;
+    min-width: 40px;
+    flex: 0 0 40px;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    color: #C74350 !important;
+    border-color: rgba(199, 67, 80, 0.20) !important;
+    background: #FFF7F8 !important;
   }
+
   .admin-accommodation-card-actions .btn-outline-danger:hover {
-    color:#fff !important; border-color:#C74350 !important; background:#C74350 !important;
-    transform:translateY(-1px);
+    color: #fff !important;
+    border-color: #C74350 !important;
+    background: #C74350 !important;
+    transform: translateY(-1px);
   }
 
   /* -------------------------------
@@ -870,8 +998,15 @@ const ADMIN_ACCOMMODATIONS_STYLES = `
   -------------------------------- */
 
   @keyframes adminAccommodationCardIn {
-    from { opacity:0; transform:translateY(12px); }
-    to { opacity:1; transform:translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   @keyframes adminDashboardFade {
@@ -2096,7 +2231,7 @@ const AdminAccommodations: React.FC = () => {
                   <div>
                     <Form.Label className="fw-semibold mb-1">Set Establishment Location</Form.Label>
                     <div className="admin-location-helper">
-                      Search the accommodation or address, choose a result, then drag or click the pin to fine-tune it.
+                      Search the accommodation or address, choose a result, then drag/click the pin to fine-tune it. You can also place the pin manually on the map.
                     </div>
                   </div>
                   {typeof form.latitude === "number" && typeof form.longitude === "number" && (
@@ -2113,8 +2248,6 @@ const AdminAccommodations: React.FC = () => {
                     id: item.id,
                     name: item.name,
                     address: item.address,
-                    latitude: item.latitude,
-                    longitude: item.longitude,
                   }))}
                   onChange={({ latitude, longitude, address }) => {
                     updateForm("latitude", latitude);
