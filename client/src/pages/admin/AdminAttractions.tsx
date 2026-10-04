@@ -39,10 +39,10 @@ import {
   Ticket,
   Trash2,
   X,
+  type LucideIcon,
 } from "lucide-react";
 
 import AdminLayout from "../../components/admin/AdminLayout";
-import LocationPicker from "../../components/admin/LocationPicker";
 import LocationPicker from "../../components/admin/LocationPicker";
 
 import {
@@ -131,7 +131,7 @@ const ATTRACTION_TYPES: Record<string, string[]> = {
 const CATEGORY_DESIGNS: Record<
   string,
   {
-    icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+    icon: LucideIcon;
     color: string;
     gradient: string;
     bgPattern: string;
@@ -2684,8 +2684,8 @@ const AdminAttractions: React.FC = () => {
             <Col xs={12}>
               <LocationPicker
                 name={form.name}
-                latitude={form.location_lat}
-                longitude={form.location_lng}
+                latitude={typeof form.location_lat === "number" ? form.location_lat : null}
+                longitude={typeof form.location_lng === "number" ? form.location_lng : null}
                 address={form.location_address}
                 category={form.category}
                 attractionType={form.attraction_type}
@@ -2694,10 +2694,14 @@ const AdminAttractions: React.FC = () => {
                   name: item.name,
                   address: item.location_address,
                 }))}
-                onChange={({ latitude, longitude, address }) => {
-                  fc("location_lat", latitude);
-                  fc("location_lng", longitude);
-                  if (address) fc("location_address", address);
+                onChange={(location: {
+                  latitude: number;
+                  longitude: number;
+                  address?: string;
+                }) => {
+                  fc("location_lat", location.latitude);
+                  fc("location_lng", location.longitude);
+                  if (location.address) fc("location_address", location.address);
                 }}
               />
             </Col>
