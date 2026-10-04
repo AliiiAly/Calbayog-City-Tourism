@@ -30,6 +30,10 @@ import { useAuth } from "../context/AuthContext";
 import { useFavorites } from "../context/FavoritesContext"; 
  
 import AttractionCard from "../components/attractions/AttractionCard"; 
+
+import AccommodationCard, {
+  AccommodationCardItem,
+} from "../components/accommodations/AccommodationCard";
  
 import { 
   Mountain,
@@ -1700,7 +1704,7 @@ const Welcome: React.FC = () => {
                   ACCOMMODATIONS
                 </h2>
 
-                <div className="welcome-section-eyebrow">
+                <div className="welcome-section-eyebrow welcome-accommodations-eyebrow">
                   <span className="welcome-heading-line" />
 
                   <span>
@@ -1711,6 +1715,20 @@ const Welcome: React.FC = () => {
                 </div>
               </div>
 
+              <div className="welcome-accommodations-toolbar">
+                <Link
+                  to="/accommodations"
+                  className="welcome-view-more-link"
+                >
+                  View more accommodations
+                  <ChevronRight
+                    size={17}
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  />
+                </Link>
+              </div>
+
               <Row className="g-3 g-md-4">
                 {welcomeAccommodations.map(
                   (
@@ -1719,7 +1737,7 @@ const Welcome: React.FC = () => {
                     const accommodationData =
                       accommodation as any;
 
-                    const images =
+                    const images: string[] =
                       Array.isArray(
                         accommodationData.images,
                       )
@@ -1739,9 +1757,6 @@ const Welcome: React.FC = () => {
                                 Boolean,
                               )
                           : [];
-
-                    const image =
-                      images[0] || "";
 
                     const priceMin =
                       accommodationData.price_min;
@@ -1787,6 +1802,43 @@ const Welcome: React.FC = () => {
                       ).toLocaleString()}`;
                     }
 
+                    const cardItem: AccommodationCardItem =
+                      {
+                        id: String(
+                          accommodationData.id ??
+                            "",
+                        ),
+                        name:
+                          accommodationData.name,
+                        owner:
+                          accommodationData.owner ??
+                          null,
+                        manager:
+                          accommodationData.manager ??
+                          null,
+                        address:
+                          accommodationData.address ||
+                          accommodationData.location_address ||
+                          null,
+                        contact_number:
+                          accommodationData.contact_number ??
+                          null,
+                        website:
+                          accommodationData.website ??
+                          null,
+                        images,
+                        description:
+                          accommodationData.description ??
+                          null,
+                        price_range:
+                          accommodationData.price_range ||
+                          priceText ||
+                          null,
+                        featured: Boolean(
+                          accommodationData.featured,
+                        ),
+                      };
+
                     return (
                       <Col
                         xs={12}
@@ -1796,105 +1848,11 @@ const Welcome: React.FC = () => {
                           accommodation.id
                         }
                       >
-                        <Link
-                          to={`/accommodations/${accommodation.id}`}
-                          className="welcome-accommodation-link"
-                          style={{
-                            textDecoration:
-                              "none",
-                            display:
-                              "block",
-                            height:
-                              "100%",
-                          }}
-                        >
-                          <Card
-                            className="welcome-accommodation-card border-0 h-100"
-                            style={{
-                              borderRadius:
-                                "18px",
-                              overflow:
-                                "hidden",
-                              background:
-                                "#fff",
-                              boxShadow:
-                                "0 4px 18px rgba(0,0,0,0.08)",
-                              transition:
-                                "transform 0.25s ease, box-shadow 0.25s ease",
-                            }}
-                            onMouseEnter={(
-                              e,
-                            ) => {
-                              e.currentTarget.style.transform =
-                                "translateY(-6px)";
-
-                              e.currentTarget.style.boxShadow =
-                                "0 12px 30px rgba(0,0,0,0.14)";
-                            }}
-                            onMouseLeave={(
-                              e,
-                            ) => {
-                              e.currentTarget.style.transform =
-                                "translateY(0)";
-
-                              e.currentTarget.style.boxShadow =
-                                "0 4px 18px rgba(0,0,0,0.08)";
-                            }}
-                          >
-                            <div className="welcome-accommodation-image-wrapper">
-                              {image ? (
-                                <img
-                                  src={
-                                    image
-                                  }
-                                  alt={
-                                    accommodation.name
-                                  }
-                                  className="welcome-accommodation-image"
-                                  loading="lazy"
-                                />
-                              ) : (
-                                <div className="welcome-accommodation-placeholder">
-                                  🏨
-                                </div>
-                              )}
-
-                              <div className="welcome-accommodation-image-overlay" />
-                            </div>
-
-                            <Card.Body className="welcome-accommodation-body">
-                              <Card.Title className="welcome-accommodation-title">
-                                {
-                                  accommodation.name
-                                }
-                              </Card.Title>
-
-                              {accommodationData.location_address && (
-                                <p className="welcome-accommodation-address">
-                                  {
-                                    accommodationData.location_address
-                                  }
-                                </p>
-                              )}
-
-                              {priceText && (
-                                <div className="welcome-accommodation-price">
-                                  {
-                                    priceText
-                                  }
-                                </div>
-                              )}
-
-                              <div className="welcome-accommodation-explore">
-                                View stay
-
-                                <span aria-hidden="true">
-                                  →
-                                </span>
-                              </div>
-                            </Card.Body>
-                          </Card>
-                        </Link>
+                        <AccommodationCard
+                          accommodation={
+                            cardItem
+                          }
+                        />
                       </Col>
                     );
                   },
@@ -2648,7 +2606,7 @@ const Welcome: React.FC = () => {
           justify-content:
             center;
           margin-bottom:
-            2rem;
+            2.35rem;
         }
 
         .welcome-accommodations-title {
@@ -2659,7 +2617,7 @@ const Welcome: React.FC = () => {
           color:
             #2D3195 !important;
           font-size:
-            2.15rem;
+            1.70rem;
           line-height:
             1;
           letter-spacing:
@@ -2668,166 +2626,57 @@ const Welcome: React.FC = () => {
             center;
         }
 
-        .welcome-accommodation-link {
+        .welcome-accommodations-eyebrow {
           color:
-            inherit;
+            #555555;
         }
 
-        .welcome-accommodation-link:hover {
-          color:
-            inherit;
+        .welcome-accommodations-toolbar {
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          width: 100%;
+          margin:
+            -0.25rem 0 1.05rem;
         }
 
-        .welcome-accommodation-card,
-        .welcome-accommodation-card * {
-          font-family:
-            "Inter",
-            sans-serif;
-        }
-
-        .welcome-accommodation-image-wrapper {
-          position:
-            relative;
-          height:
-            210px;
-          overflow:
-            hidden;
-          background:
-            #eef2ef;
-        }
-
-        .welcome-accommodation-image {
-          width:
-            100%;
-          height:
-            100%;
-          object-fit:
-            cover;
-          display:
-            block;
+        .welcome-view-more-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          padding: 0;
+          border: 0;
+          background: transparent;
+          color: #2D3195;
+          font-size: 0.78rem;
+          font-weight: 700;
+          text-decoration: none;
+          -webkit-tap-highlight-color: transparent;
           transition:
-            transform 0.4s ease;
+            opacity 0.15s ease,
+            transform 0.15s ease;
         }
 
-        .welcome-accommodation-card:hover
-          .welcome-accommodation-image {
-          transform:
-            scale(1.04);
+        .welcome-view-more-link svg {
+          transition: transform 0.2s ease;
         }
 
-        .welcome-accommodation-placeholder {
-          width:
-            100%;
-          height:
-            100%;
-          display:
-            flex;
-          align-items:
-            center;
-          justify-content:
-            center;
-          font-size:
-            3rem;
-          background:
-            #eef2ef;
+        .welcome-view-more-link:hover {
+          color: #2D3195;
+          text-decoration: none;
         }
 
-        .welcome-accommodation-image-overlay {
-          position:
-            absolute;
-          inset:
-            0;
-          background:
-            linear-gradient(
-              to top,
-              rgba(
-                0,
-                0,
-                0,
-                0.38
-              ),
-              transparent 55%
-            );
-          pointer-events:
-            none;
+        .welcome-view-more-link:hover svg {
+          transform: translateX(3px);
         }
 
-        .welcome-accommodation-body {
-          padding:
-            1.1rem
-            1.1rem
-            1.2rem;
-          display:
-            flex;
-          flex-direction:
-            column;
-          height:
-            calc(100% - 210px);
+        .welcome-view-more-link:active {
+          opacity: 0.55;
+          transform: scale(0.95);
         }
 
-        .welcome-accommodation-title {
-          margin:
-            0 0 0.5rem;
-          color:
-            #212529;
-          font-size:
-            1.05rem;
-          font-weight:
-            700;
-          line-height:
-            1.3;
-        }
-
-        .welcome-accommodation-address {
-          margin:
-            0 0 0.7rem;
-          color:
-            #6c757d;
-          font-size:
-            0.76rem;
-          line-height:
-            1.5;
-          display:
-            -webkit-box;
-          -webkit-line-clamp:
-            2;
-          -webkit-box-orient:
-            vertical;
-          overflow:
-            hidden;
-        }
-
-        .welcome-accommodation-price {
-          color:
-            #2D3195;
-          font-size:
-            0.78rem;
-          font-weight:
-            700;
-          margin-bottom:
-            0.75rem;
-        }
-
-        .welcome-accommodation-explore {
-          margin-top:
-            auto;
-          padding-top:
-            0.7rem;
-          border-top:
-            1px solid
-            #f0f0f0;
-          color:
-            #2D3195;
-          font-size:
-            0.78rem;
-          font-weight:
-            700;
-          display:
-            flex;
-          align-items:
-            center;
-          gap:
-            5px;
+        .welcome-view-more-link:active svg {
+          transform: translateX(5px);
         }
 
         /* =====================================================
@@ -4172,6 +4021,7 @@ const Welcome: React.FC = () => {
 
           .welcome-display-title,
           .welcome-attractions-title,
+          .welcome-accommodations-title,
           .welcome-videos-title {
             font-size:
               1.45rem;
@@ -4208,6 +4058,10 @@ const Welcome: React.FC = () => {
             font-size: 0.72rem;
           }
 
+          .welcome-view-more-link {
+            font-size: 0.72rem;
+          }
+
           .welcome-explore-section,
           .welcome-discover-section,
           .welcome-accommodations-section {
@@ -4237,7 +4091,8 @@ const Welcome: React.FC = () => {
               0;
           }
 
-          .welcome-attractions-toolbar {
+          .welcome-attractions-toolbar,
+          .welcome-accommodations-toolbar {
             margin:
               -0.15rem 0 0.9rem;
           }
@@ -4256,11 +4111,6 @@ const Welcome: React.FC = () => {
           .welcome-videos-heading {
             margin-bottom:
               1.8rem;
-          }
-
-          .welcome-accommodation-image-wrapper {
-            height:
-              210px;
           }
 
           .welcome-videos-section {
@@ -4466,12 +4316,8 @@ const Welcome: React.FC = () => {
 
           .welcome-display-title,
           .welcome-attractions-title,
+          .welcome-accommodations-title,
           .welcome-videos-title {
-            font-size:
-              1.45rem;
-          }
-
-          .welcome-accommodations-title {
             font-size:
               1.45rem;
           }
@@ -4507,7 +4353,6 @@ const Welcome: React.FC = () => {
               55px;
           }
 
-          .welcome-accommodations-title,
           .welcome-videos-title {
             font-size:
               1.70rem;
@@ -4517,11 +4362,6 @@ const Welcome: React.FC = () => {
           .welcome-videos-heading {
             margin-bottom:
               1.55rem;
-          }
-
-          .welcome-accommodation-image-wrapper {
-            height:
-              190px;
           }
 
           .welcome-videos-section {
@@ -4628,7 +4468,8 @@ const Welcome: React.FC = () => {
               6px;
           }
 
-          .welcome-attractions-toolbar {
+          .welcome-attractions-toolbar,
+          .welcome-accommodations-toolbar {
             margin-bottom:
               0.8rem;
           }
