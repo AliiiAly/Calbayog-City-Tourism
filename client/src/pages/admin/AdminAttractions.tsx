@@ -253,6 +253,25 @@ const buildGoogleMapsDirectionsUrl = (
   )}`;
 };
 
+const buildStreetViewUrl = (
+  attraction: Partial<Attraction> | null | undefined,
+): string => {
+  const a: any = attraction;
+  const lat = Number(a?.location_lat ?? a?.latitude);
+  const lng = Number(a?.location_lng ?? a?.longitude);
+
+  if (
+    a?.location_lat === null ||
+    a?.location_lat === undefined ||
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng)
+  ) {
+    return "";
+  }
+
+  return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`;
+};
+
 const EMPTY_FORM = {
   name: "",
   category: "Nature",
@@ -5010,30 +5029,57 @@ const AdminAttractions: React.FC = () => {
                 </p>
               )}
 
-              {buildGoogleMapsDirectionsUrl(
+              {(buildGoogleMapsDirectionsUrl(
                 viewItem,
-              ) && (
-                <div className="mt-4">
-                  <Button
-                    variant="success"
-                    as="a"
-                    href={buildGoogleMapsDirectionsUrl(
-                      viewItem,
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      border: "none",
-                      borderRadius: "8px",
-                      fontWeight: 600,
-                    }}
-                  >
-                    <Navigation
-                      size={15}
-                      strokeWidth={2}
-                    />
-                    Get Directions
-                  </Button>
+              ) ||
+                buildStreetViewUrl(viewItem)) && (
+                <div className="mt-4 d-flex gap-2 flex-wrap">
+                  {buildGoogleMapsDirectionsUrl(
+                    viewItem,
+                  ) && (
+                    <Button
+                      variant="success"
+                      as="a"
+                      href={buildGoogleMapsDirectionsUrl(
+                        viewItem,
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        border: "none",
+                        borderRadius: "8px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      <Navigation
+                        size={15}
+                        strokeWidth={2}
+                      />{" "}
+                      Get Directions
+                    </Button>
+                  )}
+
+                  {buildStreetViewUrl(viewItem) && (
+                    <Button
+                      variant="outline-primary"
+                      as="a"
+                      href={buildStreetViewUrl(
+                        viewItem,
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        borderRadius: "8px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      <MapPinned
+                        size={15}
+                        strokeWidth={2}
+                      />{" "}
+                      Street View
+                    </Button>
+                  )}
                 </div>
               )}
             </Modal.Body>
