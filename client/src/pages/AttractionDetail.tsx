@@ -464,6 +464,29 @@ const SUBCATEGORY_MARKER_ICONS: Record<string, string> = {
   other: "📍",
 };
 
+/* Fallback keyword matching (handles singular / typed "Other" types) */
+const MARKER_KEYWORD_ICONS: [string, string][] = [
+  ["waterfall", "💧"],
+  ["falls", "💧"],
+  ["beach", "🏖️"],
+  ["cave", "🪨"],
+  ["spring", "♨️"],
+  ["river", "🌊"],
+  ["dive", "🤿"],
+  ["diving", "🤿"],
+  ["church", "⛪"],
+  ["museum", "🏛️"],
+  ["historic", "🏛️"],
+  ["monument", "🗿"],
+  ["park", "🌳"],
+  ["factor", "🏭"],
+  ["farm", "🌾"],
+  ["production", "⚙️"],
+  ["market", "🛒"],
+  ["mall", "🛍️"],
+  ["craft", "🧺"],
+];
+
 const normalizeLabel = (
   value: unknown,
 ): string =>
@@ -474,25 +497,61 @@ const normalizeLabel = (
     .trim()
     .replace(/\s+/g, " ");
 
+const getMarkerGlyph = (
+  markerType: string,
+  fallback: string,
+): string => {
+  const key = normalizeLabel(markerType);
+
+  if (!key) {
+    return fallback;
+  }
+
+  if (SUBCATEGORY_MARKER_ICONS[key]) {
+    return SUBCATEGORY_MARKER_ICONS[key];
+  }
+
+  const match = MARKER_KEYWORD_ICONS.find(
+    ([keyword]) => key.includes(keyword),
+  );
+
+  return match ? match[1] : fallback;
+};
+
+const getCategoryDesign = (category: string) => {
+  if (CATEGORY_MARKER_DESIGNS[category]) {
+    return CATEGORY_MARKER_DESIGNS[category];
+  }
+
+  const target = normalizeLabel(category);
+
+  const foundKey = Object.keys(
+    CATEGORY_MARKER_DESIGNS,
+  ).find((key) => normalizeLabel(key) === target);
+
+  return foundKey
+    ? CATEGORY_MARKER_DESIGNS[foundKey]
+    : CATEGORY_MARKER_DESIGNS.Other;
+};
+
 /* Display name of the subcategory (shows the typed name when "Other") */
 
 const getAttractionSubcategory = (
   item: any,
 ): string => {
-  const type = getFirstValue(
-    item,
-    [
-      "attraction_type",
-      "subcategory",
-      "sub_category",
-      "type",
-    ],
-  );
+  const type = getFirstValue(item, [
+    "attraction_type",
+    "attractionType",
+    "subcategory",
+    "sub_category",
+    "type",
+  ]);
 
-  if (type === "Other") {
+  if (normalizeLabel(type) === "other") {
     return (
       getFirstValue(item, [
         "other_attraction_type",
+        "otherAttractionType",
       ]) || "Other"
     );
   }
@@ -500,17 +559,30 @@ const getAttractionSubcategory = (
   return type;
 };
 
-/* Raw type used to pick the pin symbol (same as the admin map) */
+/* Raw type used to pick the pin symbol */
 
 const getAttractionMarkerType = (
   item: any,
-): string =>
-  getFirstValue(item, [
+): string => {
+  const type = getFirstValue(item, [
     "attraction_type",
+    "attractionType",
     "subcategory",
     "sub_category",
     "type",
   ]);
+
+  if (normalizeLabel(type) === "other") {
+    return (
+      getFirstValue(item, [
+        "other_attraction_type",
+        "otherAttractionType",
+      ]) || "Other"
+    );
+  }
+
+  return type;
+};
 
 /* =========================================================
    LEAFLET MARKERS
@@ -523,14 +595,12 @@ const createAttractionMarkerIcon = (
   markerType: string,
   isCurrent: boolean,
 ) => {
-  const design =
-    CATEGORY_MARKER_DESIGNS[category] ||
-    CATEGORY_MARKER_DESIGNS.Other;
+  const design = getCategoryDesign(category);
 
-  const glyph =
-    SUBCATEGORY_MARKER_ICONS[
-      normalizeLabel(markerType)
-    ] || design.icon;
+  const glyph = getMarkerGlyph(
+    markerType,
+    design.icon,
+  );
 
   return L.divIcon({
     className: "calbayog-location-marker",
@@ -772,9 +842,9 @@ const TourismMap: React.FC<TourismMapProps> = ({
 
   return (
     <div
-      className={`detail-map-canvas ${
-        zoom < LABEL_MIN_ZOOM ? "labels-compact" : ""
-      }`}
+      className="detail-map-canvas"
+      data-zoom={zoom}
+      data-label-min-zoom={LABEL_MIN_ZOOM}
     >
       <MapContainer
         center={center}
@@ -841,7 +911,7 @@ const TourismMap: React.FC<TourismMapProps> = ({
 
         {attractions.map((place) => (
           <Marker
-            key={`attraction-${place.id}-${place.isCurrent}`}
+            key={`attraction-${place.id}-${place.isCurrent}-${place.name}-${place.markerType}`}
             position={[place.coordinates.lat, place.coordinates.lng]}
             icon={attractionIcons.get(place.id)}
             interactive={interactive}
@@ -856,7 +926,14 @@ const TourismMap: React.FC<TourismMapProps> = ({
                 place.isCurrent ? "current" : ""
               }`}
             >
-              {place.name}
+              <span className="calbayog-map-label-name">
+                {place.name}
+              </span>
+              {place.subcategory && (
+                <span className="calbayog-map-label-sub">
+                  {place.subcategory}
+                </span>
+              )}
             </Tooltip>
 
             {interactive && (
@@ -902,14 +979,17 @@ const openStreetLevelView = (
     return;
   }
 
-  const url =
-    `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${coordinates.lat},${coordinates.lng}`;
+  const url = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${coordinates.lat},${coordinates.lng}`;
 
-  window.open(
+  const opened = window.open(
     url,
     "_blank",
     "noopener,noreferrer",
   );
+
+  if (!opened) {
+    window.location.href = url;
+  }
 };
 
 /* =========================================================
@@ -2572,7 +2652,7 @@ const AttractionDetail: React.FC =
             position: absolute;
             right: 10px;
             bottom: 10px;
-            z-index: 25;
+            z-index: 1200;
             display: flex;
             flex-wrap: wrap;
             justify-content: flex-end;
@@ -2867,16 +2947,27 @@ const AttractionDetail: React.FC =
             border-top-color: #e33f5f;
           }
 
+          .calbayog-map-label-name {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          .calbayog-map-label-sub {
+            display: block;
+            margin-top: 1px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 0.85em;
+            font-weight: 700;
+            opacity: 0.8;
+          }
+
           .detail-location-map-wrap
             .leaflet-tooltip.calbayog-map-label {
             max-width: 130px;
             padding: 3px 7px;
             font-size: 0.56rem;
-          }
-
-          .labels-compact
-            .leaflet-tooltip.calbayog-map-label:not(.current) {
-            display: none;
           }
 
           /* =================================================
