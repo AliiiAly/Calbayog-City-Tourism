@@ -1,5 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
+
+import { useFavorites } from "../context/FavoritesContext";
+
 import {
   ArrowUpRight,
   Globe2,
@@ -77,8 +80,24 @@ const AccommodationCard: React.FC<
   const accommodationId =
     getAccommodationId(accommodation);
 
-  const [liked, setLiked] =
-    React.useState(false);
+  /* =========================================================
+     FAVORITES
+     Same favorite logic used by AttractionCard.
+     If the user is not logged in, FavoritesContext will
+     trigger the existing login modal.
+  ========================================================= */
+
+  const {
+    isFavorite,
+    toggleFavorite,
+  } = useFavorites();
+
+  const liked = accommodationId
+    ? isFavorite(
+        "accommodation",
+        accommodationId,
+      )
+    : false;
 
   const images = Array.isArray(
     accommodation.images,
@@ -201,7 +220,9 @@ const AccommodationCard: React.FC<
             )}
           </Link>
 
-          {/* FAVORITE */}
+          {/* ===================================================
+              FAVORITE
+          =================================================== */}
 
           {accommodationId && (
             <div
@@ -218,7 +239,22 @@ const AccommodationCard: React.FC<
                   event.preventDefault();
                   event.stopPropagation();
 
-                  setLiked((previous) => !previous);
+                  /*
+                   * IMPORTANT:
+                   * This now uses the exact same FavoritesContext
+                   * logic as AttractionCard.
+                   *
+                   * When the user is NOT authenticated,
+                   * FavoritesContext dispatches:
+                   * "open-login-modal"
+                   *
+                   * When authenticated, it adds/removes the
+                   * accommodation favorite through the API.
+                   */
+                  void toggleFavorite(
+                    "accommodation",
+                    accommodationId,
+                  );
                 }}
                 aria-label={
                   liked
@@ -753,11 +789,25 @@ const AccommodationCard: React.FC<
         }
 
         @keyframes accommodationButtonPop {
-          0% { transform: scale(0.78); }
-          35% { transform: scale(1.16); }
-          58% { transform: scale(0.96); }
-          78% { transform: scale(1.08); }
-          100% { transform: scale(1); }
+          0% {
+            transform: scale(0.78);
+          }
+
+          35% {
+            transform: scale(1.16);
+          }
+
+          58% {
+            transform: scale(0.96);
+          }
+
+          78% {
+            transform: scale(1.08);
+          }
+
+          100% {
+            transform: scale(1);
+          }
         }
 
         @keyframes accommodationHeartPop {
@@ -766,21 +816,25 @@ const AccommodationCard: React.FC<
               scale(0.55)
               rotate(-8deg);
           }
+
           28% {
             transform:
               scale(1.28)
               rotate(5deg);
           }
+
           48% {
             transform:
               scale(0.90)
               rotate(-2deg);
           }
+
           72% {
             transform:
               scale(1.12)
               rotate(1deg);
           }
+
           100% {
             transform:
               scale(1)
@@ -793,10 +847,12 @@ const AccommodationCard: React.FC<
             opacity: 0;
             transform: scale(0.45);
           }
+
           35% {
             opacity: 1;
             transform: scale(1.6);
           }
+
           100% {
             opacity: 0;
             transform: scale(2.25);
@@ -808,6 +864,7 @@ const AccommodationCard: React.FC<
             opacity: 0.65;
             transform: scale(0.4);
           }
+
           100% {
             opacity: 0;
             transform: scale(2.5);
@@ -821,9 +878,11 @@ const AccommodationCard: React.FC<
               translate(0, 0)
               scale(0.4);
           }
+
           25% {
             opacity: 1;
           }
+
           100% {
             opacity: 0;
             transform:
@@ -846,7 +905,12 @@ const AccommodationCard: React.FC<
           z-index: 4;
           padding: 5px 8px;
           border-radius: 999px;
-          background: rgba(0, 0, 0, 0.13);
+          background: rgba(
+            0,
+            0,
+            0,
+            0.13
+          );
           backdrop-filter: blur(7px);
         }
 
