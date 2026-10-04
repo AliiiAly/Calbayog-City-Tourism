@@ -1,8 +1,11 @@
 import React, {
+  useCallback,
   useEffect,
   useMemo,
   useState,
 } from "react";
+
+import { createPortal } from "react-dom";
 
 import {
   useHistory,
@@ -21,11 +24,11 @@ import {
   Camera,
   CheckCircle2,
   Clock3,
-  ExternalLink,
   Globe2,
   ListChecks,
   MapPin,
-  Navigation,
+  Maximize2,
+  X,
   Phone,
   Share2,
   Sun,
@@ -44,7 +47,10 @@ import {
   Marker,
   Popup,
   TileLayer,
+  Tooltip,
   LayersControl,
+  useMap,
+  useMapEvents,
 } from "react-leaflet";
 
 import L from "leaflet";
@@ -171,6 +177,7 @@ interface AttractionMapPlace {
   id: string;
   name: string;
   category: string;
+  subcategory: string;
   address: string;
   coordinates: MapCoordinates;
   isCurrent: boolean;
@@ -331,52 +338,6 @@ const normalizeWebsiteUrl = (
 };
 
 /* =========================================================
-   DIRECTIONS
-
-   IMPORTANT:
-   Saved coordinates are preferred.
-========================================================= */
-
-const getDirectionsUrl = (
-  attraction: Attraction,
-): string => {
-  const coordinates =
-    getCoordinates(
-      attraction,
-    );
-
-  if (coordinates) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-      `${coordinates.lat},${coordinates.lng}`,
-    )}`;
-  }
-
-  const name = getFirstValue(
-    attraction,
-    ["name"],
-  );
-
-  const address =
-    getAddress(attraction);
-
-  const destination = [
-    name,
-    address,
-    "Calbayog City",
-    "Samar",
-    "Philippines",
-  ]
-    .filter(Boolean)
-    .join(", ");
-
-  return destination
-    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-        destination,
-      )}`
-    : "https://www.google.com/maps";
-};
-
-/* =========================================================
    THINGS TO DO
 ========================================================= */
 
@@ -464,79 +425,181 @@ const getImageArray = (
 };
 
 /* =========================================================
+   PIN SYMBOLS
+
+   Pins use the SUBCATEGORY (attraction type) of each
+   attraction: Waterfalls, Beaches, Caves, Churches, etc.
+   If the subcategory is unknown or custom ("Other" + typed
+   name), the pin falls back to the main category symbol.
+========================================================= */
+
+const CATEGORY_PIN_SYMBOLS: Record<string, string> = {
+  Nature: "🌿",
+  "History and Culture": "🏛️",
+  "Industrial Tourism": "🏭",
+  Shopping: "🛍️",
+  Other: "📍",
+};
+
+const SUBCATEGORY_PIN_SYMBOLS: Record<
+  string,
+  Record<string, string>
+> = {
+  Nature: {
+    Waterfalls: "💧",
+    Beaches: "🏖️",
+    Caves: "🕳️",
+    "Hot Springs": "♨️",
+    Rivers: "🏞️",
+    "Dive Sites": "🤿",
+    Other: "🌿",
+  },
+
+  "History and Culture": {
+    Churches: "⛪",
+    Museums: "🏛️",
+    "Historic Buildings": "🏰",
+    Monuments: "🗿",
+    Parks: "🌳",
+    Other: "📜",
+  },
+
+  "Industrial Tourism": {
+    Factories: "🏭",
+    Farms: "🌾",
+    "Production Sites": "⚙️",
+    Other: "🏗️",
+  },
+
+  Shopping: {
+    Markets: "🧺",
+    Malls: "🛍️",
+    "Local Craft Centers": "🧵",
+    Other: "🛒",
+  },
+
+  Other: {
+    Other: "📍",
+  },
+};
+
+const normalizeLabel = (
+  value: string,
+): string =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z]/g, "")
+    .replace(/s$/, "");
+
+const getAttractionSubcategory = (
+  item: any,
+): string => {
+  const type = getFirstValue(
+    item,
+    [
+      "attraction_type",
+      "subcategory",
+      "sub_category",
+      "type",
+    ],
+  );
+
+  if (type === "Other") {
+    return (
+      getFirstValue(item, [
+        "other_attraction_type",
+      ]) || "Other"
+    );
+  }
+
+  return type;
+};
+
+const getPinSymbol = (
+  category: string,
+  subcategory: string,
+): string => {
+  const key =
+    normalizeLabel(subcategory);
+
+  const ownGroup =
+    SUBCATEGORY_PIN_SYMBOLS[category];
+
+  const groups = [
+    ...(ownGroup ? [ownGroup] : []),
+    ...Object.values(
+      SUBCATEGORY_PIN_SYMBOLS,
+    ),
+  ];
+
+  if (key && key !== "other") {
+    for (const group of groups) {
+      for (const [label, symbol] of Object.entries(
+        group,
+      )) {
+        if (
+          label !== "Other" &&
+          normalizeLabel(label) === key
+        ) {
+          return symbol;
+        }
+      }
+    }
+  }
+
+  return (
+    CATEGORY_PIN_SYMBOLS[category] ||
+    CATEGORY_PIN_SYMBOLS.Other
+  );
+};
+
+/* =========================================================
    LEAFLET MARKERS
 
    No external marker image files are required.
 ========================================================= */
 
-const createAttractionMarkerIcon = (category: string = "Other") => {
-  const colors: Record<string, string> = {
-    Nature: "#4caf50",
-    "History and Culture": "#8B4513",
-    "Industrial Tourism": "#607d8b",
-    Shopping: "#e91e63",
-    Other: "#795548",
-  };
+const createAttractionMarkerIcon = (
+  isCurrent: boolean,
+  symbol: string,
+) =>
+  L.divIcon({
+    className:
+      "calbayog-map-marker-wrapper",
 
-  const icons: Record<string, string> = {
-    Nature: "🌿",
-    "History and Culture": "🏛️",
-    "Industrial Tourism": "🏭",
-    Shopping: "🛍️",
-    Other: "📍",
-  };
-
-  const color = colors[category] || "#1a5f4a";
-  const icon = icons[category] || "📍";
-
-  return L.divIcon({
-    className: "custom-marker",
     html: `
-      <div style="
-        background:${color};
-        color:white;
-        width:36px;
-        height:36px;
-        border-radius:50%;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        font-size:18px;
-        border:3px solid white;
-        box-shadow:0 2px 8px rgba(0,0,0,0.4);
-      ">
-        ${icon}
+      <div
+        class="${
+          isCurrent
+            ? "calbayog-map-marker current"
+            : "calbayog-map-marker attraction"
+        }"
+      >
+        <div class="calbayog-map-marker-inner">
+          <span class="calbayog-map-marker-symbol">
+            ${symbol}
+          </span>
+        </div>
       </div>
     `,
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
-    popupAnchor: [0, -18],
-  });
-};
 
-const createCurrentAttractionMarkerIcon = L.divIcon({
-  className: "selected-marker",
-  html: `
-    <div style="
-      background:#dc3545;
-      color:white;
-      width:40px;
-      height:40px;
-      border-radius:50%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:20px;
-      border:3px solid white;
-      box-shadow:0 2px 10px rgba(220,53,69,0.5);
-    ">
-      📍
-    </div>
-  `,
-  iconSize: [40, 40],
-  iconAnchor: [20, 20],
-  popupAnchor: [0, -20],
-});
+    iconSize: isCurrent
+      ? [44, 54]
+      : [34, 42],
+
+    iconAnchor: isCurrent
+      ? [22, 54]
+      : [17, 42],
+
+    popupAnchor: [
+      0,
+      isCurrent
+        ? -48
+        : -38,
+    ],
+
+    tooltipAnchor: [0, 4],
+  });
 
 const createAccommodationMarkerIcon =
   () =>
@@ -631,6 +694,264 @@ const InfoItem: React.FC<
 };
 
 /* =========================================================
+   TOURISM MAP
+
+   One reusable map used twice:
+   - compact preview inside the location card
+   - full interactive map inside the enlarged view
+========================================================= */
+
+const LABEL_MIN_ZOOM = 13;
+
+const MapRecenter: React.FC<{
+  center: [number, number];
+}> = ({ center }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    map.setView(center, map.getZoom());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, center[0], center[1]]);
+
+  return null;
+};
+
+const MapZoomWatcher: React.FC<{
+  onZoom: (zoom: number) => void;
+}> = ({ onZoom }) => {
+  const map = useMapEvents({
+    zoomend: () => onZoom(map.getZoom()),
+  });
+
+  useEffect(() => {
+    onZoom(map.getZoom());
+  }, [map, onZoom]);
+
+  return null;
+};
+
+interface TourismMapProps {
+  center: [number, number];
+  attractions: AttractionMapPlace[];
+  accommodations: AccommodationMapPlace[];
+  interactive: boolean;
+}
+
+const TourismMap: React.FC<
+  TourismMapProps
+> = ({
+  center,
+  attractions,
+  accommodations,
+  interactive,
+}) => {
+  const [zoom, setZoom] =
+    useState(15);
+
+  const handleZoom = useCallback(
+    (value: number) =>
+      setZoom(value),
+    [],
+  );
+
+  const attractionIcons = useMemo(
+    () =>
+      new Map(
+        attractions.map((place) => [
+          place.id,
+          createAttractionMarkerIcon(
+            place.isCurrent,
+            getPinSymbol(
+              place.category,
+              place.subcategory,
+            ),
+          ),
+        ]),
+      ),
+    [attractions],
+  );
+
+  const accommodationIcon = useMemo(
+    () => createAccommodationMarkerIcon(),
+    [],
+  );
+
+  return (
+    <div
+      className={`detail-map-canvas ${
+        zoom < LABEL_MIN_ZOOM
+          ? "labels-compact"
+          : ""
+      }`}
+    >
+      <MapContainer
+        center={center}
+        zoom={15}
+        scrollWheelZoom={interactive}
+        dragging={interactive}
+        touchZoom={interactive}
+        doubleClickZoom={interactive}
+        boxZoom={interactive}
+        keyboard={interactive}
+        zoomControl={interactive}
+        className="detail-map"
+      >
+        <MapRecenter center={center} />
+
+        <MapZoomWatcher
+          onZoom={handleZoom}
+        />
+
+        {interactive ? (
+          <LayersControl position="topright">
+            <LayersControl.BaseLayer
+              checked
+              name="Street"
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+            </LayersControl.BaseLayer>
+
+            <LayersControl.BaseLayer name="Satellite">
+              <TileLayer
+                attribution="Tiles &copy; Esri"
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+              />
+            </LayersControl.BaseLayer>
+
+            <LayersControl.BaseLayer name="Terrain">
+              <TileLayer
+                attribution='Map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors, <a href="https://opentopomap.org" target="_blank" rel="noopener noreferrer">OpenTopoMap</a>'
+                url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+              />
+            </LayersControl.BaseLayer>
+          </LayersControl>
+        ) : (
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+        )}
+
+        {/* ATTRACTION PINS + NAME LABELS */}
+
+        {attractions.map((place) => (
+          <Marker
+            key={`attraction-${place.id}-${place.isCurrent}`}
+            position={[
+              place.coordinates.lat,
+              place.coordinates.lng,
+            ]}
+            icon={attractionIcons.get(place.id)}
+            interactive={interactive}
+            zIndexOffset={
+              place.isCurrent ? 1000 : 0
+            }
+          >
+            <Tooltip
+              permanent
+              direction="bottom"
+              className={`calbayog-map-label ${
+                place.isCurrent
+                  ? "current"
+                  : ""
+              }`}
+            >
+              {place.name}
+            </Tooltip>
+
+            {interactive && (
+              <Popup>
+                <div className="detail-map-popup">
+                  <div
+                    className={`detail-map-popup-badge ${
+                      place.isCurrent
+                        ? "current"
+                        : ""
+                    }`}
+                  >
+                    <MapPin size={10} />
+
+                    {place.isCurrent
+                      ? "Current attraction"
+                      : "Attraction"}
+                  </div>
+
+                  <h3 className="detail-map-popup-title">
+                    {place.name}
+                  </h3>
+
+                  {(place.category ||
+                    place.subcategory) && (
+                    <p className="detail-map-popup-category">
+                      {[
+                        place.category,
+                        place.subcategory,
+                      ]
+                        .filter(Boolean)
+                        .join(" • ")}
+                    </p>
+                  )}
+
+                  {place.address && (
+                    <p className="detail-map-popup-address">
+                      {place.address}
+                    </p>
+                  )}
+                </div>
+              </Popup>
+            )}
+          </Marker>
+        ))}
+
+        {/* ACCOMMODATION PINS */}
+
+        {accommodations.map((place) => (
+          <Marker
+            key={`accommodation-${place.id}`}
+            position={[
+              place.coordinates.lat,
+              place.coordinates.lng,
+            ]}
+            icon={accommodationIcon}
+            interactive={interactive}
+          >
+            {interactive && (
+              <Popup>
+                <div className="detail-map-popup">
+                  <div className="detail-map-popup-badge accommodation">
+                    <Hotel size={10} />
+                    Accommodation
+                  </div>
+
+                  <h3 className="detail-map-popup-title">
+                    {place.name}
+                  </h3>
+
+                  {place.type && (
+                    <p className="detail-map-popup-category">
+                      {place.type}
+                    </p>
+                  )}
+
+                  {place.address && (
+                    <p className="detail-map-popup-address">
+                      {place.address}
+                    </p>
+                  )}
+                </div>
+              </Popup>
+            )}
+          </Marker>
+        ))}
+      </MapContainer>
+    </div>
+  );
+};
+
+/* =========================================================
    COMPONENT
 ========================================================= */
 
@@ -710,6 +1031,11 @@ const AttractionDetail: React.FC =
       mapError,
       setMapError,
     ] = useState("");
+
+    const [
+      mapOpen,
+      setMapOpen,
+    ] = useState(false);
 
     /* =====================================================
        GALLERY
@@ -1001,7 +1327,7 @@ const AttractionDetail: React.FC =
                 )
                 .filter(
                   (
-                    place,
+                    place: AccommodationMapPlace | null,
                   ): place is AccommodationMapPlace =>
                     Boolean(
                       place &&
@@ -1170,13 +1496,6 @@ const AttractionDetail: React.FC =
           )
         : "";
 
-    const directionsUrl =
-      attraction
-        ? getDirectionsUrl(
-            attraction,
-          )
-        : "https://www.google.com/maps";
-
     const safeActiveImg =
       images.length > 0 &&
       activeImg >= 0 &&
@@ -1283,6 +1602,10 @@ const AttractionDetail: React.FC =
           }
         }
       };
+
+    /* =====================================================
+       MAP PLACES
+    ===================================================== */
 
     /*
      * We intentionally create the attraction list from the
@@ -1399,6 +1722,11 @@ const AttractionDetail: React.FC =
                   ) ||
                   "Other",
 
+                subcategory:
+                  getAttractionSubcategory(
+                    item,
+                  ),
+
                 address:
                   getAddress(
                     item,
@@ -1449,6 +1777,52 @@ const AttractionDetail: React.FC =
             DEFAULT_LATITUDE,
             DEFAULT_LONGITUDE,
           ];
+
+    const hasMapPlaces =
+      mapAttractions.length > 0 ||
+      accommodationPlaces.length > 0;
+
+    /* =====================================================
+       ENLARGED MAP (close with Esc, lock page scroll)
+    ===================================================== */
+
+    useEffect(() => {
+      if (!mapOpen) {
+        return;
+      }
+
+      const handleKeyDown = (
+        event: KeyboardEvent,
+      ) => {
+        if (
+          event.key === "Escape"
+        ) {
+          setMapOpen(false);
+        }
+      };
+
+      const previousOverflow =
+        document.body.style
+          .overflow;
+
+      document.body.style.overflow =
+        "hidden";
+
+      window.addEventListener(
+        "keydown",
+        handleKeyDown,
+      );
+
+      return () => {
+        document.body.style.overflow =
+          previousOverflow;
+
+        window.removeEventListener(
+          "keydown",
+          handleKeyDown,
+        );
+      };
+    }, [mapOpen]);
 
     /* =====================================================
        ADD MEMORIES
@@ -2145,6 +2519,8 @@ const AttractionDetail: React.FC =
           ================================================= */
 
           .detail-location-card {
+            display: flex;
+            flex-direction: column;
             height: 100%;
             min-height: 100%;
             padding: 18px;
@@ -2211,58 +2587,9 @@ const AttractionDetail: React.FC =
             background: #eff1f4;
           }
 
-          .detail-location-directions {
-            width: 100%;
-            min-height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 7px;
-            border-radius: 10px;
-            background: ${CALBAYOG_BLUE};
-            color: #ffffff;
-            text-decoration: none;
-            font-size: 0.66rem;
-            font-weight: 900;
-            transition:
-              background 0.2s ease,
-              transform 0.2s ease;
-          }
-
-          .detail-location-directions:hover {
-            color: #ffffff;
-            background: #252982;
-            transform: translateY(-1px);
-          }
-
-          .detail-location-directions-note {
-            margin-top: 7px;
-            text-align: center;
-            color: #989ea8;
-            font-size: 0.57rem;
-            line-height: 1.4;
-            font-weight: 700;
-          }
-
           /* =================================================
              MAP
           ================================================= */
-
-          .detail-map-section {
-            margin-top: 30px;
-            padding: 18px;
-            border: 1px solid ${BORDER};
-            border-radius: 20px;
-            background: #ffffff;
-            box-shadow:
-              0 10px 28px
-              rgba(
-                20,
-                29,
-                57,
-                0.06
-              );
-          }
 
           .detail-map-header {
             display: flex;
@@ -2334,16 +2661,6 @@ const AttractionDetail: React.FC =
             font-weight: 900;
           }
 
-          .detail-map-container {
-            position: relative;
-            width: 100%;
-            height: 520px;
-            overflow: hidden;
-            border-radius: 15px;
-            border: 1px solid #e4e7ed;
-            background: #eef1f5;
-          }
-
           .detail-map {
             width: 100%;
             height: 100%;
@@ -2413,6 +2730,215 @@ const AttractionDetail: React.FC =
           }
 
           /* =================================================
+             LOCATION CARD MAP (compact preview)
+          ================================================= */
+
+          .detail-location-map-wrap {
+            position: relative;
+            isolation: isolate;
+            flex: 1;
+            min-height: 250px;
+            overflow: hidden;
+            border: 1px solid #e4e7ed;
+            border-radius: 14px;
+            background: #eef1f5;
+          }
+
+          .detail-location-map-wrap .detail-map-canvas {
+            position: absolute;
+            inset: 0;
+          }
+
+          .detail-location-map-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 20;
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            padding: 10px;
+            border: 0;
+            background: transparent;
+            cursor: zoom-in;
+          }
+
+          .detail-location-map-expand {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 30px;
+            padding: 6px 11px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.96);
+            color: ${CALBAYOG_BLUE};
+            box-shadow: 0 4px 14px rgba(20, 29, 57, 0.2);
+            font-size: 0.6rem;
+            font-weight: 900;
+            transition:
+              background 0.2s ease,
+              color 0.2s ease;
+          }
+
+          .detail-location-map-overlay:hover
+            .detail-location-map-expand,
+          .detail-location-map-overlay:focus-visible
+            .detail-location-map-expand {
+            background: ${CALBAYOG_BLUE};
+            color: #ffffff;
+          }
+
+          .detail-location-map-overlay:focus-visible {
+            outline: 3px solid ${CALBAYOG_BLUE};
+            outline-offset: -3px;
+            border-radius: 14px;
+          }
+
+          .detail-location-map-empty {
+            flex: 1;
+            min-height: 160px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+            border: 1px dashed #dfe3ea;
+            border-radius: 14px;
+            background: #fafbfc;
+            color: #777f8a;
+            font-size: 0.66rem;
+            line-height: 1.6;
+            font-weight: 700;
+          }
+
+          .detail-map-canvas {
+            width: 100%;
+            height: 100%;
+          }
+
+          /* =================================================
+             ENLARGED MAP MODAL
+          ================================================= */
+
+          .detail-map-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(17, 21, 40, 0.62);
+            backdrop-filter: blur(3px);
+            animation: detailMapModalFade 0.18s ease;
+          }
+
+          .detail-map-modal-card {
+            width: 100%;
+            max-width: 1180px;
+            max-height: calc(100vh - 48px);
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            border-radius: 20px;
+            background: #ffffff;
+            box-shadow: 0 24px 60px rgba(10, 14, 35, 0.35);
+            font-family:
+              "Nunito",
+              "Poppins",
+              "Segoe UI",
+              sans-serif;
+          }
+
+          .detail-map-modal-close {
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid ${BORDER};
+            border-radius: 50%;
+            background: #ffffff;
+            color: #5f6772;
+            transition:
+              background 0.2s ease,
+              color 0.2s ease;
+          }
+
+          .detail-map-modal-close:hover {
+            background: ${CALBAYOG_BLUE};
+            border-color: ${CALBAYOG_BLUE};
+            color: #ffffff;
+          }
+
+          .detail-map-modal-body {
+            position: relative;
+            height: calc(100vh - 250px);
+            min-height: 340px;
+            max-height: 680px;
+            overflow: hidden;
+            border: 1px solid #e4e7ed;
+            border-radius: 15px;
+            background: #eef1f5;
+          }
+
+          @keyframes detailMapModalFade {
+            from {
+              opacity: 0;
+            }
+
+            to {
+              opacity: 1;
+            }
+          }
+
+          /* =================================================
+             MAP NAME LABELS
+          ================================================= */
+
+          .leaflet-tooltip.calbayog-map-label {
+            max-width: 160px;
+            padding: 3px 9px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            border: 0;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.96);
+            color: ${TEXT};
+            box-shadow: 0 2px 8px rgba(20, 29, 57, 0.25);
+            font-family:
+              "Nunito",
+              "Poppins",
+              "Segoe UI",
+              sans-serif;
+            font-size: 0.62rem;
+            font-weight: 900;
+            pointer-events: none;
+          }
+
+          .leaflet-tooltip.calbayog-map-label::before {
+            display: none;
+          }
+
+          .leaflet-tooltip.calbayog-map-label.current {
+            background: #e33f5f;
+            color: #ffffff;
+          }
+
+          .detail-location-map-wrap
+            .leaflet-tooltip.calbayog-map-label {
+            max-width: 120px;
+            padding: 2px 7px;
+            font-size: 0.56rem;
+          }
+
+          .labels-compact
+            .leaflet-tooltip.calbayog-map-label:not(.current) {
+            display: none;
+          }
+
+          /* =================================================
              MAP MARKERS
           ================================================= */
 
@@ -2478,7 +3004,7 @@ const AttractionDetail: React.FC =
 
           .calbayog-map-marker-symbol {
             color: #ffffff;
-            font-size: 0.7rem;
+            font-size: 0.82rem;
             line-height: 1;
             font-weight: 900;
           }
@@ -2513,7 +3039,7 @@ const AttractionDetail: React.FC =
 
           .calbayog-map-marker.current
             .calbayog-map-marker-symbol {
-            font-size: 0.95rem;
+            font-size: 1.1rem;
           }
 
           .calbayog-map-marker.accommodation {
@@ -2535,7 +3061,7 @@ const AttractionDetail: React.FC =
 
           .calbayog-map-marker.accommodation
             .calbayog-map-marker-symbol {
-            font-size: 0.72rem;
+            font-size: 0.82rem;
           }
 
           /* =================================================
@@ -3200,13 +3726,19 @@ const AttractionDetail: React.FC =
               width: 100%;
             }
 
-            .detail-map-section {
-              margin-top: 22px;
-              padding: 13px;
+            .detail-map-modal {
+              padding: 10px;
             }
 
-            .detail-map-container {
-              height: 430px;
+            .detail-map-modal-card {
+              max-height: calc(100vh - 20px);
+              padding: 13px;
+              border-radius: 16px;
+            }
+
+            .detail-map-modal-body {
+              height: calc(100vh - 270px);
+              min-height: 300px;
             }
 
             .detail-map-legend {
@@ -3250,10 +3782,6 @@ const AttractionDetail: React.FC =
               font-size: 0.56rem;
             }
 
-            .detail-map-container {
-              height: 390px;
-            }
-
             .detail-map-title {
               font-size: 0.9rem;
             }
@@ -3268,7 +3796,7 @@ const AttractionDetail: React.FC =
             .detail-main-image,
             .detail-thumbnail,
             .detail-media-action,
-            .detail-location-directions,
+            .detail-location-map-expand,
             .detail-memory-button {
               transition: none !important;
             }
@@ -3518,368 +4046,45 @@ const AttractionDetail: React.FC =
 
                 <div className="detail-location-divider" />
 
-                <a
-                  href={
-                    directionsUrl
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="detail-location-directions"
-                >
-                  <Navigation
-                    size={17}
-                  />
+                {hasMapPlaces ? (
+                  <div className="detail-location-map-wrap">
+                    <TourismMap
+                      center={mapCenter}
+                      attractions={
+                        mapAttractions
+                      }
+                      accommodations={
+                        accommodationPlaces
+                      }
+                      interactive={false}
+                    />
 
-                  Get Directions
-
-                  <ExternalLink
-                    size={13}
-                  />
-                </a>
-
-                <div className="detail-location-directions-note">
-                  Opens the destination in Google Maps
-                </div>
+                    <button
+                      type="button"
+                      className="detail-location-map-overlay"
+                      onClick={() =>
+                        setMapOpen(true)
+                      }
+                      aria-label="View larger map"
+                    >
+                      <span className="detail-location-map-expand">
+                        <Maximize2
+                          size={13}
+                        />
+                        Click to enlarge
+                      </span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="detail-location-map-empty">
+                    The map location for this
+                    attraction has not been set
+                    yet.
+                  </div>
+                )}
               </div>
             </Col>
           </Row>
-
-          {/* =================================================
-                PUBLIC TOURISM MAP
-            ================================================= */}
-
-          <section className="detail-map-section">
-            <div className="detail-map-header">
-              <div className="detail-map-header-left">
-                <div className="detail-map-icon">
-                  <MapPinned
-                    size={19}
-                  />
-                </div>
-
-                <div>
-                  <p className="detail-map-kicker">
-                    Explore Calbayog
-                  </p>
-
-                  <h2 className="detail-map-title">
-                    Attractions &
-                    Accommodations
-                  </h2>
-
-                  <p className="detail-map-subtitle">
-                    The current attraction opens first.
-                    Drag or zoom the map to explore other
-                    tourism locations saved by the admin.
-                  </p>
-                </div>
-              </div>
-
-              <div className="detail-map-stats">
-                <span className="detail-map-stat">
-                  <MapPin
-                    size={12}
-                  />
-
-                  {
-                    mapAttractions.length
-                  }{" "}
-                  attractions
-                </span>
-
-                <span className="detail-map-stat">
-                  <Hotel
-                    size={12}
-                  />
-
-                  {
-                    accommodationPlaces.length
-                  }{" "}
-                  accommodations
-                </span>
-              </div>
-            </div>
-
-            {mapAttractions.length ===
-              0 &&
-            accommodationPlaces.length ===
-              0 ? (
-              <div className="detail-map-empty">
-                No saved map coordinates are
-                currently available for this
-                attraction or the other tourism
-                locations.
-              </div>
-            ) : (
-              <>
-                <div className="detail-map-container">
-                  <MapContainer
-                    center={
-                      mapCenter
-                    }
-                    zoom={15}
-                    scrollWheelZoom={
-                      true
-                    }
-                    dragging={
-                      true
-                    }
-                    touchZoom={
-                      true
-                    }
-                    doubleClickZoom={
-                      true
-                    }
-                    boxZoom={
-                      true
-                    }
-                    keyboard={
-                      true
-                    }
-                    zoomControl={
-                      true
-                    }
-                    className="detail-map"
-                  >
-                    <LayersControl
-                      position="topright"
-                    >
-                      {/* SATELLITE + LABELS — SAME AS ADMIN ATTRACTIONS */}
-
-                      <LayersControl.BaseLayer
-                        checked
-                        name="🛰️ Satellite + Labels"
-                      >
-                        <TileLayer
-                          attribution="&copy; Google Maps"
-                          url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-                          maxZoom={21}
-                        />
-                      </LayersControl.BaseLayer>
-
-                      {/* SATELLITE ONLY */}
-
-                      <LayersControl.BaseLayer
-                        name="🛰️ Satellite Only"
-                      >
-                        <TileLayer
-                          attribution="&copy; Google Maps"
-                          url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
-                          maxZoom={21}
-                        />
-                      </LayersControl.BaseLayer>
-
-                      {/* STREET MAP */}
-
-                      <LayersControl.BaseLayer
-                        name="🗺️ Street Map"
-                      >
-                        <TileLayer
-                          attribution="&copy; OpenStreetMap contributors"
-                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                          maxZoom={19}
-                        />
-                      </LayersControl.BaseLayer>
-
-                      {/* ROADS + LABELS */}
-
-                      <LayersControl.BaseLayer
-                        name="🗺️ Roads + Labels"
-                      >
-                        <TileLayer
-                          attribution="&copy; Google Maps"
-                          url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
-                          maxZoom={21}
-                        />
-                      </LayersControl.BaseLayer>
-
-                      {/* TERRAIN */}
-
-                      <LayersControl.BaseLayer
-                        name="⛰️ Terrain"
-                      >
-                        <TileLayer
-                          attribution="&copy; Google Maps"
-                          url="https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}"
-                          maxZoom={21}
-                        />
-                      </LayersControl.BaseLayer>
-                    </LayersControl>
-
-                    {/* =================================================
-                          ATTRACTION MARKERS
-                      ================================================= */}
-
-                    {mapAttractions.map(
-                      (
-                        place,
-                      ) => (
-                        <Marker
-                          key={`attraction-${place.id}`}
-                          position={[
-                            place
-                              .coordinates
-                              .lat,
-
-                            place
-                              .coordinates
-                              .lng,
-                          ]}
-                          icon={
-                            place.isCurrent
-                              ? createCurrentAttractionMarkerIcon
-                              : createAttractionMarkerIcon(place.category)
-                          }
-                        >
-
-                          <Popup>
-                            <div className="detail-map-popup">
-                              <div
-                                className={`detail-map-popup-badge ${
-                                  place.isCurrent
-                                    ? "current"
-                                    : ""
-                                }`}
-                              >
-                                <MapPin
-                                  size={
-                                    10
-                                  }
-                                />
-
-                                {place.isCurrent
-                                  ? "Current attraction"
-                                  : "Attraction"}
-                              </div>
-
-                              <h3 className="detail-map-popup-title">
-                                {
-                                  place.name
-                                }
-                              </h3>
-
-                              {place.category && (
-                                <p className="detail-map-popup-category">
-                                  {
-                                    place.category
-                                  }
-                                </p>
-                              )}
-
-                              {place.address && (
-                                <p className="detail-map-popup-address">
-                                  {
-                                    place.address
-                                  }
-                                </p>
-                              )}
-                            </div>
-                          </Popup>
-                        </Marker>
-                      ),
-                    )}
-
-                    {/* =================================================
-                          ACCOMMODATION MARKERS
-                      ================================================= */}
-
-                    {accommodationPlaces.map(
-                      (
-                        place,
-                      ) => (
-                        <Marker
-                          key={`accommodation-${place.id}`}
-                          position={[
-                            place
-                              .coordinates
-                              .lat,
-
-                            place
-                              .coordinates
-                              .lng,
-                          ]}
-                          icon={createAccommodationMarkerIcon()}
-                        >
-
-                          <Popup>
-                            <div className="detail-map-popup">
-                              <div className="detail-map-popup-badge accommodation">
-                                <Hotel
-                                  size={
-                                    10
-                                  }
-                                />
-
-                                Accommodation
-                              </div>
-
-                              <h3 className="detail-map-popup-title">
-                                {
-                                  place.name
-                                }
-                              </h3>
-
-                              {place.type && (
-                                <p className="detail-map-popup-category">
-                                  {
-                                    place.type
-                                  }
-                                </p>
-                              )}
-
-                              {place.address && (
-                                <p className="detail-map-popup-address">
-                                  {
-                                    place.address
-                                  }
-                                </p>
-                              )}
-                            </div>
-                          </Popup>
-                        </Marker>
-                      ),
-                    )}
-                  </MapContainer>
-
-                  {mapLoading && (
-                    <div className="detail-map-loading">
-                      <div className="detail-map-loading-card">
-                        <Spinner
-                          animation="border"
-                          size="sm"
-                        />
-
-                        Loading map locations...
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="detail-map-legend">
-                  <span className="detail-map-legend-item">
-                    <span className="detail-map-legend-dot current" />
-                    Current attraction
-                  </span>
-
-                  <span className="detail-map-legend-item">
-                    <span className="detail-map-legend-dot attraction" />
-                    Other attraction
-                  </span>
-
-                  <span className="detail-map-legend-item">
-                    <span className="detail-map-legend-dot accommodation" />
-                    Accommodation
-                  </span>
-                </div>
-
-                {mapError && (
-                  <div className="detail-map-error">
-                    {mapError}
-                  </div>
-                )}
-              </>
-            )}
-          </section>
 
           {/* =================================================
                 MAIN CONTENT
@@ -4343,6 +4548,133 @@ const AttractionDetail: React.FC =
             </Col>
           </Row>
         </Container>
+
+        {/* =================================================
+              ENLARGED MAP
+          ================================================= */}
+
+        {mapOpen &&
+          createPortal(
+            <div
+              className="detail-map-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Map of ${attraction.name}`}
+              onClick={() =>
+                setMapOpen(false)
+              }
+            >
+              <div
+                className="detail-map-modal-card"
+                onClick={(event) =>
+                  event.stopPropagation()
+                }
+              >
+                <div className="detail-map-header">
+                  <div className="detail-map-header-left">
+                    <div className="detail-map-icon">
+                      <MapPinned
+                        size={19}
+                      />
+                    </div>
+
+                    <div>
+                      <p className="detail-map-kicker">
+                        Explore Calbayog
+                      </p>
+
+                      <h2 className="detail-map-title">
+                        Attractions &
+                        Accommodations
+                      </h2>
+
+                      <p className="detail-map-subtitle">
+                        Pin symbols show each
+                        attraction type. Tap a
+                        pin for details.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="detail-map-stats">
+                    <span className="detail-map-stat">
+                      <MapPin size={12} />
+                      {mapAttractions.length}{" "}
+                      attractions
+                    </span>
+
+                    <span className="detail-map-stat">
+                      <Hotel size={12} />
+                      {
+                        accommodationPlaces.length
+                      }{" "}
+                      accommodations
+                    </span>
+
+                    <button
+                      type="button"
+                      className="detail-map-modal-close"
+                      onClick={() =>
+                        setMapOpen(false)
+                      }
+                      aria-label="Close map"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="detail-map-modal-body">
+                  <TourismMap
+                    center={mapCenter}
+                    attractions={
+                      mapAttractions
+                    }
+                    accommodations={
+                      accommodationPlaces
+                    }
+                    interactive
+                  />
+
+                  {mapLoading && (
+                    <div className="detail-map-loading">
+                      <div className="detail-map-loading-card">
+                        <Spinner
+                          animation="border"
+                          size="sm"
+                        />
+                        Loading map locations...
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="detail-map-legend">
+                  <span className="detail-map-legend-item">
+                    <span className="detail-map-legend-dot current" />
+                    Current attraction
+                  </span>
+
+                  <span className="detail-map-legend-item">
+                    <span className="detail-map-legend-dot attraction" />
+                    Other attraction
+                  </span>
+
+                  <span className="detail-map-legend-item">
+                    <span className="detail-map-legend-dot accommodation" />
+                    Accommodation
+                  </span>
+                </div>
+
+                {mapError && (
+                  <div className="detail-map-error">
+                    {mapError}
+                  </div>
+                )}
+              </div>
+            </div>,
+            document.body,
+          )}
       </div>
     );
   };
