@@ -45,6 +45,7 @@ import {
   Popup,
   TileLayer,
   LayersControl,
+  Tooltip,
 } from "react-leaflet";
 
 import L from "leaflet";
@@ -469,10 +470,26 @@ const getImageArray = (
    No external marker image files are required.
 ========================================================= */
 
+const getAttractionMarkerSymbol = (category: string): string => {
+  const normalized = cleanString(category).toLowerCase();
+
+  if (normalized === "nature") return "🌿";
+  if (normalized === "history and culture") return "🏛️";
+  if (normalized === "industrial tourism") return "🏭";
+  if (normalized === "shopping") return "🛍️";
+
+  return "📍";
+};
+
 const createAttractionMarkerIcon = (
   isCurrent: boolean,
-) =>
-  L.divIcon({
+  category = "Other",
+) => {
+  const symbol = isCurrent
+    ? "★"
+    : getAttractionMarkerSymbol(category);
+
+  return L.divIcon({
     className:
       "calbayog-map-marker-wrapper",
 
@@ -491,11 +508,7 @@ const createAttractionMarkerIcon = (
       >
         <div class="calbayog-map-marker-inner">
           <span class="calbayog-map-marker-symbol">
-            ${
-              isCurrent
-                ? "★"
-                : "●"
-            }
+            ${symbol}
           </span>
         </div>
       </div>
@@ -516,6 +529,7 @@ const createAttractionMarkerIcon = (
         : -38,
     ],
   });
+};
 
 const createAccommodationMarkerIcon =
   () =>
@@ -1262,33 +1276,6 @@ const AttractionDetail: React.FC =
           }
         }
       };
-
-    /* =====================================================
-       MAP PLACES
-    ===================================================== */
-
-    const attractionMapPlaces =
-      useMemo<
-        AttractionMapPlace[]
-      >(() => {
-        if (!attraction) {
-          return [];
-        }
-
-        const currentId =
-          normalizeId(
-            attraction.id,
-          );
-
-        return [
-          attraction,
-          ...[],
-        ]
-          .map(
-            () => null,
-          )
-          .filter(Boolean) as AttractionMapPlace[];
-      }, [attraction]);
 
     /*
      * We intentionally create the attraction list from the
@@ -2544,6 +2531,32 @@ const AttractionDetail: React.FC =
             font-size: 0.72rem;
           }
 
+          .detail-map-tooltip {
+            border: 0 !important;
+            border-radius: 999px !important;
+            padding: 5px 9px !important;
+            background: rgba(255, 255, 255, 0.96) !important;
+            color: ${TEXT} !important;
+            box-shadow: 0 3px 12px rgba(20, 29, 57, 0.16) !important;
+            font-size: 0.58rem !important;
+            line-height: 1.25 !important;
+            font-weight: 900 !important;
+            white-space: nowrap;
+          }
+
+          .detail-map-tooltip::before {
+            border-top-color: rgba(255, 255, 255, 0.96) !important;
+          }
+
+          .detail-map-tooltip.accommodation {
+            background: #e7f7f5 !important;
+            color: #007b72 !important;
+          }
+
+          .detail-map-tooltip.accommodation::before {
+            border-top-color: #e7f7f5 !important;
+          }
+
           /* =================================================
              MAP POPUP
           ================================================= */
@@ -3574,11 +3587,9 @@ const AttractionDetail: React.FC =
                   </h2>
 
                   <p className="detail-map-subtitle">
-                    Explore nearby tourism
-                    destinations and
-                    accommodations using
-                    locations saved by the
-                    tourism admin.
+                    The current attraction opens first.
+                    Drag or zoom the map to explore other
+                    tourism locations saved by the admin.
                   </p>
                 </div>
               </div>
@@ -3708,8 +3719,20 @@ const AttractionDetail: React.FC =
                           ]}
                           icon={createAttractionMarkerIcon(
                             place.isCurrent,
+                            place.category,
                           )}
                         >
+                          <Tooltip
+                            permanent
+                            direction="top"
+                            offset={[0, place.isCurrent ? -49 : -39]}
+                            className="detail-map-tooltip"
+                          >
+                            {place.isCurrent
+                              ? `★ ${place.name}`
+                              : place.name}
+                          </Tooltip>
+
                           <Popup>
                             <div className="detail-map-popup">
                               <div
@@ -3778,6 +3801,15 @@ const AttractionDetail: React.FC =
                           ]}
                           icon={createAccommodationMarkerIcon()}
                         >
+                          <Tooltip
+                            permanent
+                            direction="top"
+                            offset={[0, -39]}
+                            className="detail-map-tooltip accommodation"
+                          >
+                            🏨 {place.name}
+                          </Tooltip>
+
                           <Popup>
                             <div className="detail-map-popup">
                               <div className="detail-map-popup-badge accommodation">
