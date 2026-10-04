@@ -788,7 +788,13 @@ export default function LocationPicker({
       })
       .slice(0, 8)
       .map((place) => ({
-        ...place,
+        // IMPORTANT: local saved attractions are used only as a name/address
+        // fallback. Their saved latitude/longitude are intentionally NOT
+        // returned as search-result coordinates. This prevents an old or
+        // inaccurate database pin from competing with the real map result.
+        id: place.id,
+        name: place.name,
+        address: place.address,
         source: "local" as const,
         display_name: [place.name, place.address]
           .filter(Boolean)
@@ -845,22 +851,90 @@ export default function LocationPicker({
 
     const localResults: SearchResult[] = localMatches.map((place) => ({
       ...place,
+      // Never allow saved DB coordinates to become search-result coordinates.
+      latitude: undefined,
+      longitude: undefined,
+      lat: undefined,
+      lon: undefined,
     }));
 
+    const validCoordinateResult = (result: SearchResult) => {
+      const lat = Number(result.latitude ?? result.lat);
+      const lng = Number(result.longitude ?? result.lon);
+
+      return (
+        (result.latitude != null || result.lat != null) &&
+        (result.longitude != null || result.lon != null) &&
+        Number.isFinite(lat) &&
+        Number.isFinite(lng) &&
+        Math.abs(lat) <= 90 &&
+        Math.abs(lng) <= 180 &&
+        !(lat === 0 && lng === 0)
+      );
+    };
+
+    const scoreMapResult = (result: SearchResult, requestedName: string) => {
+      const queryText = normalize(requestedName);
+      const resultName = normalize(result.name);
+      const displayText = normalize(result.display_name);
+      const addressText = normalize(result.address);
+      const attractionName = normalize(name);
+
+      let score = 0;
+
+      if (resultName && queryText && resultName === queryText) score += 100;
+      if (resultName && attractionName && resultName === attractionName) score += 100;
+      if (attractionName && displayText.includes(attractionName)) score += 55;
+      if (queryText && displayText.includes(queryText)) score += 45;
+      if (attractionName && addressText.includes(attractionName)) score += 25;
+      if (resultName && queryText && queryText.includes(resultName)) score += 20;
+
+      return score;
+    };
+
     try {
-      const externalResults = await geocodeLocation(query);
-      const mergedResults = [...localResults, ...externalResults];
+      // 1. Always ask the actual map provider first.
+      let externalResults = await geocodeLocation(query);
+      let usableExternalResults = externalResults.filter(validCoordinateResult);
+
+      // 2. If searching by attraction name does not produce a strong place
+      // match, use the saved ADDRESS as the fallback query. This keeps the
+      // address useful without trusting the saved DB coordinates.
+      const ranked = usableExternalResults
+        .map((result) => ({
+          result,
+          score: scoreMapResult(result, query),
+        }))
+        .sort((a, b) => b.score - a.score);
+
+      const strongMatch = ranked.length > 0 && ranked[0].score >= 45;
+
+      if (!strongMatch && localResults.length > 0) {
+        const addressFallback = localResults.find((place) =>
+          Boolean(String(place.address || "").trim()),
+        );
+
+        if (addressFallback?.address) {
+          const addressResults = await geocodeLocation(
+            String(addressFallback.address),
+          );
+
+          if (addressResults.length > 0) {
+            externalResults = addressResults;
+            usableExternalResults = addressResults.filter(validCoordinateResult);
+          }
+        }
+      }
+
+      // 3. Show only map-provider results. Saved DB attractions are never
+      // shown as competing coordinate pins.
       const seen = new Set<string>();
-
-      const uniqueResults = mergedResults.filter((result) => {
-        const lat = result.latitude ?? result.lat ?? "";
-        const lng = result.longitude ?? result.lon ?? "";
-
-        const key = result.id
-          ? `${result.source || "result"}:${result.id}`
-          : `${normalize(result.name)}|${lat}|${lng}|${normalize(
-              result.display_name,
-            )}`;
+      const uniqueResults = usableExternalResults.filter((result) => {
+        const lat = Number(result.latitude ?? result.lat);
+        const lng = Number(result.longitude ?? result.lon);
+        const key = `${lat.toFixed(6)}|${lng.toFixed(6)}|${normalize(
+          result.display_name || result.name,
+        )}`;
 
         if (seen.has(key)) return false;
         seen.add(key);
@@ -870,28 +944,33 @@ export default function LocationPicker({
       setSearchResults(uniqueResults.slice(0, 12));
 
       if (uniqueResults.length === 0) {
+        if (localResults.length > 0) {
+          setSearchMessage(
+            "No exact map place was found for this attraction. Its saved address was also checked, but no usable map coordinates were returned. The old saved pin was not used. Place the pin manually on the map.",
+          );
+        } else {
+          setSearchMessage(
+            "No map location was found. Try the attraction name with its barangay or address, or place the pin manually.",
+          );
+        }
+      } else if (!strongMatch && localResults.length > 0) {
         setSearchMessage(
-          "No matching location was found. Try the attraction name with its barangay or a nearby landmark.",
+          "No exact attraction pin was found by name, so the saved address was used to find a map location. Confirm the pin before saving.",
         );
-      } else if (localResults.length > 0) {
+      } else {
         setSearchMessage(
-          "Your existing attraction records appear first. Choose the correct location.",
+          "Map locations found. Choose the correct place, then confirm the pin before saving.",
         );
       }
     } catch (error) {
       console.error("Location search failed:", error);
 
-      if (localResults.length > 0) {
-        setSearchResults(localResults);
-        setSearchMessage(
-          "Showing saved attraction records. Online map search is temporarily unavailable.",
-        );
-      } else {
-        setSearchResults([]);
-        setSearchMessage(
-          "Online location search is temporarily unavailable. Check your connection or place the pin manually.",
-        );
-      }
+      // IMPORTANT: even if the online provider fails, do NOT fall back to
+      // saved database coordinates. The admin can place the pin manually.
+      setSearchResults([]);
+      setSearchMessage(
+        "Online map search is temporarily unavailable. The saved database pin was not used as a search result. You can place the pin manually on the map.",
+      );
     } finally {
       setSearching(false);
     }
@@ -907,7 +986,10 @@ export default function LocationPicker({
     const lat = Number(result.latitude ?? result.lat);
     const lng = Number(result.longitude ?? result.lon);
 
+    // A local result is only a name/address fallback. Never trust its
+    // coordinates, even if a caller accidentally includes them.
     const hasCoordinates =
+      result.source !== "local" &&
       (result.latitude != null || result.lat != null) &&
       (result.longitude != null || result.lon != null) &&
       Number.isFinite(lat) &&
@@ -1613,7 +1695,7 @@ export default function LocationPicker({
                     )}
                     <span className="calbayog-result-source">
                       {result.source === "local"
-                        ? "Saved attraction"
+                        ? "Saved address fallback"
                         : "Map search result"}
                     </span>
                   </span>
