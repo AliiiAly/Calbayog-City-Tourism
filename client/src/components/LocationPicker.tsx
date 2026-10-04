@@ -741,13 +741,21 @@ export default function LocationPicker({
   const [searchMessage, setSearchMessage] = useState("");
   const [layer, setLayer] = useState<MapLayer>("street");
   const [showMappedPlaces, setShowMappedPlaces] = useState(true);
-  const [showLegend, setShowLegend] = useState(true);
   const [mapZoom, setMapZoom] = useState(
     validInitialCoordinates ? 17 : 13,
   );
   const [selectedPlaceName, setSelectedPlaceName] = useState(name || "");
   const [selectedPlaceAddress, setSelectedPlaceAddress] = useState(
     address || "",
+  );
+
+  // Manual coordinate fields are kept as text drafts so an admin can type
+  // a complete decimal coordinate without the map interrupting the input.
+  const [latitudeInput, setLatitudeInput] = useState(
+    validInitialCoordinates ? String(latitude) : "",
+  );
+  const [longitudeInput, setLongitudeInput] = useState(
+    validInitialCoordinates ? String(longitude) : "",
   );
 
   useEffect(() => {
@@ -770,6 +778,18 @@ export default function LocationPicker({
   }, [address]);
 
   useEffect(() => {
+    if (
+      typeof latitude === "number" &&
+      Number.isFinite(latitude) &&
+      typeof longitude === "number" &&
+      Number.isFinite(longitude)
+    ) {
+      setLatitudeInput(String(latitude));
+      setLongitudeInput(String(longitude));
+    }
+  }, [latitude, longitude]);
+
+  useEffect(() => {
     if (name?.trim()) setSelectedPlaceName(name.trim());
   }, [name]);
 
@@ -789,14 +809,13 @@ export default function LocationPicker({
       })
       .slice(0, 8)
       .map((place) => ({
-        // Saved attractions are the most reliable source when the admin is
-        // editing an attraction that already has a saved map location.
-        // Their coordinates are therefore available for exact local matches.
+        // IMPORTANT: local saved attractions are used only as a name/address
+        // fallback. Their saved latitude/longitude are intentionally NOT
+        // returned as search-result coordinates. This prevents an old or
+        // inaccurate database pin from competing with the real map result.
         id: place.id,
         name: place.name,
         address: place.address,
-        latitude: place.latitude,
-        longitude: place.longitude,
         source: "local" as const,
         display_name: [place.name, place.address]
           .filter(Boolean)
@@ -839,6 +858,47 @@ export default function LocationPicker({
     [onChange],
   );
 
+  const applyManualCoordinates = useCallback(() => {
+    const lat = Number(latitudeInput.trim());
+    const lng = Number(longitudeInput.trim());
+
+    if (
+      latitudeInput.trim() === "" ||
+      longitudeInput.trim() === "" ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      Math.abs(lat) > 90 ||
+      Math.abs(lng) > 180 ||
+      (lat === 0 && lng === 0)
+    ) {
+      setSearchMessage(
+        "Enter a valid latitude (-90 to 90) and longitude (-180 to 180). Latitude and longitude cannot both be 0.",
+      );
+      return;
+    }
+
+    handleLocationChange(
+      lat,
+      lng,
+      selectedPlaceAddress || address || undefined,
+      selectedPlaceName || name || undefined,
+    );
+
+    setLatitudeInput(String(lat));
+    setLongitudeInput(String(lng));
+    setSearchMessage(
+      "Coordinates applied. The map pin has been moved to the exact latitude and longitude you entered.",
+    );
+  }, [
+    address,
+    handleLocationChange,
+    latitudeInput,
+    longitudeInput,
+    name,
+    selectedPlaceAddress,
+    selectedPlaceName,
+  ]);
+
   const searchLocation = async () => {
     const query = searchTerm.trim();
 
@@ -851,18 +911,14 @@ export default function LocationPicker({
     setSearching(true);
     setSearchMessage("");
 
-    const localResults: SearchResult[] = localMatches.filter((place) => {
-      const localLat = Number(place.latitude);
-      const localLng = Number(place.longitude);
-
-      return (
-        Number.isFinite(localLat) &&
-        Number.isFinite(localLng) &&
-        Math.abs(localLat) <= 90 &&
-        Math.abs(localLng) <= 180 &&
-        !(localLat === 0 && localLng === 0)
-      );
-    });
+    const localResults: SearchResult[] = localMatches.map((place) => ({
+      ...place,
+      // Never allow saved DB coordinates to become search-result coordinates.
+      latitude: undefined,
+      longitude: undefined,
+      lat: undefined,
+      lon: undefined,
+    }));
 
     const validCoordinateResult = (result: SearchResult) => {
       const lat = Number(result.latitude ?? result.lat);
@@ -899,27 +955,13 @@ export default function LocationPicker({
     };
 
     try {
-      // 1. If the attraction already exists in the admin list and has valid
-      // saved coordinates, prefer that exact local attraction match first.
-      // This fixes cases such as an existing resort that is not indexed by
-      // Nominatim but is already correctly mapped in the database.
-      const exactLocalMatch = localResults.find(
-        (place) => normalize(place.name) === normalize(query),
-      );
-
-      if (exactLocalMatch) {
-        setSearchResults([exactLocalMatch]);
-        setSearchMessage(
-          "Saved attraction found. Select it to restore its saved map location, then drag the pin if you need to fine-tune it.",
-        );
-        return;
-      }
-
-      // 2. Search the public map provider for attractions that are not yet
-      // saved locally.
+      // 1. Always ask the actual map provider first.
       let externalResults = await geocodeLocation(query);
       let usableExternalResults = externalResults.filter(validCoordinateResult);
 
+      // 2. If searching by attraction name does not produce a strong place
+      // match, use the saved ADDRESS as the fallback query. This keeps the
+      // address useful without trusting the saved DB coordinates.
       const ranked = usableExternalResults
         .map((result) => ({
           result,
@@ -929,11 +971,8 @@ export default function LocationPicker({
 
       const strongMatch = ranked.length > 0 && ranked[0].score >= 45;
 
-      // 3. If the name is not strongly found, use the saved address as a
-      // fallback search query. The saved coordinates remain available only
-      // for an exact local attraction match.
-      if (!strongMatch && localMatches.length > 0) {
-        const addressFallback = localMatches.find((place) =>
+      if (!strongMatch && localResults.length > 0) {
+        const addressFallback = localResults.find((place) =>
           Boolean(String(place.address || "").trim()),
         );
 
@@ -944,12 +983,13 @@ export default function LocationPicker({
 
           if (addressResults.length > 0) {
             externalResults = addressResults;
-            usableExternalResults =
-              addressResults.filter(validCoordinateResult);
+            usableExternalResults = addressResults.filter(validCoordinateResult);
           }
         }
       }
 
+      // 3. Show only map-provider results. Saved DB attractions are never
+      // shown as competing coordinate pins.
       const seen = new Set<string>();
       const uniqueResults = usableExternalResults.filter((result) => {
         const lat = Number(result.latitude ?? result.lat);
@@ -966,18 +1006,18 @@ export default function LocationPicker({
       setSearchResults(uniqueResults.slice(0, 12));
 
       if (uniqueResults.length === 0) {
-        if (localMatches.length > 0) {
+        if (localResults.length > 0) {
           setSearchMessage(
-            "The attraction exists in the saved list, but no public map result was found. Search with its barangay or address, or select the saved attraction name exactly.",
+            "No exact map place was found for this attraction. Its saved address was also checked, but no usable map coordinates were returned. The old saved pin was not used. Place the pin manually on the map.",
           );
         } else {
           setSearchMessage(
             "No map location was found. Try the attraction name with its barangay or address, or place the pin manually.",
           );
         }
-      } else if (!strongMatch && localMatches.length > 0) {
+      } else if (!strongMatch && localResults.length > 0) {
         setSearchMessage(
-          "A public map result was found using the saved attraction information. Confirm the pin before saving.",
+          "No exact attraction pin was found by name, so the saved address was used to find a map location. Confirm the pin before saving.",
         );
       } else {
         setSearchMessage(
@@ -1008,9 +1048,10 @@ export default function LocationPicker({
     const lat = Number(result.latitude ?? result.lat);
     const lng = Number(result.longitude ?? result.lon);
 
-    // A saved local attraction may already contain the correct coordinates.
-    // Public search results may also contain coordinates.
+    // A local result is only a name/address fallback. Never trust its
+    // coordinates, even if a caller accidentally includes them.
     const hasCoordinates =
+      result.source !== "local" &&
       (result.latitude != null || result.lat != null) &&
       (result.longitude != null || result.lon != null) &&
       Number.isFinite(lat) &&
@@ -1061,7 +1102,7 @@ export default function LocationPicker({
 
       if (!match) {
         setSearchMessage(
-          `“${resultName}” is saved, but it does not currently have usable coordinates. Search with its barangay or place the pin manually.`,
+          `“${resultName}” is in your saved attraction list, but no usable coordinates were found. Try searching with its barangay or place the pin manually.`,
         );
         return;
       }
@@ -1123,27 +1164,6 @@ export default function LocationPicker({
         maximumAge: 30000,
       },
     );
-  };
-
-  const resetMapToSelection = () => {
-    if (
-      typeof latitude === "number" &&
-      typeof longitude === "number" &&
-      Number.isFinite(latitude) &&
-      Number.isFinite(longitude) &&
-      Math.abs(latitude) <= 90 &&
-      Math.abs(longitude) <= 180 &&
-      !(latitude === 0 && longitude === 0)
-    ) {
-      setPosition([latitude, longitude]);
-      setMapZoom(17);
-      setSearchMessage("Map reset to the saved attraction location.");
-      return;
-    }
-
-    setPosition([DEFAULT_LATITUDE, DEFAULT_LONGITUDE]);
-    setMapZoom(13);
-    setSearchMessage("Map reset to Calbayog City.");
   };
 
   const markerLabel =
@@ -1390,79 +1410,6 @@ export default function LocationPicker({
           background: #eef0ff;
           color: ${BRAND_BLUE};
         }
-        .calbayog-map-legend {
-          position: absolute;
-          right: 10px;
-          top: 10px;
-          z-index: 900;
-          width: min(260px, calc(100% - 20px));
-          max-height: 220px;
-          overflow: auto;
-          padding: 10px 11px;
-          border: 1px solid rgba(220,225,236,.95);
-          border-radius: 12px;
-          background: rgba(255,255,255,.95);
-          box-shadow: 0 4px 14px rgba(20,30,50,.14);
-          backdrop-filter: blur(6px);
-        }
-        .calbayog-map-legend-title {
-          font-size: 10px;
-          font-weight: 850;
-          color: #30364a;
-          text-transform: uppercase;
-          letter-spacing: .45px;
-          margin-bottom: 7px;
-        }
-        .calbayog-map-legend-row {
-          display: flex;
-          align-items: center;
-          gap: 7px;
-          margin: 5px 0;
-          font-size: 10px;
-          color: #60697b;
-        }
-        .calbayog-map-legend-dot {
-          width: 22px;
-          height: 22px;
-          border-radius: 50%;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          flex: 0 0 22px;
-          background: #fff;
-          border: 2px solid #fff;
-          box-shadow: 0 1px 4px rgba(0,0,0,.20);
-          font-size: 11px;
-        }
-        .calbayog-map-floating-actions {
-          position: absolute;
-          right: 10px;
-          bottom: 10px;
-          z-index: 900;
-          display: flex;
-          gap: 6px;
-          flex-wrap: wrap;
-          justify-content: flex-end;
-        }
-        .calbayog-map-floating-button {
-          min-height: 34px;
-          padding: 7px 9px;
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          border: 1px solid rgba(220,225,236,.95);
-          border-radius: 9px;
-          background: rgba(255,255,255,.95);
-          color: #4f586c;
-          box-shadow: 0 2px 8px rgba(20,30,50,.14);
-          font-size: 10px;
-          font-weight: 800;
-          cursor: pointer;
-        }
-        .calbayog-map-floating-button:hover {
-          background: #fff;
-          color: ${BRAND_BLUE};
-        }
         .calbayog-map-hint {
           display: inline-flex;
           align-items: center;
@@ -1505,6 +1452,92 @@ export default function LocationPicker({
           font-size: 10px;
           line-height: 1.4;
           pointer-events: none;
+        }
+        .calbayog-coordinate-editor {
+          margin-top: 12px;
+          padding: 14px;
+          border: 1px solid #e1e5ee;
+          border-radius: 14px;
+          background: #fff;
+        }
+        .calbayog-coordinate-editor-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 11px;
+        }
+        .calbayog-coordinate-editor-title {
+          display: block;
+          color: #30364a;
+          font-size: 11.5px;
+          font-weight: 850;
+        }
+        .calbayog-coordinate-editor-help {
+          display: block;
+          margin-top: 3px;
+          color: #858c9c;
+          font-size: 10.5px;
+          line-height: 1.5;
+        }
+        .calbayog-coordinate-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+          gap: 9px;
+          align-items: end;
+        }
+        .calbayog-coordinate-field {
+          min-width: 0;
+        }
+        .calbayog-coordinate-field label {
+          display: block;
+          margin-bottom: 5px;
+          color: #697184;
+          font-size: 10px;
+          font-weight: 850;
+        }
+        .calbayog-coordinate-input {
+          width: 100%;
+          min-height: 40px;
+          padding: 9px 11px;
+          border: 1px solid #dfe4ef;
+          border-radius: 10px;
+          background: #fbfcff;
+          color: #252b3c;
+          outline: none;
+          font-size: 12px;
+          font-variant-numeric: tabular-nums;
+        }
+        .calbayog-coordinate-input:focus {
+          background: #fff;
+          border-color: ${BRAND_BLUE};
+          box-shadow: 0 0 0 3px rgba(45,49,149,.10);
+        }
+        .calbayog-coordinate-input::placeholder { color: #a0a6b4; }
+        .calbayog-coordinate-apply {
+          min-height: 40px;
+          padding: 9px 13px;
+          border: 1px solid ${BRAND_BLUE};
+          border-radius: 10px;
+          background: ${BRAND_BLUE};
+          color: #fff;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          font-size: 11px;
+          font-weight: 850;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .calbayog-coordinate-apply:hover {
+          background: #23277c;
+        }
+        .calbayog-coordinate-range {
+          margin-top: 8px;
+          color: #8a91a3;
+          font-size: 9.5px;
+          line-height: 1.45;
         }
         .calbayog-location-summary {
           margin-top: 12px;
@@ -1674,15 +1707,6 @@ export default function LocationPicker({
             padding: 9px;
           }
           .calbayog-map-frame .leaflet-container { height: 330px; }
-          .calbayog-map-legend {
-            max-height: 170px;
-            width: min(210px, calc(100% - 20px));
-          }
-          .calbayog-map-floating-actions {
-            left: 10px;
-            right: 10px;
-            justify-content: space-between;
-          }
           .calbayog-map-hint { width: 100%; }
           .calbayog-coordinate-chip { white-space: normal; }
         }
@@ -1905,72 +1929,6 @@ export default function LocationPicker({
       </div>
 
       <div className="calbayog-map-frame">
-        {showLegend && (
-          <div className="calbayog-map-legend" aria-label="Map marker legend">
-            <div className="calbayog-map-legend-title">
-              Attraction marker
-            </div>
-            <div className="calbayog-map-legend-row">
-              <span
-                className="calbayog-map-legend-dot"
-                style={{ background: "#16845B" }}
-              >
-                💧
-              </span>
-              Nature
-            </div>
-            <div className="calbayog-map-legend-row">
-              <span
-                className="calbayog-map-legend-dot"
-                style={{ background: "#A66A3F" }}
-              >
-                ⛪
-              </span>
-              History & Culture
-            </div>
-            <div className="calbayog-map-legend-row">
-              <span
-                className="calbayog-map-legend-dot"
-                style={{ background: "#526477" }}
-              >
-                🏭
-              </span>
-              Industrial Tourism
-            </div>
-            <div className="calbayog-map-legend-row">
-              <span
-                className="calbayog-map-legend-dot"
-                style={{ background: "#D9468F" }}
-              >
-                🛍️
-              </span>
-              Shopping
-            </div>
-          </div>
-        )}
-
-        <div className="calbayog-map-floating-actions">
-          <button
-            type="button"
-            className="calbayog-map-floating-button"
-            onClick={resetMapToSelection}
-            title="Reset the map to the saved or selected location"
-          >
-            <MapPin size={13} />
-            Reset
-          </button>
-          <button
-            type="button"
-            className="calbayog-map-floating-button"
-            onClick={() => setShowLegend((current) => !current)}
-            aria-pressed={showLegend}
-            title="Show or hide the map legend"
-          >
-            <MapIcon size={13} />
-            Legend
-          </button>
-        </div>
-
         <MapContainer
           center={position}
           zoom={mapZoom}
@@ -2086,6 +2044,77 @@ export default function LocationPicker({
             </Popup>
           </Marker>
         </MapContainer>
+      </div>
+
+      <div className="calbayog-coordinate-editor">
+        <div className="calbayog-coordinate-editor-header">
+          <div>
+            <span className="calbayog-coordinate-editor-title">
+              Exact Coordinates
+            </span>
+            <span className="calbayog-coordinate-editor-help">
+              Enter latitude and longitude manually when you already know the
+              exact coordinates.
+            </span>
+          </div>
+          <Navigation size={15} style={{ color: BRAND_BLUE, flex: "0 0 auto" }} />
+        </div>
+
+        <div className="calbayog-coordinate-grid">
+          <div className="calbayog-coordinate-field">
+            <label htmlFor="calbayog-latitude-input">Latitude</label>
+            <input
+              id="calbayog-latitude-input"
+              className="calbayog-coordinate-input"
+              type="text"
+              inputMode="decimal"
+              value={latitudeInput}
+              onChange={(event) => setLatitudeInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void applyManualCoordinates();
+                }
+              }}
+              placeholder="e.g. 12.066800"
+              aria-label="Latitude"
+            />
+          </div>
+
+          <div className="calbayog-coordinate-field">
+            <label htmlFor="calbayog-longitude-input">Longitude</label>
+            <input
+              id="calbayog-longitude-input"
+              className="calbayog-coordinate-input"
+              type="text"
+              inputMode="decimal"
+              value={longitudeInput}
+              onChange={(event) => setLongitudeInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void applyManualCoordinates();
+                }
+              }}
+              placeholder="e.g. 124.604100"
+              aria-label="Longitude"
+            />
+          </div>
+
+          <button
+            type="button"
+            className="calbayog-coordinate-apply"
+            onClick={applyManualCoordinates}
+          >
+            <CheckCircle2 size={14} />
+            Apply
+          </button>
+        </div>
+
+        <div className="calbayog-coordinate-range">
+          Valid latitude: -90 to 90 · Valid longitude: -180 to 180 ·
+          Coordinates are saved with the attraction when you save the form.
+        </div>
       </div>
 
       <div className="calbayog-location-summary">
