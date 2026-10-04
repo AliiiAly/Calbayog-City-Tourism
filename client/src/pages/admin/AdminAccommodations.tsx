@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 
 import AdminLayout from "../../components/admin/AdminLayout";
-import LocationPicker from "../../components/admin/LocationPicker";
+import LocationPicker from "../../components/LocationPicker";
 
 import {
   getAccommodations,
