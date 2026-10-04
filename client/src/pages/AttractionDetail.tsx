@@ -1,8 +1,20 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import { useHistory, useParams } from "react-router-dom";
+import {
+  useHistory,
+  useParams,
+} from "react-router-dom";
 
-import { Container, Row, Col, Spinner } from "react-bootstrap";
+import {
+  Container,
+  Row,
+  Col,
+  Spinner,
+} from "react-bootstrap";
 
 import {
   ArrowLeft,
@@ -24,7 +36,7 @@ import {
   Leaf,
   ShoppingBag,
   Hotel,
-  LocateFixed,
+  MapPinned,
 } from "lucide-react";
 
 import {
@@ -32,7 +44,7 @@ import {
   Marker,
   Popup,
   TileLayer,
-  Tooltip,
+  LayersControl,
 } from "react-leaflet";
 
 import L from "leaflet";
@@ -41,8 +53,8 @@ import "leaflet/dist/leaflet.css";
 
 import {
   createMyMemory,
-  getAttractions,
   getAccommodations,
+  getAttractions,
 } from "../services/api";
 
 import {
@@ -51,20 +63,23 @@ import {
   supabase,
 } from "../services/supabase";
 
-import { Destination, Accommodation } from "../types";
+import {
+  Destination,
+  Accommodation,
+} from "../types";
 
 import { useAuth } from "../context/AuthContext";
 import { useFavorites } from "../context/FavoritesContext";
 
-/* =========================================================
-   COLORS
-========================================================= */
-
 const CALBAYOG_BLUE = "#2D3195";
 const CALBAYOG_BLUE_SOFT = "#EEF0FF";
+
 const TEXT = "#20232A";
 const MUTED = "#727985";
 const BORDER = "#E8EAF0";
+
+const DEFAULT_LATITUDE = 12.0668;
+const DEFAULT_LONGITUDE = 124.6041;
 
 /* =========================================================
    CATEGORY ICONS
@@ -77,6 +92,10 @@ const CATEGORY_ICONS = {
   Shopping: ShoppingBag,
   Other: MapPin,
 };
+
+/* =========================================================
+   CATEGORY COLORS
+========================================================= */
 
 const CATEGORY_TINTS: Record<
   string,
@@ -116,26 +135,12 @@ const CATEGORY_TINTS: Record<
 ========================================================= */
 
 type Attraction = Destination & {
-  id?: number | string;
-  name?: string;
-
-  location_lat?: number | string | null;
-  location_lng?: number | string | null;
-  location_address?: string;
-
   latitude?: number | string | null;
   longitude?: number | string | null;
+
   lat?: number | string | null;
   lng?: number | string | null;
-  lon?: number | string | null;
 
-  address?: string;
-  location?: string;
-
-  description?: string;
-  images?: string[] | null;
-
-  category?: string;
   attraction_type?: string;
   other_attraction_type?: string;
 
@@ -147,7 +152,6 @@ type Attraction = Destination & {
   contact_phone?: string;
   phone?: string;
 
-  opening_hours?: string;
   operating_hours?: string;
   operational_hours?: string;
 
@@ -155,166 +159,66 @@ type Attraction = Destination & {
 
   things_to_do?: string[] | string;
 
-  featured?: boolean;
   favorites?: number;
 };
 
-type MapCoordinate = {
+interface MapCoordinates {
   lat: number;
   lng: number;
-};
+}
 
-type MapPlace = {
+interface AttractionMapPlace {
   id: string;
   name: string;
-  type: "current-attraction" | "attraction" | "accommodation";
-  lat: number;
-  lng: number;
-  address?: string;
-  category?: string;
-  attractionType?: string;
-};
+  category: string;
+  address: string;
+  coordinates: MapCoordinates;
+  isCurrent: boolean;
+}
+
+interface AccommodationMapPlace {
+  id: string;
+  name: string;
+  type: string;
+  address: string;
+  coordinates: MapCoordinates;
+}
 
 /* =========================================================
    HELPERS
 ========================================================= */
 
-const cleanString = (value: unknown): string => {
-  if (value === null || value === undefined) {
+const cleanString = (
+  value: unknown,
+): string => {
+  if (
+    value === null ||
+    value === undefined
+  ) {
     return "";
   }
 
   return String(value).trim();
 };
 
-const normalizeId = (value: unknown): string =>
+const normalizeId = (
+  value: unknown,
+): string =>
   String(value ?? "")
     .trim()
     .toLowerCase();
 
 /* =========================================================
-   COORDINATE HELPER
-========================================================= */
-
-/**
- * IMPORTANT:
- *
- * AdminAttractions saves coordinates as:
- *
- * location_lat
- * location_lng
- *
- * Those are the PRIMARY values used here.
- *
- * The other names are only fallbacks in case the API
- * returns a legacy shape.
- */
-const getCoordinates = (
-  item: any,
-): MapCoordinate | null => {
-  const rawLat =
-    item?.location_lat ??
-    item?.latitude ??
-    item?.lat ??
-    item?.location?.lat;
-
-  const rawLng =
-    item?.location_lng ??
-    item?.longitude ??
-    item?.lng ??
-    item?.lon ??
-    item?.location?.lng;
-
-  const lat = Number(rawLat);
-  const lng = Number(rawLng);
-
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return null;
-  }
-
-  if (lat < -90 || lat > 90) {
-    return null;
-  }
-
-  if (lng < -180 || lng > 180) {
-    return null;
-  }
-
-  return {
-    lat,
-    lng,
-  };
-};
-
-/* =========================================================
-   MARKER ICONS
-========================================================= */
-
-const createMarkerIcon = (
-  type:
-    | "current-attraction"
-    | "attraction"
-    | "accommodation",
-) => {
-  let background = CALBAYOG_BLUE;
-  let border = "#ffffff";
-  let size = 38;
-
-  if (type === "attraction") {
-    background = "#5367D9";
-    size = 32;
-  }
-
-  if (type === "accommodation") {
-    background = "#D88928";
-    size = 34;
-  }
-
-  if (type === "current-attraction") {
-    background = CALBAYOG_BLUE;
-    size = 46;
-  }
-
-  return L.divIcon({
-    className: "calbayog-map-marker-wrapper",
-
-    html: `
-      <div
-        class="calbayog-map-marker calbayog-map-marker-${type}"
-        style="
-          width:${size}px;
-          height:${size}px;
-          background:${background};
-          border:3px solid ${border};
-        "
-      >
-        <div class="calbayog-map-marker-inner">
-          ${
-            type === "accommodation"
-              ? `<span class="calbayog-marker-symbol">H</span>`
-              : `<span class="calbayog-marker-symbol">●</span>`
-          }
-        </div>
-      </div>
-    `,
-
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size],
-    popupAnchor: [0, -size + 4],
-  });
-};
-
-/* =========================================================
-   GENERIC VALUE HELPER
+   GET FIRST VALUE
 ========================================================= */
 
 const getFirstValue = (
-  attraction: Attraction,
+  item: any,
   keys: string[],
 ): string => {
   for (const key of keys) {
     const value = cleanString(
-      (attraction as any)?.[key],
+      item?.[key],
     );
 
     if (value) {
@@ -326,31 +230,120 @@ const getFirstValue = (
 };
 
 /* =========================================================
+   GET COORDINATES
+
+   IMPORTANT:
+   Attractions prioritize:
+   location_lat / location_lng
+
+   Accommodations prioritize:
+   location_lat / location_lng
+
+   BUT the current accommodations table uses:
+   latitude / longitude
+
+   So all supported fields are handled here.
+========================================================= */
+
+const getCoordinates = (
+  item: any,
+): MapCoordinates | null => {
+  const latitudeValue =
+    item?.location_lat ??
+    item?.latitude ??
+    item?.location?.lat ??
+    item?.lat;
+
+  const longitudeValue =
+    item?.location_lng ??
+    item?.longitude ??
+    item?.location?.lng ??
+    item?.lng ??
+    item?.lon;
+
+  const lat = Number(
+    latitudeValue,
+  );
+
+  const lng = Number(
+    longitudeValue,
+  );
+
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng)
+  ) {
+    return null;
+  }
+
+  if (
+    lat < -90 ||
+    lat > 90 ||
+    lng < -180 ||
+    lng > 180
+  ) {
+    return null;
+  }
+
+  return {
+    lat,
+    lng,
+  };
+};
+
+/* =========================================================
+   GET ADDRESS
+========================================================= */
+
+const getAddress = (
+  item: any,
+): string => {
+  return getFirstValue(
+    item,
+    [
+      "location_address",
+      "locationAddress",
+      "address",
+      "location",
+    ],
+  );
+};
+
+/* =========================================================
    WEBSITE
 ========================================================= */
 
 const normalizeWebsiteUrl = (
   website: string,
 ): string => {
-  const value = website.trim();
+  const value =
+    website.trim();
 
   if (!value) {
     return "";
   }
 
-  return /^https?:\/\//i.test(value)
+  return /^https?:\/\//i.test(
+    value,
+  )
     ? value
     : `https://${value}`;
 };
 
 /* =========================================================
    DIRECTIONS
+
+   IMPORTANT:
+   Saved coordinates are preferred.
 ========================================================= */
 
 const getDirectionsUrl = (
   attraction: Attraction,
 ): string => {
-  const coordinates = getCoordinates(attraction);
+  const coordinates =
+    getCoordinates(
+      attraction,
+    );
 
   if (coordinates) {
     return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
@@ -358,15 +351,13 @@ const getDirectionsUrl = (
     )}`;
   }
 
-  const name = getFirstValue(attraction, [
-    "name",
-  ]);
+  const name = getFirstValue(
+    attraction,
+    ["name"],
+  );
 
-  const address = getFirstValue(attraction, [
-    "location_address",
-    "address",
-    "location",
-  ]);
+  const address =
+    getAddress(attraction);
 
   const destination = [
     name,
@@ -392,7 +383,9 @@ const getDirectionsUrl = (
 const getThingsToDo = (
   attraction: Attraction,
 ): string[] => {
-  const raw = (attraction as any)?.things_to_do;
+  const raw =
+    (attraction as any)
+      ?.things_to_do;
 
   if (Array.isArray(raw)) {
     return raw
@@ -400,25 +393,41 @@ const getThingsToDo = (
       .filter(Boolean);
   }
 
-  if (typeof raw === "string") {
+  if (
+    typeof raw === "string"
+  ) {
     return raw
-      .split(/\r?\n|•|;|,/)
-      .map((item) => item.trim())
+      .split(
+        /\r?\n|•|;|,/,
+      )
+      .map(
+        (item) =>
+          item.trim(),
+      )
       .filter(Boolean);
   }
 
-  const alternative = getFirstValue(
-    attraction,
-    ["activities", "thingsToDo"],
-  );
+  const alternative =
+    getFirstValue(
+      attraction,
+      [
+        "activities",
+        "thingsToDo",
+      ],
+    );
 
   if (!alternative) {
     return [];
   }
 
   return alternative
-    .split(/\r?\n|•|;|,/)
-    .map((item) => item.trim())
+    .split(
+      /\r?\n|•|;|,/,
+    )
+    .map(
+      (item) =>
+        item.trim(),
+    )
     .filter(Boolean);
 };
 
@@ -429,7 +438,9 @@ const getThingsToDo = (
 const getImageArray = (
   attraction: Attraction,
 ): string[] => {
-  const raw = (attraction as any)?.images;
+  const raw =
+    (attraction as any)
+      ?.images;
 
   if (Array.isArray(raw)) {
     return raw
@@ -437,15 +448,103 @@ const getImageArray = (
       .filter(Boolean);
   }
 
-  if (typeof raw === "string") {
+  if (
+    typeof raw === "string"
+  ) {
     return raw
       .split(",")
-      .map((image) => image.trim())
+      .map(
+        (image) =>
+          image.trim(),
+      )
       .filter(Boolean);
   }
 
   return [];
 };
+
+/* =========================================================
+   LEAFLET MARKERS
+
+   No external marker image files are required.
+========================================================= */
+
+const createAttractionMarkerIcon = (
+  isCurrent: boolean,
+) =>
+  L.divIcon({
+    className:
+      "calbayog-map-marker-wrapper",
+
+    html: `
+      <div
+        class="${
+          isCurrent
+            ? "calbayog-map-marker current"
+            : "calbayog-map-marker attraction"
+        }"
+        title="${
+          isCurrent
+            ? "Current attraction"
+            : "Attraction"
+        }"
+      >
+        <div class="calbayog-map-marker-inner">
+          <span class="calbayog-map-marker-symbol">
+            ${
+              isCurrent
+                ? "★"
+                : "●"
+            }
+          </span>
+        </div>
+      </div>
+    `,
+
+    iconSize: isCurrent
+      ? [44, 54]
+      : [34, 42],
+
+    iconAnchor: isCurrent
+      ? [22, 54]
+      : [17, 42],
+
+    popupAnchor: [
+      0,
+      isCurrent
+        ? -48
+        : -38,
+    ],
+  });
+
+const createAccommodationMarkerIcon =
+  () =>
+    L.divIcon({
+      className:
+        "calbayog-map-marker-wrapper",
+
+      html: `
+        <div
+          class="calbayog-map-marker accommodation"
+          title="Accommodation"
+        >
+          <div class="calbayog-map-marker-inner">
+            <span class="calbayog-map-marker-symbol">
+              🏨
+            </span>
+          </div>
+        </div>
+      `,
+
+      iconSize: [36, 44],
+
+      iconAnchor: [18, 44],
+
+      popupAnchor: [
+        0,
+        -39,
+      ],
+    });
 
 /* =========================================================
    INFO ITEM
@@ -459,7 +558,9 @@ interface InfoItemProps {
   external?: boolean;
 }
 
-const InfoItem: React.FC<InfoItemProps> = ({
+const InfoItem: React.FC<
+  InfoItemProps
+> = ({
   icon,
   label,
   children,
@@ -491,7 +592,11 @@ const InfoItem: React.FC<InfoItemProps> = ({
   return (
     <a
       href={href}
-      target={external ? "_blank" : undefined}
+      target={
+        external
+          ? "_blank"
+          : undefined
+      }
       rel={
         external
           ? "noopener noreferrer"
@@ -505,3247 +610,3718 @@ const InfoItem: React.FC<InfoItemProps> = ({
 };
 
 /* =========================================================
-   MAP
-========================================================= */
-
-interface AttractionMapProps {
-  currentAttraction: Attraction;
-  attractions: Attraction[];
-  accommodations: Accommodation[];
-  onOpenAttraction?: (
-    attractionId: string,
-  ) => void;
-}
-
-const AttractionMap: React.FC<
-  AttractionMapProps
-> = ({
-  currentAttraction,
-  attractions,
-  accommodations,
-  onOpenAttraction,
-}) => {
-  const currentCoordinates =
-    getCoordinates(currentAttraction);
-
-  const [mapPlaces, setMapPlaces] =
-    useState<MapPlace[]>([]);
-
-  /**
-   * Build the map data from the SAME coordinates
-   * that were saved by the admin.
-   *
-   * There is NO independent map-location database.
-   */
-  useEffect(() => {
-    const places: MapPlace[] = [];
-
-    const currentId = normalizeId(
-      currentAttraction.id,
-    );
-
-    /* -----------------------------------------------
-       ATTRACTIONS
-    ------------------------------------------------ */
-
-    attractions.forEach((item) => {
-      const coordinates =
-        getCoordinates(item);
-
-      if (!coordinates) {
-        return;
-      }
-
-      const itemId = cleanString(item.id);
-
-      if (!itemId) {
-        return;
-      }
-
-      const isCurrent =
-        normalizeId(itemId) === currentId;
-
-      places.push({
-        id: itemId,
-        name:
-          cleanString(item.name) ||
-          "Unnamed attraction",
-        type: isCurrent
-          ? "current-attraction"
-          : "attraction",
-        lat: coordinates.lat,
-        lng: coordinates.lng,
-        address:
-          getFirstValue(item, [
-            "location_address",
-            "address",
-            "location",
-          ]) || undefined,
-        category:
-          cleanString(item.category) ||
-          undefined,
-        attractionType:
-          getFirstValue(item, [
-            "attraction_type",
-            "type",
-          ]) || undefined,
-      });
-    });
-
-    /* -----------------------------------------------
-       ACCOMMODATIONS
-    ------------------------------------------------ */
-
-    accommodations.forEach((item) => {
-      const coordinates =
-        getCoordinates(item);
-
-      if (!coordinates) {
-        return;
-      }
-
-      const itemId = cleanString(item.id);
-
-      if (!itemId) {
-        return;
-      }
-
-      places.push({
-        id: `accommodation-${itemId}`,
-        name:
-          cleanString(item.name) ||
-          "Unnamed accommodation",
-        type: "accommodation",
-        lat: coordinates.lat,
-        lng: coordinates.lng,
-        address:
-          cleanString(
-            item.locationAddress,
-          ) ||
-          cleanString(
-            item.location?.address,
-          ) ||
-          undefined,
-      });
-    });
-
-    setMapPlaces(places);
-  }, [
-    currentAttraction,
-    attractions,
-    accommodations,
-  ]);
-
-  /**
-   * IMPORTANT:
-   *
-   * MapContainer gets its INITIAL center only.
-   *
-   * There is intentionally NO useMap()
-   * + flyTo()
-   * + setView()
-   *
-   * here.
-   *
-   * Therefore:
-   *
-   * User drags map -> map stays there.
-   * User zooms map -> map stays there.
-   */
-  if (!currentCoordinates) {
-    return (
-      <div className="detail-map-unavailable">
-        <MapPin size={26} />
-
-        <strong>
-          Map location not available
-        </strong>
-
-        <span>
-          The administrator has not saved
-          coordinates for this attraction yet.
-        </span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="detail-map-wrapper">
-      <MapContainer
-        center={[
-          currentCoordinates.lat,
-          currentCoordinates.lng,
-        ]}
-        zoom={15}
-        scrollWheelZoom={true}
-        className="detail-map"
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-
-        {mapPlaces.map((place) => {
-          const icon =
-            createMarkerIcon(place.type);
-
-          const isCurrent =
-            place.type ===
-            "current-attraction";
-
-          return (
-            <Marker
-              key={`${place.type}-${place.id}`}
-              position={[
-                place.lat,
-                place.lng,
-              ]}
-              icon={icon}
-              eventHandlers={{
-                click: () => {
-                  if (
-                    place.type ===
-                      "attraction" &&
-                    onOpenAttraction
-                  ) {
-                    onOpenAttraction(
-                      place.id,
-                    );
-                  }
-                },
-              }}
-            >
-              <Tooltip
-                direction="top"
-                offset={[0, -8]}
-                opacity={0.95}
-              >
-                <strong>
-                  {place.name}
-                </strong>
-              </Tooltip>
-
-              <Popup>
-                <div className="detail-map-popup">
-                  <div
-                    className={`detail-map-popup-icon ${
-                      place.type ===
-                      "accommodation"
-                        ? "accommodation"
-                        : "attraction"
-                    }`}
-                  >
-                    {place.type ===
-                    "accommodation" ? (
-                      <Hotel size={17} />
-                    ) : (
-                      <MapPin size={17} />
-                    )}
-                  </div>
-
-                  <div className="detail-map-popup-content">
-                    <div className="detail-map-popup-type">
-                      {isCurrent
-                        ? "CURRENT ATTRACTION"
-                        : place.type ===
-                            "accommodation"
-                          ? "ACCOMMODATION"
-                          : "ATTRACTION"}
-                    </div>
-
-                    <div className="detail-map-popup-title">
-                      {place.name}
-                    </div>
-
-                    {place.category && (
-                      <div className="detail-map-popup-category">
-                        {place.category}
-                      </div>
-                    )}
-
-                    {place.address && (
-                      <div className="detail-map-popup-address">
-                        <MapPin size={12} />
-                        <span>
-                          {place.address}
-                        </span>
-                      </div>
-                    )}
-
-                    {isCurrent && (
-                      <div className="detail-map-current">
-                        <LocateFixed size={12} />
-                        You are viewing this
-                        attraction
-                      </div>
-                    )}
-
-                    {place.type ===
-                      "attraction" &&
-                      onOpenAttraction && (
-                        <button
-                          type="button"
-                          className="detail-map-popup-button"
-                          onClick={() =>
-                            onOpenAttraction(
-                              place.id,
-                            )
-                          }
-                        >
-                          View attraction
-                        </button>
-                      )}
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
-      </MapContainer>
-
-      <div className="detail-map-legend">
-        <div className="detail-map-legend-item">
-          <span className="detail-map-legend-marker current" />
-          <span>
-            Current attraction
-          </span>
-        </div>
-
-        <div className="detail-map-legend-item">
-          <span className="detail-map-legend-marker attraction" />
-          <span>Other attractions</span>
-        </div>
-
-        <div className="detail-map-legend-item">
-          <span className="detail-map-legend-marker accommodation">
-            H
-          </span>
-          <span>Accommodations</span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/* =========================================================
    COMPONENT
 ========================================================= */
 
-const AttractionDetail: React.FC = () => {
-  const { id } =
-    useParams<{ id: string }>();
+const AttractionDetail: React.FC =
+  () => {
+    const { id } =
+      useParams<{
+        id: string;
+      }>();
 
-  const history = useHistory();
+    const history =
+      useHistory();
 
-  const auth = useAuth();
+    const auth =
+      useAuth();
 
-  const {
-    isFavorite,
-    getFavoriteCount,
-    setFavoriteCount,
-    toggleFavorite,
-  } = useFavorites();
+    const {
+      isFavorite,
+      getFavoriteCount,
+      setFavoriteCount,
+      toggleFavorite,
+    } =
+      useFavorites();
 
-  const isUserAuthenticated =
-    Boolean(
-      (auth as any)
-        ?.isUserAuthenticated &&
-        (auth as any)?.user,
-    );
-
-  /* =======================================================
-     STATES
-  ======================================================= */
-
-  const [attraction, setAttraction] =
-    useState<Attraction | null>(null);
-
-  const [allAttractions, setAllAttractions] =
-    useState<Attraction[]>([]);
-
-  const [
-    accommodations,
-    setAccommodations,
-  ] = useState<Accommodation[]>([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [notFound, setNotFound] =
-    useState(false);
-
-  const [errorMessage, setErrorMessage] =
-    useState("");
-
-  const [activeImg, setActiveImg] =
-    useState(0);
-
-  const [memoryNotice, setMemoryNotice] =
-    useState("");
-
-  const [showMemoryForm, setShowMemoryForm] =
-    useState(false);
-
-  const [memoryCaption, setMemoryCaption] =
-    useState("");
-
-  const [memoryPhoto, setMemoryPhoto] =
-    useState<File | null>(null);
-
-  const [
-    memoryPhotoPreview,
-    setMemoryPhotoPreview,
-  ] = useState("");
-
-  const [
-    memorySubmitting,
-    setMemorySubmitting,
-  ] = useState(false);
-
-  const [memoryError, setMemoryError] =
-    useState("");
-
-  const [shareNotice, setShareNotice] =
-    useState("");
-
-  /* =======================================================
-     LOAD ATTRACTION + MAP DATA
-  ======================================================= */
-
-  useEffect(() => {
-    const routeId = normalizeId(id);
-
-    if (!routeId) {
-      setLoading(false);
-      setNotFound(true);
-      setErrorMessage(
-        "No attraction ID was provided.",
+    const isUserAuthenticated =
+      Boolean(
+        (auth as any)
+          ?.isUserAuthenticated &&
+          (auth as any)
+            ?.user,
       );
-      return;
-    }
 
-    let mounted = true;
+    /* =====================================================
+       ATTRACTION STATE
+    ===================================================== */
 
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setNotFound(false);
-        setErrorMessage("");
+    const [
+      attraction,
+      setAttraction,
+    ] =
+      useState<Attraction | null>(
+        null,
+      );
 
-        /* -----------------------------------------------
-           LOAD ATTRACTIONS
-        ------------------------------------------------ */
+    const [
+      loading,
+      setLoading,
+    ] = useState(true);
 
-        const response =
-          await getAttractions();
+    const [
+      notFound,
+      setNotFound,
+    ] = useState(false);
 
-        const attractionData =
-          Array.isArray(response?.data)
-            ? response.data
-            : [];
+    const [
+      errorMessage,
+      setErrorMessage,
+    ] = useState("");
 
-        if (!mounted) {
-          return;
-        }
+    /* =====================================================
+       MAP STATE
+    ===================================================== */
 
-        setAllAttractions(
-          attractionData as Attraction[],
-        );
+    const [
+      accommodationPlaces,
+      setAccommodationPlaces,
+    ] = useState<
+      AccommodationMapPlace[]
+    >([]);
 
-        const result =
-          attractionData.find(
-            (item: Destination) =>
-              normalizeId(
-                (item as any)?.id,
-              ) === routeId,
-          ) || null;
+    const [
+      mapLoading,
+      setMapLoading,
+    ] = useState(false);
 
-        if (!result) {
-          setAttraction(null);
-          setNotFound(true);
-          setErrorMessage(
-            "The attraction could not be found.",
-          );
-        } else {
-          setAttraction(
-            result as Attraction,
-          );
+    const [
+      mapError,
+      setMapError,
+    ] = useState("");
 
-          const resultId =
-            cleanString(
-              (result as any)?.id,
-            );
+    /* =====================================================
+       GALLERY
+    ===================================================== */
 
-          if (resultId) {
-            const resultFavoriteCount =
-              Math.max(
-                0,
-                Number(
-                  (result as any)
-                    ?.favorites ?? 0,
-                ) || 0,
-              );
+    const [
+      activeImg,
+      setActiveImg,
+    ] = useState(0);
 
-            setFavoriteCount(
-              "attraction",
-              resultId,
-              resultFavoriteCount,
-            );
-          }
+    /* =====================================================
+       MEMORY
+    ===================================================== */
 
-          setNotFound(false);
-          setErrorMessage("");
-        }
+    const [
+      memoryNotice,
+      setMemoryNotice,
+    ] = useState("");
 
-        /* -----------------------------------------------
-           LOAD ACCOMMODATIONS
-        ------------------------------------------------ */
+    const [
+      showMemoryForm,
+      setShowMemoryForm,
+    ] = useState(false);
 
-        try {
-          const accommodationResponse =
-            await getAccommodations();
+    const [
+      memoryCaption,
+      setMemoryCaption,
+    ] = useState("");
 
-          const accommodationData =
-            Array.isArray(
-              accommodationResponse?.data,
-            )
-              ? accommodationResponse.data
-              : [];
+    const [
+      memoryPhoto,
+      setMemoryPhoto,
+    ] =
+      useState<File | null>(
+        null,
+      );
 
-          if (mounted) {
-            setAccommodations(
-              accommodationData as Accommodation[],
-            );
-          }
-        } catch (accommodationError) {
-          console.error(
-            "Failed to load accommodations:",
-            accommodationError,
-          );
+    const [
+      memoryPhotoPreview,
+      setMemoryPhotoPreview,
+    ] = useState("");
 
-          if (mounted) {
-            setAccommodations([]);
-          }
-        }
-      } catch (error) {
-        console.error(
-          "Failed to load attraction:",
-          error,
-        );
+    const [
+      memorySubmitting,
+      setMemorySubmitting,
+    ] = useState(false);
 
-        if (!mounted) {
-          return;
-        }
+    const [
+      memoryError,
+      setMemoryError,
+    ] = useState("");
 
-        setAttraction(null);
-        setAllAttractions([]);
-        setAccommodations([]);
+    /* =====================================================
+       SHARE
+    ===================================================== */
 
+    const [
+      shareNotice,
+      setShareNotice,
+    ] = useState("");
+
+    /* =====================================================
+       LOAD ATTRACTION
+    ===================================================== */
+
+    useEffect(() => {
+      const routeId =
+        normalizeId(id);
+
+      if (!routeId) {
+        setLoading(false);
         setNotFound(true);
 
         setErrorMessage(
-          "Unable to load this attraction right now. Please try again.",
+          "No attraction ID was provided.",
         );
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+
+        return;
       }
-    };
 
-    void fetchData();
+      let mounted = true;
 
-    subscribeToTable(
-      "attractions",
-      "*",
-      () => {
-        void fetchData();
-      },
-    );
+      const fetchAttraction =
+        async () => {
+          try {
+            setLoading(true);
+            setNotFound(false);
+            setErrorMessage("");
 
-    return () => {
-      mounted = false;
-      unsubscribeAll();
-    };
-  }, [id, setFavoriteCount]);
+            const response =
+              await getAttractions();
 
-  /* =======================================================
-     RESET IMAGE + NOTICE
-  ======================================================= */
+            const data =
+              Array.isArray(
+                response?.data,
+              )
+                ? response.data
+                : [];
 
-  useEffect(() => {
-    setActiveImg(0);
-    setMemoryNotice("");
-    setShareNotice("");
-  }, [id]);
+            const result =
+              data.find(
+                (
+                  item: Destination,
+                ) =>
+                  normalizeId(
+                    (item as any)
+                      ?.id,
+                  ) ===
+                  routeId,
+              ) || null;
 
-  /* =======================================================
-     DERIVED DATA
-  ======================================================= */
+            if (!mounted) {
+              return;
+            }
 
-  const images = useMemo(
-    () =>
-      attraction
-        ? getImageArray(
-            attraction,
-          ).slice(0, 4)
-        : [],
-    [attraction],
-  );
+            if (!result) {
+              setAttraction(
+                null,
+              );
 
-  const thingsToDo = useMemo(
-    () =>
-      attraction
-        ? getThingsToDo(attraction)
-        : [],
-    [attraction],
-  );
+              setNotFound(true);
 
-  const address = attraction
-    ? getFirstValue(attraction, [
-        "location_address",
-        "address",
-        "location",
-      ])
-    : "";
+              setErrorMessage(
+                "The attraction could not be found.",
+              );
+            } else {
+              setAttraction(
+                result as Attraction,
+              );
 
-  const attractionType = attraction
-    ? getFirstValue(attraction, [
-        "attraction_type",
-        "subcategory",
-        "sub_category",
-        "type",
-      ])
-    : "";
+              const resultId =
+                cleanString(
+                  (result as any)
+                    ?.id,
+                );
 
-  const displayAttractionType =
-    attractionType === "Other"
-      ? getFirstValue(
-          attraction!,
-          ["other_attraction_type"],
-        ) || "Other"
-      : attractionType;
+              if (resultId) {
+                const resultFavoriteCount =
+                  Math.max(
+                    0,
+                    Number(
+                      (result as any)
+                        ?.favorites ??
+                        0,
+                    ) || 0,
+                  );
 
-  const website = attraction
-    ? getFirstValue(attraction, [
-        "website",
-        "contact_website",
-      ])
-    : "";
+                setFavoriteCount(
+                  "attraction",
+                  resultId,
+                  resultFavoriteCount,
+                );
+              }
 
-  const contactPerson = attraction
-    ? getFirstValue(attraction, [
-        "contact_person",
-        "contactPerson",
-      ])
-    : "";
+              setNotFound(
+                false,
+              );
 
-  const contactNumber = attraction
-    ? getFirstValue(attraction, [
-        "contact_number",
-        "contact_phone",
-        "phone",
-      ])
-    : "";
+              setErrorMessage(
+                "",
+              );
+            }
+          } catch (error) {
+            console.error(
+              "Failed to load attraction:",
+              error,
+            );
 
-  const operatingHours = attraction
-    ? getFirstValue(attraction, [
-        "operating_hours",
-        "opening_hours",
-        "operational_hours",
-      ])
-    : "";
+            if (!mounted) {
+              return;
+            }
 
-  const bestTime = attraction
-    ? getFirstValue(attraction, [
-        "best_time_to_visit",
-        "best_time",
-        "best_season",
-      ])
-    : "";
+            setAttraction(
+              null,
+            );
 
-  const directionsUrl = attraction
-    ? getDirectionsUrl(attraction)
-    : "https://www.google.com/maps";
+            setNotFound(
+              true,
+            );
 
-  const safeActiveImg =
-    images.length > 0 &&
-    activeImg >= 0 &&
-    activeImg < images.length
-      ? activeImg
-      : 0;
+            setErrorMessage(
+              "Unable to load this attraction right now. Please try again.",
+            );
+          } finally {
+            if (mounted) {
+              setLoading(false);
+            }
+          }
+        };
 
-  const activeImage =
-    images[safeActiveImg] || "";
+      void fetchAttraction();
 
-  const favoriteId = cleanString(
-    attraction?.id,
-  );
-
-  const favoriteActive = favoriteId
-    ? isFavorite(
-        "attraction",
-        favoriteId,
-      )
-    : false;
-
-  const favoriteCount = favoriteId
-    ? getFavoriteCount(
-        "attraction",
-        favoriteId,
-      )
-    : 0;
-
-  /* =======================================================
-     FAVORITE
-  ======================================================= */
-
-  const handleFavorite = async () => {
-    if (!favoriteId) {
-      return;
-    }
-
-    await toggleFavorite(
-      "attraction",
-      favoriteId,
-    );
-  };
-
-  /* =======================================================
-     SHARE
-  ======================================================= */
-
-  const handleShare = async () => {
-    const shareData = {
-      title:
-        attraction?.name ||
-        "Calbayog attraction",
-
-      text: `Check out ${
-        attraction?.name ||
-        "this attraction"
-      } in Calbayog City.`,
-
-      url: window.location.href,
-    };
-
-    try {
-      if (navigator.share) {
-        await navigator.share(
-          shareData,
-        );
-      } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(
-          window.location.href,
-        );
-
-        setShareNotice(
-          "Link copied to clipboard.",
-        );
-      } else {
-        setShareNotice(
-          "Copy this page link to share it.",
-        );
-      }
-    } catch (error: any) {
-      if (
-        error?.name !== "AbortError"
-      ) {
-        setShareNotice(
-          "Unable to share this attraction right now.",
-        );
-      }
-    }
-  };
-
-  /* =======================================================
-     MAP ATTRACTION CLICK
-  ======================================================= */
-
-  const handleMapAttractionClick = (
-    attractionId: string,
-  ) => {
-    if (!attractionId) {
-      return;
-    }
-
-    history.push(
-      `/attractions/${attractionId}`,
-    );
-  };
-
-  /* =======================================================
-     ADD MEMORIES
-  ======================================================= */
-
-  const handleAddMemories = () => {
-    setMemoryNotice("");
-    setMemoryError("");
-
-    if (!isUserAuthenticated) {
-      window.dispatchEvent(
-        new Event("open-login-modal"),
+      subscribeToTable(
+        "attractions",
+        "*",
+        () => {
+          void fetchAttraction();
+        },
       );
 
-      return;
+      return () => {
+        mounted = false;
+        unsubscribeAll();
+      };
+    }, [
+      id,
+      setFavoriteCount,
+    ]);
+
+    /* =====================================================
+       LOAD ACCOMMODATIONS FOR MAP
+
+       These are the SAME accommodation records used by
+       the Admin Dashboard.
+
+       We are NOT creating another location database.
+    ===================================================== */
+
+    useEffect(() => {
+      let mounted = true;
+
+      const fetchAccommodationPlaces =
+        async () => {
+          try {
+            setMapLoading(true);
+            setMapError("");
+
+            const response =
+              await getAccommodations();
+
+            const data =
+              Array.isArray(
+                response?.data,
+              )
+                ? response.data
+                : [];
+
+            const places =
+              data
+                .map(
+                  (
+                    accommodation: Accommodation,
+                  ) => {
+                    const coordinates =
+                      getCoordinates(
+                        accommodation,
+                      );
+
+                    if (
+                      !coordinates
+                    ) {
+                      return null;
+                    }
+
+                    const name =
+                      cleanString(
+                        (accommodation as any)
+                          ?.name,
+                      ) ||
+                      "Accommodation";
+
+                    const type =
+                      getFirstValue(
+                        accommodation,
+                        [
+                          "type",
+                          "accommodation_type",
+                        ],
+                      ) ||
+                      "Accommodation";
+
+                    const address =
+                      getAddress(
+                        accommodation,
+                      );
+
+                    return {
+                      id:
+                        cleanString(
+                          (accommodation as any)
+                            ?.id,
+                        ),
+                      name,
+                      type,
+                      address,
+                      coordinates,
+                    };
+                  },
+                )
+                .filter(
+                  (
+                    place,
+                  ): place is AccommodationMapPlace =>
+                    Boolean(
+                      place &&
+                        place.id,
+                    ),
+                );
+
+            if (mounted) {
+              setAccommodationPlaces(
+                places,
+              );
+            }
+          } catch (error) {
+            console.error(
+              "Failed to load accommodations for map:",
+              error,
+            );
+
+            if (mounted) {
+              setAccommodationPlaces(
+                [],
+              );
+
+              setMapError(
+                "Accommodation locations could not be loaded.",
+              );
+            }
+          } finally {
+            if (mounted) {
+              setMapLoading(
+                false,
+              );
+            }
+          }
+        };
+
+      void fetchAccommodationPlaces();
+
+      return () => {
+        mounted = false;
+      };
+    }, []);
+
+    /* =====================================================
+       RESET IMAGE + NOTICES
+    ===================================================== */
+
+    useEffect(() => {
+      setActiveImg(0);
+      setMemoryNotice("");
+      setShareNotice("");
+    }, [id]);
+
+    /* =====================================================
+       DERIVED DATA
+    ===================================================== */
+
+    const images =
+      useMemo(
+        () =>
+          attraction
+            ? getImageArray(
+                attraction,
+              ).slice(0, 4)
+            : [],
+        [attraction],
+      );
+
+    const thingsToDo =
+      useMemo(
+        () =>
+          attraction
+            ? getThingsToDo(
+                attraction,
+              )
+            : [],
+        [attraction],
+      );
+
+    const address =
+      attraction
+        ? getAddress(
+            attraction,
+          )
+        : "";
+
+    const attractionType =
+      attraction
+        ? getFirstValue(
+            attraction,
+            [
+              "attraction_type",
+              "subcategory",
+              "sub_category",
+              "type",
+            ],
+          )
+        : "";
+
+    const displayAttractionType =
+      attractionType ===
+      "Other"
+        ? getFirstValue(
+            attraction,
+            [
+              "other_attraction_type",
+            ],
+          ) || "Other"
+        : attractionType;
+
+    const website =
+      attraction
+        ? getFirstValue(
+            attraction,
+            [
+              "website",
+              "contact_website",
+            ],
+          )
+        : "";
+
+    const contactPerson =
+      attraction
+        ? getFirstValue(
+            attraction,
+            [
+              "contact_person",
+              "contactPerson",
+            ],
+          )
+        : "";
+
+    const contactNumber =
+      attraction
+        ? getFirstValue(
+            attraction,
+            [
+              "contact_number",
+              "contact_phone",
+              "phone",
+            ],
+          )
+        : "";
+
+    const operatingHours =
+      attraction
+        ? getFirstValue(
+            attraction,
+            [
+              "operating_hours",
+              "opening_hours",
+              "operational_hours",
+            ],
+          )
+        : "";
+
+    const bestTime =
+      attraction
+        ? getFirstValue(
+            attraction,
+            [
+              "best_time_to_visit",
+              "best_time",
+              "best_season",
+            ],
+          )
+        : "";
+
+    const directionsUrl =
+      attraction
+        ? getDirectionsUrl(
+            attraction,
+          )
+        : "https://www.google.com/maps";
+
+    const safeActiveImg =
+      images.length > 0 &&
+      activeImg >= 0 &&
+      activeImg <
+        images.length
+        ? activeImg
+        : 0;
+
+    const activeImage =
+      images[
+        safeActiveImg
+      ] || "";
+
+    /* =====================================================
+       FAVORITES
+    ===================================================== */
+
+    const favoriteId =
+      cleanString(
+        attraction?.id,
+      );
+
+    const favoriteActive =
+      favoriteId
+        ? isFavorite(
+            "attraction",
+            favoriteId,
+          )
+        : false;
+
+    const favoriteCount =
+      favoriteId
+        ? getFavoriteCount(
+            "attraction",
+            favoriteId,
+          )
+        : 0;
+
+    const handleFavorite =
+      async () => {
+        if (!favoriteId) {
+          return;
+        }
+
+        await toggleFavorite(
+          "attraction",
+          favoriteId,
+        );
+      };
+
+    /* =====================================================
+       SHARE
+    ===================================================== */
+
+    const handleShare =
+      async () => {
+        const shareData =
+          {
+            title:
+              attraction?.name ||
+              "Calbayog attraction",
+
+            text: `Check out ${
+              attraction?.name ||
+              "this attraction"
+            } in Calbayog City.`,
+
+            url:
+              window.location
+                .href,
+          };
+
+        try {
+          if (
+            navigator.share
+          ) {
+            await navigator.share(
+              shareData,
+            );
+          } else if (
+            navigator.clipboard
+          ) {
+            await navigator.clipboard.writeText(
+              window.location
+                .href,
+            );
+
+            setShareNotice(
+              "Link copied to clipboard.",
+            );
+          } else {
+            setShareNotice(
+              "Copy this page link to share it.",
+            );
+          }
+        } catch (error: any) {
+          if (
+            error?.name !==
+            "AbortError"
+          ) {
+            setShareNotice(
+              "Unable to share this attraction right now.",
+            );
+          }
+        }
+      };
+
+    /* =====================================================
+       MAP PLACES
+    ===================================================== */
+
+    const attractionMapPlaces =
+      useMemo<
+        AttractionMapPlace[]
+      >(() => {
+        if (!attraction) {
+          return [];
+        }
+
+        const currentId =
+          normalizeId(
+            attraction.id,
+          );
+
+        return [
+          attraction,
+          ...[],
+        ]
+          .map(
+            () => null,
+          )
+          .filter(Boolean) as AttractionMapPlace[];
+      }, [attraction]);
+
+    /*
+     * We intentionally create the attraction list from the
+     * attraction currently loaded + a fresh getAttractions
+     * request below.
+     */
+
+    const [
+      allAttractionsForMap,
+      setAllAttractionsForMap,
+    ] = useState<
+      Attraction[]
+    >([]);
+
+    useEffect(() => {
+      let mounted = true;
+
+      const fetchAllMapAttractions =
+        async () => {
+          try {
+            const response =
+              await getAttractions();
+
+            const data =
+              Array.isArray(
+                response?.data,
+              )
+                ? response.data
+                : [];
+
+            if (mounted) {
+              setAllAttractionsForMap(
+                data as Attraction[],
+              );
+            }
+          } catch (error) {
+            console.error(
+              "Failed to load attraction map places:",
+              error,
+            );
+
+            if (mounted) {
+              setAllAttractionsForMap(
+                [],
+              );
+            }
+          }
+        };
+
+      void fetchAllMapAttractions();
+
+      subscribeToTable(
+        "attractions",
+        "*",
+        () => {
+          void fetchAllMapAttractions();
+        },
+      );
+
+      return () => {
+        mounted = false;
+      };
+    }, []);
+
+    const mapAttractions =
+      useMemo<
+        AttractionMapPlace[]
+      >(() => {
+        const source =
+          allAttractionsForMap.length >
+          0
+            ? allAttractionsForMap
+            : attraction
+              ? [attraction]
+              : [];
+
+        return source
+          .map(
+            (
+              item,
+            ) => {
+              const coordinates =
+                getCoordinates(
+                  item,
+                );
+
+              if (
+                !coordinates
+              ) {
+                return null;
+              }
+
+              const itemId =
+                cleanString(
+                  item.id,
+                );
+
+              if (!itemId) {
+                return null;
+              }
+
+              return {
+                id: itemId,
+
+                name:
+                  cleanString(
+                    item.name,
+                  ) ||
+                  "Attraction",
+
+                category:
+                  cleanString(
+                    item.category,
+                  ) ||
+                  "Other",
+
+                address:
+                  getAddress(
+                    item,
+                  ),
+
+                coordinates,
+
+                isCurrent:
+                  normalizeId(
+                    item.id,
+                  ) ===
+                  normalizeId(
+                    attraction?.id,
+                  ),
+              };
+            },
+          )
+          .filter(
+            (
+              place,
+            ): place is AttractionMapPlace =>
+              Boolean(
+                place,
+              ),
+          );
+      }, [
+        allAttractionsForMap,
+        attraction,
+      ]);
+
+    const currentMapCoordinates =
+      attraction
+        ? getCoordinates(
+            attraction,
+          )
+        : null;
+
+    const mapCenter: [
+      number,
+      number,
+    ] =
+      currentMapCoordinates
+        ? [
+            currentMapCoordinates.lat,
+            currentMapCoordinates.lng,
+          ]
+        : [
+            DEFAULT_LATITUDE,
+            DEFAULT_LONGITUDE,
+          ];
+
+    /* =====================================================
+       ADD MEMORIES
+    ===================================================== */
+
+    const handleAddMemories =
+      () => {
+        setMemoryNotice("");
+        setMemoryError("");
+
+        if (
+          !isUserAuthenticated
+        ) {
+          window.dispatchEvent(
+            new Event(
+              "open-login-modal",
+            ),
+          );
+
+          return;
+        }
+
+        setShowMemoryForm(
+          true,
+        );
+      };
+
+    const handleMemoryPhotoChange =
+      (
+        event: React.ChangeEvent<HTMLInputElement>,
+      ) => {
+        const file =
+          event.target.files?.[0];
+
+        if (!file) {
+          return;
+        }
+
+        setMemoryError("");
+        setMemoryNotice("");
+
+        if (
+          ![
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+          ].includes(
+            file.type,
+          )
+        ) {
+          setMemoryError(
+            "Please upload a JPG, PNG, or WEBP image.",
+          );
+
+          event.target.value =
+            "";
+
+          return;
+        }
+
+        if (
+          file.size >
+          5 * 1024 * 1024
+        ) {
+          setMemoryError(
+            "The image must be smaller than 5 MB.",
+          );
+
+          event.target.value =
+            "";
+
+          return;
+        }
+
+        if (
+          memoryPhotoPreview
+        ) {
+          URL.revokeObjectURL(
+            memoryPhotoPreview,
+          );
+        }
+
+        setMemoryPhoto(
+          file,
+        );
+
+        setMemoryPhotoPreview(
+          URL.createObjectURL(
+            file,
+          ),
+        );
+      };
+
+    const handleSubmitMemory =
+      async (
+        event: React.FormEvent<HTMLFormElement>,
+      ) => {
+        event.preventDefault();
+
+        setMemoryError("");
+        setMemoryNotice("");
+
+        const userId =
+          String(
+            (auth as any)
+              ?.user?.id ||
+              "",
+          ).trim();
+
+        const attractionId =
+          cleanString(
+            attraction?.id,
+          );
+
+        const caption =
+          memoryCaption.trim();
+
+        if (!userId) {
+          setMemoryError(
+            "Please log in before submitting a memory.",
+          );
+
+          return;
+        }
+
+        if (
+          !attractionId ||
+          !memoryPhoto
+        ) {
+          setMemoryError(
+            "Please select a photo first.",
+          );
+
+          return;
+        }
+
+        if (!caption) {
+          setMemoryError(
+            "Please add a caption for your memory.",
+          );
+
+          return;
+        }
+
+        if (
+          caption.length >
+          500
+        ) {
+          setMemoryError(
+            "Your caption must be 500 characters or less.",
+          );
+
+          return;
+        }
+
+        try {
+          setMemorySubmitting(
+            true,
+          );
+
+          const extension =
+            memoryPhoto.name
+              .split(".")
+              .pop()
+              ?.toLowerCase() ||
+            "jpg";
+
+          const fileName = `${Date.now()}-${Math.random()
+            .toString(36)
+            .slice(
+              2,
+            )}.${extension}`;
+
+          const filePath = `${userId}/${attractionId}/${fileName}`;
+
+          const {
+            error:
+              uploadError,
+          } =
+            await supabase.storage
+              .from(
+                "memory-images",
+              )
+              .upload(
+                filePath,
+                memoryPhoto,
+                {
+                  cacheControl:
+                    "3600",
+                  upsert:
+                    false,
+                  contentType:
+                    memoryPhoto.type,
+                },
+              );
+
+          if (
+            uploadError
+          ) {
+            throw uploadError;
+          }
+
+          const {
+            data:
+              publicUrlData,
+          } =
+            supabase.storage
+              .from(
+                "memory-images",
+              )
+              .getPublicUrl(
+                filePath,
+              );
+
+          const imageUrl =
+            publicUrlData
+              ?.publicUrl ||
+            "";
+
+          if (!imageUrl) {
+            throw new Error(
+              "The uploaded image URL could not be created.",
+            );
+          }
+
+          await createMyMemory(
+            {
+              attraction_id:
+                attractionId,
+
+              caption,
+
+              image_urls: [
+                imageUrl,
+              ],
+            },
+          );
+
+          setMemoryCaption(
+            "",
+          );
+
+          setMemoryPhoto(
+            null,
+          );
+
+          if (
+            memoryPhotoPreview
+          ) {
+            URL.revokeObjectURL(
+              memoryPhotoPreview,
+            );
+          }
+
+          setMemoryPhotoPreview(
+            "",
+          );
+
+          setShowMemoryForm(
+            false,
+          );
+
+          setMemoryNotice(
+            "Your memory has been added successfully!",
+          );
+        } catch (
+          error: any
+        ) {
+          console.error(
+            "Memory submission error:",
+            error,
+          );
+
+          setMemoryError(
+            error
+              ?.response
+              ?.data
+              ?.message ||
+              error?.message ||
+              "Something went wrong while uploading your memory.",
+          );
+        } finally {
+          setMemorySubmitting(
+            false,
+          );
+        }
+      };
+
+    /* =====================================================
+       LOADING
+    ===================================================== */
+
+    if (loading) {
+      return (
+        <div className="detail-state-page">
+          <div className="detail-loading-card">
+            <div className="detail-loading-icon">
+              <Spinner animation="border" />
+            </div>
+
+            <h2>
+              Loading attraction
+            </h2>
+
+            <p>
+              Preparing the attraction details...
+            </p>
+          </div>
+        </div>
+      );
     }
 
-    setShowMemoryForm(true);
-  };
-
-  /* =======================================================
-     MEMORY PHOTO
-  ======================================================= */
-
-  const handleMemoryPhotoChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file =
-      event.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    setMemoryError("");
-    setMemoryNotice("");
+    /* =====================================================
+       NOT FOUND
+    ===================================================== */
 
     if (
-      ![
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-      ].includes(file.type)
+      notFound ||
+      !attraction
     ) {
-      setMemoryError(
-        "Please upload a JPG, PNG, or WEBP image.",
-      );
+      return (
+        <div className="detail-state-page page-enter">
+          <div className="detail-empty-card">
+            <div className="detail-empty-icon">
+              <MapPin
+                size={34}
+                strokeWidth={1.8}
+              />
+            </div>
 
-      event.target.value = "";
+            <h1>
+              Attraction not found
+            </h1>
 
-      return;
-    }
+            <p>
+              {errorMessage ||
+                "The requested attraction could not be found."}
+            </p>
 
-    if (file.size > 5 * 1024 * 1024) {
-      setMemoryError(
-        "The image must be smaller than 5 MB.",
-      );
-
-      event.target.value = "";
-
-      return;
-    }
-
-    if (memoryPhotoPreview) {
-      URL.revokeObjectURL(
-        memoryPhotoPreview,
-      );
-    }
-
-    setMemoryPhoto(file);
-
-    setMemoryPhotoPreview(
-      URL.createObjectURL(file),
-    );
-  };
-
-  /* =======================================================
-     SUBMIT MEMORY
-  ======================================================= */
-
-  const handleSubmitMemory = async (
-    event: React.FormEvent<HTMLFormElement>,
-  ) => {
-    event.preventDefault();
-
-    setMemoryError("");
-    setMemoryNotice("");
-
-    const userId = String(
-      (auth as any)?.user?.id || "",
-    ).trim();
-
-    const attractionId = cleanString(
-      (attraction as any)?.id,
-    );
-
-    const caption =
-      memoryCaption.trim();
-
-    if (!userId) {
-      setMemoryError(
-        "Please log in before submitting a memory.",
-      );
-
-      return;
-    }
-
-    if (!attractionId || !memoryPhoto) {
-      setMemoryError(
-        "Please select a photo first.",
-      );
-
-      return;
-    }
-
-    if (!caption) {
-      setMemoryError(
-        "Please add a caption for your memory.",
-      );
-
-      return;
-    }
-
-    if (caption.length > 500) {
-      setMemoryError(
-        "Your caption must be 500 characters or less.",
-      );
-
-      return;
-    }
-
-    try {
-      setMemorySubmitting(true);
-
-      const extension =
-        memoryPhoto.name
-          .split(".")
-          .pop()
-          ?.toLowerCase() || "jpg";
-
-      const fileName = `${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}.${extension}`;
-
-      const filePath = `${userId}/${attractionId}/${fileName}`;
-
-      const {
-        error: uploadError,
-      } = await supabase.storage
-        .from("memory-images")
-        .upload(
-          filePath,
-          memoryPhoto,
-          {
-            cacheControl: "3600",
-            upsert: false,
-            contentType:
-              memoryPhoto.type,
-          },
-        );
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const {
-        data: publicUrlData,
-      } = supabase.storage
-        .from("memory-images")
-        .getPublicUrl(
-          filePath,
-        );
-
-      const imageUrl =
-        publicUrlData?.publicUrl ||
-        "";
-
-      if (!imageUrl) {
-        throw new Error(
-          "The uploaded image URL could not be created.",
-        );
-      }
-
-      await createMyMemory({
-        attraction_id: attractionId,
-        caption,
-        image_urls: [imageUrl],
-      });
-
-      setMemoryCaption("");
-      setMemoryPhoto(null);
-
-      if (memoryPhotoPreview) {
-        URL.revokeObjectURL(
-          memoryPhotoPreview,
-        );
-      }
-
-      setMemoryPhotoPreview("");
-      setShowMemoryForm(false);
-
-      setMemoryNotice(
-        "Your memory has been added successfully!",
-      );
-    } catch (error: any) {
-      console.error(
-        "Memory submission error:",
-        error,
-      );
-
-      setMemoryError(
-        error?.response?.data
-          ?.message ||
-          error?.message ||
-          "Something went wrong while uploading your memory.",
-      );
-    } finally {
-      setMemorySubmitting(false);
-    }
-  };
-
-  /* =======================================================
-     LOADING
-  ======================================================= */
-
-  if (loading) {
-    return (
-      <div className="detail-state-page">
-        <div className="detail-loading-card">
-          <div className="detail-loading-icon">
-            <Spinner animation="border" />
+            <button
+              type="button"
+              className="detail-primary-button"
+              onClick={() =>
+                history.push(
+                  "/attractions",
+                )
+              }
+            >
+              <ArrowLeft
+                size={16}
+              />
+              Back to attractions
+            </button>
           </div>
-
-          <h2>
-            Loading attraction
-          </h2>
-
-          <p>
-            Preparing the attraction
-            details...
-          </p>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  /* =======================================================
-     NOT FOUND
-  ======================================================= */
-
-  if (notFound || !attraction) {
     return (
-      <div className="detail-state-page page-enter">
-        <div className="detail-empty-card">
-          <div className="detail-empty-icon">
-            <MapPin
-              size={34}
-              strokeWidth={1.8}
-            />
-          </div>
-
-          <h1>
-            Attraction not found
-          </h1>
-
-          <p>
-            {errorMessage ||
-              "The requested attraction could not be found."}
-          </p>
-
-          <button
-            type="button"
-            className="detail-primary-button"
-            onClick={() =>
-              history.push(
-                "/attractions",
-              )
-            }
-          >
-            <ArrowLeft size={16} />
-            Back to attractions
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  /* =======================================================
-     RENDER
-  ======================================================= */
-
-  return (
-    <div className="attraction-detail-page page-enter">
-      <style>{`
-
-        @font-face {
-          font-family: "Barabara";
-          src: url("/fonts/BARABARA-final.otf")
-            format("opentype");
-          font-weight: 400;
-          font-style: normal;
-          font-display: swap;
-        }
-
-        /* =================================================
-           PAGE
-        ================================================= */
-
-        .attraction-detail-page {
-          min-height: 100vh;
-          background: #ffffff;
-          color: ${TEXT};
-          font-family:
-            "Nunito",
-            "Poppins",
-            "Segoe UI",
-            sans-serif;
-          padding-bottom: 76px;
-        }
-
-        .attraction-detail-container {
-          width: 100%;
-          max-width: 1240px;
-          margin: 0 auto;
-          padding: 24px 20px 72px;
-          background: transparent;
-        }
-
-        /* =================================================
-           BACK
-        ================================================= */
-
-        .detail-back-button {
-          display: inline-flex;
-          align-items: center;
-          gap: 7px;
-          margin: 0 0 16px;
-          padding: 5px 0;
-          border: 0;
-          background: transparent;
-          color: #737984;
-          font-size: 0.72rem;
-          font-weight: 800;
-          cursor: pointer;
-          transition:
-            color 0.2s ease,
-            transform 0.2s ease;
-        }
-
-        .detail-back-button:hover {
-          color: ${CALBAYOG_BLUE};
-          transform: translateX(-2px);
-        }
-
-        /* =================================================
-           HERO
-        ================================================= */
-
-        .detail-hero-row {
-          align-items: stretch;
-        }
-
-        .detail-gallery-column {
-          min-width: 0;
-        }
-
-        .detail-gallery {
-          position: relative;
-          width: 100%;
-          aspect-ratio: 16 / 9;
-          overflow: hidden;
-          border-radius: 20px;
-          background: #eef1f5;
-          box-shadow:
-            0 10px 30px
-            rgba(
-              20,
-              29,
-              57,
-              0.08
-            );
-        }
-
-        .detail-main-image-button {
-          position: absolute;
-          inset: 0;
-          width: 100%;
-          height: 100%;
-          padding: 0;
-          border: 0;
-          background: transparent;
-          cursor: default;
-        }
-
-        .detail-main-image {
-          width: 100%;
-          height: 100%;
-          display: block;
-          object-fit: cover;
-          object-position: center;
-          transition:
-            transform 0.45s
-            cubic-bezier(
-              0.2,
-              0.65,
-              0.3,
-              1
-            );
-        }
-
-        .detail-gallery:hover
-          .detail-main-image {
-          transform: scale(1.008);
-        }
-
-        .detail-gallery-fallback {
-          position: absolute;
-          inset: 0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: ${CALBAYOG_BLUE};
-          background:
-            linear-gradient(
-              135deg,
-              #eef0ff 0%,
-              #f7f8fb 100%
-            );
-        }
-
-        .detail-gallery-fallback-content {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 8px;
-          color: ${CALBAYOG_BLUE};
-        }
-
-        .detail-gallery-fallback-content span {
-          color: #8b919c;
-          font-size: 0.65rem;
-          font-weight: 800;
-        }
-
-        .detail-photo-count {
-          position: absolute;
-          top: 12px;
-          right: 12px;
-          z-index: 4;
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-          min-height: 30px;
-          padding: 6px 9px;
-          border-radius: 999px;
-          background: rgba(
-            0,
-            0,
-            0,
-            0.42
-          );
-          color: #ffffff;
-          font-size: 0.61rem;
-          font-weight: 900;
-          backdrop-filter: blur(10px);
-        }
-
-        /* =================================================
-           THUMBNAILS
-        ================================================= */
-
-        .detail-thumbnails {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          overflow-x: auto;
-          padding: 10px 0 2px;
-          scrollbar-width: none;
-        }
-
-        .detail-thumbnails::-webkit-scrollbar {
-          display: none;
-        }
-
-        .detail-thumbnail {
-          flex: 0 0 auto;
-          width: 70px;
-          height: 50px;
-          padding: 0;
-          overflow: hidden;
-          border: 2px solid transparent;
-          border-radius: 9px;
-          background: #ffffff;
-          cursor: pointer;
-          opacity: 0.72;
-          transition:
-            border-color 0.2s ease,
-            transform 0.2s ease,
-            opacity 0.2s ease;
-        }
-
-        .detail-thumbnail:hover {
-          opacity: 1;
-          transform: translateY(-1px);
-        }
-
-        .detail-thumbnail.active {
-          border-color: ${CALBAYOG_BLUE};
-          opacity: 1;
-        }
-
-        .detail-thumbnail img {
-          width: 100%;
-          height: 100%;
-          display: block;
-          object-fit: cover;
-        }
-
-        /* =================================================
-           SHARE
-        ================================================= */
-
-        .detail-media-actions {
-          display: flex;
-          align-items: flex-start;
-          justify-content: flex-end;
-          flex-wrap: wrap;
-          gap: 8px;
-          margin-top: 10px;
-        }
-
-        .detail-media-action {
-          display: inline-flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 4px;
-          padding: 3px;
-          border: 0;
-          background: transparent;
-          color: #626a75;
-          font-size: 0.66rem;
-          font-weight: 900;
-          cursor: pointer;
-          transition:
-            color 0.2s ease,
-            transform 0.2s ease;
-        }
-
-        .detail-media-action:hover {
-          transform: translateY(-1px);
-          color: ${CALBAYOG_BLUE};
-        }
-
-        .detail-favorite-action.active {
-          color: #ed4f6b;
-        }
-
-        .detail-favorite-icon {
-          transition:
-            transform 0.25s
-            cubic-bezier(
-              0.34,
-              1.56,
-              0.64,
-              1
-            );
-        }
-
-        .detail-favorite-action.active
-          .detail-favorite-icon {
-          animation:
-            detailFavoritePop
-            0.42s
-            cubic-bezier(
-              0.34,
-              1.56,
-              0.64,
-              1
-            );
-        }
-
-        .detail-favorite-count {
-          min-width: 15px;
-          color: inherit;
-          font-size: 0.62rem;
-          line-height: 1;
-          font-weight: 900;
-          text-align: center;
-        }
-
-        .detail-share-notice {
-          margin: 7px 0 0;
-          text-align: right;
-          color: ${CALBAYOG_BLUE};
-          font-size: 0.6rem;
-          font-weight: 800;
-        }
-
-        @keyframes detailFavoritePop {
-          0% {
-            transform: scale(0.72);
+      <div className="attraction-detail-page page-enter">
+        <style>{`
+          @font-face {
+            font-family: "Barabara";
+            src: url("/fonts/BARABARA-final.otf")
+              format("opentype");
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
           }
 
-          45% {
-            transform: scale(1.22);
+          .attraction-detail-page {
+            min-height: 100vh;
+            background: #ffffff;
+            color: ${TEXT};
+            font-family:
+              "Nunito",
+              "Poppins",
+              "Segoe UI",
+              sans-serif;
+            padding-bottom: 76px;
           }
-
-          70% {
-            transform: scale(0.94);
-          }
-
-          100% {
-            transform: scale(1);
-          }
-        }
-
-        /* =================================================
-           LOCATION CARD
-        ================================================= */
-
-        .detail-location-card {
-          height: 100%;
-          min-height: 100%;
-          padding: 18px;
-          border: 1px solid ${BORDER};
-          border-radius: 18px;
-          background: #ffffff;
-          box-shadow:
-            0 8px 24px
-            rgba(
-              20,
-              29,
-              57,
-              0.055
-            );
-        }
-
-        .detail-location-card-header {
-          display: flex;
-          align-items: center;
-          gap: 9px;
-          margin-bottom: 12px;
-        }
-
-        .detail-location-icon {
-          width: 38px;
-          height: 38px;
-          min-width: 38px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 11px;
-          background: ${CALBAYOG_BLUE_SOFT};
-          color: ${CALBAYOG_BLUE};
-        }
-
-        .detail-location-kicker {
-          margin: 0 0 2px;
-          color: #949aa4;
-          font-size: 0.57rem;
-          font-weight: 900;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-        }
-
-        .detail-location-label {
-          margin: 0;
-          color: ${TEXT};
-          font-size: 0.77rem;
-          font-weight: 900;
-        }
-
-        .detail-location-address {
-          margin: 0;
-          color: #5f6772;
-          font-size: 0.71rem;
-          line-height: 1.65;
-          font-weight: 700;
-        }
-
-        .detail-location-divider {
-          height: 1px;
-          margin: 16px 0;
-          background: #eff1f4;
-        }
-
-        .detail-location-directions {
-          width: 100%;
-          min-height: 40px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 7px;
-          border-radius: 10px;
-          background: ${CALBAYOG_BLUE};
-          color: #ffffff;
-          text-decoration: none;
-          font-size: 0.66rem;
-          font-weight: 900;
-          transition:
-            background 0.2s ease,
-            transform 0.2s ease;
-        }
-
-        .detail-location-directions:hover {
-          color: #ffffff;
-          background: #252982;
-          transform: translateY(-1px);
-        }
-
-        .detail-location-directions-note {
-          margin-top: 7px;
-          text-align: center;
-          color: #989ea8;
-          font-size: 0.57rem;
-          line-height: 1.4;
-          font-weight: 700;
-        }
-
-        /* =================================================
-           MAP SECTION
-        ================================================= */
-
-        .detail-map-section {
-          margin-top: 30px;
-          padding: 22px 0;
-          border-top: 1px solid ${BORDER};
-          border-bottom: 1px solid ${BORDER};
-        }
-
-        .detail-map-heading {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 14px;
-          margin-bottom: 13px;
-        }
-
-        .detail-map-heading-copy {
-          min-width: 0;
-        }
-
-        .detail-map-title {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          margin: 0 0 4px;
-          color: ${TEXT};
-          font-size: 0.94rem;
-          font-weight: 900;
-        }
-
-        .detail-map-title svg {
-          color: ${CALBAYOG_BLUE};
-        }
-
-        .detail-map-subtitle {
-          margin: 0;
-          color: #7d8490;
-          font-size: 0.65rem;
-          line-height: 1.5;
-          font-weight: 700;
-        }
-
-        .detail-map-wrapper {
-          position: relative;
-          width: 100%;
-          height: 470px;
-          overflow: hidden;
-          border: 1px solid ${BORDER};
-          border-radius: 18px;
-          background: #eef1f5;
-          box-shadow:
-            0 10px 28px
-            rgba(
-              20,
-              29,
-              57,
-              0.06
-            );
-        }
-
-        .detail-map {
-          width: 100%;
-          height: 100%;
-          z-index: 1;
-        }
-
-        .detail-map-unavailable {
-          width: 100%;
-          min-height: 250px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 7px;
-          border: 1px solid ${BORDER};
-          border-radius: 18px;
-          background: #fafbfc;
-          color: ${CALBAYOG_BLUE};
-          text-align: center;
-        }
-
-        .detail-map-unavailable strong {
-          color: ${TEXT};
-          font-size: 0.78rem;
-        }
-
-        .detail-map-unavailable span {
-          max-width: 350px;
-          color: #858c97;
-          font-size: 0.64rem;
-          line-height: 1.5;
-          font-weight: 700;
-        }
-
-        /* =================================================
-           MAP MARKERS
-        ================================================= */
-
-        .calbayog-map-marker-wrapper {
-          background: transparent !important;
-          border: 0 !important;
-        }
-
-        .calbayog-map-marker {
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 50% 50% 50% 0;
-          transform: rotate(-45deg);
-          box-shadow:
-            0 4px 12px
-            rgba(
-              20,
-              29,
-              57,
-              0.28
-            );
-        }
-
-        .calbayog-map-marker-inner {
-          width: 100%;
-          height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transform: rotate(45deg);
-          color: #ffffff;
-        }
-
-        .calbayog-marker-symbol {
-          font-size: 9px;
-          font-weight: 900;
-        }
-
-        .calbayog-map-marker-current-attraction
-          .calbayog-marker-symbol {
-          font-size: 13px;
-        }
-
-        .calbayog-map-marker-accommodation
-          .calbayog-marker-symbol {
-          font-size: 13px;
-        }
-
-        /* =================================================
-           MAP POPUP
-        ================================================= */
-
-        .detail-map-popup {
-          min-width: 220px;
-          max-width: 285px;
-          display: flex;
-          align-items: flex-start;
-          gap: 9px;
-        }
-
-        .detail-map-popup-icon {
-          width: 34px;
-          height: 34px;
-          min-width: 34px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 10px;
-          background: ${CALBAYOG_BLUE_SOFT};
-          color: ${CALBAYOG_BLUE};
-        }
-
-        .detail-map-popup-icon.accommodation {
-          background: #FFF2DF;
-          color: #D17A13;
-        }
-
-        .detail-map-popup-content {
-          min-width: 0;
-        }
-
-        .detail-map-popup-type {
-          margin-bottom: 2px;
-          color: #999fa8;
-          font-size: 0.49rem;
-          line-height: 1.2;
-          font-weight: 900;
-          letter-spacing: 0.08em;
-        }
-
-        .detail-map-popup-title {
-          color: ${TEXT};
-          font-size: 0.74rem;
-          line-height: 1.25;
-          font-weight: 900;
-        }
-
-        .detail-map-popup-category {
-          margin-top: 2px;
-          color: ${CALBAYOG_BLUE};
-          font-size: 0.58rem;
-          font-weight: 800;
-        }
-
-        .detail-map-popup-address {
-          display: flex;
-          align-items: flex-start;
-          gap: 4px;
-          margin-top: 6px;
-          color: #707783;
-          font-size: 0.57rem;
-          line-height: 1.45;
-          font-weight: 700;
-        }
-
-        .detail-map-popup-address svg {
-          flex: 0 0 auto;
-          margin-top: 2px;
-        }
-
-        .detail-map-current {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          margin-top: 7px;
-          color: ${CALBAYOG_BLUE};
-          font-size: 0.57rem;
-          font-weight: 900;
-        }
-
-        .detail-map-popup-button {
-          margin-top: 8px;
-          padding: 6px 9px;
-          border: 0;
-          border-radius: 7px;
-          background: ${CALBAYOG_BLUE};
-          color: #ffffff;
-          font-size: 0.57rem;
-          font-weight: 900;
-          cursor: pointer;
-        }
-
-        .detail-map-popup-button:hover {
-          background: #252982;
-        }
-
-        /* =================================================
-           MAP LEGEND
-        ================================================= */
-
-        .detail-map-legend {
-          position: absolute;
-          z-index: 500;
-          left: 12px;
-          bottom: 12px;
-          display: flex;
-          flex-wrap: wrap;
-          gap: 7px;
-          max-width: calc(100% - 24px);
-          padding: 8px 10px;
-          border: 1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.85
-            );
-          border-radius: 10px;
-          background: rgba(
-            255,
-            255,
-            255,
-            0.93
-          );
-          box-shadow:
-            0 5px 18px
-            rgba(
-              20,
-              29,
-              57,
-              0.14
-            );
-          backdrop-filter: blur(8px);
-        }
-
-        .detail-map-legend-item {
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-          color: #5d6570;
-          font-size: 0.55rem;
-          font-weight: 800;
-        }
-
-        .detail-map-legend-marker {
-          width: 11px;
-          height: 11px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          border: 1px solid #ffffff;
-          border-radius: 50%;
-          background: #5367D9;
-          color: #ffffff;
-          font-size: 0.42rem;
-          font-weight: 900;
-          box-shadow:
-            0 1px 4px
-            rgba(
-              0,
-              0,
-              0,
-              0.2
-            );
-        }
-
-        .detail-map-legend-marker.current {
-          background: ${CALBAYOG_BLUE};
-          width: 13px;
-          height: 13px;
-        }
-
-        .detail-map-legend-marker.attraction {
-          background: #5367D9;
-        }
-
-        .detail-map-legend-marker.accommodation {
-          background: #D88928;
-        }
-
-        /* =================================================
-           MAIN CONTENT
-        ================================================= */
-
-        .detail-main-row {
-          margin-top: 30px;
-        }
-
-        .detail-heading-block {
-          padding-bottom: 18px;
-          border-bottom: 1px solid ${BORDER};
-        }
-
-        .detail-category-row {
-          display: flex;
-          align-items: center;
-          flex-wrap: wrap;
-          gap: 7px;
-          margin-bottom: 7px;
-        }
-
-        .detail-category-chip {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          min-height: 28px;
-          padding: 5px 9px 5px 7px;
-          border-radius: 999px;
-          font-size: 0.61rem;
-          font-weight: 900;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-        }
-
-        .detail-category-icon {
-          width: 22px;
-          height: 22px;
-          min-width: 22px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 7px;
-          background: #ffffff;
-        }
-
-        .detail-category-dot {
-          color: #c5c9d0;
-          font-size: 0.67rem;
-        }
-
-        .detail-type {
-          color: #7c838e;
-          font-size: 0.64rem;
-          font-weight: 800;
-        }
-
-        .detail-title {
-          margin: 0;
-          color: ${CALBAYOG_BLUE};
-          font-family: "Barabara" !important;
-          font-size: clamp(
-            1.65rem,
-            2.8vw,
-            2.4rem
-          );
-          font-weight: 400;
-          line-height: 0.95;
-          letter-spacing: 0.015em;
-          text-transform: uppercase;
-        }
-
-        /* =================================================
-           SECTIONS
-        ================================================= */
-
-        .detail-section {
-          padding: 22px 0;
-          border-bottom: 1px solid ${BORDER};
-        }
-
-        .detail-section-heading {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          margin: 0 0 11px;
-          color: ${TEXT};
-          font-size: 0.94rem;
-          font-weight: 900;
-        }
-
-        .detail-section-heading svg {
-          color: ${CALBAYOG_BLUE};
-        }
-
-        .detail-description {
-          margin: 0;
-          color: #565e69;
-          font-size: 0.79rem;
-          line-height: 1.85;
-          white-space: pre-line;
-        }
-
-        /* =================================================
-           THINGS TO DO
-        ================================================= */
-
-        .detail-things-grid {
-          display: grid;
-          grid-template-columns:
-            repeat(
-              auto-fit,
-              minmax(
-                185px,
-                1fr
-              )
-            );
-          gap: 8px;
-        }
-
-        .detail-thing {
-          display: flex;
-          align-items: flex-start;
-          gap: 8px;
-          padding: 11px 12px;
-          border: 1px solid #edf0f4;
-          border-radius: 11px;
-          background: #fafbfc;
-          color: #565e68;
-          font-size: 0.71rem;
-          line-height: 1.5;
-          font-weight: 700;
-        }
-
-        .detail-thing-bullet {
-          width: 6px;
-          height: 6px;
-          min-width: 6px;
-          margin-top: 5px;
-          border-radius: 50%;
-          background: ${CALBAYOG_BLUE};
-        }
-
-        /* =================================================
-           INFO CARD
-        ================================================= */
-
-        .detail-info-card {
-          position: sticky;
-          top: 18px;
-          border: 1px solid ${BORDER};
-          border-radius: 18px;
-          background: #ffffff;
-          padding: 5px 17px 15px;
-          box-shadow:
-            0 10px 28px
-            rgba(
-              20,
-              29,
-              57,
-              0.06
-            );
-        }
-
-        .detail-info-item {
-          display: flex;
-          align-items: flex-start;
-          gap: 10px;
-          padding: 12px 0;
-        }
-
-        .detail-info-icon {
-          width: 37px;
-          height: 37px;
-          min-width: 37px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 11px;
-          background: ${CALBAYOG_BLUE_SOFT};
-          color: ${CALBAYOG_BLUE};
-        }
-
-        .detail-info-copy {
-          flex: 1;
-          min-width: 0;
-        }
-
-        .detail-info-label {
-          margin-bottom: 2px;
-          color: #8b919c;
-          font-size: 0.59rem;
-          font-weight: 900;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-        }
-
-        .detail-info-value {
-          color: ${TEXT};
-          font-size: 0.72rem;
-          line-height: 1.55;
-          font-weight: 800;
-          word-break: break-word;
-        }
-
-        .detail-info-link {
-          display: block;
-          color: inherit;
-          text-decoration: none;
-        }
-
-        .detail-info-link:hover
-          .detail-info-value {
-          color: ${CALBAYOG_BLUE};
-        }
-
-        .detail-info-divider {
-          height: 1px;
-          background: #eff1f4;
-        }
-
-        /* =================================================
-           MEMORY
-        ================================================= */
-
-        .detail-memory-section {
-          margin-top: 21px;
-          padding: 15px;
-          border: 1px solid
-            rgba(
-              45,
-              49,
-              149,
-              0.12
-            );
-          border-radius: 16px;
-          background:
-            linear-gradient(
-              135deg,
-              #fafaff 0%,
-              #f4f5ff 100%
-            );
-        }
-
-        .detail-memory-content {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 13px;
-        }
-
-        .detail-memory-copy {
-          display: flex;
-          align-items: flex-start;
-          gap: 9px;
-          min-width: 0;
-        }
-
-        .detail-memory-icon {
-          width: 36px;
-          height: 36px;
-          min-width: 36px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 11px;
-          background: ${CALBAYOG_BLUE};
-          color: #ffffff;
-        }
-
-        .detail-memory-title {
-          margin: 0 0 2px;
-          color: ${TEXT};
-          font-size: 0.73rem;
-          font-weight: 900;
-        }
-
-        .detail-memory-subtitle {
-          margin: 0;
-          color: #7f8691;
-          font-size: 0.6rem;
-          line-height: 1.45;
-          font-weight: 700;
-        }
-
-        .detail-memory-button {
-          flex: 0 0 auto;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 5px;
-          min-height: 36px;
-          padding: 7px 11px;
-          border: 0;
-          border-radius: 10px;
-          background: ${CALBAYOG_BLUE};
-          color: #ffffff;
-          font-size: 0.62rem;
-          font-weight: 900;
-          cursor: pointer;
-        }
-
-        .detail-memory-button:hover {
-          background: #252982;
-        }
-
-        .detail-memory-notice {
-          display: flex;
-          align-items: flex-start;
-          gap: 6px;
-          margin: 9px 0 0 45px;
-          color: ${CALBAYOG_BLUE};
-          font-size: 0.59rem;
-          line-height: 1.45;
-          font-weight: 800;
-        }
-
-        /* =================================================
-           MEMORY FORM
-        ================================================= */
-
-        .detail-memory-form {
-          margin-top: 16px;
-          padding: 18px;
-          border: 1px solid #e8eaf0;
-          border-radius: 14px;
-          background: #fafbff;
-        }
-
-        .detail-memory-form-header,
-        .detail-memory-form-actions {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 10px;
-        }
-
-        .detail-memory-form-header h3 {
-          margin: 0 0 14px;
-          font-size: 0.9rem;
-          font-weight: 900;
-          color: #20232a;
-        }
-
-        .detail-memory-close {
-          border: 0;
-          background: transparent;
-          font-size: 1.3rem;
-          cursor: pointer;
-        }
-
-        .detail-memory-form label {
-          display: block;
-          margin: 10px 0 6px;
-          font-size: 0.7rem;
-          font-weight: 900;
-          color: #20232a;
-        }
-
-        .detail-memory-form input,
-        .detail-memory-form textarea {
-          width: 100%;
-          border: 1px solid #dfe3ed;
-          border-radius: 9px;
-          padding: 10px;
-          background: #fff;
-          font-size: 0.75rem;
-        }
-
-        .detail-memory-form small {
-          display: block;
-          margin-top: 5px;
-          color: #7d8491;
-          font-size: 0.62rem;
-        }
-
-        .detail-memory-preview {
-          margin-top: 12px;
-        }
-
-        .detail-memory-preview img {
-          display: block;
-          width: 100%;
-          max-height: 260px;
-          object-fit: cover;
-          border-radius: 10px;
-        }
-
-        .detail-memory-error {
-          margin-top: 10px;
-          padding: 10px;
-          border-radius: 8px;
-          background: #fff0f0;
-          color: #b42318;
-          font-size: 0.68rem;
-          font-weight: 800;
-        }
-
-        .detail-memory-form-actions {
-          justify-content: flex-end;
-          margin-top: 14px;
-        }
-
-        .detail-memory-cancel,
-        .detail-memory-submit {
-          border: 0;
-          border-radius: 9px;
-          padding: 10px 14px;
-          font-size: 0.68rem;
-          font-weight: 900;
-          cursor: pointer;
-        }
-
-        .detail-memory-cancel {
-          background: #eef0f4;
-          color: #555d69;
-        }
-
-        .detail-memory-submit {
-          background: #2d3195;
-          color: #fff;
-        }
-
-        .detail-memory-cancel:disabled,
-        .detail-memory-submit:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        /* =================================================
-           STATES
-        ================================================= */
-
-        .detail-state-page {
-          min-height: 72vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 50px 20px;
-          background: #ffffff;
-        }
-
-        .detail-loading-card,
-        .detail-empty-card {
-          width: 100%;
-          max-width: 480px;
-          text-align: center;
-        }
-
-        .detail-loading-icon,
-        .detail-empty-icon {
-          width: 64px;
-          height: 64px;
-          margin: 0 auto 14px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 18px;
-          background: ${CALBAYOG_BLUE_SOFT};
-          color: ${CALBAYOG_BLUE};
-        }
-
-        .detail-loading-icon
-          .spinner-border {
-          color: ${CALBAYOG_BLUE};
-        }
-
-        .detail-loading-card h2,
-        .detail-empty-card h1 {
-          margin: 0 0 6px;
-          color: ${TEXT};
-          font-size: 1rem;
-          font-weight: 900;
-        }
-
-        .detail-loading-card p,
-        .detail-empty-card p {
-          margin: 0 auto 18px;
-          max-width: 400px;
-          color: ${MUTED};
-          font-size: 0.71rem;
-          line-height: 1.6;
-          font-weight: 700;
-        }
-
-        .detail-primary-button {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 7px;
-          min-height: 39px;
-          padding: 8px 14px;
-          border: 0;
-          border-radius: 999px;
-          background: ${CALBAYOG_BLUE};
-          color: #ffffff;
-          font-size: 0.65rem;
-          font-weight: 900;
-          cursor: pointer;
-        }
-
-        /* =================================================
-           RESPONSIVE
-        ================================================= */
-
-        @media (max-width: 991.98px) {
-
-          .detail-location-card {
-            margin-top: 18px;
-            min-height: auto;
-          }
-
-          .detail-info-card {
-            position: static;
-          }
-
-          .detail-map-wrapper {
-            height: 420px;
-          }
-        }
-
-        @media (max-width: 767.98px) {
 
           .attraction-detail-container {
-            padding:
-              18px 16px 55px;
-          }
-
-          .detail-gallery {
-            aspect-ratio: 4 / 3;
-            border-radius: 16px;
-          }
-
-          .detail-title {
-            font-size: 1.9rem;
-          }
-
-          .detail-main-row {
-            margin-top: 22px;
-          }
-
-          .detail-media-actions {
-            justify-content: flex-end;
-          }
-
-          .detail-memory-content {
-            align-items: stretch;
-            flex-direction: column;
-          }
-
-          .detail-memory-button {
             width: 100%;
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 24px 20px 72px;
+            background: transparent;
           }
 
-          .detail-map-wrapper {
-            height: 390px;
-            border-radius: 14px;
+          /* =================================================
+             BACK
+          ================================================= */
+
+          .detail-back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            margin: 0 0 16px;
+            padding: 5px 0;
+            border: 0;
+            background: transparent;
+            color: #737984;
+            font-size: 0.72rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition:
+              color 0.2s ease,
+              transform 0.2s ease;
           }
 
-          .detail-map-heading {
-            align-items: flex-start;
-            flex-direction: column;
+          .detail-back-button:hover {
+            color: ${CALBAYOG_BLUE};
+            transform: translateX(-2px);
           }
 
-          .detail-map-legend {
-            left: 8px;
-            bottom: 8px;
+          /* =================================================
+             HERO
+          ================================================= */
+
+          .detail-hero-row {
+            align-items: stretch;
           }
-        }
 
-        @media (max-width: 575.98px) {
-
-          .attraction-detail-container {
-            padding-left: 13px;
-            padding-right: 13px;
+          .detail-gallery-column {
+            min-width: 0;
           }
 
           .detail-gallery {
-            aspect-ratio: 4 / 3;
-            border-radius: 14px;
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            overflow: hidden;
+            border-radius: 20px;
+            background: #eef1f5;
+            box-shadow:
+              0 10px 30px
+              rgba(
+                20,
+                29,
+                57,
+                0.08
+              );
           }
 
-          .detail-title {
-            font-size: 1.8rem;
+          .detail-main-image-button {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            cursor: default;
           }
 
-          .detail-thumbnail {
-            width: 62px;
-            height: 45px;
+          .detail-main-image {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+            object-position: center;
+            transition:
+              transform 0.45s
+              cubic-bezier(
+                0.2,
+                0.65,
+                0.3,
+                1
+              );
           }
 
-          .detail-media-action {
-            padding: 3px;
-            font-size: 0.62rem;
+          .detail-gallery:hover
+            .detail-main-image {
+            transform: scale(1.008);
+          }
+
+          .detail-gallery-fallback {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: ${CALBAYOG_BLUE};
+            background:
+              linear-gradient(
+                135deg,
+                #eef0ff 0%,
+                #f7f8fb 100%
+              );
+          }
+
+          .detail-gallery-fallback-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: ${CALBAYOG_BLUE};
+          }
+
+          .detail-gallery-fallback-content span {
+            color: #8b919c;
+            font-size: 0.65rem;
+            font-weight: 800;
           }
 
           .detail-photo-count {
-            top: 8px;
-            right: 8px;
-            min-height: 27px;
-            padding: 5px 8px;
-            font-size: 0.56rem;
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 4;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            min-height: 30px;
+            padding: 6px 9px;
+            border-radius: 999px;
+            background: rgba(
+              0,
+              0,
+              0,
+              0.42
+            );
+            color: #ffffff;
+            font-size: 0.61rem;
+            font-weight: 900;
+            backdrop-filter: blur(10px);
           }
 
-          .detail-map-wrapper {
-            height: 340px;
+          /* =================================================
+             THUMBNAILS
+          ================================================= */
+
+          .detail-thumbnails {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 10px 0 2px;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
           }
 
-          .detail-map-legend {
+          .detail-thumbnails::-webkit-scrollbar {
             display: none;
           }
-        }
 
-        @media (prefers-reduced-motion: reduce) {
+          .detail-thumbnail {
+            flex: 0 0 auto;
+            width: 70px;
+            height: 50px;
+            padding: 0;
+            overflow: hidden;
+            border: 2px solid transparent;
+            border-radius: 9px;
+            background: #ffffff;
+            cursor: pointer;
+            opacity: 0.72;
+            transition:
+              border-color 0.2s ease,
+              transform 0.2s ease,
+              opacity 0.2s ease;
+          }
 
-          .detail-back-button,
-          .detail-main-image,
-          .detail-thumbnail,
-          .detail-media-action,
-          .detail-location-directions,
-          .detail-memory-button {
-            transition: none !important;
+          .detail-thumbnail:hover {
+            opacity: 1;
+            transform: translateY(-1px);
+          }
+
+          .detail-thumbnail.active {
+            border-color: ${CALBAYOG_BLUE};
+            opacity: 1;
+          }
+
+          .detail-thumbnail img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+          }
+
+          /* =================================================
+             SHARE + FAVORITE
+          ================================================= */
+
+          .detail-media-actions {
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+          }
+
+          .detail-media-action {
+            min-height: 0;
+            min-width: 0;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 3px;
+            border: 0;
+            border-radius: 0;
+            outline: none;
+            background: transparent;
+            color: #626a75;
+            font-size: 0.66rem;
+            font-weight: 900;
+            cursor: pointer;
+            transition:
+              color 0.2s ease,
+              transform 0.2s ease;
+          }
+
+          .detail-media-action:hover,
+          .detail-media-action:focus-visible {
+            transform: translateY(-1px);
+            color: ${CALBAYOG_BLUE};
+            background: transparent;
+          }
+
+          .detail-favorite-action.active {
+            color: #ed4f6b;
+          }
+
+          .detail-favorite-action:active,
+          .detail-share-action:active {
+            transform: scale(0.96);
+          }
+
+          .detail-favorite-icon {
+            transition:
+              transform 0.25s
+              cubic-bezier(
+                0.34,
+                1.56,
+                0.64,
+                1
+              );
           }
 
           .detail-favorite-action.active
             .detail-favorite-icon {
-            animation: none !important;
+            animation:
+              detailFavoritePop
+              0.42s
+              cubic-bezier(
+                0.34,
+                1.56,
+                0.64,
+                1
+              );
           }
-        }
 
-      `}</style>
-
-      <Container className="attraction-detail-container">
-
-        {/* =================================================
-             BACK
-        ================================================= */}
-
-        <button
-          type="button"
-          className="detail-back-button"
-          onClick={() =>
-            history.goBack()
+          .detail-favorite-count {
+            min-width: 15px;
+            color: inherit;
+            font-size: 0.62rem;
+            line-height: 1;
+            font-weight: 900;
+            text-align: center;
           }
-        >
-          <ArrowLeft size={15} />
-          Back to attractions
-        </button>
 
-        {/* =================================================
-             IMAGE + LOCATION
-        ================================================= */}
+          .detail-share-notice {
+            margin: 7px 0 0;
+            text-align: right;
+            color: ${CALBAYOG_BLUE};
+            font-size: 0.6rem;
+            font-weight: 800;
+          }
 
-        <Row className="detail-hero-row g-4">
+          @keyframes detailFavoritePop {
+            0% {
+              transform: scale(0.72);
+            }
 
-          <Col
-            lg={8}
-            className="detail-gallery-column"
+            45% {
+              transform: scale(1.22);
+            }
+
+            70% {
+              transform: scale(0.94);
+            }
+
+            100% {
+              transform: scale(1);
+            }
+          }
+
+          /* =================================================
+             LOCATION CARD
+          ================================================= */
+
+          .detail-location-card {
+            height: 100%;
+            min-height: 100%;
+            padding: 18px;
+            border: 1px solid ${BORDER};
+            border-radius: 18px;
+            background: #ffffff;
+            box-shadow:
+              0 8px 24px
+              rgba(
+                20,
+                29,
+                57,
+                0.055
+              );
+          }
+
+          .detail-location-card-header {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            margin-bottom: 12px;
+          }
+
+          .detail-location-icon {
+            width: 38px;
+            height: 38px;
+            min-width: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 11px;
+            background: ${CALBAYOG_BLUE_SOFT};
+            color: ${CALBAYOG_BLUE};
+          }
+
+          .detail-location-kicker {
+            margin: 0 0 2px;
+            color: #949aa4;
+            font-size: 0.57rem;
+            line-height: 1.1;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+          }
+
+          .detail-location-label {
+            margin: 0;
+            color: ${TEXT};
+            font-size: 0.77rem;
+            font-weight: 900;
+          }
+
+          .detail-location-address {
+            margin: 0;
+            color: #5f6772;
+            font-size: 0.71rem;
+            line-height: 1.65;
+            font-weight: 700;
+          }
+
+          .detail-location-divider {
+            height: 1px;
+            margin: 16px 0;
+            background: #eff1f4;
+          }
+
+          .detail-location-directions {
+            width: 100%;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            border-radius: 10px;
+            background: ${CALBAYOG_BLUE};
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 0.66rem;
+            font-weight: 900;
+            transition:
+              background 0.2s ease,
+              transform 0.2s ease;
+          }
+
+          .detail-location-directions:hover {
+            color: #ffffff;
+            background: #252982;
+            transform: translateY(-1px);
+          }
+
+          .detail-location-directions-note {
+            margin-top: 7px;
+            text-align: center;
+            color: #989ea8;
+            font-size: 0.57rem;
+            line-height: 1.4;
+            font-weight: 700;
+          }
+
+          /* =================================================
+             MAP
+          ================================================= */
+
+          .detail-map-section {
+            margin-top: 30px;
+            padding: 18px;
+            border: 1px solid ${BORDER};
+            border-radius: 20px;
+            background: #ffffff;
+            box-shadow:
+              0 10px 28px
+              rgba(
+                20,
+                29,
+                57,
+                0.06
+              );
+          }
+
+          .detail-map-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 14px;
+          }
+
+          .detail-map-header-left {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+          }
+
+          .detail-map-icon {
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            background: ${CALBAYOG_BLUE_SOFT};
+            color: ${CALBAYOG_BLUE};
+          }
+
+          .detail-map-kicker {
+            margin: 0 0 3px;
+            color: #949aa4;
+            font-size: 0.57rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+          }
+
+          .detail-map-title {
+            margin: 0;
+            color: ${TEXT};
+            font-size: 1rem;
+            font-weight: 900;
+          }
+
+          .detail-map-subtitle {
+            margin: 4px 0 0;
+            color: #7a818d;
+            font-size: 0.65rem;
+            line-height: 1.5;
+            font-weight: 700;
+          }
+
+          .detail-map-stats {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 6px;
+          }
+
+          .detail-map-stat {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            min-height: 28px;
+            padding: 5px 9px;
+            border-radius: 999px;
+            background: #f7f8fa;
+            color: #666e79;
+            font-size: 0.59rem;
+            font-weight: 900;
+          }
+
+          .detail-map-container {
+            position: relative;
+            width: 100%;
+            height: 520px;
+            overflow: hidden;
+            border-radius: 15px;
+            border: 1px solid #e4e7ed;
+            background: #eef1f5;
+          }
+
+          .detail-map {
+            width: 100%;
+            height: 100%;
+          }
+
+          .detail-map-loading {
+            position: absolute;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(
+              255,
+              255,
+              255,
+              0.72
+            );
+            backdrop-filter: blur(3px);
+            pointer-events: none;
+          }
+
+          .detail-map-loading-card {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: #ffffff;
+            color: ${CALBAYOG_BLUE};
+            box-shadow:
+              0 8px 24px
+              rgba(
+                20,
+                29,
+                57,
+                0.12
+              );
+            font-size: 0.64rem;
+            font-weight: 900;
+          }
+
+          .detail-map-error {
+            margin-top: 9px;
+            padding: 9px 11px;
+            border-radius: 9px;
+            background: #fff7ed;
+            color: #9a5b13;
+            font-size: 0.62rem;
+            font-weight: 800;
+          }
+
+          .detail-map-empty {
+            min-height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border: 1px dashed #dfe3ea;
+            border-radius: 14px;
+            background: #fafbfc;
+            color: #777f8a;
+            font-size: 0.68rem;
+            line-height: 1.6;
+            font-weight: 700;
+            padding: 30px;
+          }
+
+          /* =================================================
+             MAP MARKERS
+          ================================================= */
+
+          .calbayog-map-marker-wrapper {
+            background: transparent !important;
+            border: 0 !important;
+          }
+
+          .calbayog-map-marker {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 42px;
+            filter:
+              drop-shadow(
+                0 3px 4px
+                rgba(
+                  0,
+                  0,
+                  0,
+                  0.25
+                )
+              );
+          }
+
+          .calbayog-map-marker::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 0;
+            transform: translateX(-50%);
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 12px solid #2d3195;
+          }
+
+          .calbayog-map-marker-inner {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 29px;
+            height: 29px;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid #ffffff;
+            border-radius: 50% 50% 50% 0;
+            background: ${CALBAYOG_BLUE};
+            box-shadow:
+              0 2px 5px
+              rgba(
+                0,
+                0,
+                0,
+                0.22
+              );
+          }
+
+          .calbayog-map-marker-symbol {
+            color: #ffffff;
+            font-size: 0.7rem;
+            line-height: 1;
+            font-weight: 900;
+          }
+
+          .calbayog-map-marker.current {
+            width: 44px;
+            height: 54px;
+          }
+
+          .calbayog-map-marker.current::after {
+            border-top-color: #e33f5f;
+            border-left-width: 10px;
+            border-right-width: 10px;
+            border-top-width: 14px;
+          }
+
+          .calbayog-map-marker.current
+            .calbayog-map-marker-inner {
+            width: 38px;
+            height: 38px;
+            background: #e33f5f;
+            border-width: 4px;
+            box-shadow:
+              0 3px 8px
+              rgba(
+                227,
+                63,
+                95,
+                0.35
+              );
+          }
+
+          .calbayog-map-marker.current
+            .calbayog-map-marker-symbol {
+            font-size: 0.95rem;
+          }
+
+          .calbayog-map-marker.accommodation {
+            width: 36px;
+            height: 44px;
+          }
+
+          .calbayog-map-marker.accommodation::after {
+            border-top-color: #008f83;
+          }
+
+          .calbayog-map-marker.accommodation
+            .calbayog-map-marker-inner {
+            width: 31px;
+            height: 31px;
+            background: #008f83;
+            border-radius: 50% 50% 50% 0;
+          }
+
+          .calbayog-map-marker.accommodation
+            .calbayog-map-marker-symbol {
+            font-size: 0.72rem;
+          }
+
+          /* =================================================
+             MAP POPUP
+          ================================================= */
+
+          .detail-map-popup {
+            min-width: 190px;
+            max-width: 260px;
+          }
+
+          .detail-map-popup-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 6px;
+            padding: 4px 7px;
+            border-radius: 999px;
+            background: ${CALBAYOG_BLUE_SOFT};
+            color: ${CALBAYOG_BLUE};
+            font-size: 0.55rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+          }
+
+          .detail-map-popup-badge.current {
+            background: #fff0f3;
+            color: #d73554;
+          }
+
+          .detail-map-popup-badge.accommodation {
+            background: #e7f7f5;
+            color: #007b72;
+          }
+
+          .detail-map-popup-title {
+            margin: 0;
+            color: ${TEXT};
+            font-size: 0.78rem;
+            line-height: 1.3;
+            font-weight: 900;
+          }
+
+          .detail-map-popup-category {
+            margin: 4px 0 0;
+            color: #747c87;
+            font-size: 0.6rem;
+            font-weight: 800;
+          }
+
+          .detail-map-popup-address {
+            margin: 7px 0 0;
+            color: #686f79;
+            font-size: 0.61rem;
+            line-height: 1.5;
+            font-weight: 700;
+          }
+
+          /* =================================================
+             LEGEND
+          ================================================= */
+
+          .detail-map-legend {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+          }
+
+          .detail-map-legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #737a85;
+            font-size: 0.6rem;
+            font-weight: 800;
+          }
+
+          .detail-map-legend-dot {
+            width: 11px;
+            height: 11px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            box-shadow:
+              0 1px 3px
+              rgba(
+                0,
+                0,
+                0,
+                0.25
+              );
+          }
+
+          .detail-map-legend-dot.current {
+            background: #e33f5f;
+          }
+
+          .detail-map-legend-dot.attraction {
+            background: ${CALBAYOG_BLUE};
+          }
+
+          .detail-map-legend-dot.accommodation {
+            background: #008f83;
+          }
+
+          /* =================================================
+             MAIN CONTENT
+          ================================================= */
+
+          .detail-main-row {
+            margin-top: 30px;
+          }
+
+          .detail-heading-block {
+            padding-bottom: 18px;
+            border-bottom: 1px solid ${BORDER};
+          }
+
+          .detail-category-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-bottom: 7px;
+          }
+
+          .detail-category-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 28px;
+            padding: 5px 9px 5px 7px;
+            border-radius: 999px;
+            font-size: 0.61rem;
+            font-weight: 900;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+          }
+
+          .detail-category-icon {
+            width: 22px;
+            height: 22px;
+            min-width: 22px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 7px;
+            background: #ffffff;
+          }
+
+          .detail-category-dot {
+            color: #c5c9d0;
+            font-size: 0.67rem;
+          }
+
+          .detail-type {
+            color: #7c838e;
+            font-size: 0.64rem;
+            font-weight: 800;
+          }
+
+          .detail-title {
+            margin: 0;
+            color: ${CALBAYOG_BLUE};
+            font-family: "Barabara" !important;
+            font-size: clamp(
+              1.65rem,
+              2.8vw,
+              2.4rem
+            );
+            font-weight: 400;
+            line-height: 0.95;
+            letter-spacing: 0.015em;
+            text-transform: uppercase;
+          }
+
+          /* =================================================
+             SECTION
+          ================================================= */
+
+          .detail-section {
+            padding: 22px 0;
+            border-bottom: 1px solid ${BORDER};
+          }
+
+          .detail-section:last-child {
+            border-bottom: 0;
+          }
+
+          .detail-section-heading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 0 11px;
+            color: ${TEXT};
+            font-size: 0.94rem;
+            font-weight: 900;
+          }
+
+          .detail-section-heading svg {
+            color: ${CALBAYOG_BLUE};
+          }
+
+          .detail-description {
+            margin: 0;
+            color: #565e69;
+            font-size: 0.79rem;
+            line-height: 1.85;
+            white-space: pre-line;
+          }
+
+          /* =================================================
+             THINGS TO DO
+          ================================================= */
+
+          .detail-things-grid {
+            display: grid;
+            grid-template-columns:
+              repeat(
+                auto-fit,
+                minmax(
+                  185px,
+                  1fr
+                )
+              );
+            gap: 8px;
+          }
+
+          .detail-thing {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 11px 12px;
+            border: 1px solid #edf0f4;
+            border-radius: 11px;
+            background: #fafbfc;
+            color: #565e68;
+            font-size: 0.71rem;
+            line-height: 1.5;
+            font-weight: 700;
+          }
+
+          .detail-thing-bullet {
+            width: 6px;
+            height: 6px;
+            min-width: 6px;
+            margin-top: 5px;
+            border-radius: 50%;
+            background: ${CALBAYOG_BLUE};
+          }
+
+          /* =================================================
+             INFO CARD
+          ================================================= */
+
+          .detail-info-card {
+            position: sticky;
+            top: 18px;
+            border: 1px solid ${BORDER};
+            border-radius: 18px;
+            background: #ffffff;
+            padding: 5px 17px 15px;
+            box-shadow:
+              0 10px 28px
+              rgba(
+                20,
+                29,
+                57,
+                0.06
+              );
+          }
+
+          .detail-info-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px 0;
+          }
+
+          .detail-info-icon {
+            width: 37px;
+            height: 37px;
+            min-width: 37px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 11px;
+            background: ${CALBAYOG_BLUE_SOFT};
+            color: ${CALBAYOG_BLUE};
+          }
+
+          .detail-info-copy {
+            flex: 1;
+            min-width: 0;
+          }
+
+          .detail-info-label {
+            margin-bottom: 2px;
+            color: #8b919c;
+            font-size: 0.59rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+          }
+
+          .detail-info-value {
+            color: ${TEXT};
+            font-size: 0.72rem;
+            line-height: 1.55;
+            font-weight: 800;
+            word-break: break-word;
+          }
+
+          .detail-info-link {
+            display: block;
+            color: inherit;
+            text-decoration: none;
+          }
+
+          .detail-info-link:hover
+            .detail-info-value {
+            color: ${CALBAYOG_BLUE};
+          }
+
+          .detail-info-divider {
+            height: 1px;
+            background: #eff1f4;
+          }
+
+          /* =================================================
+             MEMORY
+          ================================================= */
+
+          .detail-memory-section {
+            margin-top: 21px;
+            padding: 15px;
+            border: 1px solid
+              rgba(
+                45,
+                49,
+                149,
+                0.12
+              );
+            border-radius: 16px;
+            background:
+              linear-gradient(
+                135deg,
+                #fafaff 0%,
+                #f4f5ff 100%
+              );
+          }
+
+          .detail-memory-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 13px;
+          }
+
+          .detail-memory-copy {
+            display: flex;
+            align-items: flex-start;
+            gap: 9px;
+            min-width: 0;
+          }
+
+          .detail-memory-icon {
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 11px;
+            background: ${CALBAYOG_BLUE};
+            color: #ffffff;
+          }
+
+          .detail-memory-title {
+            margin: 0 0 2px;
+            color: ${TEXT};
+            font-size: 0.73rem;
+            font-weight: 900;
+          }
+
+          .detail-memory-subtitle {
+            margin: 0;
+            color: #7f8691;
+            font-size: 0.6rem;
+            line-height: 1.45;
+            font-weight: 700;
+          }
+
+          .detail-memory-button {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            min-height: 36px;
+            padding: 7px 11px;
+            border: 0;
+            border-radius: 10px;
+            background: ${CALBAYOG_BLUE};
+            color: #ffffff;
+            font-size: 0.62rem;
+            font-weight: 900;
+            cursor: pointer;
+            white-space: nowrap;
+          }
+
+          .detail-memory-button:hover {
+            background: #252982;
+            color: #ffffff;
+          }
+
+          .detail-memory-notice {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            margin: 9px 0 0 45px;
+            color: ${CALBAYOG_BLUE};
+            font-size: 0.59rem;
+            line-height: 1.45;
+            font-weight: 800;
+          }
+
+          .detail-memory-form {
+            margin-top: 16px;
+            padding: 18px;
+            border: 1px solid #e8eaf0;
+            border-radius: 14px;
+            background: #fafbff;
+          }
+
+          .detail-memory-form-header,
+          .detail-memory-form-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+          }
+
+          .detail-memory-form-header h3 {
+            margin: 0 0 14px;
+            font-size: 0.9rem;
+            font-weight: 900;
+            color: #20232a;
+          }
+
+          .detail-memory-close {
+            border: 0;
+            background: transparent;
+            font-size: 1.3rem;
+            cursor: pointer;
+          }
+
+          .detail-memory-form label {
+            display: block;
+            margin: 10px 0 6px;
+            font-size: 0.7rem;
+            font-weight: 900;
+            color: #20232a;
+          }
+
+          .detail-memory-form input,
+          .detail-memory-form textarea {
+            width: 100%;
+            border: 1px solid #dfe3ed;
+            border-radius: 9px;
+            padding: 10px;
+            background: #fff;
+            font-size: 0.75rem;
+          }
+
+          .detail-memory-form small {
+            display: block;
+            margin-top: 5px;
+            color: #7d8491;
+            font-size: 0.62rem;
+          }
+
+          .detail-memory-preview {
+            margin-top: 12px;
+          }
+
+          .detail-memory-preview img {
+            display: block;
+            width: 100%;
+            max-height: 260px;
+            object-fit: cover;
+            border-radius: 10px;
+          }
+
+          .detail-memory-error {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            background: #fff0f0;
+            color: #b42318;
+            font-size: 0.68rem;
+            font-weight: 800;
+          }
+
+          .detail-memory-form-actions {
+            justify-content: flex-end;
+            margin-top: 14px;
+          }
+
+          .detail-memory-cancel,
+          .detail-memory-submit {
+            border: 0;
+            border-radius: 9px;
+            padding: 10px 14px;
+            font-size: 0.68rem;
+            font-weight: 900;
+            cursor: pointer;
+          }
+
+          .detail-memory-cancel {
+            background: #eef0f4;
+            color: #555d69;
+          }
+
+          .detail-memory-submit {
+            background: #2d3195;
+            color: #fff;
+          }
+
+          .detail-memory-cancel:disabled,
+          .detail-memory-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+
+          /* =================================================
+             STATES
+          ================================================= */
+
+          .detail-state-page {
+            min-height: 72vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 50px 20px;
+            background: #ffffff;
+          }
+
+          .detail-loading-card,
+          .detail-empty-card {
+            width: 100%;
+            max-width: 480px;
+            text-align: center;
+          }
+
+          .detail-loading-icon,
+          .detail-empty-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 18px;
+            background: ${CALBAYOG_BLUE_SOFT};
+            color: ${CALBAYOG_BLUE};
+          }
+
+          .detail-loading-icon
+            .spinner-border {
+            color: ${CALBAYOG_BLUE};
+          }
+
+          .detail-loading-card h2,
+          .detail-empty-card h1 {
+            margin: 0 0 6px;
+            color: ${TEXT};
+            font-size: 1rem;
+            font-weight: 900;
+          }
+
+          .detail-loading-card p,
+          .detail-empty-card p {
+            margin: 0 auto 18px;
+            max-width: 400px;
+            color: ${MUTED};
+            font-size: 0.71rem;
+            line-height: 1.6;
+            font-weight: 700;
+          }
+
+          .detail-primary-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            min-height: 39px;
+            padding: 8px 14px;
+            border: 0;
+            border-radius: 999px;
+            background: ${CALBAYOG_BLUE};
+            color: #ffffff;
+            font-size: 0.65rem;
+            font-weight: 900;
+            cursor: pointer;
+          }
+
+          /* =================================================
+             RESPONSIVE
+          ================================================= */
+
+          @media (max-width: 991.98px) {
+            .detail-location-card {
+              margin-top: 18px;
+              min-height: auto;
+            }
+
+            .detail-info-card {
+              position: static;
+            }
+
+            .detail-map-header {
+              flex-direction: column;
+            }
+
+            .detail-map-stats {
+              justify-content: flex-start;
+            }
+          }
+
+          @media (max-width: 767.98px) {
+            .attraction-detail-container {
+              padding:
+                18px 16px 55px;
+            }
+
+            .detail-gallery {
+              aspect-ratio: 4 / 3;
+              border-radius: 16px;
+            }
+
+            .detail-title {
+              font-size: 1.9rem;
+            }
+
+            .detail-main-row {
+              margin-top: 22px;
+            }
+
+            .detail-media-actions {
+              justify-content: flex-end;
+            }
+
+            .detail-memory-content {
+              align-items: stretch;
+              flex-direction: column;
+            }
+
+            .detail-memory-button {
+              width: 100%;
+            }
+
+            .detail-map-section {
+              margin-top: 22px;
+              padding: 13px;
+            }
+
+            .detail-map-container {
+              height: 430px;
+            }
+
+            .detail-map-legend {
+              gap: 8px;
+            }
+          }
+
+          @media (max-width: 575.98px) {
+            .attraction-detail-container {
+              padding-left: 13px;
+              padding-right: 13px;
+            }
+
+            .detail-gallery {
+              aspect-ratio: 4 / 3;
+              border-radius: 14px;
+            }
+
+            .detail-title {
+              font-size: 1.8rem;
+            }
+
+            .detail-thumbnail {
+              width: 62px;
+              height: 45px;
+            }
+
+            .detail-media-action {
+              min-height: 0;
+              min-width: 0;
+              padding: 3px;
+              font-size: 0.62rem;
+            }
+
+            .detail-photo-count {
+              top: 8px;
+              right: 8px;
+              min-height: 27px;
+              padding:
+                5px 8px;
+              font-size: 0.56rem;
+            }
+
+            .detail-map-container {
+              height: 390px;
+            }
+
+            .detail-map-title {
+              font-size: 0.9rem;
+            }
+
+            .detail-map-subtitle {
+              font-size: 0.6rem;
+            }
+          }
+
+          @media (prefers-reduced-motion: reduce) {
+            .detail-back-button,
+            .detail-main-image,
+            .detail-thumbnail,
+            .detail-media-action,
+            .detail-location-directions,
+            .detail-memory-button {
+              transition: none !important;
+            }
+
+            .detail-favorite-action.active
+              .detail-favorite-icon {
+              animation: none !important;
+            }
+          }
+        `}</style>
+
+        <Container className="attraction-detail-container">
+          {/* =================================================
+                BACK
+            ================================================= */}
+
+          <button
+            type="button"
+            className="detail-back-button"
+            onClick={() =>
+              history.goBack()
+            }
           >
+            <ArrowLeft
+              size={15}
+            />
+            Back to attractions
+          </button>
 
-            {images.length === 0 ? (
-              <div className="detail-gallery">
+          {/* =================================================
+                IMAGE + LOCATION
+            ================================================= */}
 
-                <div className="detail-gallery-fallback">
+          <Row className="detail-hero-row g-4">
+            <Col
+              lg={8}
+              className="detail-gallery-column"
+            >
+              {images.length ===
+              0 ? (
+                <div className="detail-gallery">
+                  <div className="detail-gallery-fallback">
+                    <div className="detail-gallery-fallback-content">
+                      <Camera
+                        size={34}
+                      />
 
-                  <div className="detail-gallery-fallback-content">
+                      <span>
+                        No images available
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="detail-gallery">
+                    <button
+                      type="button"
+                      className="detail-main-image-button"
+                      aria-label={`View ${
+                        attraction.name ||
+                        "attraction"
+                      } photo ${
+                        safeActiveImg +
+                        1
+                      }`}
+                    >
+                      <img
+                        src={
+                          activeImage
+                        }
+                        alt={`${
+                          attraction.name ||
+                          "Attraction"
+                        } photo ${
+                          safeActiveImg +
+                          1
+                        }`}
+                        className="detail-main-image"
+                        loading="eager"
+                        decoding="async"
+                        onError={(
+                          event,
+                        ) => {
+                          event.currentTarget.style.opacity =
+                            "0";
+                        }}
+                      />
+                    </button>
 
-                    <Camera size={34} />
+                    {images.length >
+                      1 && (
+                      <div className="detail-photo-count">
+                        <Camera
+                          size={13}
+                        />
 
-                    <span>
-                      No images available
-                    </span>
-
+                        {safeActiveImg +
+                          1}{" "}
+                        /{" "}
+                        {
+                          images.length
+                        }
+                      </div>
+                    )}
                   </div>
 
-                </div>
-
-              </div>
-            ) : (
-              <>
-
-                <div className="detail-gallery">
-
-                  <button
-                    type="button"
-                    className="detail-main-image-button"
-                    aria-label={`View ${
-                      attraction.name ||
-                      "attraction"
-                    } photo ${
-                      safeActiveImg + 1
-                    }`}
-                  >
-
-                    <img
-                      src={activeImage}
-                      alt={`${
-                        attraction.name ||
-                        "Attraction"
-                      } photo ${
-                        safeActiveImg + 1
-                      }`}
-                      className="detail-main-image"
-                      loading="eager"
-                      decoding="async"
-                      onError={(event) => {
-                        event.currentTarget.style.opacity =
-                          "0";
-                      }}
-                    />
-
-                  </button>
-
-                  {images.length > 1 && (
-                    <div className="detail-photo-count">
-
-                      <Camera size={13} />
-
-                      {safeActiveImg + 1} /{" "}
-                      {images.length}
-
+                  {images.length >
+                    1 && (
+                    <div className="detail-thumbnails">
+                      {images.map(
+                        (
+                          image,
+                          index,
+                        ) => (
+                          <button
+                            key={`${image}-${index}`}
+                            type="button"
+                            className={`detail-thumbnail ${
+                              index ===
+                              safeActiveImg
+                                ? "active"
+                                : ""
+                            }`}
+                            onClick={() =>
+                              setActiveImg(
+                                index,
+                              )
+                            }
+                            aria-label={`View photo ${
+                              index +
+                              1
+                            }`}
+                          >
+                            <img
+                              src={
+                                image
+                              }
+                              alt=""
+                              loading="lazy"
+                            />
+                          </button>
+                        ),
+                      )}
                     </div>
                   )}
+                </>
+              )}
 
+              {/* SHARE + FAVORITE */}
+
+              <div className="detail-media-actions">
+                <button
+                  type="button"
+                  className="detail-media-action detail-share-action"
+                  onClick={
+                    handleShare
+                  }
+                  aria-label="Share attraction"
+                >
+                  <Share2
+                    size={18}
+                    strokeWidth={
+                      2
+                    }
+                  />
+                </button>
+
+                <button
+                  type="button"
+                  className={`detail-media-action detail-favorite-action ${
+                    favoriteActive
+                      ? "active"
+                      : ""
+                  }`}
+                  onClick={() =>
+                    void handleFavorite()
+                  }
+                  aria-label={
+                    favoriteActive
+                      ? `Remove ${attraction.name} from favorites`
+                      : `Add ${attraction.name} to favorites`
+                  }
+                  aria-pressed={
+                    favoriteActive
+                  }
+                >
+                  <Heart
+                    className="detail-favorite-icon"
+                    size={19}
+                    strokeWidth={
+                      favoriteActive
+                        ? 2.25
+                        : 1.9
+                    }
+                    fill={
+                      favoriteActive
+                        ? "currentColor"
+                        : "none"
+                    }
+                  />
+
+                  <span className="detail-favorite-count">
+                    {
+                      favoriteCount
+                    }
+                  </span>
+                </button>
+              </div>
+
+              {shareNotice && (
+                <div className="detail-share-notice">
+                  {
+                    shareNotice
+                  }
+                </div>
+              )}
+            </Col>
+
+            <Col lg={4}>
+              <div className="detail-location-card">
+                <div className="detail-location-card-header">
+                  <div className="detail-location-icon">
+                    <MapPin
+                      size={18}
+                      strokeWidth={
+                        1.9
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <p className="detail-location-kicker">
+                      Location
+                    </p>
+
+                    <p className="detail-location-label">
+                      Where to find it
+                    </p>
+                  </div>
                 </div>
 
-                {images.length > 1 && (
-                  <div className="detail-thumbnails">
+                <p className="detail-location-address">
+                  {address ||
+                    "Address not available yet."}
+                </p>
 
-                    {images.map(
-                      (
-                        image,
-                        index,
-                      ) => (
-                        <button
-                          key={`${image}-${index}`}
-                          type="button"
-                          className={`detail-thumbnail ${
-                            index ===
-                            safeActiveImg
-                              ? "active"
-                              : ""
-                          }`}
-                          onClick={() =>
-                            setActiveImg(
-                              index,
-                            )
-                          }
-                          aria-label={`View photo ${
-                            index + 1
-                          }`}
-                        >
+                <div className="detail-location-divider" />
 
-                          <img
-                            src={image}
-                            alt=""
-                            loading="lazy"
-                          />
-
-                        </button>
-                      ),
-                    )}
-
-                  </div>
-                )}
-
-              </>
-            )}
-
-            {/* SHARE + HEART */}
-
-            <div className="detail-media-actions">
-
-              <button
-                type="button"
-                className="detail-media-action detail-share-action"
-                onClick={
-                  handleShare
-                }
-                aria-label="Share attraction"
-              >
-                <Share2
-                  size={18}
-                  strokeWidth={2}
-                />
-              </button>
-
-              <button
-                type="button"
-                className={`detail-media-action detail-favorite-action ${
-                  favoriteActive
-                    ? "active"
-                    : ""
-                }`}
-                onClick={() =>
-                  void handleFavorite()
-                }
-                aria-label={
-                  favoriteActive
-                    ? `Remove ${attraction.name} from favorites`
-                    : `Add ${attraction.name} to favorites`
-                }
-                aria-pressed={
-                  favoriteActive
-                }
-              >
-
-                <Heart
-                  className="detail-favorite-icon"
-                  size={19}
-                  strokeWidth={
-                    favoriteActive
-                      ? 2.25
-                      : 1.9
+                <a
+                  href={
+                    directionsUrl
                   }
-                  fill={
-                    favoriteActive
-                      ? "currentColor"
-                      : "none"
-                  }
-                />
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="detail-location-directions"
+                >
+                  <Navigation
+                    size={17}
+                  />
 
-                <span className="detail-favorite-count">
-                  {favoriteCount}
-                </span>
+                  Get Directions
 
-              </button>
+                  <ExternalLink
+                    size={13}
+                  />
+                </a>
 
-            </div>
-
-            {shareNotice && (
-              <div className="detail-share-notice">
-                {shareNotice}
+                <div className="detail-location-directions-note">
+                  Opens the destination in Google Maps
+                </div>
               </div>
-            )}
+            </Col>
+          </Row>
 
-          </Col>
+          {/* =================================================
+                PUBLIC TOURISM MAP
+            ================================================= */}
 
-          <Col lg={4}>
-
-            <div className="detail-location-card">
-
-              <div className="detail-location-card-header">
-
-                <div className="detail-location-icon">
-                  <MapPin
-                    size={18}
-                    strokeWidth={1.9}
+          <section className="detail-map-section">
+            <div className="detail-map-header">
+              <div className="detail-map-header-left">
+                <div className="detail-map-icon">
+                  <MapPinned
+                    size={19}
                   />
                 </div>
 
                 <div>
-
-                  <p className="detail-location-kicker">
-                    Location
+                  <p className="detail-map-kicker">
+                    Explore Calbayog
                   </p>
 
-                  <p className="detail-location-label">
-                    Where to find it
-                  </p>
+                  <h2 className="detail-map-title">
+                    Attractions &
+                    Accommodations
+                  </h2>
 
+                  <p className="detail-map-subtitle">
+                    Explore nearby tourism
+                    destinations and
+                    accommodations using
+                    locations saved by the
+                    tourism admin.
+                  </p>
+                </div>
+              </div>
+
+              <div className="detail-map-stats">
+                <span className="detail-map-stat">
+                  <MapPin
+                    size={12}
+                  />
+
+                  {
+                    mapAttractions.length
+                  }{" "}
+                  attractions
+                </span>
+
+                <span className="detail-map-stat">
+                  <Hotel
+                    size={12}
+                  />
+
+                  {
+                    accommodationPlaces.length
+                  }{" "}
+                  accommodations
+                </span>
+              </div>
+            </div>
+
+            {mapAttractions.length ===
+              0 &&
+            accommodationPlaces.length ===
+              0 ? (
+              <div className="detail-map-empty">
+                No saved map coordinates are
+                currently available for this
+                attraction or the other tourism
+                locations.
+              </div>
+            ) : (
+              <>
+                <div className="detail-map-container">
+                  <MapContainer
+                    center={
+                      mapCenter
+                    }
+                    zoom={15}
+                    scrollWheelZoom={
+                      true
+                    }
+                    dragging={
+                      true
+                    }
+                    touchZoom={
+                      true
+                    }
+                    doubleClickZoom={
+                      true
+                    }
+                    boxZoom={
+                      true
+                    }
+                    keyboard={
+                      true
+                    }
+                    zoomControl={
+                      true
+                    }
+                    className="detail-map"
+                  >
+                    <LayersControl
+                      position="topright"
+                    >
+                      {/* STREET */}
+
+                      <LayersControl.BaseLayer
+                        checked
+                        name="Street"
+                      >
+                        <TileLayer
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                      </LayersControl.BaseLayer>
+
+                      {/* SATELLITE */}
+
+                      <LayersControl.BaseLayer
+                        name="Satellite"
+                      >
+                        <TileLayer
+                          attribution="Tiles &copy; Esri"
+                          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                        />
+                      </LayersControl.BaseLayer>
+
+                      {/* TERRAIN */}
+
+                      <LayersControl.BaseLayer
+                        name="Terrain"
+                      >
+                        <TileLayer
+                          attribution='Map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors, <a href="https://opentopomap.org" target="_blank" rel="noopener noreferrer">OpenTopoMap</a>'
+                          url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+                        />
+                      </LayersControl.BaseLayer>
+                    </LayersControl>
+
+                    {/* =================================================
+                          ATTRACTION MARKERS
+                      ================================================= */}
+
+                    {mapAttractions.map(
+                      (
+                        place,
+                      ) => (
+                        <Marker
+                          key={`attraction-${place.id}`}
+                          position={[
+                            place
+                              .coordinates
+                              .lat,
+
+                            place
+                              .coordinates
+                              .lng,
+                          ]}
+                          icon={createAttractionMarkerIcon(
+                            place.isCurrent,
+                          )}
+                        >
+                          <Popup>
+                            <div className="detail-map-popup">
+                              <div
+                                className={`detail-map-popup-badge ${
+                                  place.isCurrent
+                                    ? "current"
+                                    : ""
+                                }`}
+                              >
+                                <MapPin
+                                  size={
+                                    10
+                                  }
+                                />
+
+                                {place.isCurrent
+                                  ? "Current attraction"
+                                  : "Attraction"}
+                              </div>
+
+                              <h3 className="detail-map-popup-title">
+                                {
+                                  place.name
+                                }
+                              </h3>
+
+                              {place.category && (
+                                <p className="detail-map-popup-category">
+                                  {
+                                    place.category
+                                  }
+                                </p>
+                              )}
+
+                              {place.address && (
+                                <p className="detail-map-popup-address">
+                                  {
+                                    place.address
+                                  }
+                                </p>
+                              )}
+                            </div>
+                          </Popup>
+                        </Marker>
+                      ),
+                    )}
+
+                    {/* =================================================
+                          ACCOMMODATION MARKERS
+                      ================================================= */}
+
+                    {accommodationPlaces.map(
+                      (
+                        place,
+                      ) => (
+                        <Marker
+                          key={`accommodation-${place.id}`}
+                          position={[
+                            place
+                              .coordinates
+                              .lat,
+
+                            place
+                              .coordinates
+                              .lng,
+                          ]}
+                          icon={createAccommodationMarkerIcon()}
+                        >
+                          <Popup>
+                            <div className="detail-map-popup">
+                              <div className="detail-map-popup-badge accommodation">
+                                <Hotel
+                                  size={
+                                    10
+                                  }
+                                />
+
+                                Accommodation
+                              </div>
+
+                              <h3 className="detail-map-popup-title">
+                                {
+                                  place.name
+                                }
+                              </h3>
+
+                              {place.type && (
+                                <p className="detail-map-popup-category">
+                                  {
+                                    place.type
+                                  }
+                                </p>
+                              )}
+
+                              {place.address && (
+                                <p className="detail-map-popup-address">
+                                  {
+                                    place.address
+                                  }
+                                </p>
+                              )}
+                            </div>
+                          </Popup>
+                        </Marker>
+                      ),
+                    )}
+                  </MapContainer>
+
+                  {mapLoading && (
+                    <div className="detail-map-loading">
+                      <div className="detail-map-loading-card">
+                        <Spinner
+                          animation="border"
+                          size="sm"
+                        />
+
+                        Loading map locations...
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-              </div>
+                <div className="detail-map-legend">
+                  <span className="detail-map-legend-item">
+                    <span className="detail-map-legend-dot current" />
+                    Current attraction
+                  </span>
 
-              <p className="detail-location-address">
-                {address ||
-                  "Address not available yet."}
-              </p>
+                  <span className="detail-map-legend-item">
+                    <span className="detail-map-legend-dot attraction" />
+                    Other attraction
+                  </span>
 
-              <div className="detail-location-divider" />
+                  <span className="detail-map-legend-item">
+                    <span className="detail-map-legend-dot accommodation" />
+                    Accommodation
+                  </span>
+                </div>
 
-              <a
-                href={directionsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="detail-location-directions"
-              >
+                {mapError && (
+                  <div className="detail-map-error">
+                    {mapError}
+                  </div>
+                )}
+              </>
+            )}
+          </section>
 
-                <Navigation size={17} />
+          {/* =================================================
+                MAIN CONTENT
+            ================================================= */}
 
-                Get Directions
+          <Row className="detail-main-row g-4">
+            <Col lg={8}>
+              {/* HEADING */}
 
-                <ExternalLink size={13} />
+              <div className="detail-heading-block">
+                <div className="detail-category-row">
+                  {attraction.category &&
+                    (() => {
+                      const CategoryIcon =
+                        CATEGORY_ICONS[
+                          attraction.category as keyof typeof CATEGORY_ICONS
+                        ] ||
+                        MapPin;
 
-              </a>
-
-              <div className="detail-location-directions-note">
-                Opens the destination in
-                Google Maps
-              </div>
-
-            </div>
-
-          </Col>
-
-        </Row>
-
-        {/* =================================================
-             PUBLIC TOURISM MAP
-        ================================================= */}
-
-        <section className="detail-map-section">
-
-          <div className="detail-map-heading">
-
-            <div className="detail-map-heading-copy">
-
-              <h2 className="detail-map-title">
-
-                <MapPin size={18} />
-
-                Explore on the map
-
-              </h2>
-
-              <p className="detail-map-subtitle">
-                View this attraction,
-                other attractions, and
-                accommodations using the
-                locations saved by the
-                administrator.
-              </p>
-
-            </div>
-
-          </div>
-
-          <AttractionMap
-            currentAttraction={
-              attraction
-            }
-            attractions={
-              allAttractions
-            }
-            accommodations={
-              accommodations
-            }
-            onOpenAttraction={
-              handleMapAttractionClick
-            }
-          />
-
-        </section>
-
-        {/* =================================================
-             MAIN CONTENT
-        ================================================= */}
-
-        <Row className="detail-main-row g-4">
-
-          <Col lg={8}>
-
-            {/* HEADING */}
-
-            <div className="detail-heading-block">
-
-              <div className="detail-category-row">
-
-                {attraction.category &&
-                  (() => {
-
-                    const CategoryIcon =
-                      CATEGORY_ICONS[
-                        attraction.category as keyof typeof CATEGORY_ICONS
-                      ] ||
-                      MapPin;
-
-                    const tint =
-                      CATEGORY_TINTS[
-                        attraction.category
-                      ] || {
-                        color:
-                          CALBAYOG_BLUE,
-                        background:
-                          CALBAYOG_BLUE_SOFT,
-                      };
-
-                    return (
-                      <span
-                        className="detail-category-chip"
-                        style={{
+                      const tint =
+                        CATEGORY_TINTS[
+                          attraction.category
+                        ] || {
                           color:
-                            tint.color,
-                          background:
-                            tint.background,
-                        }}
-                      >
+                            CALBAYOG_BLUE,
 
+                          background:
+                            CALBAYOG_BLUE_SOFT,
+                        };
+
+                      return (
                         <span
-                          className="detail-category-icon"
+                          className="detail-category-chip"
                           style={{
                             color:
                               tint.color,
+
+                            background:
+                              tint.background,
                           }}
                         >
-                          <CategoryIcon
-                            size={13}
-                            strokeWidth={2}
-                          />
-                        </span>
+                          <span
+                            className="detail-category-icon"
+                            style={{
+                              color:
+                                tint.color,
+                            }}
+                          >
+                            <CategoryIcon
+                              size={
+                                13
+                              }
+                              strokeWidth={
+                                2
+                              }
+                            />
+                          </span>
 
-                        <span>
-                          {
-                            attraction.category
-                          }
+                          <span>
+                            {
+                              attraction.category
+                            }
+                          </span>
                         </span>
+                      );
+                    })()}
 
+                  {attraction.category &&
+                    displayAttractionType && (
+                      <span className="detail-category-dot">
+                        •
                       </span>
-                    );
+                    )}
 
-                  })()}
-
-                {attraction.category &&
-                  displayAttractionType && (
-                    <span className="detail-category-dot">
-                      •
+                  {displayAttractionType && (
+                    <span className="detail-type">
+                      {
+                        displayAttractionType
+                      }
                     </span>
                   )}
+                </div>
 
-                {displayAttractionType && (
-                  <span className="detail-type">
-                    {
-                      displayAttractionType
-                    }
-                  </span>
-                )}
-
+                <h1 className="detail-title">
+                  {attraction.name ||
+                    "Unnamed Attraction"}
+                </h1>
               </div>
 
-              <h1 className="detail-title">
-                {attraction.name ||
-                  "Unnamed Attraction"}
-              </h1>
+              {/* DESCRIPTION */}
 
-            </div>
-
-            {/* DESCRIPTION */}
-
-            <section className="detail-section">
-
-              <h2 className="detail-section-heading">
-
-                <Globe2 size={18} />
-
-                About this attraction
-
-              </h2>
-
-              <p className="detail-description">
-
-                {attraction.description ||
-                  "No description is available for this attraction yet."}
-
-              </p>
-
-            </section>
-
-            {/* THINGS TO DO */}
-
-            {thingsToDo.length > 0 && (
               <section className="detail-section">
-
                 <h2 className="detail-section-heading">
+                  <Globe2
+                    size={18}
+                  />
 
-                  <ListChecks size={19} />
-
-                  Things to do
-
+                  About this attraction
                 </h2>
 
-                <div className="detail-things-grid">
-
-                  {thingsToDo.map(
-                    (
-                      thing,
-                      index,
-                    ) => (
-                      <div
-                        className="detail-thing"
-                        key={`${thing}-${index}`}
-                      >
-
-                        <span className="detail-thing-bullet" />
-
-                        <span>
-                          {thing}
-                        </span>
-
-                      </div>
-                    ),
-                  )}
-
-                </div>
-
+                <p className="detail-description">
+                  {attraction.description ||
+                    "No description is available for this attraction yet."}
+                </p>
               </section>
-            )}
 
-            {/* ADD MEMORIES */}
+              {/* THINGS TO DO */}
 
-            <div className="detail-memory-section">
+              {thingsToDo.length >
+                0 && (
+                <section className="detail-section">
+                  <h2 className="detail-section-heading">
+                    <ListChecks
+                      size={19}
+                    />
 
-              <div className="detail-memory-content">
+                    Things to do
+                  </h2>
 
-                <div className="detail-memory-copy">
+                  <div className="detail-things-grid">
+                    {thingsToDo.map(
+                      (
+                        thing,
+                        index,
+                      ) => (
+                        <div
+                          className="detail-thing"
+                          key={`${thing}-${index}`}
+                        >
+                          <span className="detail-thing-bullet" />
 
-                  <div className="detail-memory-icon">
-                    <Camera size={18} />
+                          <span>
+                            {
+                              thing
+                            }
+                          </span>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {/* ADD MEMORIES */}
+
+              <div className="detail-memory-section">
+                <div className="detail-memory-content">
+                  <div className="detail-memory-copy">
+                    <div className="detail-memory-icon">
+                      <Camera
+                        size={18}
+                      />
+                    </div>
+
+                    <div>
+                      <p className="detail-memory-title">
+                        Add Memories
+                      </p>
+
+                      <p className="detail-memory-subtitle">
+                        Share your experience
+                        and memorable moments
+                        from this attraction.
+                      </p>
+                    </div>
                   </div>
 
-                  <div>
+                  <button
+                    type="button"
+                    className="detail-memory-button"
+                    onClick={
+                      handleAddMemories
+                    }
+                  >
+                    <Camera
+                      size={14}
+                    />
 
-                    <p className="detail-memory-title">
-                      Add Memories
-                    </p>
-
-                    <p className="detail-memory-subtitle">
-                      Share your experience
-                      and memorable moments
-                      from this attraction.
-                    </p>
-
-                  </div>
-
+                    Add Memories
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  className="detail-memory-button"
-                  onClick={
-                    handleAddMemories
-                  }
-                >
+                {showMemoryForm && (
+                  <form
+                    className="detail-memory-form"
+                    onSubmit={
+                      handleSubmitMemory
+                    }
+                  >
+                    <div className="detail-memory-form-header">
+                      <h3>
+                        Share Your Memory
+                      </h3>
 
-                  <Camera size={14} />
+                      <button
+                        type="button"
+                        className="detail-memory-close"
+                        onClick={() => {
+                          if (
+                            memorySubmitting
+                          ) {
+                            return;
+                          }
 
-                  Add Memories
+                          setShowMemoryForm(
+                            false,
+                          );
 
-                </button>
-
-              </div>
-
-              {showMemoryForm && (
-                <form
-                  className="detail-memory-form"
-                  onSubmit={
-                    handleSubmitMemory
-                  }
-                >
-
-                  <div className="detail-memory-form-header">
-
-                    <h3>
-                      Share Your Memory
-                    </h3>
-
-                    <button
-                      type="button"
-                      className="detail-memory-close"
-                      onClick={() => {
-
-                        if (
+                          setMemoryError(
+                            "",
+                          );
+                        }}
+                        disabled={
                           memorySubmitting
-                        ) {
-                          return;
                         }
+                      >
+                        ×
+                      </button>
+                    </div>
 
-                        setShowMemoryForm(
-                          false,
-                        );
+                    <label htmlFor="memory-photo">
+                      Upload Photo
+                    </label>
 
-                        setMemoryError(
-                          "",
-                        );
-
-                      }}
+                    <input
+                      id="memory-photo"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={
+                        handleMemoryPhotoChange
+                      }
                       disabled={
                         memorySubmitting
                       }
-                    >
-                      ×
-                    </button>
+                    />
 
-                  </div>
+                    <small>
+                      JPG, PNG, or
+                      WEBP. Maximum
+                      size: 5 MB.
+                    </small>
 
-                  <label htmlFor="memory-photo">
-                    Upload Photo
-                  </label>
+                    {memoryPhotoPreview && (
+                      <div className="detail-memory-preview">
+                        <img
+                          src={
+                            memoryPhotoPreview
+                          }
+                          alt="Selected memory preview"
+                        />
+                      </div>
+                    )}
 
-                  <input
-                    id="memory-photo"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={
-                      handleMemoryPhotoChange
-                    }
-                    disabled={
-                      memorySubmitting
-                    }
-                  />
+                    <label htmlFor="memory-caption">
+                      Caption
+                    </label>
 
-                  <small>
-                    JPG, PNG, or WEBP.
-                    Maximum size: 5 MB.
-                  </small>
-
-                  {memoryPhotoPreview && (
-                    <div className="detail-memory-preview">
-
-                      <img
-                        src={
-                          memoryPhotoPreview
-                        }
-                        alt="Selected memory preview"
-                      />
-
-                    </div>
-                  )}
-
-                  <label htmlFor="memory-caption">
-                    Caption
-                  </label>
-
-                  <textarea
-                    id="memory-caption"
-                    value={
-                      memoryCaption
-                    }
-                    onChange={(event) =>
-                      setMemoryCaption(
-                        event.target
-                          .value,
-                      )
-                    }
-                    placeholder="Tell us about your experience..."
-                    maxLength={500}
-                    rows={4}
-                    disabled={
-                      memorySubmitting
-                    }
-                  />
-
-                  {memoryError && (
-                    <div
-                      className="detail-memory-error"
-                      role="alert"
-                    >
-                      {memoryError}
-                    </div>
-                  )}
-
-                  <div className="detail-memory-form-actions">
-
-                    <button
-                      type="button"
-                      className="detail-memory-cancel"
-                      onClick={() =>
-                        setShowMemoryForm(
-                          false,
+                    <textarea
+                      id="memory-caption"
+                      value={
+                        memoryCaption
+                      }
+                      onChange={(
+                        event,
+                      ) =>
+                        setMemoryCaption(
+                          event.target
+                            .value,
                         )
                       }
+                      placeholder="Tell us about your experience..."
+                      maxLength={500}
+                      rows={4}
                       disabled={
                         memorySubmitting
                       }
-                    >
-                      Cancel
-                    </button>
+                    />
 
-                    <button
-                      type="submit"
-                      className="detail-memory-submit"
-                      disabled={
-                        memorySubmitting
-                      }
-                    >
-                      {memorySubmitting
-                        ? "Uploading..."
-                        : "Submit Memory"}
-                    </button>
-
-                  </div>
-
-                </form>
-              )}
-
-              {memoryNotice && (
-                <div className="detail-memory-notice">
-
-                  <CheckCircle2 size={14} />
-
-                  <span>
-                    {memoryNotice}
-                  </span>
-
-                </div>
-              )}
-
-            </div>
-
-          </Col>
-
-          {/* =================================================
-               RIGHT INFORMATION
-          ================================================= */}
-
-          <Col lg={4}>
-
-            <div className="detail-info-card">
-
-              {website && (
-                <>
-                  <InfoItem
-                    icon={
-                      <Globe2 size={18} />
-                    }
-                    label="Website"
-                    href={normalizeWebsiteUrl(
-                      website,
+                    {memoryError && (
+                      <div
+                        className="detail-memory-error"
+                        role="alert"
+                      >
+                        {
+                          memoryError
+                        }
+                      </div>
                     )}
-                    external
-                  >
-                    Visit official website
-                  </InfoItem>
 
-                  <div className="detail-info-divider" />
-                </>
-              )}
+                    <div className="detail-memory-form-actions">
+                      <button
+                        type="button"
+                        className="detail-memory-cancel"
+                        onClick={() =>
+                          setShowMemoryForm(
+                            false,
+                          )
+                        }
+                        disabled={
+                          memorySubmitting
+                        }
+                      >
+                        Cancel
+                      </button>
 
-              {contactPerson && (
-                <>
-                  <InfoItem
-                    icon={
-                      <UserRound size={18} />
-                    }
-                    label="Contact Person"
-                  >
-                    {contactPerson}
-                  </InfoItem>
-
-                  <div className="detail-info-divider" />
-                </>
-              )}
-
-              {contactNumber && (
-                <>
-                  <InfoItem
-                    icon={
-                      <Phone size={18} />
-                    }
-                    label="Contact Number"
-                    href={`tel:${contactNumber}`}
-                  >
-                    {contactNumber}
-                  </InfoItem>
-
-                  <div className="detail-info-divider" />
-                </>
-              )}
-
-              {operatingHours && (
-                <>
-                  <InfoItem
-                    icon={
-                      <Clock3 size={18} />
-                    }
-                    label="Operating Hours"
-                  >
-                    {operatingHours}
-                  </InfoItem>
-
-                  <div className="detail-info-divider" />
-                </>
-              )}
-
-              {bestTime && (
-                <InfoItem
-                  icon={
-                    <Sun size={18} />
-                  }
-                  label="Best Time to Visit"
-                >
-                  {bestTime}
-                </InfoItem>
-              )}
-
-              {!website &&
-                !contactPerson &&
-                !contactNumber &&
-                !operatingHours &&
-                !bestTime && (
-                  <div className="detail-info-item">
-
-                    <div className="detail-info-icon">
-                      <MapPin size={18} />
+                      <button
+                        type="submit"
+                        className="detail-memory-submit"
+                        disabled={
+                          memorySubmitting
+                        }
+                      >
+                        {memorySubmitting
+                          ? "Uploading..."
+                          : "Submit Memory"}
+                      </button>
                     </div>
-
-                    <div className="detail-info-copy">
-
-                      <div className="detail-info-label">
-                        Information
-                      </div>
-
-                      <div className="detail-info-value">
-                        More attraction
-                        information will
-                        appear here when
-                        available.
-                      </div>
-
-                    </div>
-
-                  </div>
+                  </form>
                 )}
 
-            </div>
+                {memoryNotice && (
+                  <div className="detail-memory-notice">
+                    <CheckCircle2
+                      size={14}
+                    />
 
-          </Col>
+                    <span>
+                      {
+                        memoryNotice
+                      }
+                    </span>
+                  </div>
+                )}
+              </div>
+            </Col>
 
-        </Row>
+            {/* =================================================
+                  RIGHT INFORMATION
+              ================================================= */}
 
-      </Container>
+            <Col lg={4}>
+              <div className="detail-info-card">
+                {website && (
+                  <>
+                    <InfoItem
+                      icon={
+                        <Globe2
+                          size={18}
+                        />
+                      }
+                      label="Website"
+                      href={normalizeWebsiteUrl(
+                        website,
+                      )}
+                      external
+                    >
+                      Visit official
+                      website
+                    </InfoItem>
 
-    </div>
-  );
-};
+                    <div className="detail-info-divider" />
+                  </>
+                )}
+
+                {contactPerson && (
+                  <>
+                    <InfoItem
+                      icon={
+                        <UserRound
+                          size={18}
+                        />
+                      }
+                      label="Contact Person"
+                    >
+                      {
+                        contactPerson
+                      }
+                    </InfoItem>
+
+                    <div className="detail-info-divider" />
+                  </>
+                )}
+
+                {contactNumber && (
+                  <>
+                    <InfoItem
+                      icon={
+                        <Phone
+                          size={18}
+                        />
+                      }
+                      label="Contact Number"
+                      href={`tel:${contactNumber}`}
+                    >
+                      {
+                        contactNumber
+                      }
+                    </InfoItem>
+
+                    <div className="detail-info-divider" />
+                  </>
+                )}
+
+                {operatingHours && (
+                  <>
+                    <InfoItem
+                      icon={
+                        <Clock3
+                          size={18}
+                        />
+                      }
+                      label="Operating Hours"
+                    >
+                      {
+                        operatingHours
+                      }
+                    </InfoItem>
+
+                    <div className="detail-info-divider" />
+                  </>
+                )}
+
+                {bestTime && (
+                  <InfoItem
+                    icon={
+                      <Sun size={18} />
+                    }
+                    label="Best Time to Visit"
+                  >
+                    {bestTime}
+                  </InfoItem>
+                )}
+
+                {!website &&
+                  !contactPerson &&
+                  !contactNumber &&
+                  !operatingHours &&
+                  !bestTime && (
+                    <div className="detail-info-item">
+                      <div className="detail-info-icon">
+                        <MapPin
+                          size={18}
+                        />
+                      </div>
+
+                      <div className="detail-info-copy">
+                        <div className="detail-info-label">
+                          Information
+                        </div>
+
+                        <div className="detail-info-value">
+                          More attraction
+                          information will
+                          appear here when
+                          available.
+                        </div>
+                      </div>
+                    </div>
+                  )}
+              </div>
+            </Col>
+          </Row>
+        </Container>
+      </div>
+    );
+  };
 
 export default AttractionDetail;
