@@ -1,5 +1,7 @@
 import React, { 
+  useCallback,
   useEffect, 
+  useMemo,
   useRef, 
   useState, 
 } from "react"; 
@@ -68,7 +70,22 @@ import type {
 import "swiper/css"; 
 import "swiper/css/effect-coverflow"; 
 import "swiper/css/navigation"; 
-import "swiper/css/pagination"; 
+import "swiper/css/pagination";
+
+import {
+  MapContainer,
+  Marker,
+  Popup,
+  TileLayer,
+  Tooltip,
+  LayersControl,
+  LayerGroup,
+  useMap,
+} from "react-leaflet";
+
+import L from "leaflet";
+
+import "leaflet/dist/leaflet.css";
  
 /* ========================================================= 
    BRAND COLOR 
@@ -318,6 +335,628 @@ const getWeatherDescription = (
   return "Current weather"; 
 }; 
  
+/* =========================================================
+   WELCOME PAGE MAP
+
+   The map uses the exact saved location_lat / location_lng
+   coordinates from attractions and accommodations. It does not
+   geocode addresses or guess locations.
+========================================================= */
+
+const DEFAULT_CALBAYOG_CENTER: [number, number] = [
+  12.0667,
+  124.6,
+];
+
+const SATELLITE_LABELS_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
+
+const SATELLITE_ROADS_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}";
+
+interface WelcomeMapCoordinates {
+  lat: number;
+  lng: number;
+}
+
+interface WelcomeMapAttraction {
+  id: string;
+  name: string;
+  category: string;
+  subcategory: string;
+  markerType: string;
+  address: string;
+  coordinates: WelcomeMapCoordinates;
+}
+
+interface WelcomeMapAccommodation {
+  id: string;
+  name: string;
+  type: string;
+  address: string;
+  coordinates: WelcomeMapCoordinates;
+}
+
+const normalizeMapLabel = (value: unknown): string =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+
+const getWelcomeCoordinates = (
+  item: any,
+): WelcomeMapCoordinates | null => {
+  const latitudeValue =
+    item?.location_lat ??
+    item?.locationLat ??
+    item?.latitude ??
+    item?.location?.lat ??
+    item?.lat;
+
+  const longitudeValue =
+    item?.location_lng ??
+    item?.locationLng ??
+    item?.longitude ??
+    item?.location?.lng ??
+    item?.lon;
+
+  const lat = Number(latitudeValue);
+  const lng = Number(longitudeValue);
+
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    lat < -90 ||
+    lat > 90 ||
+    lng < -180 ||
+    lng > 180 ||
+    (lat === 0 && lng === 0)
+  ) {
+    return null;
+  }
+
+  return { lat, lng };
+};
+
+const getWelcomeFirstValue = (
+  item: any,
+  keys: string[],
+): string => {
+  for (const key of keys) {
+    const value = item?.[key];
+    if (
+      value !== null &&
+      value !== undefined &&
+      String(value).trim()
+    ) {
+      return String(value).trim();
+    }
+  }
+
+  return "";
+};
+
+const getWelcomeAttractionSubcategory = (
+  item: any,
+): string => {
+  const type = getWelcomeFirstValue(item, [
+    "attraction_type",
+    "attractionType",
+    "subcategory",
+    "sub_category",
+    "type",
+  ]);
+
+  if (normalizeMapLabel(type) === "other") {
+    return (
+      getWelcomeFirstValue(item, [
+        "other_attraction_type",
+        "otherAttractionType",
+      ]) || "Other"
+    );
+  }
+
+  return type;
+};
+
+const WELCOME_CATEGORY_MARKER_DESIGNS: Record<
+  string,
+  { color: string; icon: string }
+> = {
+  Nature: { color: "#16845B", icon: "🌿" },
+  "History and Culture": {
+    color: "#A66A3F",
+    icon: "🏛️",
+  },
+  "Industrial Tourism": {
+    color: "#526477",
+    icon: "🏭",
+  },
+  Shopping: { color: "#D9468F", icon: "🛍️" },
+  Other: { color: CALBAYOG_BLUE, icon: "📍" },
+};
+
+const WELCOME_SUBCATEGORY_MARKER_ICONS: Record<
+  string,
+  string
+> = {
+  waterfalls: "💧",
+  beaches: "🏖️",
+  caves: "🪨",
+  "hot springs": "♨️",
+  rivers: "🌊",
+  "dive sites": "🤿",
+  churches: "⛪",
+  museums: "🏛️",
+  "historic buildings": "🏛️",
+  monuments: "🗿",
+  parks: "🌳",
+  factories: "🏭",
+  farms: "🌾",
+  "production sites": "⚙️",
+  markets: "🛒",
+  malls: "🛍️",
+  "local craft centers": "🧺",
+  other: "📍",
+};
+
+const WELCOME_MARKER_KEYWORD_ICONS: Array<
+  [string, string]
+> = [
+  ["waterfall", "💧"],
+  ["falls", "💧"],
+  ["beach", "🏖️"],
+  ["cave", "🪨"],
+  ["spring", "♨️"],
+  ["river", "🌊"],
+  ["dive", "🤿"],
+  ["diving", "🤿"],
+  ["church", "⛪"],
+  ["museum", "🏛️"],
+  ["historic", "🏛️"],
+  ["monument", "🗿"],
+  ["park", "🌳"],
+  ["factor", "🏭"],
+  ["farm", "🌾"],
+  ["production", "⚙️"],
+  ["market", "🛒"],
+  ["mall", "🛍️"],
+  ["craft", "🧺"],
+];
+
+const getWelcomeCategoryDesign = (
+  category: string,
+) => {
+  const exact =
+    WELCOME_CATEGORY_MARKER_DESIGNS[category];
+
+  if (exact) return exact;
+
+  const target = normalizeMapLabel(category);
+  const key = Object.keys(
+    WELCOME_CATEGORY_MARKER_DESIGNS,
+  ).find(
+    (item) =>
+      normalizeMapLabel(item) === target,
+  );
+
+  return key
+    ? WELCOME_CATEGORY_MARKER_DESIGNS[key]
+    : WELCOME_CATEGORY_MARKER_DESIGNS.Other;
+};
+
+const getWelcomeMarkerGlyph = (
+  markerType: string,
+  fallback: string,
+): string => {
+  const key = normalizeMapLabel(markerType);
+
+  if (
+    WELCOME_SUBCATEGORY_MARKER_ICONS[key]
+  ) {
+    return WELCOME_SUBCATEGORY_MARKER_ICONS[key];
+  }
+
+  const match =
+    WELCOME_MARKER_KEYWORD_ICONS.find(
+      ([keyword]) => key.includes(keyword),
+    );
+
+  return match ? match[1] : fallback;
+};
+
+const createWelcomeAttractionMarkerIcon = (
+  category: string,
+  markerType: string,
+) => {
+  const design =
+    getWelcomeCategoryDesign(category);
+  const glyph = getWelcomeMarkerGlyph(
+    markerType,
+    design.icon,
+  );
+
+  return L.divIcon({
+    className:
+      "welcome-map-attraction-marker",
+    html: `
+      <div class="welcome-map-marker-shell">
+        <div class="welcome-map-marker-pin" style="background:${design.color}"></div>
+        <div class="welcome-map-marker-icon">${glyph}</div>
+      </div>
+    `,
+    iconSize: [44, 52],
+    iconAnchor: [22, 49],
+    popupAnchor: [0, -47],
+    tooltipAnchor: [0, -43],
+  });
+};
+
+const createWelcomeAccommodationMarkerIcon = () =>
+  L.divIcon({
+    className:
+      "welcome-map-accommodation-marker",
+    html: `
+      <div class="welcome-map-accommodation-pin">
+        <div class="welcome-map-accommodation-icon">
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#2563EB"
+            stroke-width="2.1"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 21h18"/>
+            <path d="M5 21V7l7-4 7 4v14"/>
+            <path d="M9 21v-4h6v4"/>
+            <path d="M8 9h.01M12 9h.01M16 9h.01M8 12h.01M12 12h.01M16 12h.01"/>
+          </svg>
+        </div>
+      </div>
+    `,
+    iconSize: [44, 52],
+    iconAnchor: [22, 49],
+    popupAnchor: [0, -47],
+    tooltipAnchor: [0, -43],
+  });
+
+const WelcomeMapScaleControl: React.FC = () => {
+  const map = useMap();
+
+  useEffect(() => {
+    const control = L.control.scale({
+      imperial: false,
+      metric: true,
+      position: "bottomleft",
+      maxWidth: 120,
+    });
+
+    control.addTo(map);
+
+    return () => {
+      control.remove();
+    };
+  }, [map]);
+
+  return null;
+};
+
+const WelcomeMapLocateControl: React.FC = () => {
+  const map = useMap();
+  const [locating, setLocating] =
+    useState(false);
+
+  const locate = useCallback(() => {
+    if (!navigator.geolocation) {
+      window.alert(
+        "Location services are not available in this browser.",
+      );
+      return;
+    }
+
+    setLocating(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const next: [number, number] = [
+          position.coords.latitude,
+          position.coords.longitude,
+        ];
+
+        map.flyTo(
+          next,
+          Math.max(map.getZoom(), 15),
+          { duration: 0.8 },
+        );
+        setLocating(false);
+      },
+      () => {
+        window.alert(
+          "Unable to get your location. Please allow location access and try again.",
+        );
+        setLocating(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      },
+    );
+  }, [map]);
+
+  return (
+    <div className="leaflet-control leaflet-bar welcome-map-locate-control">
+      <button
+        type="button"
+        onClick={locate}
+        title="My location"
+        aria-label="Show my location"
+        disabled={locating}
+      >
+        {locating ? "…" : "⌾"}
+      </button>
+    </div>
+  );
+};
+
+const WelcomeMapFitPlaces: React.FC<{
+  attractions: WelcomeMapAttraction[];
+  accommodations: WelcomeMapAccommodation[];
+}> = ({ attractions, accommodations }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    const points = [
+      ...attractions.map((place) => [
+        place.coordinates.lat,
+        place.coordinates.lng,
+      ] as [number, number]),
+      ...accommodations.map((place) => [
+        place.coordinates.lat,
+        place.coordinates.lng,
+      ] as [number, number]),
+    ];
+
+    if (points.length === 0) {
+      map.setView(
+        DEFAULT_CALBAYOG_CENTER,
+        12,
+        { animate: false },
+      );
+      return;
+    }
+
+    if (points.length === 1) {
+      map.setView(points[0], 14, {
+        animate: false,
+      });
+      return;
+    }
+
+    const bounds = L.latLngBounds(points);
+    map.fitBounds(bounds, {
+      padding: [35, 35],
+      maxZoom: 14,
+      animate: false,
+    });
+  }, [map, attractions, accommodations]);
+
+  return null;
+};
+
+const WelcomeMap: React.FC<{
+  attractions: WelcomeMapAttraction[];
+  accommodations: WelcomeMapAccommodation[];
+}> = ({ attractions, accommodations }) => {
+  const attractionIcons = useMemo(
+    () =>
+      new Map(
+        attractions.map((place) => [
+          place.id,
+          createWelcomeAttractionMarkerIcon(
+            place.category,
+            place.markerType,
+          ),
+        ]),
+      ),
+    [attractions],
+  );
+
+  const accommodationIcon = useMemo(
+    () => createWelcomeAccommodationMarkerIcon(),
+    [],
+  );
+
+  return (
+    <div className="welcome-map-shell">
+      <MapContainer
+        center={DEFAULT_CALBAYOG_CENTER}
+        zoom={12}
+        scrollWheelZoom
+        dragging
+        touchZoom
+        doubleClickZoom
+        boxZoom
+        keyboard
+        zoomControl
+        className="welcome-map"
+      >
+        <WelcomeMapFitPlaces
+          attractions={attractions}
+          accommodations={accommodations}
+        />
+
+        <LayersControl position="topright">
+          <LayersControl.BaseLayer
+            checked
+            name="Street"
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+          </LayersControl.BaseLayer>
+
+          <LayersControl.BaseLayer name="Satellite">
+            <LayerGroup>
+              <TileLayer
+                attribution="Tiles &copy; Esri"
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                zIndex={1}
+              />
+              <TileLayer
+                attribution="Place and boundary labels &copy; Esri"
+                url={SATELLITE_LABELS_URL}
+                zIndex={2}
+              />
+              <TileLayer
+                attribution="Transportation labels &copy; Esri"
+                url={SATELLITE_ROADS_URL}
+                zIndex={3}
+              />
+            </LayerGroup>
+          </LayersControl.BaseLayer>
+
+          <LayersControl.BaseLayer name="Terrain">
+            <TileLayer
+              attribution='Map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors, <a href="https://opentopomap.org" target="_blank" rel="noopener noreferrer">OpenTopoMap</a>'
+              url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+            />
+          </LayersControl.BaseLayer>
+        </LayersControl>
+
+        <WelcomeMapLocateControl />
+        <WelcomeMapScaleControl />
+
+        {attractions.map((place) => (
+          <Marker
+            key={`welcome-attraction-${place.id}`}
+            position={[
+              place.coordinates.lat,
+              place.coordinates.lng,
+            ]}
+            icon={attractionIcons.get(place.id)}
+            zIndexOffset={100}
+          >
+            <Tooltip
+              permanent
+              direction="top"
+              offset={[0, -4]}
+              opacity={1}
+              className="welcome-map-label"
+            >
+              <span className="welcome-map-label-name">
+                {place.name}
+              </span>
+              {place.subcategory && (
+                <span className="welcome-map-label-sub">
+                  {place.subcategory}
+                </span>
+              )}
+            </Tooltip>
+
+            <Popup>
+              <div className="welcome-map-popup">
+                <div className="welcome-map-popup-badge">
+                  <MapPin size={10} />
+                  Attraction
+                </div>
+                <h3 className="welcome-map-popup-title">
+                  {place.name}
+                </h3>
+                {(place.category ||
+                  place.subcategory) && (
+                  <p className="welcome-map-popup-category">
+                    {[
+                      place.category,
+                      place.subcategory,
+                    ]
+                      .filter(Boolean)
+                      .join(" • ")}
+                  </p>
+                )}
+                {place.address && (
+                  <p className="welcome-map-popup-address">
+                    {place.address}
+                  </p>
+                )}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+
+        {accommodations.map((place) => (
+          <Marker
+            key={`welcome-accommodation-${place.id}`}
+            position={[
+              place.coordinates.lat,
+              place.coordinates.lng,
+            ]}
+            icon={accommodationIcon}
+            zIndexOffset={80}
+          >
+            <Tooltip
+              permanent
+              direction="top"
+              offset={[0, -4]}
+              opacity={1}
+              className="welcome-map-label accommodation"
+            >
+              <span className="welcome-map-label-name">
+                {place.name}
+              </span>
+              {place.type && (
+                <span className="welcome-map-label-sub">
+                  {place.type}
+                </span>
+              )}
+            </Tooltip>
+
+            <Popup>
+              <div className="welcome-map-popup">
+                <div className="welcome-map-popup-badge accommodation">
+                  <Hotel size={10} />
+                  Accommodation
+                </div>
+                <h3 className="welcome-map-popup-title">
+                  {place.name}
+                </h3>
+                {place.type && (
+                  <p className="welcome-map-popup-category">
+                    {place.type}
+                  </p>
+                )}
+                {place.address && (
+                  <p className="welcome-map-popup-address">
+                    {place.address}
+                  </p>
+                )}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+
+      <div className="welcome-map-legend" aria-label="Map legend">
+        <span>
+          <span className="welcome-map-legend-dot attraction" />
+          Attractions
+        </span>
+        <span>
+          <span className="welcome-map-legend-dot accommodation" />
+          Accommodations
+        </span>
+      </div>
+    </div>
+  );
+};
+
 /* ========================================================= 
    WELCOME COMPONENT 
 ========================================================= */ 
@@ -372,6 +1011,21 @@ const Welcome: React.FC = () => {
     loadingAccommodations, 
     setLoadingAccommodations, 
   ] = useState(true); 
+
+  const [
+    mapAttractions,
+    setMapAttractions,
+  ] = useState<WelcomeMapAttraction[]>([]);
+
+  const [
+    mapAccommodations,
+    setMapAccommodations,
+  ] = useState<WelcomeMapAccommodation[]>([]);
+
+  const [
+    loadingMap,
+    setLoadingMap,
+  ] = useState(true);
  
   /* ========================================================= 
      IMAGE ROTATION 
@@ -1085,6 +1739,161 @@ const Welcome: React.FC = () => {
     };
 
   /* =========================================================
+     LOAD ALL MAP PINS
+  ========================================================= */
+
+  const loadWelcomeMapPlaces =
+    async () => {
+      setLoadingMap(true);
+
+      try {
+        const [
+          attractionsResponse,
+          accommodationsResponse,
+        ] = await Promise.all([
+          getAttractions(),
+          getAccommodations(),
+        ]);
+
+        const attractionData =
+          Array.isArray(
+            attractionsResponse?.data,
+          )
+            ? attractionsResponse.data
+            : [];
+
+        const accommodationData =
+          Array.isArray(
+            accommodationsResponse?.data,
+          )
+            ? accommodationsResponse.data
+            : [];
+
+        const nextAttractions =
+          attractionData
+            .map((item: any) => {
+              const coordinates =
+                getWelcomeCoordinates(item);
+
+              if (!coordinates) {
+                return null;
+              }
+
+              const id = String(
+                item?.id ?? "",
+              ).trim();
+
+              if (!id) {
+                return null;
+              }
+
+              return {
+                id,
+                name:
+                  String(
+                    item?.name ??
+                      "Unnamed attraction",
+                  ).trim(),
+                category:
+                  getWelcomeFirstValue(
+                    item,
+                    [
+                      "category",
+                      "destination_category",
+                    ],
+                  ) || "Other",
+                subcategory:
+                  getWelcomeAttractionSubcategory(
+                    item,
+                  ),
+                markerType:
+                  getWelcomeAttractionSubcategory(
+                    item,
+                  ),
+                address:
+                  getWelcomeFirstValue(
+                    item,
+                    [
+                      "location_address",
+                      "address",
+                    ],
+                  ),
+                coordinates,
+              };
+            })
+            .filter(
+              Boolean,
+            ) as WelcomeMapAttraction[];
+
+        const nextAccommodations =
+          accommodationData
+            .map((item: any) => {
+              const coordinates =
+                getWelcomeCoordinates(item);
+
+              if (!coordinates) {
+                return null;
+              }
+
+              const id = String(
+                item?.id ?? "",
+              ).trim();
+
+              if (!id) {
+                return null;
+              }
+
+              return {
+                id,
+                name:
+                  String(
+                    item?.name ??
+                      "Unnamed accommodation",
+                  ).trim(),
+                type:
+                  getWelcomeFirstValue(
+                    item,
+                    [
+                      "type",
+                      "accommodation_type",
+                      "category",
+                    ],
+                  ),
+                address:
+                  getWelcomeFirstValue(
+                    item,
+                    [
+                      "address",
+                      "location_address",
+                    ],
+                  ),
+                coordinates,
+              };
+            })
+            .filter(
+              Boolean,
+            ) as WelcomeMapAccommodation[];
+
+        setMapAttractions(
+          nextAttractions,
+        );
+        setMapAccommodations(
+          nextAccommodations,
+        );
+      } catch (error) {
+        console.error(
+          "Failed to load Welcome Page map pins:",
+          error,
+        );
+
+        setMapAttractions([]);
+        setMapAccommodations([]);
+      } finally {
+        setLoadingMap(false);
+      }
+    };
+
+  /* =========================================================
      INITIAL LOAD
   ========================================================= */
 
@@ -1092,6 +1901,8 @@ const Welcome: React.FC = () => {
     void loadWelcomeDestinations();
 
     void loadWelcomeAccommodations();
+
+    void loadWelcomeMapPlaces();
 
     void loadFeaturedVideos();
   }, []);
@@ -1412,7 +2223,8 @@ const Welcome: React.FC = () => {
         ===================================================== */}
 
         <section className="welcome-explore-section mb-5">
-          <div className="welcome-section-heading">
+          <div className="welcome-explore-top">
+            <div className="welcome-section-heading">
             <div className="welcome-intro">
               <div className="welcome-intro-eyebrow">
                 WELCOME TO CALBAYOG
@@ -1491,6 +2303,21 @@ const Welcome: React.FC = () => {
               </span>
 
               <span className="welcome-heading-line" />
+            </div>
+            </div>
+
+            <div className="welcome-explore-map-column">
+              {loadingMap ? (
+                <div className="welcome-map-loading" aria-live="polite">
+                  <div className="welcome-map-loading-spinner" />
+                  <span>Loading Calbayog map...</span>
+                </div>
+              ) : (
+                <WelcomeMap
+                  attractions={mapAttractions}
+                  accommodations={mapAccommodations}
+                />
+              )}
             </div>
           </div>
 
@@ -2176,6 +3003,343 @@ const Welcome: React.FC = () => {
 
         .welcome-videos-section {
           margin-bottom: 70px !important;
+        }
+
+        .welcome-explore-top {
+          width: 100%;
+          display: grid;
+          grid-template-columns: minmax(280px, 0.78fr) minmax(0, 1.22fr);
+          gap: 34px;
+          align-items: center;
+          margin-bottom: 2.6rem;
+        }
+
+        .welcome-explore-top .welcome-section-heading {
+          margin-bottom: 0;
+          padding-top: 0;
+        }
+
+        .welcome-explore-top .welcome-intro {
+          max-width: 680px;
+          margin-bottom: 30px;
+        }
+
+        .welcome-explore-map-column {
+          width: 100%;
+          min-width: 0;
+        }
+
+        .welcome-map-shell {
+          position: relative;
+          width: 100%;
+          height: 430px;
+          overflow: hidden;
+          border: 1px solid rgba(45, 49, 149, 0.12);
+          border-radius: 24px;
+          background: #eef2f7;
+          box-shadow: 0 18px 45px rgba(27, 35, 74, 0.12);
+        }
+
+        .welcome-map {
+          width: 100%;
+          height: 100%;
+          z-index: 1;
+        }
+
+        .welcome-map-loading {
+          width: 100%;
+          height: 430px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          border: 1px solid rgba(45, 49, 149, 0.12);
+          border-radius: 24px;
+          background: linear-gradient(135deg, #f4f6fb, #edf0f8);
+          color: #555;
+          font-size: 0.78rem;
+          font-weight: 600;
+        }
+
+        .welcome-map-loading-spinner {
+          width: 30px;
+          height: 30px;
+          border: 3px solid rgba(45, 49, 149, 0.16);
+          border-top-color: #2D3195;
+          border-radius: 50%;
+          animation: welcome-map-spin 0.85s linear infinite;
+        }
+
+        @keyframes welcome-map-spin {
+          to { transform: rotate(360deg); }
+        }
+
+        .welcome-map-shell .leaflet-control-layers {
+          border: 0;
+          border-radius: 12px;
+          box-shadow: 0 7px 22px rgba(15, 23, 42, 0.18);
+          overflow: hidden;
+          font-family: Inter, sans-serif;
+          font-size: 0.72rem;
+        }
+
+        .welcome-map-shell .leaflet-control-layers-toggle {
+          width: 38px;
+          height: 38px;
+        }
+
+        .welcome-map-shell .leaflet-control-zoom {
+          border: 0;
+          border-radius: 11px;
+          overflow: hidden;
+          box-shadow: 0 7px 22px rgba(15, 23, 42, 0.18);
+        }
+
+        .welcome-map-shell .leaflet-control-zoom a {
+          width: 34px;
+          height: 34px;
+          line-height: 34px;
+          border: 0;
+          color: #2D3195;
+          background: rgba(255, 255, 255, 0.96);
+        }
+
+        .welcome-map-shell .leaflet-control-zoom a:hover {
+          background: #fff;
+        }
+
+        .welcome-map-shell .leaflet-control-scale-line {
+          border: 2px solid rgba(45, 49, 149, 0.72);
+          border-top: 0;
+          background: rgba(255, 255, 255, 0.82);
+          color: #303030;
+          font-size: 0.62rem;
+        }
+
+        .welcome-map-locate-control {
+          margin-top: 10px !important;
+          border: 0 !important;
+          border-radius: 10px;
+          overflow: hidden;
+          box-shadow: 0 7px 22px rgba(15, 23, 42, 0.18);
+        }
+
+        .welcome-map-locate-control button {
+          width: 34px;
+          height: 34px;
+          border: 0;
+          background: rgba(255, 255, 255, 0.96);
+          color: #2D3195;
+          font-size: 20px;
+          line-height: 1;
+          cursor: pointer;
+        }
+
+        .welcome-map-locate-control button:hover {
+          background: #fff;
+        }
+
+        .welcome-map-attraction-marker,
+        .welcome-map-accommodation-marker {
+          background: transparent !important;
+          border: 0 !important;
+        }
+
+        .welcome-map-marker-shell {
+          position: relative;
+          width: 44px;
+          height: 52px;
+          display: flex;
+          align-items: flex-start;
+          justify-content: center;
+          filter: drop-shadow(0 3px 4px rgba(15, 23, 42, 0.30));
+        }
+
+        .welcome-map-marker-pin {
+          position: absolute;
+          top: 0;
+          left: 3px;
+          width: 38px;
+          height: 38px;
+          border: 3px solid #fff;
+          border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg);
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
+        }
+
+        .welcome-map-marker-icon {
+          position: absolute;
+          top: 7px;
+          left: 10px;
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          background: #fff;
+          z-index: 2;
+          font-size: 14px;
+          line-height: 1;
+        }
+
+        .welcome-map-accommodation-pin {
+          position: relative;
+          width: 44px;
+          height: 52px;
+          display: flex;
+          align-items: flex-start;
+          justify-content: center;
+          filter: drop-shadow(0 3px 4px rgba(15, 23, 42, 0.30));
+        }
+
+        .welcome-map-accommodation-pin::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 3px;
+          width: 38px;
+          height: 38px;
+          border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg);
+          background: #2563EB;
+          border: 3px solid #fff;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
+        }
+
+        .welcome-map-accommodation-icon {
+          position: absolute;
+          top: 7px;
+          left: 10px;
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          background: #fff;
+          z-index: 2;
+        }
+
+        .welcome-map-label {
+          padding: 5px 8px !important;
+          border: 0 !important;
+          border-radius: 8px !important;
+          background: rgba(255, 255, 255, 0.96) !important;
+          color: #202020 !important;
+          box-shadow: 0 3px 12px rgba(15, 23, 42, 0.18) !important;
+          font-family: Inter, sans-serif !important;
+          font-size: 0.60rem !important;
+          line-height: 1.2 !important;
+          text-align: center;
+        }
+
+        .welcome-map-label::before {
+          border-top-color: rgba(255, 255, 255, 0.96) !important;
+        }
+
+        .welcome-map-label-name,
+        .welcome-map-label-sub {
+          display: block;
+          white-space: nowrap;
+        }
+
+        .welcome-map-label-name {
+          font-weight: 800;
+          color: #222;
+        }
+
+        .welcome-map-label-sub {
+          margin-top: 2px;
+          color: #666;
+          font-size: 0.54rem;
+          font-weight: 600;
+        }
+
+        .welcome-map-label.accommodation .welcome-map-label-name {
+          color: #2563EB;
+        }
+
+        .welcome-map-popup {
+          min-width: 170px;
+          font-family: Inter, sans-serif;
+        }
+
+        .welcome-map-popup-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 7px;
+          border-radius: 999px;
+          background: rgba(45, 49, 149, 0.10);
+          color: #2D3195;
+          font-size: 0.58rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+
+        .welcome-map-popup-badge.accommodation {
+          background: rgba(37, 99, 235, 0.10);
+          color: #2563EB;
+        }
+
+        .welcome-map-popup-title {
+          margin: 8px 0 3px;
+          color: #222;
+          font-size: 0.88rem;
+          font-weight: 800;
+        }
+
+        .welcome-map-popup-category,
+        .welcome-map-popup-address {
+          margin: 0;
+          color: #666;
+          font-size: 0.68rem;
+          line-height: 1.45;
+        }
+
+        .welcome-map-popup-address {
+          margin-top: 5px;
+        }
+
+        .welcome-map-legend {
+          position: absolute;
+          left: 12px;
+          bottom: 12px;
+          z-index: 500;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          padding: 7px 9px;
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.93);
+          box-shadow: 0 5px 18px rgba(15, 23, 42, 0.14);
+          font-size: 0.62rem;
+          font-weight: 700;
+          color: #4b4b4b;
+        }
+
+        .welcome-map-legend span {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+        }
+
+        .welcome-map-legend-dot {
+          width: 8px;
+          height: 8px;
+          display: inline-block;
+          border-radius: 50%;
+        }
+
+        .welcome-map-legend-dot.attraction {
+          background: #16845B;
+        }
+
+        .welcome-map-legend-dot.accommodation {
+          background: #2563EB;
         }
 
         .welcome-intro {
@@ -3698,6 +4862,18 @@ const Welcome: React.FC = () => {
         /* =====================================================
            RESPONSIVE
         ===================================================== */
+
+        @media (max-width: 767px) {
+          .welcome-explore-top {
+            grid-template-columns: 1fr;
+            gap: 26px;
+          }
+
+          .welcome-map-shell,
+          .welcome-map-loading {
+            height: 360px;
+          }
+        }
 
         @media (max-width: 991.98px) {
           .welcome-container {
