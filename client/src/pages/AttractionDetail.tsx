@@ -717,7 +717,12 @@ const MapRecenter: React.FC<{
   const map = useMap();
 
   useEffect(() => {
-    map.setView(center, map.getZoom());
+    // Always center the map on the currently opened attraction first.
+    // Its coordinates come directly from AdminAttractions' saved
+    // location_lat / location_lng values.
+    map.setView(center, 17, {
+      animate: false,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, center[0], center[1]]);
 
