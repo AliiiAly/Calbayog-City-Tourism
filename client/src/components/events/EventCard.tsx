@@ -436,22 +436,17 @@ const EventCard: React.FC<
           overflow: visible;
         }
 
+        /* CIRCLE IMAGE: wrap is a centered square that is not clipped,
+           so the favorite heart can sit on the circle's edge. The
+           image button below does the circular clipping. */
         .shared-event-image-wrap {
           position: relative;
-          width: 100%;
-          aspect-ratio: 4 / 5;
-          overflow: hidden;
-          border-radius: 18px;
-          background: #eef2ef;
-          transition:
-            box-shadow 0.28s ease;
-        }
-
-        .shared-event-card:hover
-          .shared-event-image-wrap {
-          box-shadow:
-            0 12px 32px
-            rgba(20, 30, 24, 0.11);
+          width: min(100%, 230px);
+          aspect-ratio: 1 / 1;
+          margin: 0 auto;
+          overflow: visible;
+          border-radius: 50%;
+          background: transparent;
         }
 
         .shared-event-image-button {
@@ -462,10 +457,20 @@ const EventCard: React.FC<
           height: 100%;
           padding: 0;
           border: none;
-          background: transparent;
+          border-radius: 50%;
+          background: #eef2ef;
           overflow: hidden;
           cursor: pointer;
           text-align: left;
+          transition:
+            box-shadow 0.28s ease;
+        }
+
+        .shared-event-card:hover
+          .shared-event-image-button {
+          box-shadow:
+            0 12px 32px
+            rgba(20, 30, 24, 0.16);
         }
 
         .shared-event-image {
@@ -501,9 +506,9 @@ const EventCard: React.FC<
         }
 
         .shared-event-no-image-sticker {
-          width: 72%;
-          max-width: 180px;
-          max-height: 150px;
+          width: 62%;
+          max-width: 140px;
+          max-height: 120px;
           object-fit: contain;
           filter:
             drop-shadow(
@@ -518,12 +523,14 @@ const EventCard: React.FC<
           font-weight: 800;
         }
 
+        /* Badges are centered so the circle does not clip them */
         .shared-event-category-badge {
           position: absolute;
-          top: 12px;
-          left: 12px;
-          max-width: calc(100% - 82px);
-          padding: 7px 10px;
+          bottom: 11%;
+          left: 50%;
+          transform: translateX(-50%);
+          max-width: 70%;
+          padding: 6px 10px;
           border-radius: 999px;
           background:
             rgba(
@@ -547,9 +554,9 @@ const EventCard: React.FC<
 
         .shared-event-featured-badge {
           position: absolute;
-          top: 12px;
-          left: 12px;
-          transform: translateY(43px);
+          top: 10%;
+          left: 50%;
+          transform: translateX(-50%);
           display: inline-flex;
           align-items: center;
           padding: 6px 9px;
@@ -568,13 +575,15 @@ const EventCard: React.FC<
           backdrop-filter: blur(10px);
           font-size: 0.6rem;
           font-weight: 800;
+          white-space: nowrap;
           z-index: 3;
         }
 
+        /* Heart sits on the circle's top-right edge */
         .shared-event-favorite-control {
           position: absolute;
-          top: 11px;
-          right: 11px;
+          top: 4%;
+          right: 4%;
           z-index: 8;
           display: flex;
           pointer-events: none;
@@ -589,7 +598,15 @@ const EventCard: React.FC<
           justify-content: center;
           padding: 0;
           border: none;
-          background: transparent;
+          border-radius: 50%;
+          background:
+            rgba(
+              20,
+              30,
+              24,
+              0.32
+            );
+          backdrop-filter: blur(6px);
           color:
             rgba(
               255,
@@ -924,7 +941,7 @@ const EventCard: React.FC<
 
         @media (max-width: 767.98px) {
           .shared-event-image-wrap {
-            border-radius: 17px;
+            width: min(100%, 210px);
           }
 
           .shared-event-favorite-button {
@@ -934,6 +951,10 @@ const EventCard: React.FC<
         }
 
         @media (max-width: 479.98px) {
+          .shared-event-image-wrap {
+            width: min(100%, 190px);
+          }
+
           .shared-event-favorite-button {
             width: 39px;
             height: 39px;
