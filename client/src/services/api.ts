@@ -1,22 +1,16 @@
 import axios from "axios";
 import { Capacitor } from "@capacitor/core";
-import {
-  supabase,
-  SUPABASE_ANON_KEY,
-} from "./supabase";
+import { supabase, SUPABASE_ANON_KEY } from "./supabase";
 
 // =========================================================
 // PLATFORM
 // =========================================================
 
-export const isNative =
-  Capacitor.isNativePlatform();
+export const isNative = Capacitor.isNativePlatform();
 
-const BASE_URL =
-  "https://calbayog-city-tourism.onrender.com/api";
+const BASE_URL = "https://calbayog-city-tourism.onrender.com/api";
 
-export const SERVER_BASE_URL =
-  "https://calbayog-city-tourism.onrender.com/api";
+export const SERVER_BASE_URL = "https://calbayog-city-tourism.onrender.com/api";
 
 // =========================================================
 // SUPABASE
@@ -32,33 +26,20 @@ const SUPABASE_URL =
 
 const CACHE_DURATION = 10 * 60 * 1000;
 
-const getCacheKey = (
-  url: string,
-  params?: any,
-) => {
-  const paramString = params
-    ? JSON.stringify(params)
-    : "";
-
+const getCacheKey = (url: string, params?: any) => {
+  const paramString = params ? JSON.stringify(params) : "";
   return `cache_${url}_${paramString}`;
 };
 
 const getCachedData = (key: string) => {
   try {
-    const cached =
-      localStorage.getItem(key);
+    const cached = localStorage.getItem(key);
 
-    if (!cached || cached === "undefined") {
-      return null;
-    }
+    if (!cached || cached === "undefined") return null;
 
-    const { data, timestamp } =
-      JSON.parse(cached);
+    const { data, timestamp } = JSON.parse(cached);
 
-    if (
-      Date.now() - timestamp >
-      CACHE_DURATION
-    ) {
+    if (Date.now() - timestamp > CACHE_DURATION) {
       localStorage.removeItem(key);
       return null;
     }
@@ -69,18 +50,9 @@ const getCachedData = (key: string) => {
   }
 };
 
-const setCachedData = (
-  key: string,
-  data: any,
-) => {
+const setCachedData = (key: string, data: any) => {
   try {
-    localStorage.setItem(
-      key,
-      JSON.stringify({
-        data,
-        timestamp: Date.now(),
-      }),
-    );
+    localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
   } catch {
     // Ignore storage errors
   }
@@ -91,9 +63,7 @@ const setCachedData = (
 // =========================================================
 
 const api = axios.create({
-  baseURL: isNative
-    ? SERVER_BASE_URL
-    : BASE_URL,
+  baseURL: isNative ? SERVER_BASE_URL : BASE_URL,
 });
 
 // =========================================================
@@ -101,9 +71,7 @@ const api = axios.create({
 // =========================================================
 
 const userApi = axios.create({
-  baseURL: isNative
-    ? SERVER_BASE_URL
-    : BASE_URL,
+  baseURL: isNative ? SERVER_BASE_URL : BASE_URL,
   headers: {
     "X-Client-Type": "user",
   },
@@ -113,32 +81,24 @@ const userApi = axios.create({
 // USER TOKEN
 // =========================================================
 
+const USER_TOKEN_KEYS = [
+  "user_token",
+  "userToken",
+  "user_access_token",
+  "userAccessToken",
+];
+
 const getUserToken = (): string | null => {
-  const userTokenKeys = [
-    "user_token",
-    "userToken",
-    "user_access_token",
-    "userAccessToken",
-  ];
+  for (const key of USER_TOKEN_KEYS) {
+    const localValue = localStorage.getItem(key);
 
-  for (const key of userTokenKeys) {
-    const localValue =
-      localStorage.getItem(key);
-
-    if (
-      typeof localValue === "string" &&
-      localValue.trim().length > 0
-    ) {
+    if (typeof localValue === "string" && localValue.trim().length > 0) {
       return localValue.trim();
     }
 
-    const sessionValue =
-      sessionStorage.getItem(key);
+    const sessionValue = sessionStorage.getItem(key);
 
-    if (
-      typeof sessionValue === "string" &&
-      sessionValue.trim().length > 0
-    ) {
+    if (typeof sessionValue === "string" && sessionValue.trim().length > 0) {
       return sessionValue.trim();
     }
   }
@@ -146,13 +106,7 @@ const getUserToken = (): string | null => {
   return null;
 };
 
-// =========================================================
-// AUTHENTICATED USER TOKEN
-// =========================================================
-
-export const getAuthenticatedUserToken =
-  (): string | null =>
-    getUserToken();
+export const getAuthenticatedUserToken = (): string | null => getUserToken();
 
 // =========================================================
 // USER AUTHORIZATION INTERCEPTOR
@@ -162,123 +116,68 @@ userApi.interceptors.request.use(
   (config) => {
     const token = getUserToken();
 
-    config.headers =
-      config.headers || {};
+    config.headers = config.headers || {};
 
-    if (
-      typeof config.headers.set ===
-      "function"
-    ) {
-      config.headers.set(
-        "X-Client-Type",
-        "user",
-      );
+    if (typeof config.headers.set === "function") {
+      config.headers.set("X-Client-Type", "user");
     } else {
-      config.headers[
-        "X-Client-Type"
-      ] = "user";
+      config.headers["X-Client-Type"] = "user";
     }
 
-    if (
-      token &&
-      token.trim().length > 0
-    ) {
-      const authorizationValue =
-        `Bearer ${token.trim()}`;
+    if (token && token.trim().length > 0) {
+      const authorizationValue = `Bearer ${token.trim()}`;
 
-      if (
-        typeof config.headers.set ===
-        "function"
-      ) {
-        config.headers.set(
-          "Authorization",
-          authorizationValue,
-        );
+      if (typeof config.headers.set === "function") {
+        config.headers.set("Authorization", authorizationValue);
       } else {
-        config.headers.Authorization =
-          authorizationValue;
+        config.headers.Authorization = authorizationValue;
       }
 
-      console.log(
-        "[USER API] Authorization header attached:",
-        {
-          url: config.url,
-          method: config.method,
-          hasToken: true,
-          tokenLength:
-            token.trim().length,
-        },
-      );
+      console.log("[USER API] Authorization header attached:", {
+        url: config.url,
+        method: config.method,
+        hasToken: true,
+        tokenLength: token.trim().length,
+      });
     } else {
-      if (
-        typeof config.headers.delete ===
-        "function"
-      ) {
-        config.headers.delete(
-          "Authorization",
-        );
+      if (typeof config.headers.delete === "function") {
+        config.headers.delete("Authorization");
       } else {
-        delete config.headers
-          .Authorization;
+        delete config.headers.Authorization;
       }
 
-      console.error(
-        "[USER API] No user token found:",
-        {
-          url: config.url,
-          method: config.method,
-          localStorageUserToken:
-            localStorage.getItem(
-              "user_token",
-            ),
-          localStorageUserTokenAlias:
-            localStorage.getItem(
-              "userToken",
-            ),
-          sessionStorageUserToken:
-            sessionStorage.getItem(
-              "user_token",
-            ),
-        },
-      );
+      console.error("[USER API] No user token found:", {
+        url: config.url,
+        method: config.method,
+        localStorageUserToken: localStorage.getItem("user_token"),
+        localStorageUserTokenAlias: localStorage.getItem("userToken"),
+        sessionStorageUserToken: sessionStorage.getItem("user_token"),
+      });
     }
 
     return config;
   },
-  (error) =>
-    Promise.reject(error),
+  (error) => Promise.reject(error),
 );
 
 // =========================================================
 // PLACEHOLDER IMAGE
 // =========================================================
 
-const PLACEHOLDER_IMAGE =
-  "https://via.placeholder.com/400x300?text=No+Image";
+const PLACEHOLDER_IMAGE = "https://via.placeholder.com/400x300?text=No+Image";
 
 // =========================================================
 // IMAGE URL
 // =========================================================
 
-export const getImageUrl = (
-  path: string,
-) => {
-  if (!path) {
-    return PLACEHOLDER_IMAGE;
-  }
+export const getImageUrl = (path: string) => {
+  if (!path) return PLACEHOLDER_IMAGE;
 
-  if (
-    path.startsWith("http://") ||
-    path.startsWith("https://")
-  ) {
+  if (path.startsWith("http://") || path.startsWith("https://")) {
     return path;
   }
 
-  if (
-    path.startsWith("/uploads/")
-  ) {
-    return PLACEHOLDER_IMAGE;
-  }
+  if (path.startsWith("/uploads/")) return PLACEHOLDER_IMAGE;
 
   return path;
 };
@@ -287,24 +186,16 @@ export const getImageUrl = (
 // ADMIN TOKEN
 // =========================================================
 
-api.interceptors.request.use(
-  (config) => {
-    const token =
-      localStorage.getItem(
-        "admin_token",
-      );
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("admin_token");
 
-    if (token) {
-      config.headers =
-        config.headers || {};
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
 
-      config.headers.Authorization =
-        `Bearer ${token}`;
-    }
-
-    return config;
-  },
-);
+  return config;
+});
 
 // =========================================================
 // SUPABASE REST CLIENT
@@ -313,293 +204,197 @@ api.interceptors.request.use(
 const supabaseApi = axios.create({
   baseURL: `${SUPABASE_URL}/rest/v1`,
   headers: {
-    "Content-Type":
-      "application/json",
+    "Content-Type": "application/json",
     Accept: "application/json",
-    Prefer:
-      "return=representation",
+    Prefer: "return=representation",
   },
 });
 
-// =========================================================
-// SUPABASE REST AUTH HEADERS
-// =========================================================
+supabaseApi.interceptors.request.use((config) => {
+  if (!SUPABASE_ANON_KEY) {
+    console.error("Supabase public key is missing.");
+  }
 
-supabaseApi.interceptors.request.use(
-  (config) => {
-    if (!SUPABASE_ANON_KEY) {
-      console.error(
-        "Supabase public key is missing.",
-      );
-    }
+  config.headers = config.headers || {};
 
-    config.headers =
-      config.headers || {};
+  config.headers.apikey = SUPABASE_ANON_KEY;
+  config.headers.Authorization = `Bearer ${SUPABASE_ANON_KEY}`;
+  config.headers.Accept = "application/json";
+  config.headers["Content-Type"] = "application/json";
+  config.headers.Prefer = "return=representation";
 
-    config.headers.apikey =
-      SUPABASE_ANON_KEY;
-
-    config.headers.Authorization =
-      `Bearer ${SUPABASE_ANON_KEY}`;
-
-    config.headers.Accept =
-      "application/json";
-
-    config.headers[
-      "Content-Type"
-    ] = "application/json";
-
-    config.headers.Prefer =
-      "return=representation";
-
-    return config;
-  },
-);
+  return config;
+});
 
 // =========================================================
 // IMAGE REWRITE
 // =========================================================
 
-const rewriteImageUrls = (
-  obj: any,
-): any => {
-  if (
-    typeof obj !== "object" ||
-    obj === null
-  ) {
-    return obj;
-  }
+const rewriteImageUrls = (obj: any): any => {
+  if (typeof obj !== "object" || obj === null) return obj;
 
-  if (Array.isArray(obj)) {
-    return obj.map(
-      rewriteImageUrls,
-    );
-  }
+  if (Array.isArray(obj)) return obj.map(rewriteImageUrls);
 
   const rewritten: any = {};
 
   for (const key in obj) {
-    if (
-      typeof obj[key] === "string" &&
-      obj[key].startsWith(
-        "/uploads/",
-      )
-    ) {
-      rewritten[key] =
-        PLACEHOLDER_IMAGE;
-    } else if (
-      Array.isArray(obj[key])
-    ) {
-      rewritten[key] =
-        obj[key].map(
-          (item: any) => {
-            if (
-              typeof item ===
-                "string" &&
-              item.startsWith(
-                "/uploads/",
-              )
-            ) {
-              return PLACEHOLDER_IMAGE;
-            }
+    if (typeof obj[key] === "string" && obj[key].startsWith("/uploads/")) {
+      rewritten[key] = PLACEHOLDER_IMAGE;
+    } else if (Array.isArray(obj[key])) {
+      rewritten[key] = obj[key].map((item: any) => {
+        if (typeof item === "string" && item.startsWith("/uploads/")) {
+          return PLACEHOLDER_IMAGE;
+        }
 
-            return typeof item ===
-              "object" &&
-              item !== null
-              ? rewriteImageUrls(
-                  item,
-                )
-              : item;
-          },
-        );
-    } else if (
-      typeof obj[key] ===
-        "object" &&
-      obj[key] !== null
-    ) {
-      rewritten[key] =
-        rewriteImageUrls(
-          obj[key],
-        );
+        return typeof item === "object" && item !== null
+          ? rewriteImageUrls(item)
+          : item;
+      });
+    } else if (typeof obj[key] === "object" && obj[key] !== null) {
+      rewritten[key] = rewriteImageUrls(obj[key]);
     } else {
-      rewritten[key] =
-        obj[key];
+      rewritten[key] = obj[key];
     }
   }
 
   return rewritten;
 };
 
-// =========================================================
-// SUPABASE REST RESPONSE INTERCEPTOR
-// =========================================================
+supabaseApi.interceptors.response.use((response) => {
+  if (isNative && response.data) {
+    response.data = rewriteImageUrls(response.data);
+  }
 
-supabaseApi.interceptors.response.use(
-  (response) => {
-    if (
-      isNative &&
-      response.data
-    ) {
-      response.data =
-        rewriteImageUrls(
-          response.data,
-        );
-    }
-
-    return response;
-  },
-);
+  return response;
+});
 
 // =========================================================
 // WEB CACHE REQUEST INTERCEPTOR
 // =========================================================
 
-api.interceptors.request.use(
-  (config) => {
-    if (
-      isNative ||
-      config.method?.toLowerCase() !==
-        "get"
-    ) {
-      return config;
-    }
-
-    /*
-     * FEATURED VIDEOS:
-     * Always request the latest list from the backend.
-     */
-    if (
-      (config.url || "").includes(
-        "/featured-videos",
-      )
-    ) {
-      return config;
-    }
-
-    const cacheKey =
-      getCacheKey(
-        config.url || "",
-        config.params,
-      );
-
-    const cachedData =
-      getCachedData(cacheKey);
-
-    if (
-      cachedData !== null &&
-      cachedData !== undefined
-    ) {
-      config.adapter = () =>
-        Promise.resolve({
-          data: cachedData,
-          status: 200,
-          statusText: "OK",
-          headers: {},
-          config,
-        });
-    }
-
+api.interceptors.request.use((config) => {
+  if (isNative || config.method?.toLowerCase() !== "get") {
     return config;
-  },
-);
+  }
+
+  // FEATURED VIDEOS: always request the latest list from the backend.
+  if ((config.url || "").includes("/featured-videos")) {
+    return config;
+  }
+
+  const cacheKey = getCacheKey(config.url || "", config.params);
+  const cachedData = getCachedData(cacheKey);
+
+  if (cachedData !== null && cachedData !== undefined) {
+    config.adapter = () =>
+      Promise.resolve({
+        data: cachedData,
+        status: 200,
+        statusText: "OK",
+        headers: {},
+        config,
+      });
+  }
+
+  return config;
+});
 
 // =========================================================
-// WEB CACHE RESPONSE INTERCEPTOR
+// ADMIN SESSION HELPERS
+// =========================================================
+
+const ADMIN_LOGIN_PATH = "/admin/login";
+
+/*
+ * Only treat a 401 as "the admin session is dead" when the server
+ * says the TOKEN itself is the problem. A 401 caused by anything
+ * else (validation, role check, a bad route) must NOT wipe the
+ * session and redirect, otherwise a failed save looks like a logout.
+ */
+const isTokenProblem = (error: any): boolean => {
+  const data = error?.response?.data;
+
+  const text = String(
+    (typeof data === "string" ? data : "") ||
+      data?.message ||
+      data?.error ||
+      data?.code ||
+      "",
+  ).toLowerCase();
+
+  return (
+    text.includes("expired") ||
+    text.includes("invalid token") ||
+    text.includes("jwt") ||
+    text.includes("no token") ||
+    text.includes("token missing") ||
+    text.includes("token required") ||
+    text.includes("not authenticated") ||
+    text.includes("unauthenticated") ||
+    text.includes("malformed")
+  );
+};
+
+const forceAdminLogout = () => {
+  localStorage.removeItem("admin_token");
+  localStorage.removeItem("admin_user");
+
+  if (window.location.pathname !== ADMIN_LOGIN_PATH) {
+    window.location.href = ADMIN_LOGIN_PATH;
+  }
+};
+
+// =========================================================
+// WEB CACHE + ERROR RESPONSE INTERCEPTOR
 // =========================================================
 
 api.interceptors.response.use(
   (response) => {
-    if (
-      isNative &&
-      response.data
-    ) {
-      response.data =
-        rewriteImageUrls(
-          response.data,
-        );
+    if (isNative && response.data) {
+      response.data = rewriteImageUrls(response.data);
     }
 
-    /*
-     * FEATURED VIDEOS:
-     * Do not cache the response.
-     */
+    // FEATURED VIDEOS: do not cache the response.
     if (
-      response.config.method?.toLowerCase() ===
-        "get" &&
-      !(response.config.url || "").includes(
-        "/featured-videos",
-      )
+      response.config.method?.toLowerCase() === "get" &&
+      !(response.config.url || "").includes("/featured-videos")
     ) {
-      const cacheKey =
-        getCacheKey(
-          response.config.url || "",
-          response.config.params,
-        );
-
-      setCachedData(
-        cacheKey,
-        response.data,
+      const cacheKey = getCacheKey(
+        response.config.url || "",
+        response.config.params,
       );
+
+      setCachedData(cacheKey, response.data);
     }
 
     return response;
   },
   (error) => {
-    const requestConfig =
-      error.config;
-
-    const requestUrl = String(
-      requestConfig?.url || "",
-    );
+    const requestConfig = error.config;
+    const requestUrl = String(requestConfig?.url || "");
+    const method = String(requestConfig?.method || "").toUpperCase();
+    const status = error.response?.status;
 
     const clientType =
-      requestConfig?.headers?.[
-        "X-Client-Type"
-      ] ||
-      requestConfig?.headers?.[
-        "x-client-type"
-      ];
+      requestConfig?.headers?.["X-Client-Type"] ||
+      requestConfig?.headers?.["x-client-type"];
 
     const isUserRequest =
       clientType === "user" ||
-      requestUrl.includes(
-        "/memories",
-      ) ||
-      requestUrl.includes(
-        "/favorites",
-      );
+      requestUrl.includes("/memories") ||
+      requestUrl.includes("/favorites");
 
-    const isAdminRequest =
-      clientType === "admin" ||
-      !isUserRequest;
-
-    if (
-      !isNative &&
-      error.response?.status ===
-        401 &&
-      isAdminRequest &&
-      !isUserRequest
-    ) {
-      localStorage.removeItem(
-        "admin_token",
-      );
-
-      localStorage.removeItem(
-        "admin_user",
-      );
-
-      if (
-        window.location.pathname !==
-        "/admin/login"
-      ) {
-        window.location.href =
-          "/admin/login";
-      }
+    // Always log the real server answer so failed saves can be diagnosed.
+    if (status) {
+      console.error("[API ERROR]", method, requestUrl, status, error.response?.data);
     }
 
-    return Promise.reject(
-      error,
-    );
+    if (!isNative && status === 401 && !isUserRequest && isTokenProblem(error)) {
+      console.warn("[API] Admin token rejected by server. Signing out.");
+      forceAdminLogout();
+    }
+
+    return Promise.reject(error);
   },
 );
 
@@ -610,41 +405,17 @@ api.interceptors.response.use(
 userApi.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (
-      error.response?.status ===
-      401
-    ) {
-      const userTokenKeys = [
-        "user_token",
-        "userToken",
-        "user_access_token",
-        "userAccessToken",
-      ];
+    if (error.response?.status === 401) {
+      USER_TOKEN_KEYS.forEach((key) => {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+      });
 
-      userTokenKeys.forEach(
-        (key) => {
-          localStorage.removeItem(
-            key,
-          );
-
-          sessionStorage.removeItem(
-            key,
-          );
-        },
-      );
-
-      localStorage.removeItem(
-        "user_data",
-      );
-
-      sessionStorage.removeItem(
-        "user_data",
-      );
+      localStorage.removeItem("user_data");
+      sessionStorage.removeItem("user_data");
     }
 
-    return Promise.reject(
-      error,
-    );
+    return Promise.reject(error);
   },
 );
 
@@ -652,31 +423,15 @@ userApi.interceptors.response.use(
 // CLEAR CACHE
 // =========================================================
 
-export const clearCache = (
-  pattern?: string,
-) => {
+export const clearCache = (pattern?: string) => {
   try {
-    const keys =
-      Object.keys(
-        localStorage,
-      );
+    const keys = Object.keys(localStorage);
 
     keys.forEach((key) => {
-      if (
-        !key.startsWith(
-          "cache_",
-        )
-      ) {
-        return;
-      }
+      if (!key.startsWith("cache_")) return;
 
-      if (
-        !pattern ||
-        key.includes(pattern)
-      ) {
-        localStorage.removeItem(
-          key,
-        );
+      if (!pattern || key.includes(pattern)) {
+        localStorage.removeItem(key);
       }
     });
   } catch {
@@ -692,219 +447,121 @@ if (isNative) {
 // ADMIN AUTH
 // =========================================================
 
-export const loginAdmin =
-  async (data: {
-    username: string;
-    password: string;
-  }) => {
-    if (
-      !data.username ||
-      !data.username.trim()
-    ) {
+export const loginAdmin = async (data: {
+  username: string;
+  password: string;
+}) => {
+  if (!data.username || !data.username.trim()) {
+    throw new Error("Username is required.");
+  }
+
+  if (!data.password) {
+    throw new Error("Password is required.");
+  }
+
+  try {
+    const response = await axios.post(`${SERVER_BASE_URL}/auth/login`, {
+      username: data.username.trim(),
+      password: data.password,
+    });
+
+    const token = response.data?.token;
+    const admin = response.data?.admin;
+
+    if (!token) {
       throw new Error(
-        "Username is required.",
+        "Admin login failed: no authentication token was returned.",
       );
     }
 
-    if (!data.password) {
+    if (!admin) {
       throw new Error(
-        "Password is required.",
+        "Admin login failed: no admin information was returned.",
       );
     }
 
-    try {
-      const response =
-        await axios.post(
-          `${SERVER_BASE_URL}/auth/login`,
-          {
-            username:
-              data.username.trim(),
-            password:
-              data.password,
-          },
-        );
+    localStorage.setItem("admin_token", token);
+    localStorage.setItem("admin_user", JSON.stringify(admin));
 
-      const token =
-        response.data?.token;
+    return { data: { token, admin } };
+  } catch (error: any) {
+    const message =
+      error?.response?.data?.message || error?.message || "Admin login failed.";
 
-      const admin =
-        response.data?.admin;
-
-      if (!token) {
-        throw new Error(
-          "Admin login failed: no authentication token was returned.",
-        );
-      }
-
-      if (!admin) {
-        throw new Error(
-          "Admin login failed: no admin information was returned.",
-        );
-      }
-
-      localStorage.setItem(
-        "admin_token",
-        token,
-      );
-
-      localStorage.setItem(
-        "admin_user",
-        JSON.stringify(admin),
-      );
-
-      return {
-        data: {
-          token,
-          admin,
-        },
-      };
-    } catch (error: any) {
-      const message =
-        error?.response?.data?.message ||
-        error?.message ||
-        "Admin login failed.";
-
-      throw new Error(message);
-    }
-  };
+    throw new Error(message);
+  }
+};
 
 // =========================================================
 // ATTRACTIONS
 // =========================================================
 
-export const getAttractions =
-  async (params?: {
-    show_on_welcome?: boolean;
-    category?: string;
-    search?: string;
-  }) => {
-    let query = supabase
-      .from("attractions")
-      .select("*")
-      .order(
-        "created_at",
-        {
-          ascending: false,
-        },
-      );
+export const getAttractions = async (params?: {
+  show_on_welcome?: boolean;
+  category?: string;
+  search?: string;
+}) => {
+  let query = supabase
+    .from("attractions")
+    .select("*")
+    .order("created_at", { ascending: false });
 
-    if (
-      params?.show_on_welcome !==
-      undefined
-    ) {
-      query = query.eq(
-        "show_on_welcome",
-        params.show_on_welcome,
-      );
-    }
+  if (params?.show_on_welcome !== undefined) {
+    query = query.eq("show_on_welcome", params.show_on_welcome);
+  }
 
-    if (
-      params?.category &&
-      params.category !== "All"
-    ) {
-      query = query.eq(
-        "category",
-        params.category,
-      );
-    }
+  if (params?.category && params.category !== "All") {
+    query = query.eq("category", params.category);
+  }
 
-    if (params?.search) {
-      query = query.or(
-        `name.ilike.%${params.search}%,description.ilike.%${params.search}%`,
-      );
-    }
+  if (params?.search) {
+    query = query.or(
+      `name.ilike.%${params.search}%,description.ilike.%${params.search}%`,
+    );
+  }
 
-    const {
-      data,
-      error,
-    } = await query;
+  const { data, error } = await query;
 
-    if (error) {
-      console.error(
-        "Supabase getAttractions error:",
-        error,
-      );
+  if (error) {
+    console.error("Supabase getAttractions error:", error);
+    throw error;
+  }
 
-      throw error;
-    }
+  return { data: Array.isArray(data) ? data : [] };
+};
 
-    return {
-      data: Array.isArray(
-        data,
-      )
-        ? data
-        : [],
-    };
-  };
+export const getAttraction = async (id: string) => {
+  const { data, error } = await supabase
+    .from("attractions")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
 
-export const getAttraction =
-  async (id: string) => {
-    const {
-      data,
-      error,
-    } = await supabase
-      .from("attractions")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
+  if (error) throw error;
 
-    if (error) {
-      throw error;
-    }
+  return { data };
+};
 
-    return { data };
-  };
+export const createAttraction = (data: object) =>
+  supabaseApi.post("/attractions", data);
 
-export const createAttraction = (
-  data: object,
-) =>
-  supabaseApi.post(
-    "/attractions",
-    data,
-  );
+export const updateAttraction = (id: string, data: object) =>
+  supabaseApi.patch(`/attractions?id=eq.${encodeURIComponent(id)}`, data);
 
-export const updateAttraction = (
-  id: string,
-  data: object,
-) =>
-  supabaseApi.patch(
-    `/attractions?id=eq.${encodeURIComponent(
-      id,
-    )}`,
-    data,
-  );
-
-export const deleteAttraction = (
-  id: string,
-) =>
-  supabaseApi.delete(
-    `/attractions?id=eq.${encodeURIComponent(
-      id,
-    )}`,
-  );
+export const deleteAttraction = (id: string) =>
+  supabaseApi.delete(`/attractions?id=eq.${encodeURIComponent(id)}`);
 
 // =========================================================
 // EVENTS
 // =========================================================
 
-export const getEvents = (
-  _params?: object,
-) =>
-  supabaseApi.get(
-    "/events?select=*&order=start_date.desc",
-  );
+export const getEvents = (_params?: object) =>
+  supabaseApi.get("/events?select=*&order=start_date.desc");
 
-export const getEvent = (
-  id: string,
-) =>
-  supabaseApi.get(
-    `/events?id=eq.${encodeURIComponent(
-      id,
-    )}&select=*`,
-  );
+export const getEvent = (id: string) =>
+  supabaseApi.get(`/events?id=eq.${encodeURIComponent(id)}&select=*`);
 
-export const createEvent = (data: object) =>
-  api.post("/events", data);
+export const createEvent = (data: object) => api.post("/events", data);
 
 export const updateEvent = (id: string, data: object) =>
   api.put(`/events/${encodeURIComponent(id)}`, data);
@@ -916,178 +573,73 @@ export const deleteEvent = (id: string) =>
 // ACCOMMODATIONS
 // =========================================================
 
-export const getAccommodations =
-  async (params?: {
-    show_on_welcome?: boolean;
-    type?: string;
-    dot_accredited?: boolean;
-  }) => {
-    let query = supabase
-      .from("accommodations")
-      .select("*")
-      .order(
-        "created_at",
-        {
-          ascending: false,
-        },
-      );
-
-    /*
-     * IMPORTANT:
-     *
-     * The current accommodations table in Supabase contains:
-     *
-     * id
-     * name
-     * owner
-     * manager
-     * address
-     * contact_number
-     * website
-     * images
-     * created_at
-     * updated_at
-     * short_description
-     * description
-     * getting_there
-     * latitude
-     * longitude
-     * favorites
-     *
-     * We therefore only apply filters when those columns are
-     * actually supported by the current table.
-     *
-     * Do not send unsupported columns such as:
-     * show_on_welcome
-     * type
-     * dot_accredited
-     *
-     * to Supabase.
-     */
-
-    const {
-      data,
-      error,
-    } = await query;
-
-    if (error) {
-      console.error(
-        "Supabase getAccommodations error:",
-        error,
-      );
-
-      throw error;
-    }
-
-    return {
-      data: Array.isArray(
-        data,
-      )
-        ? data
-        : [],
-    };
-  };
-
-export const getAccommodation =
-  async (id: string) => {
-    if (!id) {
-      throw new Error(
-        "Accommodation ID is required.",
-      );
-    }
-
-    const {
-      data,
-      error,
-    } = await supabase
-      .from("accommodations")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (error) {
-      throw error;
-    }
-
-    return { data };
-  };
-
 /*
- * IMPORTANT:
+ * The accommodations table contains:
+ * id, name, owner, manager, address, contact_number, website,
+ * images, created_at, updated_at, short_description, description,
+ * getting_there, latitude, longitude, favorites
  *
- * Accommodation CREATE / UPDATE / DELETE operations MUST go
- * through the Render backend.
- *
- * The regular "api" Axios instance automatically attaches:
- *
- * Authorization: Bearer <admin_token>
- *
- * from localStorage.
- *
- * This means the Supabase anonymous key is NO LONGER used
- * for accommodation writes.
- *
- * The Render backend will then:
- *
- * 1. verify the admin JWT
- * 2. verify the user has role = "admin"
- * 3. use the server-side Supabase service-role key
- * 4. write to the accommodations table
- *
- * This keeps the Supabase service-role key out of Vercel
- * and out of the browser.
+ * Do not send unsupported columns such as show_on_welcome, type,
+ * or dot_accredited to Supabase.
  */
+export const getAccommodations = async (_params?: {
+  show_on_welcome?: boolean;
+  type?: string;
+  dot_accredited?: boolean;
+}) => {
+  const { data, error } = await supabase
+    .from("accommodations")
+    .select("*")
+    .order("created_at", { ascending: false });
 
-export const createAccommodation = (
-  data: object,
-) =>
-  api.post(
-    "/accommodations",
-    data,
-  );
-
-export const updateAccommodation = (
-  id: string,
-  data: object,
-) => {
-  if (!id) {
-    throw new Error(
-      "Accommodation ID is required.",
-    );
+  if (error) {
+    console.error("Supabase getAccommodations error:", error);
+    throw error;
   }
 
-  return api.put(
-    `/accommodations/${encodeURIComponent(
-      id,
-    )}`,
-    data,
-  );
+  return { data: Array.isArray(data) ? data : [] };
 };
 
-export const deleteAccommodation = (
-  id: string,
-) => {
-  if (!id) {
-    throw new Error(
-      "Accommodation ID is required.",
-    );
-  }
+export const getAccommodation = async (id: string) => {
+  if (!id) throw new Error("Accommodation ID is required.");
 
-  return api.delete(
-    `/accommodations/${encodeURIComponent(
-      id,
-    )}`,
-  );
+  const { data, error } = await supabase
+    .from("accommodations")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  return { data };
+};
+
+/*
+ * Accommodation CREATE / UPDATE / DELETE go through the Render
+ * backend. The "api" instance attaches Authorization: Bearer
+ * <admin_token> automatically. The backend verifies the admin JWT
+ * and role, then writes with the server-side service-role key.
+ */
+export const createAccommodation = (data: object) =>
+  api.post("/accommodations", data);
+
+export const updateAccommodation = (id: string, data: object) => {
+  if (!id) throw new Error("Accommodation ID is required.");
+
+  return api.put(`/accommodations/${encodeURIComponent(id)}`, data);
+};
+
+export const deleteAccommodation = (id: string) => {
+  if (!id) throw new Error("Accommodation ID is required.");
+
+  return api.delete(`/accommodations/${encodeURIComponent(id)}`);
 };
 
 // =========================================================
 // FAVORITES
 // =========================================================
 
-export type FavoriteItemType =
-  | "attraction"
-  | "accommodation"
-  | "event";
+export type FavoriteItemType = "attraction" | "accommodation" | "event";
 
 export interface FavoriteRecord {
   id: string;
@@ -1108,668 +660,277 @@ export interface FavoriteResponse {
   } | null;
 }
 
-export const getFavorites =
-  async (): Promise<{
+const toFavoriteResponse = (data: any): FavoriteResponse => ({
+  message: data?.message,
+  favorited: Boolean(data?.favorited),
+  favoriteCount: Number(data?.favoriteCount) || 0,
+  favorite: data?.favorite || null,
+});
+
+const assertFavoriteArgs = (itemType: FavoriteItemType, itemId: string) => {
+  if (!itemType) throw new Error("Favorite item type is required.");
+  if (!itemId) throw new Error("Favorite item ID is required.");
+};
+
+export const getFavorites = async (): Promise<{
+  data: { favorites: FavoriteRecord[] };
+}> => {
+  const response = await userApi.get("/favorites");
+
+  return {
     data: {
-      favorites:
-        FavoriteRecord[];
-    };
-  }> => {
-    const response =
-      await userApi.get(
-        "/favorites",
-      );
-
-    return {
-      data: {
-        favorites:
-          Array.isArray(
-            response?.data
-              ?.favorites,
-          )
-            ? response.data
-                .favorites
-            : [],
-      },
-    };
+      favorites: Array.isArray(response?.data?.favorites)
+        ? response.data.favorites
+        : [],
+    },
   };
+};
 
-export const addFavorite =
-  async (
-    itemType: FavoriteItemType,
-    itemId: string,
-  ): Promise<FavoriteResponse> => {
-    if (!itemType) {
-      throw new Error(
-        "Favorite item type is required.",
-      );
-    }
+export const addFavorite = async (
+  itemType: FavoriteItemType,
+  itemId: string,
+): Promise<FavoriteResponse> => {
+  assertFavoriteArgs(itemType, itemId);
 
-    if (!itemId) {
-      throw new Error(
-        "Favorite item ID is required.",
-      );
-    }
+  const response = await userApi.post("/favorites", { itemType, itemId });
 
-    const response =
-      await userApi.post(
-        "/favorites",
-        {
-          itemType,
-          itemId,
-        },
-      );
+  return toFavoriteResponse(response?.data);
+};
 
-    return {
-      message:
-        response?.data
-          ?.message,
-      favorited: Boolean(
-        response?.data
-          ?.favorited,
-      ),
-      favoriteCount:
-        Number(
-          response?.data
-            ?.favoriteCount,
-        ) || 0,
-      favorite:
-        response?.data
-          ?.favorite || null,
-    };
-  };
+export const removeFavorite = async (
+  itemType: FavoriteItemType,
+  itemId: string,
+): Promise<FavoriteResponse> => {
+  assertFavoriteArgs(itemType, itemId);
 
-export const removeFavorite =
-  async (
-    itemType: FavoriteItemType,
-    itemId: string,
-  ): Promise<FavoriteResponse> => {
-    if (!itemType) {
-      throw new Error(
-        "Favorite item type is required.",
-      );
-    }
+  const response = await userApi.delete(
+    `/favorites/${encodeURIComponent(itemType)}/${encodeURIComponent(itemId)}`,
+  );
 
-    if (!itemId) {
-      throw new Error(
-        "Favorite item ID is required.",
-      );
-    }
+  return toFavoriteResponse(response?.data);
+};
 
-    const response =
-      await userApi.delete(
-        `/favorites/${encodeURIComponent(
-          itemType,
-        )}/${encodeURIComponent(
-          itemId,
-        )}`,
-      );
+export const checkFavorite = async (
+  itemType: FavoriteItemType,
+  itemId: string,
+): Promise<FavoriteResponse> => {
+  assertFavoriteArgs(itemType, itemId);
 
-    return {
-      message:
-        response?.data
-          ?.message,
-      favorited: Boolean(
-        response?.data
-          ?.favorited,
-      ),
-      favoriteCount:
-        Number(
-          response?.data
-            ?.favoriteCount,
-        ) || 0,
-      favorite:
-        response?.data
-          ?.favorite || null,
-    };
-  };
+  const response = await userApi.get(
+    `/favorites/${encodeURIComponent(itemType)}/${encodeURIComponent(itemId)}`,
+  );
 
-export const checkFavorite =
-  async (
-    itemType: FavoriteItemType,
-    itemId: string,
-  ): Promise<FavoriteResponse> => {
-    if (!itemType) {
-      throw new Error(
-        "Favorite item type is required.",
-      );
-    }
-
-    if (!itemId) {
-      throw new Error(
-        "Favorite item ID is required.",
-      );
-    }
-
-    const response =
-      await userApi.get(
-        `/favorites/${encodeURIComponent(
-          itemType,
-        )}/${encodeURIComponent(
-          itemId,
-        )}`,
-      );
-
-    return {
-      favorited: Boolean(
-        response?.data
-          ?.favorited,
-      ),
-      favoriteCount:
-        Number(
-          response?.data
-            ?.favoriteCount,
-        ) || 0,
-      message:
-        response?.data
-          ?.message,
-      favorite:
-        response?.data
-          ?.favorite || null,
-    };
-  };
+  return toFavoriteResponse(response?.data);
+};
 
 // =========================================================
 // GENERIC REST HELPERS
 // =========================================================
 
-const createCrudFunctions = (
-  table: string,
-) => ({
-  getAll: (
-    _params?: object,
-  ) =>
-    supabaseApi.get(
-      `/${table}?select=*&order=created_at.desc`,
-    ),
+const createCrudFunctions = (table: string) => ({
+  getAll: (_params?: object) =>
+    supabaseApi.get(`/${table}?select=*&order=created_at.desc`),
 
   getOne: (id: string) =>
-    supabaseApi.get(
-      `/${table}?id=eq.${encodeURIComponent(
-        id,
-      )}&select=*`,
-    ),
+    supabaseApi.get(`/${table}?id=eq.${encodeURIComponent(id)}&select=*`),
 
-  create: (data: object) =>
-    supabaseApi.post(
-      `/${table}`,
-      data,
-    ),
+  create: (data: object) => supabaseApi.post(`/${table}`, data),
 
-  update: (
-    id: string,
-    data: object,
-  ) =>
-    supabaseApi.patch(
-      `/${table}?id=eq.${encodeURIComponent(
-        id,
-      )}`,
-      data,
-    ),
+  update: (id: string, data: object) =>
+    supabaseApi.patch(`/${table}?id=eq.${encodeURIComponent(id)}`, data),
 
   remove: (id: string) =>
-    supabaseApi.delete(
-      `/${table}?id=eq.${encodeURIComponent(
-        id,
-      )}`,
-    ),
+    supabaseApi.delete(`/${table}?id=eq.${encodeURIComponent(id)}`),
 });
 
 // =========================================================
 // GUIDES
 // =========================================================
 
-export const getGuides = (
-  params?: object,
-) =>
-  createCrudFunctions(
-    "guides",
-  ).getAll(params);
+export const getGuides = (params?: object) =>
+  createCrudFunctions("guides").getAll(params);
 
-export const getGuide = (
-  id: string,
-) =>
-  createCrudFunctions(
-    "guides",
-  ).getOne(id);
+export const getGuide = (id: string) =>
+  createCrudFunctions("guides").getOne(id);
 
-export const createGuide = (
-  data: object,
-) =>
-  createCrudFunctions(
-    "guides",
-  ).create(data);
+export const createGuide = (data: object) =>
+  createCrudFunctions("guides").create(data);
 
-export const updateGuide = (
-  id: string,
-  data: object,
-) =>
-  createCrudFunctions(
-    "guides",
-  ).update(id, data);
+export const updateGuide = (id: string, data: object) =>
+  createCrudFunctions("guides").update(id, data);
 
-export const deleteGuide = (
-  id: string,
-) =>
-  createCrudFunctions(
-    "guides",
-  ).remove(id);
+export const deleteGuide = (id: string) =>
+  createCrudFunctions("guides").remove(id);
 
 // =========================================================
 // ITINERARY REQUESTS
 // =========================================================
 
-export const submitItineraryRequest = (
-  data: object,
-) =>
-  supabaseApi.post(
-    "/itinerary_requests",
-    data,
-  );
+export const submitItineraryRequest = (data: object) =>
+  supabaseApi.post("/itinerary_requests", data);
 
-export const getItineraryRequests = (
-  _params?: object,
-) =>
+export const getItineraryRequests = (_params?: object) =>
+  supabaseApi.get("/itinerary_requests?select=*&order=created_at.desc");
+
+export const getItineraryRequest = (id: string) =>
   supabaseApi.get(
-    "/itinerary_requests?select=*&order=created_at.desc",
+    `/itinerary_requests?id=eq.${encodeURIComponent(id)}&select=*`,
   );
 
-export const getItineraryRequest = (
-  id: string,
-) =>
-  supabaseApi.get(
-    `/itinerary_requests?id=eq.${encodeURIComponent(
-      id,
-    )}&select=*`,
-  );
-
-export const updateItineraryRequest = (
-  id: string,
-  data: object,
-) =>
+export const updateItineraryRequest = (id: string, data: object) =>
   supabaseApi.patch(
-    `/itinerary_requests?id=eq.${encodeURIComponent(
-      id,
-    )}`,
+    `/itinerary_requests?id=eq.${encodeURIComponent(id)}`,
     data,
   );
 
 // =========================================================
-// ADMIN MANAGEMENT
+// ADMIN MANAGEMENT (Render backend, admin JWT attached)
 // =========================================================
 
-/*
- * IMPORTANT:
- *
- * Admin management MUST use the backend route.
- *
- * Do NOT use supabaseApi here because that would bypass
- * server-side password hashing and the admin authentication
- * middleware.
- *
- * The "api" Axios instance automatically attaches:
- *
- * Authorization: Bearer <admin_token>
- *
- * through the ADMIN TOKEN interceptor above.
- */
+export const getAdmins = () => api.get("/admin-management");
 
-export const getAdmins = () =>
-  api.get(
-    "/admin-management",
-  );
+export const getAdmin = (id: string) =>
+  api.get(`/admin-management/${encodeURIComponent(id)}`);
 
-export const getAdmin = (
-  id: string,
-) =>
-  api.get(
-    `/admin-management/${encodeURIComponent(
-      id,
-    )}`,
-  );
+export const createAdmin = (data: object) =>
+  api.post("/admin-management", data);
 
-export const createAdmin = (
-  data: object,
-) =>
-  api.post(
-    "/admin-management",
-    data,
-  );
+export const updateAdmin = (id: string, data: object) =>
+  api.put(`/admin-management/${encodeURIComponent(id)}`, data);
 
-export const updateAdmin = (
-  id: string,
-  data: object,
-) =>
-  api.put(
-    `/admin-management/${encodeURIComponent(
-      id,
-    )}`,
-    data,
-  );
-
-export const deleteAdmin = (
-  id: string,
-) =>
-  api.delete(
-    `/admin-management/${encodeURIComponent(
-      id,
-    )}`,
-  );
+export const deleteAdmin = (id: string) =>
+  api.delete(`/admin-management/${encodeURIComponent(id)}`);
 
 // =========================================================
 // FEEDBACK
 // =========================================================
 
 export const getFeedback = () =>
-  supabaseApi.get(
-    "/feedback?select=*&order=created_at.desc",
-  );
+  supabaseApi.get("/feedback?select=*&order=created_at.desc");
 
-export const createFeedback = (
-  data: object,
-) =>
-  supabaseApi.post(
-    "/feedback",
-    data,
-  );
+export const createFeedback = (data: object) =>
+  supabaseApi.post("/feedback", data);
 
-export const updateFeedback = (
-  id: string,
-  data: object,
-) =>
-  supabaseApi.patch(
-    `/feedback?id=eq.${encodeURIComponent(
-      id,
-    )}`,
-    data,
-  );
+export const updateFeedback = (id: string, data: object) =>
+  supabaseApi.patch(`/feedback?id=eq.${encodeURIComponent(id)}`, data);
 
-export const deleteFeedback = (
-  id: string,
-) =>
-  supabaseApi.delete(
-    `/feedback?id=eq.${encodeURIComponent(
-      id,
-    )}`,
-  );
+export const deleteFeedback = (id: string) =>
+  supabaseApi.delete(`/feedback?id=eq.${encodeURIComponent(id)}`);
 
 // =========================================================
 // IMAGE UPLOAD
 // =========================================================
 
-export const uploadImageToSupabase =
-  async (
-    file: File,
-  ): Promise<string> => {
-    const ext =
-      file.name
-        .split(".")
-        .pop()
-        ?.toLowerCase() ||
-      "jpg";
+export const uploadImageToSupabase = async (file: File): Promise<string> => {
+  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
 
-    const fileName = `${Date.now()}-${Math.random()
-      .toString(36)
-      .substring(7)}.${ext}`;
+  const fileName = `${Date.now()}-${Math.random()
+    .toString(36)
+    .substring(7)}.${ext}`;
 
-    const {
-      data,
-      error,
-    } = await supabase.storage
-      .from("images")
-      .upload(
-        fileName,
-        file,
-        {
-          upsert: true,
-          contentType:
-            file.type ||
-            "image/jpeg",
-        },
-      );
+  const { data, error } = await supabase.storage
+    .from("images")
+    .upload(fileName, file, {
+      upsert: true,
+      contentType: file.type || "image/jpeg",
+    });
 
-    if (error) {
-      throw new Error(
-        `Image upload failed: ${error.message}`,
-      );
-    }
+  if (error) {
+    throw new Error(`Image upload failed: ${error.message}`);
+  }
 
-    const {
-      data: publicData,
-    } =
-      supabase.storage
-        .from("images")
-        .getPublicUrl(
-          data.path,
-        );
+  const { data: publicData } = supabase.storage
+    .from("images")
+    .getPublicUrl(data.path);
 
-    return publicData.publicUrl;
-  };
+  return publicData.publicUrl;
+};
 
-export const uploadImage =
-  async (
-    file: File,
-  ): Promise<{
-    data: {
-      url: string;
-    };
-  }> => {
-    const url =
-      await uploadImageToSupabase(
-        file,
-      );
+export const uploadImage = async (
+  file: File,
+): Promise<{ data: { url: string } }> => {
+  const url = await uploadImageToSupabase(file);
 
-    return {
-      data: {
-        url,
-      },
-    };
-  };
+  return { data: { url } };
+};
 
-export const uploadMultipleImages =
-  async (
-    files: File[],
-  ): Promise<{
-    data: {
-      urls: string[];
-    };
-  }> => {
-    const urls =
-      await Promise.all(
-        files.map(
-          (file) =>
-            uploadImageToSupabase(
-              file,
-            ),
-        ),
-      );
+export const uploadMultipleImages = async (
+  files: File[],
+): Promise<{ data: { urls: string[] } }> => {
+  const urls = await Promise.all(
+    files.map((file) => uploadImageToSupabase(file)),
+  );
 
-    return {
-      data: {
-        urls,
-      },
-    };
-  };
+  return { data: { urls } };
+};
 
 // =========================================================
 // GETTING THERE
 // =========================================================
 
-export const getGettingThere =
-  () =>
-    supabaseApi.get(
-      "/getting_there?select=*&order=created_at.desc",
-    );
+export const getGettingThere = () =>
+  supabaseApi.get("/getting_there?select=*&order=created_at.desc");
 
-export const createGettingThere = (
-  data: object,
-) =>
-  supabaseApi.post(
-    "/getting_there",
-    data,
-  );
+export const createGettingThere = (data: object) =>
+  supabaseApi.post("/getting_there", data);
 
-export const updateGettingThere = (
-  id: string,
-  data: object,
-) =>
-  supabaseApi.patch(
-    `/getting_there?id=eq.${encodeURIComponent(
-      id,
-    )}`,
-    data,
-  );
+export const updateGettingThere = (id: string, data: object) =>
+  supabaseApi.patch(`/getting_there?id=eq.${encodeURIComponent(id)}`, data);
 
-export const deleteGettingThere = (
-  id: string,
-) =>
-  supabaseApi.delete(
-    `/getting_there?id=eq.${encodeURIComponent(
-      id,
-    )}`,
-  );
+export const deleteGettingThere = (id: string) =>
+  supabaseApi.delete(`/getting_there?id=eq.${encodeURIComponent(id)}`);
 
 // =========================================================
-// USERS
+// USERS (Render backend, admin JWT attached)
 // =========================================================
 
-/*
- * IMPORTANT:
- *
- * Admin user management MUST go through the Render backend.
- *
- * Do NOT use supabaseApi here.
- *
- * The regular "api" Axios instance automatically attaches:
- *
- * Authorization: Bearer <admin_token>
- *
- * through the ADMIN TOKEN interceptor above.
- *
- * The backend then:
- *
- * 1. verifies the admin JWT
- * 2. verifies role === "admin"
- * 3. uses the server-side Supabase service-role key
- * 4. safely reads/writes public.users
- *
- * The backend also removes sensitive fields such as:
- *
- * - password
- * - email_verification_token_hash
- * - password_reset_token_hash
- * - verification/reset expiration values
- */
+export const getUsers = () => api.get("/users");
 
-export const getUsers = () =>
-  api.get(
-    "/users",
-  );
+export const createUser = (data: object) => api.post("/users", data);
 
-export const createUser = (
-  data: object,
-) =>
-  api.post(
-    "/users",
-    data,
-  );
+export const updateUser = (id: string, data: object) =>
+  api.patch(`/users/${encodeURIComponent(id)}`, data);
 
-export const updateUser = (
-  id: string,
-  data: object,
-) =>
-  api.patch(
-    `/users/${encodeURIComponent(
-      id,
-    )}`,
-    data,
-  );
-
-export const deleteUser = (
-  id: string,
-) =>
-  api.delete(
-    `/users/${encodeURIComponent(
-      id,
-    )}`,
-  );
+export const deleteUser = (id: string) =>
+  api.delete(`/users/${encodeURIComponent(id)}`);
 
 // =========================================================
 // NOTIFICATIONS
 // =========================================================
 
-export const getNotifications = (
-  userId: string,
-) =>
+export const getNotifications = (userId: string) =>
   supabaseApi.get(
-    `/notifications?user_id=eq.${encodeURIComponent(
-      userId,
-    )}&order=created_at.desc`,
+    `/notifications?user_id=eq.${encodeURIComponent(userId)}&order=created_at.desc`,
   );
 
-export const getUnreadCount =
-  async (
-    userId: string,
-  ) => {
-    const response =
-      await supabaseApi.get(
-        `/notifications?user_id=eq.${encodeURIComponent(
-          userId,
-        )}&is_read=eq.false&select=id`,
-      );
+export const getUnreadCount = async (userId: string) => {
+  const response = await supabaseApi.get(
+    `/notifications?user_id=eq.${encodeURIComponent(userId)}&is_read=eq.false&select=id`,
+  );
 
-    return {
-      data: {
-        count:
-          Array.isArray(
-            response.data,
-          )
-            ? response.data.length
-            : 0,
-      },
-    };
+  return {
+    data: {
+      count: Array.isArray(response.data) ? response.data.length : 0,
+    },
   };
+};
 
-export const markAsRead = (
-  id: string,
-) =>
+export const markAsRead = (id: string) =>
+  supabaseApi.patch(`/notifications?id=eq.${encodeURIComponent(id)}`, {
+    is_read: true,
+  });
+
+export const markAllAsRead = (userId: string) =>
   supabaseApi.patch(
-    `/notifications?id=eq.${encodeURIComponent(
-      id,
-    )}`,
-    {
-      is_read: true,
-    },
+    `/notifications?user_id=eq.${encodeURIComponent(userId)}&is_read=eq.false`,
+    { is_read: true },
   );
 
-export const markAllAsRead = (
-  userId: string,
-) =>
-  supabaseApi.patch(
-    `/notifications?user_id=eq.${encodeURIComponent(
-      userId,
-    )}&is_read=eq.false`,
-    {
-      is_read: true,
-    },
-  );
+export const createNotification = (data: object) =>
+  supabaseApi.post("/notifications", data);
 
-export const createNotification = (
-  data: object,
-) =>
-  supabaseApi.post(
-    "/notifications",
-    data,
-  );
-
-export const deleteNotification = (
-  id: string,
-) =>
-  supabaseApi.delete(
-    `/notifications?id=eq.${encodeURIComponent(
-      id,
-    )}`,
-  );
+export const deleteNotification = (id: string) =>
+  supabaseApi.delete(`/notifications?id=eq.${encodeURIComponent(id)}`);
 
 // =========================================================
 // USER MEMORIES
@@ -1796,40 +957,21 @@ export interface CreateMemoryPayload {
   image_urls: string[];
 }
 
-// =========================================================
-// NORMALIZE MEMORY
-// =========================================================
-
-const normalizeMemory = (
-  memory: UserMemory,
-): UserMemory => {
-  const existingImageUrls =
-    Array.isArray(
-      memory.image_urls,
-    )
-      ? memory.image_urls.filter(
-          (
-            url,
-          ): url is string =>
-            typeof url ===
-              "string" &&
-            url.trim().length >
-              0,
-        )
-      : [];
+const normalizeMemory = (memory: UserMemory): UserMemory => {
+  const existingImageUrls = Array.isArray(memory.image_urls)
+    ? memory.image_urls.filter(
+        (url): url is string =>
+          typeof url === "string" && url.trim().length > 0,
+      )
+    : [];
 
   const legacyImageUrl =
-    typeof memory.image_url ===
-      "string" &&
-    memory.image_url
-      .trim()
-      .length > 0
+    typeof memory.image_url === "string" && memory.image_url.trim().length > 0
       ? memory.image_url.trim()
       : null;
 
   const normalizedImageUrls =
-    existingImageUrls.length >
-    0
+    existingImageUrls.length > 0
       ? existingImageUrls
       : legacyImageUrl
         ? [legacyImageUrl]
@@ -1837,322 +979,153 @@ const normalizeMemory = (
 
   return {
     ...memory,
-    image_urls:
-      normalizedImageUrls,
-    image_url:
-      memory.image_url ??
-      null,
+    image_urls: normalizedImageUrls,
+    image_url: memory.image_url ?? null,
   };
 };
 
-// =========================================================
-// GET MY MEMORIES
-// =========================================================
+export const getMyMemories = async (): Promise<{ data: UserMemory[] }> => {
+  const response = await userApi.get<UserMemoriesResponse>("/memories");
 
-export const getMyMemories =
-  async (): Promise<{
-    data: UserMemory[];
-  }> => {
-    const response =
-      await userApi.get<UserMemoriesResponse>(
-        "/memories",
-      );
+  const memories = Array.isArray(response.data?.memories)
+    ? response.data.memories
+    : [];
 
-    const memories =
-      Array.isArray(
-        response.data
-          ?.memories,
-      )
-        ? response.data
-            .memories
-        : [];
+  return { data: memories.map(normalizeMemory) };
+};
 
-    return {
-      data: memories.map(
-        normalizeMemory,
-      ),
-    };
-  };
+export const getMyAttractionMemories = async (
+  attractionId: string,
+): Promise<{ data: UserMemory[] }> => {
+  if (!attractionId) throw new Error("Attraction ID is required.");
 
-// =========================================================
-// GET MEMORIES FOR ATTRACTION
-// =========================================================
+  const response = await userApi.get<UserMemoriesResponse>(
+    `/memories/attraction/${encodeURIComponent(attractionId)}`,
+  );
 
-export const getMyAttractionMemories =
-  async (
-    attractionId: string,
-  ): Promise<{
-    data: UserMemory[];
-  }> => {
-    if (!attractionId) {
-      throw new Error(
-        "Attraction ID is required.",
-      );
-    }
+  const memories = Array.isArray(response.data?.memories)
+    ? response.data.memories
+    : [];
 
-    const response =
-      await userApi.get<UserMemoriesResponse>(
-        `/memories/attraction/${encodeURIComponent(
-          attractionId,
-        )}`,
-      );
+  return { data: memories.map(normalizeMemory) };
+};
 
-    const memories =
-      Array.isArray(
-        response.data
-          ?.memories,
-      )
-        ? response.data
-            .memories
-        : [];
+export const createMyMemory = async (
+  payload: CreateMemoryPayload,
+): Promise<{ data: UserMemory; message?: string }> => {
+  if (!payload.attraction_id) {
+    throw new Error("Attraction ID is required.");
+  }
 
-    return {
-      data: memories.map(
-        normalizeMemory,
-      ),
-    };
-  };
+  if (!payload.caption.trim()) {
+    throw new Error("Memory caption is required.");
+  }
 
-// =========================================================
-// CREATE MEMORY
-// =========================================================
+  if (!Array.isArray(payload.image_urls) || payload.image_urls.length === 0) {
+    throw new Error("At least one memory image is required.");
+  }
 
-export const createMyMemory =
-  async (
-    payload: CreateMemoryPayload,
-  ): Promise<{
-    data: UserMemory;
-    message?: string;
-  }> => {
-    if (!payload.attraction_id) {
-      throw new Error(
-        "Attraction ID is required.",
-      );
-    }
+  const cleanedImageUrls = payload.image_urls
+    .filter(
+      (url): url is string => typeof url === "string" && url.trim().length > 0,
+    )
+    .map((url) => url.trim());
 
-    if (
-      !payload.caption.trim()
-    ) {
-      throw new Error(
-        "Memory caption is required.",
-      );
-    }
+  if (cleanedImageUrls.length === 0) {
+    throw new Error("At least one valid memory image is required.");
+  }
 
-    if (
-      !Array.isArray(
-        payload.image_urls,
-      ) ||
-      payload.image_urls
-        .length === 0
-    ) {
-      throw new Error(
-        "At least one memory image is required.",
-      );
-    }
+  const userToken = getUserToken();
 
-    const cleanedImageUrls =
-      payload.image_urls
-        .filter(
-          (
-            url,
-          ): url is string =>
-            typeof url ===
-              "string" &&
-            url.trim().length >
-              0,
-        )
-        .map((url) =>
-          url.trim(),
-        );
-
-    if (
-      cleanedImageUrls.length ===
-      0
-    ) {
-      throw new Error(
-        "At least one valid memory image is required.",
-      );
-    }
-
-    const userToken =
-      getUserToken();
-
-    if (
-      !userToken ||
-      !userToken.trim()
-    ) {
-      throw new Error(
-        "User authentication is missing. Please log in again before submitting a memory.",
-      );
-    }
-
-    const requestUrl =
-      "https://calbayog-city-tourism.onrender.com/api/memories";
-
-    const response =
-      await fetch(
-        requestUrl,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-            Authorization:
-              `Bearer ${userToken.trim()}`,
-            "X-Client-Type":
-              "user",
-          },
-          body: JSON.stringify({
-            attraction_id:
-              payload.attraction_id,
-            caption:
-              payload.caption.trim(),
-            image_urls:
-              cleanedImageUrls,
-          }),
-        },
-      );
-
-    const responseData =
-      await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        responseData?.message ||
-          responseData?.error ||
-          `Memory submission failed with status ${response.status}.`,
-      );
-    }
-
-    return {
-      data: normalizeMemory(
-        responseData.memory,
-      ),
-      message:
-        responseData.message,
-    };
-  };
-
-// =========================================================
-// UPLOAD MEMORY PHOTOS
-// =========================================================
-
-export const uploadMemoryPhotos =
-  async (
-    files: File[],
-    attractionId: string,
-  ): Promise<{
-    data: {
-      urls: string[];
-    };
-  }> => {
-    if (!attractionId) {
-      throw new Error(
-        "Attraction ID is required.",
-      );
-    }
-
-    if (
-      !Array.isArray(files) ||
-      files.length === 0
-    ) {
-      throw new Error(
-        "At least one image is required.",
-      );
-    }
-
-    if (files.length > 10) {
-      throw new Error(
-        "You can upload a maximum of 10 pictures.",
-      );
-    }
-
-    const formData =
-      new FormData();
-
-    formData.append(
-      "attraction_id",
-      attractionId,
+  if (!userToken || !userToken.trim()) {
+    throw new Error(
+      "User authentication is missing. Please log in again before submitting a memory.",
     );
+  }
 
-    files.forEach(
-      (file) => {
-        formData.append(
-          "photos",
-          file,
-          file.name,
-        );
-      },
+  const response = await fetch(`${SERVER_BASE_URL}/memories`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${userToken.trim()}`,
+      "X-Client-Type": "user",
+    },
+    body: JSON.stringify({
+      attraction_id: payload.attraction_id,
+      caption: payload.caption.trim(),
+      image_urls: cleanedImageUrls,
+    }),
+  });
+
+  const responseData = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      responseData?.message ||
+        responseData?.error ||
+        `Memory submission failed with status ${response.status}.`,
     );
+  }
 
-    const response =
-      await userApi.post<{
-        urls?: string[];
-        message?: string;
-      }>(
-        "/memories/upload",
-        formData,
-      );
+  return {
+    data: normalizeMemory(responseData.memory),
+    message: responseData.message,
+  };
+};
 
-    const urls =
-      Array.isArray(
-        response.data?.urls,
+export const uploadMemoryPhotos = async (
+  files: File[],
+  attractionId: string,
+): Promise<{ data: { urls: string[] } }> => {
+  if (!attractionId) throw new Error("Attraction ID is required.");
+
+  if (!Array.isArray(files) || files.length === 0) {
+    throw new Error("At least one image is required.");
+  }
+
+  if (files.length > 10) {
+    throw new Error("You can upload a maximum of 10 pictures.");
+  }
+
+  const formData = new FormData();
+
+  formData.append("attraction_id", attractionId);
+
+  files.forEach((file) => {
+    formData.append("photos", file, file.name);
+  });
+
+  const response = await userApi.post<{ urls?: string[]; message?: string }>(
+    "/memories/upload",
+    formData,
+  );
+
+  const urls = Array.isArray(response.data?.urls)
+    ? response.data.urls.filter(
+        (url): url is string => typeof url === "string" && url.trim().length > 0,
       )
-        ? response.data.urls.filter(
-            (
-              url,
-            ): url is string =>
-              typeof url ===
-                "string" &&
-              url.trim().length >
-                0,
-          )
-        : [];
+    : [];
 
-    if (
-      urls.length !==
-      files.length
-    ) {
-      throw new Error(
-        `Only ${urls.length} of ${files.length} images were uploaded successfully.`,
-      );
-    }
+  if (urls.length !== files.length) {
+    throw new Error(
+      `Only ${urls.length} of ${files.length} images were uploaded successfully.`,
+    );
+  }
 
-    return {
-      data: {
-        urls,
-      },
-    };
-  };
+  return { data: { urls } };
+};
 
-// =========================================================
-// DELETE MEMORY
-// =========================================================
+export const deleteMyMemory = async (
+  memoryId: string,
+): Promise<{ message?: string }> => {
+  if (!memoryId) throw new Error("Memory ID is required.");
 
-export const deleteMyMemory =
-  async (
-    memoryId: string,
-  ): Promise<{
-    message?: string;
-  }> => {
-    if (!memoryId) {
-      throw new Error(
-        "Memory ID is required.",
-      );
-    }
+  const response = await userApi.delete(
+    `/memories/${encodeURIComponent(memoryId)}`,
+  );
 
-    const response =
-      await userApi.delete(
-        `/memories/${encodeURIComponent(
-          memoryId,
-        )}`,
-      );
-
-    return {
-      message:
-        response.data?.message,
-    };
-  };
+  return { message: response.data?.message };
+};
 
 // =========================================================
 // FEATURED VIDEOS
@@ -2168,128 +1141,60 @@ export interface FeaturedVideo {
   updated_at: string;
 }
 
-export const getFeaturedVideos =
-  async (): Promise<{
-    data: FeaturedVideo[];
-  }> => {
-    /*
-     * Featured Videos intentionally bypass the generic
-     * 10-minute web cache because this is admin-managed
-     * content and must immediately reflect uploads/deletions.
-     */
-    const response =
-      await api.get<{
-        data?: FeaturedVideo[];
-      }>("/featured-videos");
+export const getFeaturedVideos = async (): Promise<{
+  data: FeaturedVideo[];
+}> => {
+  // Bypasses the generic 10-minute web cache (see interceptors).
+  const response = await api.get<{ data?: FeaturedVideo[] }>(
+    "/featured-videos",
+  );
 
-    return {
-      data: Array.isArray(
-        response.data?.data,
-      )
-        ? response.data.data
-        : [],
-    };
+  return {
+    data: Array.isArray(response.data?.data) ? response.data.data : [],
   };
+};
 
-export const uploadFeaturedVideo =
-  async (
-    file: File,
-    title: string,
-    description?: string,
-  ): Promise<{
-    data: FeaturedVideo;
-    message?: string;
-  }> => {
-    if (!file) {
-      throw new Error(
-        "Featured video file is required.",
-      );
-    }
+export const uploadFeaturedVideo = async (
+  file: File,
+  title: string,
+  description?: string,
+): Promise<{ data: FeaturedVideo; message?: string }> => {
+  if (!file) throw new Error("Featured video file is required.");
 
-    if (!title.trim()) {
-      throw new Error(
-        "Featured video title is required.",
-      );
-    }
+  if (!title.trim()) throw new Error("Featured video title is required.");
 
-    const formData =
-      new FormData();
+  const formData = new FormData();
 
-    formData.append(
-      "video",
-      file,
-      file.name,
-    );
+  formData.append("video", file, file.name);
+  formData.append("title", title.trim());
 
-    formData.append(
-      "title",
-      title.trim(),
-    );
+  if (description && description.trim()) {
+    formData.append("description", description.trim());
+  }
 
-    if (
-      description &&
-      description.trim()
-    ) {
-      formData.append(
-        "description",
-        description.trim(),
-      );
-    }
+  const response = await api.post<{ data: FeaturedVideo; message?: string }>(
+    "/featured-videos",
+    formData,
+  );
 
-    const response =
-      await api.post<{
-        data: FeaturedVideo;
-        message?: string;
-      }>(
-        "/featured-videos",
-        formData,
-      );
+  clearCache("/featured-videos");
 
-    /*
-     * Remove any old Featured Videos cache entries
-     * just in case one exists from an older deployment.
-     */
-    clearCache("/featured-videos");
+  return { data: response.data.data, message: response.data.message };
+};
 
-    return {
-      data: response.data.data,
-      message:
-        response.data.message,
-    };
-  };
+export const deleteFeaturedVideo = async (
+  id: string,
+): Promise<{ message?: string }> => {
+  if (!id) throw new Error("Featured video ID is required.");
 
-export const deleteFeaturedVideo =
-  async (
-    id: string,
-  ): Promise<{
-    message?: string;
-  }> => {
-    if (!id) {
-      throw new Error(
-        "Featured video ID is required.",
-      );
-    }
+  const response = await api.delete<{ message?: string }>(
+    `/featured-videos/${encodeURIComponent(id)}`,
+  );
 
-    const response =
-      await api.delete<{
-        message?: string;
-      }>(
-        `/featured-videos/${encodeURIComponent(
-          id,
-        )}`,
-      );
+  clearCache("/featured-videos");
 
-    /*
-     * Remove any old Featured Videos cache entries
-     * after deletion as well.
-     */
-    clearCache("/featured-videos");
-
-    return {
-      message:
-        response.data?.message,
-    };
-  };
+  return { message: response.data?.message };
+};
 
 // =========================================================
 // DEFAULT EXPORT
