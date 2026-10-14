@@ -1703,27 +1703,29 @@ const AppHeader: React.FC<AppHeaderProps> = ({
      SEARCH
   ========================================================= */
 
-  const handleSearch = (event: React.FormEvent) => {
-    event.preventDefault();
+  
+const handleSearch = (event: React.FormEvent) => {
+  event.preventDefault();
 
-    const query = search.trim();
+  const query = search.trim();
 
-    if (!query) {
-      return;
-    }
+  if (!query) {
+    return;
+  }
 
-    if (onSearch) {
-      onSearch(query);
-    }
+  if (onSearch) {
+    onSearch(query);
+    return;
+  }
 
-    const separator = searchPath.includes("?") ? "&" : "?";
+  const targetPath = searchPath || "/destinations";
+  const separator = targetPath.includes("?") ? "&" : "?";
 
-    history.replace(
-      `${searchPath}${separator}search=${encodeURIComponent(query)}`,
-    );
+  history.push(
+    `${targetPath}${separator}search=${encodeURIComponent(query)}`,
+  );
+};
 
-    setSearch("");
-  };
 
 
   /* =========================================================
