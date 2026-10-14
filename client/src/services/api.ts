@@ -635,11 +635,129 @@ export const deleteAccommodation = (id: string) => {
   return api.delete(`/accommodations/${encodeURIComponent(id)}`);
 };
 
+
+/* =========================================================
+   RESTAURANTS
+========================================================= */
+
+export interface Restaurant {
+  id: string;
+  name: string;
+  description?: string | null;
+  short_description?: string | null;
+  images: string[];
+  location_address?: string | null;
+  contact_phone?: string | null;
+  contact_website?: string | null;
+  opening_hours?: string | null;
+  cuisine_type?: string | null;
+  price_range?: string | null;
+  featured: boolean;
+  favorites: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const getRestaurants = async (params?: {
+  search?: string;
+  cuisine_type?: string;
+  featured?: boolean;
+}) => {
+  let query = supabase
+    .from("restaurants")
+    .select("*")
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
+
+  if (params?.search?.trim()) {
+    const term = params.search.trim();
+
+    query = query.or(
+      `name.ilike.%${term}%,description.ilike.%${term}%,location_address.ilike.%${term}%,cuisine_type.ilike.%${term}%`
+    );
+  }
+
+  if (params?.cuisine_type && params.cuisine_type !== "All") {
+    query = query.eq("cuisine_type", params.cuisine_type);
+  }
+
+  if (params?.featured !== undefined) {
+    query = query.eq("featured", params.featured);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("Supabase getRestaurants error:", error);
+    throw error;
+  }
+
+  return {
+    data: Array.isArray(data) ? (data as Restaurant[]) : [],
+  };
+};
+
+export const getRestaurant = async (id: string) => {
+  if (!id) {
+    throw new Error("Restaurant ID is required.");
+  }
+
+  const { data, error } = await supabase
+    .from("restaurants")
+    .select("*")
+    .eq("id", id)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Supabase getRestaurant error:", error);
+    throw error;
+  }
+
+  return {
+    data: data as Restaurant | null,
+  };
+};
+
+/*
+ * Restaurant writes use the existing Render backend.
+ * The existing api interceptor attaches the admin token.
+ */
+export const createRestaurant = (data: Partial<Restaurant>) =>
+  api.post("/restaurants", data);
+
+export const updateRestaurant = (
+  id: string,
+  data: Partial<Restaurant>
+) => {
+  if (!id) {
+    throw new Error("Restaurant ID is required.");
+  }
+
+  return api.put(`/restaurants/${encodeURIComponent(id)}`, data);
+};
+
+export const deleteRestaurant = (id: string) => {
+  if (!id) {
+    throw new Error("Restaurant ID is required.");
+  }
+
+  return api.delete(`/restaurants/${encodeURIComponent(id)}`);
+};
+
+
 // =========================================================
 // FAVORITES
 // =========================================================
 
-export type FavoriteItemType = "attraction" | "accommodation" | "event";
+
+export type FavoriteItemType =
+  | "attraction"
+  | "accommodation"
+  | "restaurant"
+  | "event";
+
 
 export interface FavoriteRecord {
   id: string;
