@@ -41,6 +41,7 @@ import VerifyEmail from "./components/VerifyEmail";
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminAttractions from "./pages/admin/AdminAttractions";
+import AdminRestaurants from "./pages/admin/AdminRestaurants";
 import AdminGettingThere from "./pages/admin/AdminGettingThere";
 import AdminEvents from "./pages/admin/AdminEvents";
 import AdminAccommodations from "./pages/admin/AdminAccommodations";
@@ -253,6 +254,18 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             )}
           />
+
+          
+<Route
+  exact
+  path="/admin/restaurants"
+  render={() => (
+    <ProtectedRoute>
+      <AdminRestaurants />
+    </ProtectedRoute>
+  )}
+/>
+
 
           <Route
             exact
