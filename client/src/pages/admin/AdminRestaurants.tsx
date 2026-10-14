@@ -548,10 +548,16 @@ const AdminRestaurants: React.FC = () => {
                     type="file"
                     accept="image/*"
                     multiple
-                    onChange={(event) => {
-                      const files = Array.from(event.target.files || []);
-                      setSelectedFiles(files);
-                    }}
+                    
+onChange={(event) => {
+  const input = event.target as HTMLInputElement;
+  const files = input.files;
+
+  if (files) {
+    setSelectedFiles(Array.from(files));
+  }
+}}
+
                   />
                   <Form.Text className="text-muted">
                     Existing images are kept unless removed below. Newly
