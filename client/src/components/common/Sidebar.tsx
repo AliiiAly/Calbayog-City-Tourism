@@ -350,6 +350,16 @@ const adminSections: SidebarSection[] = [
         label: "Attractions",
         description: "Manage tourist attractions",
       },
+
+      
+{
+  to: "/admin/restaurants",
+  icon: "hotel",
+  label: "Restaurants",
+  description: "Manage restaurants and dining",
+},
+
+
       {
         to: "/admin/events",
         icon: "event",
