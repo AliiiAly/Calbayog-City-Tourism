@@ -25,6 +25,7 @@ import AppHeader from "./components/common/AppHeader";
 import Welcome from "./pages/Welcome";
 import Attractions from "./pages/Attractions";
 import AttractionDetail from "./pages/AttractionDetail";
+import Restaurants from "./pages/Restaurants";
 import GettingThere from "./pages/GettingThere";
 import Accommodations from "./pages/Accommodations";
 import AccommodationDetail from "./pages/AccommodationDetail";
@@ -387,6 +388,20 @@ const AppContent: React.FC = () => {
               }
             />
           )}
+
+          
+{/* RESTAURANTS — PUBLIC */}
+
+{!IS_ADMIN_BUILD && (
+  <Route
+    exact
+    path="/restaurants"
+    render={() =>
+      renderPublicPage(<Restaurants />)
+    }
+  />
+)}
+
 
           {/* ATTRACTION DETAILS — PUBLIC */}
 
