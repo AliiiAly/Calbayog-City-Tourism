@@ -1,4 +1,3 @@
-```tsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -2954,4 +2953,4 @@ const AdminRestaurants: React.FC = () => {
 };
 
 export default AdminRestaurants;
-```
+
