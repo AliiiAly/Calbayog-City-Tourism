@@ -11,8 +11,6 @@ import {
 import { useLocation } from "react-router-dom";
 
 import {
-  ArrowLeft,
-  ArrowRight,
   CalendarDays,
   MapPin,
   Star,
@@ -688,279 +686,6 @@ const styles = `
 `;
 
 /* =========================================================
-   CALENDAR
-========================================================= */
-
-const Calendar: React.FC<{
-  events: Event[];
-  selectedDate: Date | null;
-  onSelectDate: (date: Date | null) => void;
-}> = ({
-  events,
-  selectedDate,
-  onSelectDate,
-}) => {
-  const [currentMonth, setCurrentMonth] =
-    useState(new Date());
-
-  const getDaysInMonth = (date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-
-    const firstDay =
-      new Date(year, month, 1).getDay();
-
-    const daysInMonth =
-      new Date(
-        year,
-        month + 1,
-        0,
-      ).getDate();
-
-    return {
-      firstDay,
-      daysInMonth,
-    };
-  };
-
-  const countEventsOnDate = (
-    day: number,
-  ) => {
-    return events.filter((event) => {
-      if (!event.startDate) {
-        return false;
-      }
-
-      const start = new Date(
-        event.startDate,
-      );
-
-      return (
-        !Number.isNaN(start.getTime()) &&
-        start.getDate() === day &&
-        start.getMonth() ===
-          currentMonth.getMonth() &&
-        start.getFullYear() ===
-          currentMonth.getFullYear()
-      );
-    }).length;
-  };
-
-  const isSelectedDate = (
-    day: number,
-  ) => {
-    if (!selectedDate) {
-      return false;
-    }
-
-    return (
-      selectedDate.toDateString() ===
-      new Date(
-        currentMonth.getFullYear(),
-        currentMonth.getMonth(),
-        day,
-      ).toDateString()
-    );
-  };
-
-  const isToday = (day: number) => {
-    const today = new Date();
-
-    return (
-      day === today.getDate() &&
-      currentMonth.getMonth() ===
-        today.getMonth() &&
-      currentMonth.getFullYear() ===
-        today.getFullYear()
-    );
-  };
-
-  const {
-    firstDay,
-    daysInMonth,
-  } = getDaysInMonth(currentMonth);
-
-  const weekdays = [
-    "Sun",
-    "Mon",
-    "Tue",
-    "Wed",
-    "Thu",
-    "Fri",
-    "Sat",
-  ];
-
-  const goToPreviousMonth = () => {
-    setCurrentMonth(
-      new Date(
-        currentMonth.getFullYear(),
-        currentMonth.getMonth() - 1,
-        1,
-      ),
-    );
-  };
-
-  const goToNextMonth = () => {
-    setCurrentMonth(
-      new Date(
-        currentMonth.getFullYear(),
-        currentMonth.getMonth() + 1,
-        1,
-      ),
-    );
-  };
-
-  return (
-    <div className="events-calendar">
-      <div className="events-calendar-header">
-        <button
-          type="button"
-          className="events-calendar-nav"
-          onClick={goToPreviousMonth}
-          aria-label="Previous month"
-        >
-          <ArrowLeft
-            size={14}
-            strokeWidth={2.2}
-          />
-        </button>
-
-        <div className="events-calendar-month">
-          {currentMonth.toLocaleDateString(
-            "en-US",
-            {
-              month: "long",
-              year: "numeric",
-            },
-          )}
-        </div>
-
-        <button
-          type="button"
-          className="events-calendar-nav"
-          onClick={goToNextMonth}
-          aria-label="Next month"
-        >
-          <ArrowRight
-            size={14}
-            strokeWidth={2.2}
-          />
-        </button>
-      </div>
-
-      <div className="events-calendar-weekdays">
-        {weekdays.map((day) => (
-          <div
-            key={day}
-            className="events-calendar-weekday"
-          >
-            {day}
-          </div>
-        ))}
-      </div>
-
-      <div className="events-calendar-grid">
-        {Array.from({
-          length: firstDay,
-        }).map((_, index) => (
-          <div
-            key={`empty-${index}`}
-            className="events-calendar-day-empty"
-          />
-        ))}
-
-        {Array.from({
-          length: daysInMonth,
-        }).map((_, index) => {
-          const day = index + 1;
-
-          const eventCount =
-            countEventsOnDate(day);
-
-          const selected =
-            isSelectedDate(day);
-
-          const today =
-            isToday(day);
-
-          const dotCount = Math.min(
-            eventCount,
-            3,
-          );
-
-          return (
-            <button
-              key={day}
-              type="button"
-              className={[
-                "events-calendar-day",
-                today
-                  ? "events-calendar-day-today"
-                  : "",
-                selected
-                  ? "events-calendar-day-selected"
-                  : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              onClick={() => {
-                const newDate =
-                  new Date(
-                    currentMonth.getFullYear(),
-                    currentMonth.getMonth(),
-                    day,
-                  );
-
-                onSelectDate(
-                  selectedDate &&
-                    selectedDate.toDateString() ===
-                      newDate.toDateString()
-                    ? null
-                    : newDate,
-                );
-              }}
-            >
-              {day}
-
-              {dotCount > 0 && (
-                <div className="events-calendar-dots">
-                  {Array.from({
-                    length: dotCount,
-                  }).map(
-                    (_, dotIndex) => (
-                      <span
-                        key={dotIndex}
-                        className="events-calendar-dot"
-                      />
-                    ),
-                  )}
-                </div>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-/* =========================================================
-   CATEGORIES
-========================================================= */
-
-const CATEGORIES = [
-  "All",
-  "Festival",
-  "Cultural",
-  "Sports",
-  "Religious",
-  "Food",
-  "Music",
-  "Arts",
-  "Other",
-];
-
-/* =========================================================
    CATEGORY COLORS
 ========================================================= */
 
@@ -1003,27 +728,9 @@ const Events: React.FC = () => {
 
   const [events, setEvents] = useState<Event[]>([]);
 
-  const [
-    calendarEvents,
-    setCalendarEvents,
-  ] = useState<Event[]>([]);
 
   const [loading, setLoading] = useState(true);
 
-  const [
-    activeCategory,
-    setActiveCategory,
-  ] = useState("All");
-
-  const [
-    upcomingOnly,
-    setUpcomingOnly,
-  ] = useState(false);
-
-  const [
-    selectedDate,
-    setSelectedDate,
-  ] = useState<Date | null>(null);
 
   const [
     selected,
@@ -1040,42 +747,13 @@ const Events: React.FC = () => {
     setLoading(true);
 
     try {
-      const params: Record<string, string> = {};
-
-      if (activeCategory !== "All") {
-        params.category = activeCategory;
-      }
-
-      if (upcomingOnly) {
-        params.upcoming = "true";
-      }
-
-      const response = await getEvents(params);
+      const response = await getEvents({});
 
       const fetched: Event[] = Array.isArray(response?.data)
         ? response.data
         : [];
 
-      let filtered = fetched;
-
-      if (selectedDate) {
-        filtered = fetched.filter((event) => {
-          if (!event.startDate) {
-            return false;
-          }
-
-          const start = new Date(event.startDate);
-
-          return (
-            !Number.isNaN(start.getTime()) &&
-            start.getDate() === selectedDate.getDate() &&
-            start.getMonth() === selectedDate.getMonth() &&
-            start.getFullYear() === selectedDate.getFullYear()
-          );
-        });
-      }
-
-      setEvents(filtered);
+      setEvents(fetched);
 
       /* =====================================================
          AUTO OPEN EVENT
@@ -1104,33 +782,11 @@ const Events: React.FC = () => {
   };
 
   /* =========================================================
-     INITIAL / FILTER LOAD
+     INITIAL LOAD
   ========================================================= */
 
   useEffect(() => {
     fetchEvents();
-  }, [
-    activeCategory,
-    upcomingOnly,
-    selectedDate,
-  ]);
-
-  /* =========================================================
-     CALENDAR EVENTS
-  ========================================================= */
-
-  useEffect(() => {
-    getEvents({})
-      .then((response) => {
-        setCalendarEvents(
-          Array.isArray(response?.data)
-            ? response.data
-            : [],
-        );
-      })
-      .catch(() => {
-        setCalendarEvents([]);
-      });
   }, []);
 
   /* =========================================================
@@ -1140,26 +796,12 @@ const Events: React.FC = () => {
   useEffect(() => {
     subscribeToEvents(() => {
       fetchEvents();
-
-      getEvents({})
-        .then((response) => {
-          setCalendarEvents(
-            Array.isArray(response?.data)
-              ? response.data
-              : [],
-          );
-        })
-        .catch(() => {});
     });
 
     return () => {
       unsubscribeAll();
     };
-  }, [
-    activeCategory,
-    upcomingOnly,
-    selectedDate,
-  ]);
+  }, []);
 
   /* =========================================================
      HELPERS
@@ -1216,11 +858,6 @@ const Events: React.FC = () => {
     );
   };
 
-  const clearFilters = () => {
-    setActiveCategory("All");
-    setUpcomingOnly(false);
-    setSelectedDate(null);
-  };
 
   const selectedColor = selected
     ? getCategoryColor(selected.category)
@@ -1286,155 +923,6 @@ const Events: React.FC = () => {
         <Container className="events-container">
 
           {/* =================================================
-              CATEGORY PILLS
-          ================================================= */}
-
-          <div className="events-category-pills">
-            {CATEGORIES.map((category) => {
-              const isActive =
-                activeCategory === category;
-
-              const color =
-                category === "All"
-                  ? "#1A7A4A"
-                  : getCategoryColor(category);
-
-              return (
-                <button
-                  key={category}
-                  type="button"
-                  className={[
-                    "events-category-pill",
-                    isActive
-                      ? "events-category-pill-active"
-                      : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  style={
-                    {
-                      "--pill-color": color,
-                      "--pill-background": `${color}15`,
-                    } as React.CSSProperties
-                  }
-                  onClick={() => {
-                    setActiveCategory(category);
-                    setSelectedDate(null);
-                  }}
-                >
-                  <span>
-                    {getCategoryIcon(category)}
-                  </span>
-
-                  <span>{category}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* =================================================
-              EVENT FILTER
-          ================================================= */}
-
-          <section className="events-filter-section">
-
-            <div className="events-filter-label">
-              EVENT FILTERS
-            </div>
-
-            <div className="events-filter-pills">
-
-              <button
-                type="button"
-                className={[
-                  "events-filter-pill",
-                  upcomingOnly
-                    ? "events-filter-pill-active"
-                    : "",
-                ].join(" ")}
-                style={
-                  {
-                    "--filter-color": "#D99A1A",
-                    "--filter-background": "#FFF7E7",
-                  } as React.CSSProperties
-                }
-                onClick={() => {
-                  setUpcomingOnly(
-                    (current) => !current,
-                  );
-
-                  if (upcomingOnly) {
-                    setSelectedDate(null);
-                  }
-                }}
-              >
-                <CalendarDays
-                  size={14}
-                  strokeWidth={2.2}
-                />
-
-                Upcoming Events
-              </button>
-
-              {selectedDate && (
-                <button
-                  type="button"
-                  className="events-filter-pill events-filter-pill-active"
-                  style={
-                    {
-                      "--filter-color": "#1A7A4A",
-                      "--filter-background": "#EEF8F2",
-                    } as React.CSSProperties
-                  }
-                  onClick={() =>
-                    setSelectedDate(null)
-                  }
-                >
-                  <CalendarDays
-                    size={14}
-                    strokeWidth={2.2}
-                  />
-
-                  {selectedDate.toLocaleDateString(
-                    "en-PH",
-                    {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    },
-                  )}
-                </button>
-              )}
-
-              {(activeCategory !== "All" ||
-                upcomingOnly ||
-                selectedDate) && (
-                <button
-                  type="button"
-                  className="events-filter-pill"
-                  onClick={clearFilters}
-                >
-                  Clear filters
-                </button>
-              )}
-            </div>
-          </section>
-
-          {/* =================================================
-              CALENDAR
-          ================================================= */}
-
-          {upcomingOnly && (
-            <div className="events-calendar-wrapper">
-              <Calendar
-                events={calendarEvents}
-                selectedDate={selectedDate}
-                onSelectDate={setSelectedDate}
-              />
-            </div>
-          )}
-
-          {/* =================================================
               RESULTS BAR
           ================================================= */}
 
@@ -1466,35 +954,7 @@ const Events: React.FC = () => {
 
               <div className="events-results-right">
 
-                <span className="events-results-category">
-                  {selectedDate
-                    ? selectedDate.toLocaleDateString(
-                        "en-PH",
-                        {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        },
-                      )
-                    : upcomingOnly
-                      ? "Upcoming events"
-                      : activeCategory === "All"
-                        ? "All events"
-                        : activeCategory}
-                </span>
-
-                {(activeCategory !== "All" ||
-                  upcomingOnly ||
-                  selectedDate) && (
-                  <Button
-                    variant="outline-secondary"
-                    size="sm"
-                    className="events-clear-button"
-                    onClick={clearFilters}
-                  >
-                    Clear
-                  </Button>
-                )}
+                <span className="events-results-category">All events</span>
               </div>
             </div>
           )}
@@ -1540,31 +1000,13 @@ const Events: React.FC = () => {
               </div>
 
               <h3 className="events-empty-title">
-                {selectedDate
-                  ? "No events on this date"
-                  : "No events found"}
+                No events found
               </h3>
 
               <p className="events-empty-text">
-                {selectedDate
-                  ? "Try selecting another date or explore all upcoming events."
-                  : "There are currently no events matching your selected filters."}
+                There are currently no events to display. Please check back later.
               </p>
 
-              <Button
-                variant="outline-success"
-                onClick={clearFilters}
-                style={{
-                  borderRadius: 999,
-                  padding: "7px 14px",
-                  fontFamily:
-                    "Nunito, sans-serif",
-                  fontSize: "0.7rem",
-                  fontWeight: 800,
-                }}
-              >
-                View all events
-              </Button>
             </div>
 
           ) : (
