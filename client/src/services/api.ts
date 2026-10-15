@@ -640,6 +640,7 @@ export const deleteAccommodation = (id: string) => {
    RESTAURANTS
 ========================================================= */
 
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -647,6 +648,11 @@ export interface Restaurant {
   short_description?: string | null;
   images: string[];
   location_address?: string | null;
+
+  // Saved map coordinates
+  location_lat?: number | null;
+  location_lng?: number | null;
+
   contact_phone?: string | null;
   contact_website?: string | null;
   opening_hours?: string | null;
@@ -658,6 +664,7 @@ export interface Restaurant {
   created_at: string;
   updated_at: string;
 }
+
 
 export const getRestaurants = async (params?: {
   search?: string;
