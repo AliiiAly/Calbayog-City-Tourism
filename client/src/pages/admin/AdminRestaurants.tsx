@@ -87,7 +87,11 @@ const PAGE_STYLES = `
   font-family: "Nunito", "Poppins", "Segoe UI", sans-serif;
   padding-bottom: 48px;
 }
-.admin-restaurants-page * { box-sizing: border-box; }
+
+.admin-restaurants-page * {
+  box-sizing: border-box;
+}
+
 .admin-restaurants-page .restaurant-eyebrow {
   color: var(--restaurant-primary);
   font-size: .66rem;
@@ -96,6 +100,7 @@ const PAGE_STYLES = `
   text-transform: uppercase;
   margin-bottom: 6px;
 }
+
 .admin-restaurants-page .restaurant-page-title {
   margin: 0;
   color: var(--restaurant-primary);
@@ -104,12 +109,14 @@ const PAGE_STYLES = `
   line-height: 1.1;
   font-weight: 800;
 }
+
 .admin-restaurants-page .restaurant-subtitle {
   margin-top: 8px;
   color: var(--restaurant-muted);
   font-size: .78rem;
   line-height: 1.6;
 }
+
 .admin-restaurants-page .restaurant-add-button {
   min-height: 45px;
   border: 0;
@@ -121,11 +128,13 @@ const PAGE_STYLES = `
   font-size: .75rem;
   box-shadow: 0 10px 24px rgba(45,49,149,.19);
 }
+
 .admin-restaurants-page .restaurant-add-button:hover {
   background: var(--restaurant-primary-dark);
   color: white;
   transform: translateY(-1px);
 }
+
 .admin-restaurants-page .restaurant-stat-card,
 .admin-restaurants-page .restaurant-toolbar,
 .admin-restaurants-page .restaurant-card {
@@ -134,6 +143,7 @@ const PAGE_STYLES = `
   background: white;
   box-shadow: 0 7px 24px rgba(26,30,53,.055);
 }
+
 .admin-restaurants-page .restaurant-stat-card {
   height: 100%;
   min-height: 115px;
@@ -141,6 +151,7 @@ const PAGE_STYLES = `
   position: relative;
   overflow: hidden;
 }
+
 .admin-restaurants-page .restaurant-stat-card::before {
   content: "";
   position: absolute;
@@ -148,6 +159,7 @@ const PAGE_STYLES = `
   width: 4px;
   background: var(--restaurant-primary);
 }
+
 .admin-restaurants-page .restaurant-stat-label {
   color: var(--restaurant-muted);
   font-size: .65rem;
@@ -155,6 +167,7 @@ const PAGE_STYLES = `
   text-transform: uppercase;
   letter-spacing: .04em;
 }
+
 .admin-restaurants-page .restaurant-stat-number {
   margin-top: 10px;
   font-family: "Poppins", sans-serif;
@@ -162,17 +175,21 @@ const PAGE_STYLES = `
   line-height: 1;
   font-weight: 800;
 }
+
 .admin-restaurants-page .restaurant-stat-caption {
   margin-top: 7px;
   color: var(--restaurant-muted);
   font-size: .63rem;
 }
+
 .admin-restaurants-page .restaurant-toolbar {
   overflow: visible;
 }
+
 .admin-restaurants-page .restaurant-toolbar .card-body {
   padding: 19px;
 }
+
 .admin-restaurants-page .restaurant-section-heading {
   display: flex;
   align-items: center;
@@ -181,6 +198,7 @@ const PAGE_STYLES = `
   font-size: .85rem;
   font-weight: 900;
 }
+
 .admin-restaurants-page .restaurant-section-icon {
   width: 36px;
   height: 36px;
@@ -192,6 +210,7 @@ const PAGE_STYLES = `
   background: #EEF0FF;
   color: var(--restaurant-primary);
 }
+
 .admin-restaurants-page .form-control,
 .admin-restaurants-page .form-select {
   border-color: #E1E4EC;
@@ -200,29 +219,35 @@ const PAGE_STYLES = `
   min-height: 42px;
   box-shadow: none;
 }
+
 .admin-restaurants-page .form-control:focus,
 .admin-restaurants-page .form-select:focus {
   border-color: rgba(45,49,149,.55);
   box-shadow: 0 0 0 3px rgba(45,49,149,.08);
 }
+
 .admin-restaurants-page .restaurant-search-group .input-group-text {
   border-color: #E1E4EC;
   border-radius: 11px 0 0 11px;
   background: #F4F5FB;
   color: var(--restaurant-primary);
 }
+
 .admin-restaurants-page .restaurant-search-group .form-control {
   border-radius: 0 11px 11px 0;
 }
+
 .admin-restaurants-page .restaurant-card {
   height: 100%;
   overflow: hidden;
   transition: transform .23s ease, box-shadow .23s ease;
 }
+
 .admin-restaurants-page .restaurant-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 17px 38px rgba(26,30,53,.12);
 }
+
 .admin-restaurants-page .restaurant-image-shell {
   height: 195px;
   position: relative;
@@ -232,6 +257,7 @@ const PAGE_STYLES = `
   overflow: hidden;
   background: #EEF0FF;
 }
+
 .admin-restaurants-page .restaurant-image {
   display: block;
   width: 100%;
@@ -239,14 +265,17 @@ const PAGE_STYLES = `
   object-fit: cover;
   transition: transform .5s ease;
 }
+
 .admin-restaurants-page .restaurant-card:hover .restaurant-image {
   transform: scale(1.04);
 }
+
 .admin-restaurants-page .restaurant-card .card-body {
   padding: 16px;
   display: flex;
   flex-direction: column;
 }
+
 .admin-restaurants-page .restaurant-card-name {
   font-family: "Poppins", sans-serif;
   font-size: .92rem;
@@ -254,6 +283,7 @@ const PAGE_STYLES = `
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
+
 .admin-restaurants-page .restaurant-card-description {
   color: var(--restaurant-muted);
   font-size: .7rem;
@@ -264,6 +294,7 @@ const PAGE_STYLES = `
   overflow: hidden;
   min-height: 52px;
 }
+
 .admin-restaurants-page .restaurant-card-location {
   display: flex;
   gap: 6px;
@@ -273,6 +304,7 @@ const PAGE_STYLES = `
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
+
 .admin-restaurants-page .restaurant-card-actions {
   display: flex;
   gap: 8px;
@@ -280,57 +312,106 @@ const PAGE_STYLES = `
   margin-top: auto;
   border-top: 1px solid #EEF0F4;
 }
+
 .admin-restaurants-page .restaurant-card-actions .btn {
   min-height: 36px;
   border-radius: 10px;
   font-size: .68rem;
   font-weight: 900;
 }
+
 .admin-restaurants-page .restaurant-card-actions .btn-outline-primary {
   color: var(--restaurant-primary);
   border-color: rgba(45,49,149,.25);
   background: #F8F8FF;
 }
+
 .admin-restaurants-page .restaurant-card-actions .btn-outline-primary:hover {
   color: white;
   background: var(--restaurant-primary);
 }
+
 .admin-restaurants-page .restaurant-pill {
   border-radius: 999px;
   padding: 5px 9px;
   font-size: .58rem;
   font-weight: 900;
 }
-.admin-restaurants-page .modal-content {
+
+/* =====================================================
+   ADD / EDIT MODAL
+   The dialog stays within the viewport.
+   The body scrolls; header and footer remain visible.
+===================================================== */
+
+.admin-restaurants-page .modal-dialog {
+  width: auto;
+  max-width: min(1140px, calc(100vw - 32px));
+}
+
+.admin-restaurants-page .modal-dialog.modal-dialog-scrollable {
+  height: calc(100% - 2rem);
+  max-height: calc(100% - 2rem);
+}
+
+.admin-restaurants-page .modal-dialog-scrollable .modal-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
   overflow: hidden;
   border: 1px solid var(--restaurant-border);
   border-radius: 21px;
   box-shadow: 0 24px 70px rgba(18,20,36,.17);
 }
+
+.admin-restaurants-page .restaurant-modal-form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .admin-restaurants-page .restaurant-modal-header {
+  flex: 0 0 auto;
   background: linear-gradient(135deg, #2D3195 0%, #242879 100%);
   color: white;
   padding: 18px 21px;
 }
+
 .admin-restaurants-page .restaurant-modal-header .modal-title {
   color: white;
   font-family: "Poppins", sans-serif;
   font-size: 1rem;
   font-weight: 800;
 }
+
 .admin-restaurants-page .restaurant-modal-header .btn-close {
   filter: invert(1);
 }
+
 .admin-restaurants-page .restaurant-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   background: #FBFBFD;
   padding: 22px;
 }
+
 .admin-restaurants-page .restaurant-modal-body .form-label {
   color: #4E5564;
   font-size: .68rem;
   font-weight: 900;
   margin-bottom: 6px;
 }
+
 .admin-restaurants-page .restaurant-modal-body .form-control,
 .admin-restaurants-page .restaurant-modal-body .form-select {
   min-height: 42px;
@@ -339,10 +420,12 @@ const PAGE_STYLES = `
   background: white;
   font-size: .72rem;
 }
+
 .admin-restaurants-page .restaurant-modal-body textarea.form-control {
   min-height: 95px;
   resize: vertical;
 }
+
 .admin-restaurants-page .restaurant-form-section {
   display: flex;
   align-items: center;
@@ -355,24 +438,44 @@ const PAGE_STYLES = `
   font-size: .78rem;
   font-weight: 900;
 }
+
 .admin-restaurants-page .restaurant-modal-footer {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  position: relative;
+  z-index: 2;
   border-top: 1px solid #EEF0F4;
   padding: 13px 21px;
   background: white;
 }
+
 .admin-restaurants-page .restaurant-modal-footer .btn {
   min-height: 39px;
   border-radius: 10px;
   font-size: .7rem;
   font-weight: 900;
 }
+
 .admin-restaurants-page .restaurant-save-button {
   border: 0;
   background: var(--restaurant-primary);
+  color: white;
 }
+
 .admin-restaurants-page .restaurant-save-button:hover {
   background: var(--restaurant-primary-dark);
+  color: white;
 }
+
+.admin-restaurants-page .restaurant-save-button:disabled {
+  background: #7378B5;
+  color: white;
+  opacity: .8;
+}
+
 .admin-restaurants-page .restaurant-existing-image {
   width: 108px;
   height: 78px;
@@ -380,6 +483,7 @@ const PAGE_STYLES = `
   border-radius: 10px;
   border: 1px solid #E1E4EC;
 }
+
 .admin-restaurants-page .restaurant-map-heading {
   padding: 11px 13px;
   margin-bottom: 10px;
@@ -387,15 +491,19 @@ const PAGE_STYLES = `
   border-radius: 12px;
   background: #F7F8FF;
 }
+
 .admin-restaurants-page .restaurant-map-help {
   margin-top: 4px;
   color: #7A808E;
   font-size: .63rem;
   line-height: 1.5;
 }
+
+/* Dark mode */
 .admin-restaurants-dark {
   color: #F1F3F8;
 }
+
 .admin-restaurants-dark .restaurant-stat-card,
 .admin-restaurants-dark .restaurant-toolbar,
 .admin-restaurants-dark .restaurant-card {
@@ -403,43 +511,82 @@ const PAGE_STYLES = `
   background: #191C2B;
   border-color: #2B3042;
 }
+
 .admin-restaurants-dark .restaurant-card-description,
 .admin-restaurants-dark .restaurant-card-location,
 .admin-restaurants-dark .restaurant-stat-label,
 .admin-restaurants-dark .restaurant-stat-caption {
   color: #A8AFBF;
 }
+
 .admin-restaurants-dark .restaurant-card-actions {
   border-color: #2B3042;
 }
+
 .admin-restaurants-dark .restaurant-modal-body {
   background: #151827;
   color: #F1F3F8;
 }
+
 .admin-restaurants-dark .restaurant-modal-body .form-label {
   color: #D9DCE7;
 }
+
 .admin-restaurants-dark .restaurant-modal-body .form-control,
 .admin-restaurants-dark .restaurant-modal-body .form-select {
   background: #202436;
   border-color: #343A4F;
   color: #F1F3F8;
 }
+
 .admin-restaurants-dark .restaurant-modal-footer {
   background: #191C2B;
   border-color: #2B3042;
 }
+
 .admin-restaurants-dark .restaurant-map-heading {
   background: #202436;
   border-color: #343A4F;
 }
+
 .admin-restaurants-dark .restaurant-map-help {
   color: #A8AFBF;
 }
+
 @media (max-width: 767.98px) {
-  .admin-restaurants-page .restaurant-page-title { font-size: 1.9rem; }
-  .admin-restaurants-page .restaurant-add-button { width: 100%; }
-  .admin-restaurants-page .restaurant-modal-body { padding: 16px; }
+  .admin-restaurants-page .modal-dialog {
+    max-width: calc(100vw - 16px);
+    margin: 8px auto;
+  }
+
+  .admin-restaurants-page .modal-dialog.modal-dialog-scrollable {
+    height: calc(100% - 16px);
+    max-height: calc(100% - 16px);
+  }
+
+  .admin-restaurants-page .restaurant-page-title {
+    font-size: 1.9rem;
+  }
+
+  .admin-restaurants-page .restaurant-add-button {
+    width: 100%;
+  }
+
+  .admin-restaurants-page .restaurant-modal-header {
+    padding: 15px 16px;
+  }
+
+  .admin-restaurants-page .restaurant-modal-body {
+    padding: 16px;
+  }
+
+  .admin-restaurants-page .restaurant-modal-footer {
+    padding: 12px 16px;
+  }
+
+  .admin-restaurants-page .restaurant-modal-footer .btn {
+    flex: 1 1 auto;
+  }
 }
 `;
 
@@ -531,6 +678,7 @@ const AdminRestaurants: React.FC = () => {
   const activeCount = restaurants.filter(
     (restaurant) => restaurant.is_active !== false,
   ).length;
+
   const featuredCount = restaurants.filter(
     (restaurant) => Boolean(restaurant.featured),
   ).length;
@@ -558,6 +706,7 @@ const AdminRestaurants: React.FC = () => {
     };
 
     setEditingId(String(restaurant.id));
+
     setForm({
       name: restaurant.name || "",
       description: restaurant.description || "",
@@ -617,6 +766,7 @@ const AdminRestaurants: React.FC = () => {
 
         try {
           const uploadResult = await uploadMultipleImages(selectedFiles);
+
           uploadedUrls = Array.isArray(uploadResult?.data?.urls)
             ? uploadResult.data.urls
             : [];
@@ -812,12 +962,14 @@ const AdminRestaurants: React.FC = () => {
                   <InputGroup.Text>
                     <Search size={16} />
                   </InputGroup.Text>
+
                   <Form.Control
                     aria-label="Search restaurants"
                     placeholder="Search name, cuisine, or address..."
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                   />
+
                   {search && (
                     <Button
                       type="button"
@@ -928,11 +1080,18 @@ const AdminRestaurants: React.FC = () => {
                           Featured
                         </Badge>
                       )}
+
                       <Badge
                         className="restaurant-pill"
-                        bg={restaurant.is_active !== false ? "success" : "secondary"}
+                        bg={
+                          restaurant.is_active !== false
+                            ? "success"
+                            : "secondary"
+                        }
                       >
-                        {restaurant.is_active !== false ? "Active" : "Inactive"}
+                        {restaurant.is_active !== false
+                          ? "Active"
+                          : "Inactive"}
                       </Badge>
                     </div>
                   </div>
@@ -951,6 +1110,7 @@ const AdminRestaurants: React.FC = () => {
                       >
                         {restaurant.cuisine_type || "Cuisine not specified"}
                       </Badge>
+
                       {restaurant.price_range && (
                         <Badge
                           className="restaurant-pill"
@@ -990,6 +1150,7 @@ const AdminRestaurants: React.FC = () => {
                         <Pencil size={14} className="me-1" />
                         Edit Restaurant
                       </Button>
+
                       <Button
                         variant="outline-danger"
                         aria-label={`Delete ${restaurant.name}`}
@@ -1006,10 +1167,7 @@ const AdminRestaurants: React.FC = () => {
         )}
       </div>
 
-      {/* =====================================================
-          ADD / EDIT RESTAURANT FORM
-          This modal is intentionally included in the component.
-      ====================================================== */}
+      {/* ADD / EDIT RESTAURANT MODAL */}
       <Modal
         show={showModal}
         onHide={closeForm}
@@ -1022,7 +1180,10 @@ const AdminRestaurants: React.FC = () => {
         backdrop={saving ? "static" : true}
         keyboard={!saving}
       >
-        <Form onSubmit={handleSave}>
+        <Form
+          className="restaurant-modal-form"
+          onSubmit={handleSave}
+        >
           <Modal.Header
             closeButton={!saving}
             className="restaurant-modal-header"
@@ -1040,6 +1201,7 @@ const AdminRestaurants: React.FC = () => {
               >
                 {editingId ? <Pencil size={20} /> : <Plus size={22} />}
               </span>
+
               <div>
                 <div
                   style={{
@@ -1052,6 +1214,7 @@ const AdminRestaurants: React.FC = () => {
                 >
                   Restaurant Management
                 </div>
+
                 <Modal.Title>
                   {editingId ? "Edit Restaurant" : "Add Restaurant"}
                 </Modal.Title>
@@ -1171,11 +1334,13 @@ const AdminRestaurants: React.FC = () => {
               <Form.Label className="fw-bold mb-0">
                 Set Restaurant Location
               </Form.Label>
+
               <div className="restaurant-map-help">
                 Search for the restaurant or its address, select a result, and
                 adjust the marker on the map. The selected coordinates are
                 included in the form when saved.
               </div>
+
               {typeof form.location_lat === "number" &&
                 typeof form.location_lng === "number" && (
                   <Badge bg="success" className="mt-2">
@@ -1192,21 +1357,15 @@ const AdminRestaurants: React.FC = () => {
               address={form.location_address}
               category="Other"
               attractionType="Restaurants"
-              searchablePlaces={restaurants.map((restaurant) => {
-                const item = restaurant as Restaurant & {
-                  location_lat?: number | null;
-                  location_lng?: number | null;
-                };
-
-                return {
-                  id: restaurant.id,
-                  name: restaurant.name,
-                  address: restaurant.location_address,
-                };
-              })}
+              searchablePlaces={restaurants.map((restaurant) => ({
+                id: restaurant.id,
+                name: restaurant.name,
+                address: restaurant.location_address,
+              }))}
               onChange={({ latitude, longitude, address }) => {
                 updateField("location_lat", latitude);
                 updateField("location_lng", longitude);
+
                 if (address) {
                   updateField("location_address", address);
                 }
@@ -1471,10 +1630,12 @@ const AdminRestaurants: React.FC = () => {
         <Modal.Header closeButton={!saving}>
           <Modal.Title>Delete Restaurant</Modal.Title>
         </Modal.Header>
+
         <Modal.Body>
           Are you sure you want to delete{" "}
           <strong>{deleteTarget?.name}</strong>? This action cannot be undone.
         </Modal.Body>
+
         <Modal.Footer>
           <Button
             type="button"
@@ -1484,6 +1645,7 @@ const AdminRestaurants: React.FC = () => {
           >
             Cancel
           </Button>
+
           <Button
             type="button"
             variant="danger"
