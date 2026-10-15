@@ -25,6 +25,7 @@ import {
   Building2,
   Camera,
   Globe2,
+  Heart,
   ListChecks,
   Mail,
   MapPin,
@@ -64,6 +65,8 @@ import {
 } from "../services/supabase";
 
 import { Accommodation } from "../types";
+
+import { useFavorites } from "../context/FavoritesContext";
 
 const CALBAYOG_BLUE = "#2D3195";
 const CALBAYOG_BLUE_SOFT = "#EEF0FF";
@@ -611,6 +614,14 @@ const AccommodationDetail: React.FC =
     const history =
       useHistory();
 
+    const {
+      isFavorite,
+      getFavoriteCount,
+      setFavoriteCount,
+      toggleFavorite,
+    } =
+      useFavorites();
+
     const [
       accommodation,
       setAccommodation,
@@ -653,50 +664,95 @@ const AccommodationDetail: React.FC =
     ===================================================== */
 
     useEffect(() => {
-      fetchAccommodation();
-      setShareNotice("");
-    }, [id]);
+      let mounted = true;
 
-    const fetchAccommodation =
-      async () => {
-        setLoading(true);
-        setError(null);
+      const fetchAccommodation =
+        async () => {
+          setLoading(true);
+          setError(null);
 
-        try {
-          const res =
-            await getAccommodation(id);
+          try {
+            const res =
+              await getAccommodation(id);
 
-          const found =
-            (res.data as Accommodation);
+            if (!mounted) {
+              return;
+            }
 
-          if (found) {
-            setAccommodation(
-              found
+            const found =
+              res?.data as Accommodation;
+
+            if (found) {
+              setAccommodation(
+                found
+              );
+
+              setSelectedImage(
+                (found as any)
+                  .images?.[0] ||
+                  null
+              );
+
+              /*
+               * Seed the favorite count from the record so the
+               * heart shows the right number on first load.
+               */
+              const foundId =
+                cleanString(
+                  (found as any)
+                    ?.id ??
+                    (found as any)
+                      ?._id ??
+                    id,
+                );
+
+              if (foundId) {
+                const foundFavoriteCount =
+                  Math.max(
+                    0,
+                    Number(
+                      (found as any)
+                        ?.favorites ??
+                        0,
+                    ) || 0,
+                  );
+
+                setFavoriteCount(
+                  "accommodation",
+                  foundId,
+                  foundFavoriteCount,
+                );
+              }
+            } else {
+              setError(
+                "Accommodation not found"
+              );
+            }
+          } catch (err) {
+            console.error(
+              "Accommodation detail error:",
+              err
             );
 
-            setSelectedImage(
-              (found as any)
-                .images?.[0] ||
-                null
-            );
-          } else {
-            setError(
-              "Accommodation not found"
-            );
+            if (mounted) {
+              setError(
+                "Failed to load accommodation details"
+              );
+            }
+          } finally {
+            if (mounted) {
+              setLoading(false);
+            }
           }
-        } catch (err) {
-          console.error(
-            "Accommodation detail error:",
-            err
-          );
+        };
 
-          setError(
-            "Failed to load accommodation details"
-          );
-        } finally {
-          setLoading(false);
-        }
+      void fetchAccommodation();
+      setShareNotice("");
+
+      return () => {
+        mounted = false;
       };
+    }, [id, setFavoriteCount]);
 
     /* =====================================================
        LOAD ALL ACCOMMODATIONS FOR THE MAP
@@ -842,6 +898,43 @@ const AccommodationDetail: React.FC =
       Array.isArray(acc?.amenities)
         ? acc.amenities
         : [];
+
+    /* =====================================================
+       FAVORITES
+    ===================================================== */
+
+    const favoriteId =
+      cleanString(
+        acc?.id ?? acc?._id,
+      );
+
+    const favoriteActive =
+      favoriteId
+        ? isFavorite(
+            "accommodation",
+            favoriteId,
+          )
+        : false;
+
+    const favoriteCount =
+      favoriteId
+        ? getFavoriteCount(
+            "accommodation",
+            favoriteId,
+          )
+        : 0;
+
+    const handleFavorite =
+      async () => {
+        if (!favoriteId) {
+          return;
+        }
+
+        await toggleFavorite(
+          "accommodation",
+          favoriteId,
+        );
+      };
 
     /* =====================================================
        SHARE
@@ -1252,6 +1345,15 @@ const AccommodationDetail: React.FC =
     return (
       <div className="attraction-detail-page page-enter">
         <style>{`
+          @font-face {
+            font-family: "Barabara";
+            src: url("/fonts/BARABARA-final.otf")
+              format("opentype");
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+          }
+
           .attraction-detail-page {
             min-height: 100vh;
             background: #ffffff;
@@ -1432,7 +1534,7 @@ const AccommodationDetail: React.FC =
             object-fit: cover;
           }
 
-          /* SHARE */
+          /* SHARE + FAVORITE */
 
           .detail-media-actions {
             display: flex;
@@ -1472,8 +1574,46 @@ const AccommodationDetail: React.FC =
             background: transparent;
           }
 
+          .detail-favorite-action.active {
+            color: #ed4f6b;
+          }
+
+          .detail-favorite-action:active,
           .detail-share-action:active {
             transform: scale(0.96);
+          }
+
+          .detail-favorite-icon {
+            transition:
+              transform 0.25s
+              cubic-bezier(
+                0.34,
+                1.56,
+                0.64,
+                1
+              );
+          }
+
+          .detail-favorite-action.active
+            .detail-favorite-icon {
+            animation:
+              detailFavoritePop
+              0.42s
+              cubic-bezier(
+                0.34,
+                1.56,
+                0.64,
+                1
+              );
+          }
+
+          .detail-favorite-count {
+            min-width: 15px;
+            color: inherit;
+            font-size: 0.62rem;
+            line-height: 1;
+            font-weight: 900;
+            text-align: center;
           }
 
           .detail-share-notice {
@@ -1482,6 +1622,24 @@ const AccommodationDetail: React.FC =
             color: ${CALBAYOG_BLUE};
             font-size: 0.6rem;
             font-weight: 800;
+          }
+
+          @keyframes detailFavoritePop {
+            0% {
+              transform: scale(0.72);
+            }
+
+            45% {
+              transform: scale(1.22);
+            }
+
+            70% {
+              transform: scale(0.94);
+            }
+
+            100% {
+              transform: scale(1);
+            }
           }
 
           /* LOCATION CARD */
@@ -2348,6 +2506,11 @@ const AccommodationDetail: React.FC =
             .detail-media-action {
               transition: none !important;
             }
+
+            .detail-favorite-action.active
+              .detail-favorite-icon {
+              animation: none !important;
+            }
           }
         `}</style>
 
@@ -2484,7 +2647,7 @@ const AccommodationDetail: React.FC =
                 </>
               )}
 
-              {/* SHARE */}
+              {/* SHARE + FAVORITE */}
 
               <div className="detail-media-actions">
                 <button
@@ -2501,6 +2664,47 @@ const AccommodationDetail: React.FC =
                       2
                     }
                   />
+                </button>
+
+                <button
+                  type="button"
+                  className={`detail-media-action detail-favorite-action ${
+                    favoriteActive
+                      ? "active"
+                      : ""
+                  }`}
+                  onClick={() =>
+                    void handleFavorite()
+                  }
+                  aria-label={
+                    favoriteActive
+                      ? `Remove ${acc.name} from favorites`
+                      : `Add ${acc.name} to favorites`
+                  }
+                  aria-pressed={
+                    favoriteActive
+                  }
+                >
+                  <Heart
+                    className="detail-favorite-icon"
+                    size={19}
+                    strokeWidth={
+                      favoriteActive
+                        ? 2.25
+                        : 1.9
+                    }
+                    fill={
+                      favoriteActive
+                        ? "currentColor"
+                        : "none"
+                    }
+                  />
+
+                  <span className="detail-favorite-count">
+                    {
+                      favoriteCount
+                    }
+                  </span>
                 </button>
               </div>
 
