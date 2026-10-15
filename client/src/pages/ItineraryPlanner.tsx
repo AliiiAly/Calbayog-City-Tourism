@@ -5,7 +5,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Link } from "react-router-dom";
 import {
   Container,
   Row,
@@ -625,7 +624,6 @@ const ItineraryPlanner: React.FC = () => {
   const [openMapDayId, setOpenMapDayId] = useState<string | null>(null);
   const [generated, setGenerated] = useState(false);
   const [customizationSaved, setCustomizationSaved] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [nearestFirst, setNearestFirst] = useState(true);
@@ -1200,25 +1198,6 @@ const ItineraryPlanner: React.FC = () => {
     setShowCustomizer(true);
   };
 
-  /* =====================================================
-     SAVE BUTTON
-  ===================================================== */
-
-  const saveItinerary = async () => {
-    if (!isLoggedIn) {
-      setPageNotice(
-        "Your plan is saved on this device. Log in to also save it to your account.",
-      );
-      window.setTimeout(() => setPageNotice(""), 4000);
-      return;
-    }
-
-    const ok = await syncToServer(days, preferences);
-    if (ok) {
-      setSaved(true);
-      window.setTimeout(() => setSaved(false), 2000);
-    }
-  };
 
   /* =====================================================
      CLEAR
@@ -1578,25 +1557,6 @@ const ItineraryPlanner: React.FC = () => {
 
           <Button
             variant="outline-primary"
-            onClick={saveItinerary}
-            disabled={days.length === 0}
-            className="planner-action-button"
-          >
-            {saved ? (
-              <>
-                <Check size={15} />
-                Saved
-              </>
-            ) : (
-              <>
-                <Download size={15} />
-                Save
-              </>
-            )}
-          </Button>
-
-          <Button
-            variant="outline-primary"
             onClick={exportPDF}
             disabled={totalDests === 0}
             className="planner-action-button"
@@ -1604,11 +1564,6 @@ const ItineraryPlanner: React.FC = () => {
             <FileDown size={15} strokeWidth={1.9} />
             Export PDF
           </Button>
-
-          <Link to="/request-itinerary" className="planner-action-link">
-            <Compass size={15} strokeWidth={1.9} />
-            Request Guided Tour
-          </Link>
         </div>
 
         {/* TRAVEL SETTINGS */}
