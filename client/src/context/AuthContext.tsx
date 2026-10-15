@@ -787,13 +787,15 @@ export const AuthProvider = ({
   
 
 
+
 const logout = (): void => {
   setToken(null);
   setAdmin(null);
   clearAdminStorage();
 
-  window.location.replace("/admin/login");
+  window.location.replace("/?adminLogout=1");
 };
+
 
 
 
