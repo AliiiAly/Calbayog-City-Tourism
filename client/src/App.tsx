@@ -9,6 +9,8 @@ import {
   useLocation,
 } from "react-router-dom";
 
+
+import LoginModal from "./components/LoginModal";
 import { AuthProvider } from "./context/AuthContext";
 import { FavoritesProvider } from "./context/FavoritesContext";
 import { DarkModeProvider } from "./context/DarkModeContext";
@@ -227,13 +229,15 @@ const AppContent: React.FC = () => {
               ADMIN ROUTES
           ================================================= */}
 
-          <Route
-            exact
-            path="/admin/login"
-            render={() => (
-              <Redirect to="/?openLogin=1" />
-            )}
-          />
+          
+<Route
+  exact
+  path="/admin/login"
+  render={() => (
+    <AdminLoginPage />
+  )}
+/>
+
 
           <Route
             exact
@@ -643,5 +647,20 @@ const PublicBottomNav: React.FC = () => {
 
   return <BottomNav />;
 };
+
+
+const AdminLoginPage: React.FC = () => {
+  const history = useHistory();
+
+  return (
+    <LoginModal
+      show={true}
+      onClose={() => history.replace("/admin/login")}
+      onSwitchToSignup={() => {}}
+      onSuccess={() => {}}
+    />
+  );
+};
+
 
 export default App;
