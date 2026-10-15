@@ -95,6 +95,7 @@ app.use("/api/auth", require("./src/routes/auth"));
 app.use("/api/destinations", require("./src/routes/destinations"));
 app.use("/api/events", require("./src/routes/events"));
 app.use("/api/accommodations", require("./src/routes/accommodations"));
+app.use("/api/restaurants", require("./src/routes/restaurants"));
 app.use("/api/guides", require("./src/routes/guides"));
 app.use("/api/itinerary-requests", require("./src/routes/itinerary"));
 app.use("/api/feedback", require("./src/routes/feedback"));
