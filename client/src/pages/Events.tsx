@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from "react";
 import {
   Container,
@@ -28,7 +29,9 @@ import EventCard, {
 } from "../components/events/EventCard";
 
 /* =========================================================
-   FONTS + PAGE STYLES
+   PAGE STYLES
+   Inspired by AdminAttractions.
+   EventCard styling remains in EventCard.tsx.
 ========================================================= */
 
 const styles = `
@@ -41,15 +44,35 @@ const styles = `
 }
 
 .events-page {
+  --admin-primary: #2D3195;
+  --admin-primary-dark: #242879;
+  --admin-yellow: #FFB71B;
+  --admin-bg: #F7F8FC;
+  --admin-border: #E8EAF1;
+  --admin-text: #1B1D24;
+  --admin-muted: #737886;
+
+  width: 100%;
   min-height: 100vh;
+  padding: 0 0 56px;
   background: #ffffff;
-  color: #171a18;
+  color: var(--admin-text);
+  font-family: "Nunito", "Poppins", "Segoe UI", sans-serif;
+  box-sizing: border-box;
 }
+
+.events-page *,
+.events-page *::before,
+.events-page *::after {
+  box-sizing: border-box;
+}
+
+/* PAGE HEADER */
 
 .events-header {
   width: 100%;
-  background: #ffffff;
   padding: 30px 20px 18px;
+  background: transparent;
 }
 
 .events-header-inner {
@@ -59,24 +82,26 @@ const styles = `
 }
 
 .events-title {
-  margin: 0;
+  margin: 0 !important;
+  color: #2D3195 !important;
   font-family: "Barabara", sans-serif !important;
-  font-size: clamp(1.65rem, 2.8vw, 2.4rem);
-  font-weight: 400;
-  line-height: 0.95;
-  letter-spacing: 0.015em;
-  color: #1a7a4a;
+  font-size: clamp(1.65rem, 2.8vw, 2.4rem) !important;
+  font-weight: 400 !important;
+  line-height: 0.95 !important;
+  letter-spacing: 0.02em;
 }
 
 .events-subtitle {
   max-width: 620px;
-  margin: 6px 0 0;
-  font-family: "Nunito", "Poppins", "Segoe UI", sans-serif;
-  font-size: 0.81rem;
-  line-height: 1.55;
-  font-weight: 500;
-  color: #737b76;
+  margin: 8px 0 0 !important;
+  color: #737886 !important;
+  font-family: "Nunito", sans-serif !important;
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  line-height: 1.55 !important;
 }
+
+/* MAIN CONTENT */
 
 .events-container {
   width: 100%;
@@ -85,305 +110,18 @@ const styles = `
   margin: 0 auto;
 }
 
-.events-category-pills {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow-x: auto;
-  margin: 0 0 5px;
-  padding: 0 0 14px;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-.events-category-pills::-webkit-scrollbar {
-  display: none;
-}
-
-.events-category-pill {
-  --pill-color: #1a7a4a;
-  --pill-background: #eef8f2;
-
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 39px;
-  padding: 8px 15px;
-
-  border: 1px solid #e3e7e4;
-  border-radius: 999px;
-
-  background: #ffffff;
-  color: #68716c;
-
-  font-family: "Nunito", "Segoe UI", sans-serif;
-  font-size: 0.74rem;
-  font-weight: 800;
-
-  cursor: pointer;
-
-  transition:
-    color 0.2s ease,
-    border-color 0.2s ease,
-    background 0.2s ease,
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-
-  white-space: nowrap;
-}
-
-.events-category-pill:hover {
-  color: var(--pill-color);
-  border-color: var(--pill-color);
-  background: var(--pill-background);
-  transform: translateY(-1px);
-}
-
-.events-category-pill-active {
-  color: var(--pill-color);
-  border-color: var(--pill-color);
-  background: var(--pill-background);
-  box-shadow: 0 5px 16px rgba(20, 30, 24, 0.07);
-}
-
-.events-filter-section {
-  margin: 3px 0 25px;
-}
-
-.events-filter-label {
-  margin-bottom: 8px;
-  padding-left: 2px;
-
-  font-family: "Nunito", sans-serif;
-  font-size: 0.64rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #949c97;
-}
-
-.events-filter-pills {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  overflow-x: auto;
-  padding: 2px 1px 5px;
-
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-.events-filter-pills::-webkit-scrollbar {
-  display: none;
-}
-
-.events-filter-pill {
-  --filter-color: #1a7a4a;
-  --filter-background: #eef8f2;
-
-  flex: 0 0 auto;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-
-  min-height: 35px;
-  padding: 7px 12px;
-
-  border: 1px solid #e5e9e6;
-  border-radius: 999px;
-
-  background: #ffffff;
-  color: #7a837e;
-
-  font-family: "Nunito", sans-serif;
-  font-size: 0.69rem;
-  font-weight: 800;
-
-  cursor: pointer;
-
-  transition: all 0.2s ease;
-
-  white-space: nowrap;
-}
-
-.events-filter-pill:hover {
-  border-color: var(--filter-color);
-  background: var(--filter-background);
-  color: var(--filter-color);
-}
-
-.events-filter-pill-active {
-  border-color: var(--filter-color);
-  background: var(--filter-background);
-  color: var(--filter-color);
-}
-
-.events-calendar-wrapper {
-  margin: 3px 0 25px;
-}
-
-.events-calendar {
-  width: 100%;
-  padding: 17px;
-
-  border: 1px solid #edf0ed;
-  border-radius: 18px;
-
-  background: #ffffff;
-
-  box-shadow:
-    0 5px 20px rgba(20, 30, 24, 0.045);
-}
-
-.events-calendar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  margin-bottom: 14px;
-}
-
-.events-calendar-month {
-  font-family: "Poppins", sans-serif;
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #252b27;
-}
-
-.events-calendar-nav {
-  width: 32px;
-  height: 32px;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  padding: 0;
-
-  border: 1px solid #e5e9e6;
-  border-radius: 9px;
-
-  background: #ffffff;
-  color: #68716c;
-
-  cursor: pointer;
-
-  transition: all 0.2s ease;
-}
-
-.events-calendar-nav:hover {
-  border-color: #1a7a4a;
-  background: #eef8f2;
-  color: #1a7a4a;
-}
-
-.events-calendar-weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 5px;
-
-  margin-bottom: 6px;
-}
-
-.events-calendar-weekday {
-  text-align: center;
-
-  font-family: "Nunito", sans-serif;
-  font-size: 0.61rem;
-  font-weight: 800;
-
-  color: #949c97;
-}
-
-.events-calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 5px;
-}
-
-.events-calendar-day-empty {
-  aspect-ratio: 1;
-}
-
-.events-calendar-day {
-  position: relative;
-
-  aspect-ratio: 1;
-
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-
-  padding: 0;
-
-  border: 1px solid transparent;
-  border-radius: 9px;
-
-  background: #f8faf9;
-  color: #252b27;
-
-  font-family: "Nunito", sans-serif;
-  font-size: 0.7rem;
-  font-weight: 700;
-
-  cursor: pointer;
-
-  transition: all 0.2s ease;
-}
-
-.events-calendar-day:hover {
-  border-color: #1a7a4a;
-  background: #eef8f2;
-}
-
-.events-calendar-day-today {
-  background: #eef8f2;
-  color: #1a7a4a;
-}
-
-.events-calendar-day-selected {
-  border-color: #1a7a4a;
-  background: #1a7a4a;
-  color: #ffffff;
-}
-
-.events-calendar-dots {
-  position: absolute;
-  bottom: 4px;
-
-  display: flex;
-  gap: 2px;
-}
-
-.events-calendar-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: #e5a526;
-}
-
-.events-calendar-day-selected .events-calendar-dot {
-  background: #ffffff;
-}
+/* RESULTS BAR */
 
 .events-results-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   gap: 15px;
   flex-wrap: wrap;
-
   margin-bottom: 27px;
   padding: 11px 2px;
-
-  border-top: 1px solid #f0f2f0;
-  border-bottom: 1px solid #f0f2f0;
+  border-top: 1px solid #F0F2F5;
+  border-bottom: 1px solid #F0F2F5;
 }
 
 .events-results-left {
@@ -395,32 +133,29 @@ const styles = `
 .events-results-icon {
   width: 34px;
   height: 34px;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
+  flex: 0 0 auto;
   border-radius: 10px;
-
-  background: #eef8f2;
-  color: #1a7a4a;
+  background: #EEF0FF;
+  color: #2D3195;
 }
 
 .events-results-label {
   font-family: "Nunito", sans-serif;
   font-size: 0.64rem;
-  color: #8b938e;
+  font-weight: 800;
+  color: #737886;
   line-height: 1.2;
 }
 
 .events-results-count {
   margin-top: 2px;
-
   font-family: "Poppins", sans-serif;
   font-size: 0.74rem;
   font-weight: 700;
-
-  color: #252b27;
+  color: #1B1D24;
 }
 
 .events-results-right {
@@ -433,17 +168,12 @@ const styles = `
   font-family: "Nunito", sans-serif;
   font-size: 0.69rem;
   font-weight: 700;
-  color: #858d88;
+  color: #737886;
 }
 
-.events-clear-button {
-  border-radius: 999px !important;
-  padding: 5px 11px !important;
-
-  font-family: "Nunito", sans-serif;
-  font-size: 0.66rem !important;
-  font-weight: 800 !important;
-}
+/* EVENT GRID
+   The cards themselves are not restyled here.
+*/
 
 .events-grid {
   row-gap: 46px !important;
@@ -452,19 +182,18 @@ const styles = `
 }
 
 .event-col {
+  display: flex;
   padding-left: 12px;
   padding-right: 12px;
-
-  display: flex;
 }
+
+/* LOADING STATE */
 
 .events-loading {
   min-height: 360px;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   text-align: center;
 }
 
@@ -477,85 +206,72 @@ const styles = `
 .events-loading-icon {
   width: 50px;
   height: 50px;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   margin-bottom: 12px;
-
   border-radius: 15px;
-
-  background: #eef8f2;
-  color: #1a7a4a;
+  background: #EEF0FF;
+  color: #2D3195;
 }
 
 .events-loading-title {
   font-family: "Poppins", sans-serif;
   font-size: 0.78rem;
   font-weight: 700;
-  color: #252b27;
+  color: #1B1D24;
 }
 
 .events-loading-text {
   margin: 4px 0 0;
-
   font-family: "Nunito", sans-serif;
   font-size: 0.68rem;
-
-  color: #8b938e;
+  color: #737886;
 }
+
+/* EMPTY STATE */
 
 .events-empty {
   padding: 65px 20px;
-
   text-align: center;
-
-  border: 1px solid #edf1ee;
+  border: 1px solid #E8EAF1;
   border-radius: 20px;
-
-  background: #fafcfb;
+  background: #F7F8FC;
 }
 
 .events-empty-icon {
   width: 68px;
   height: 68px;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   margin: 0 auto 14px;
-
   border-radius: 20px;
-
-  background: #eef8f2;
-  color: #1a7a4a;
+  background: #EEF0FF;
+  color: #2D3195;
 }
 
 .events-empty-title {
   margin: 0;
-
   font-family: "Poppins", sans-serif;
   font-size: 1rem;
   font-weight: 700;
-
-  color: #252b27;
+  color: #1B1D24;
 }
 
 .events-empty-text {
   max-width: 390px;
-
   margin: 7px auto 18px;
-
   font-family: "Nunito", sans-serif;
   font-size: 0.76rem;
   line-height: 1.5;
-
-  color: #7b857f;
+  color: #737886;
 }
 
+/* EVENT DETAIL MODAL */
+
 .events-modal-image {
+  display: block;
   width: 100%;
   height: clamp(190px, 35vw, 320px);
   object-fit: cover;
@@ -567,29 +283,26 @@ const styles = `
   font-family: "Poppins", "Nunito", sans-serif;
   font-size: 1.2rem;
   font-weight: 700;
-  color: #171b18;
+  color: #2D3195;
 }
 
 .events-modal-details {
   padding: 14px 16px;
   margin-bottom: 18px;
-  border: 1px solid #edf0ed;
+  border: 1px solid #E8EAF1;
   border-radius: 14px;
-  background: #f8faf9;
+  background: #F7F8FC;
 }
 
 .events-modal-detail {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-
   margin-bottom: 9px;
-
   font-family: "Nunito", sans-serif;
   font-size: 0.78rem;
   line-height: 1.45;
-
-  color: #5f6863;
+  color: #5F6471;
 }
 
 .events-modal-detail:last-child {
@@ -598,21 +311,66 @@ const styles = `
 
 .events-modal-section-title {
   margin-bottom: 7px;
-
   font-family: "Poppins", sans-serif;
   font-size: 0.84rem;
   font-weight: 700;
-
-  color: #252b27;
+  color: #2D3195;
 }
 
 .events-modal-description {
   font-family: "Nunito", sans-serif;
   font-size: 0.83rem;
   line-height: 1.65;
-
-  color: #707973;
+  color: #666C78;
 }
+
+/* MODAL SHELL */
+
+.events-page .modal-content {
+  overflow: hidden;
+  border: 1px solid #E8EAF1 !important;
+  border-radius: 22px !important;
+  background: #FFFFFF !important;
+  box-shadow: 0 24px 70px rgba(18, 20, 36, 0.17) !important;
+}
+
+.events-page .modal-header {
+  padding: 18px 21px !important;
+  border-bottom: 1px solid #EEF0F4 !important;
+  background: #FFFFFF !important;
+}
+
+.events-page .modal-header .modal-title {
+  color: #2D3195 !important;
+}
+
+.events-page .modal-body {
+  padding: 22px !important;
+  background: #FBFBFD !important;
+}
+
+.events-page .modal-footer {
+  gap: 8px;
+  padding: 13px 21px !important;
+  border-top: 1px solid #EEF0F4 !important;
+  background: #FFFFFF !important;
+}
+
+.events-page .modal-footer .btn {
+  min-height: 39px;
+  border-radius: 11px !important;
+  padding: 8px 15px !important;
+  font-family: "Nunito", sans-serif !important;
+  font-size: 0.69rem !important;
+  font-weight: 900 !important;
+}
+
+.events-page .modal-footer .btn-primary {
+  border-color: #2D3195 !important;
+  background: #2D3195 !important;
+}
+
+/* RESPONSIVE LAYOUT */
 
 @media (max-width: 991.98px) {
   .events-header {
@@ -620,7 +378,7 @@ const styles = `
   }
 
   .events-title {
-    font-size: clamp(1.65rem, 4.5vw, 2.25rem);
+    font-size: clamp(1.65rem, 4.5vw, 2.25rem) !important;
   }
 
   .events-grid {
@@ -634,18 +392,16 @@ const styles = `
   }
 
   .events-title {
-    font-size: 1.9rem;
+    font-size: 1.9rem !important;
   }
 
   .events-subtitle {
-    margin-top: 6px;
-    font-size: 0.78rem;
+    margin-top: 8px !important;
+    font-size: 0.78rem !important;
   }
 
   .events-container {
-    padding-top: 0;
-    padding-left: 17px;
-    padding-right: 17px;
+    padding: 0 17px 45px;
   }
 
   .events-results-bar {
@@ -664,23 +420,23 @@ const styles = `
 
 @media (max-width: 479.98px) {
   .events-title {
-    font-size: 1.8rem;
+    font-size: 1.8rem !important;
   }
 
   .events-subtitle {
-    font-size: 0.77rem;
+    font-size: 0.77rem !important;
   }
 
-  .events-calendar {
-    padding: 13px;
+  .events-page .modal-body {
+    padding: 17px !important;
   }
 
-  .events-calendar-grid {
-    gap: 4px;
+  .events-page .modal-header {
+    padding: 15px 17px !important;
   }
 
-  .events-calendar-day {
-    font-size: 0.65rem;
+  .events-page .modal-footer {
+    padding: 12px 17px !important;
   }
 }
 `;
@@ -727,21 +483,12 @@ const Events: React.FC = () => {
     (location.state as any)?.highlightId;
 
   const [events, setEvents] = useState<Event[]>([]);
-
-
   const [loading, setLoading] = useState(true);
-
-
-  const [
-    selected,
-    setSelected,
-  ] = useState<Event | null>(null);
+  const [selected, setSelected] = useState<Event | null>(null);
 
   const didAutoOpen = useRef(false);
 
-  /* =========================================================
-     FETCH EVENTS
-  ========================================================= */
+  /* FETCH EVENTS */
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -755,9 +502,7 @@ const Events: React.FC = () => {
 
       setEvents(fetched);
 
-      /* =====================================================
-         AUTO OPEN EVENT
-      ===================================================== */
+      /* AUTO OPEN HIGHLIGHTED EVENT */
 
       if (highlightId && !didAutoOpen.current) {
         const match = fetched.find(
@@ -770,42 +515,37 @@ const Events: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error(
-        "Failed to fetch events:",
-        error,
-      );
-
+      console.error("Failed to fetch events:", error);
       setEvents([]);
     } finally {
       setLoading(false);
     }
   };
 
-  /* =========================================================
-     INITIAL LOAD
-  ========================================================= */
+  /* INITIAL LOAD */
 
   useEffect(() => {
-    fetchEvents();
+    void fetchEvents();
+
+    // Fetch once when the Events page mounts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* =========================================================
-     REALTIME
-  ========================================================= */
+  /* REALTIME UPDATES */
 
   useEffect(() => {
     subscribeToEvents(() => {
-      fetchEvents();
+      void fetchEvents();
     });
 
     return () => {
       unsubscribeAll();
     };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* =========================================================
-     HELPERS
-  ========================================================= */
+  /* DATE HELPERS */
 
   const formatDate = (date: string) => {
     if (!date) {
@@ -844,93 +584,69 @@ const Events: React.FC = () => {
     return `${formatDate(startDate)} – ${formatDate(endDate)}`;
   };
 
-  const getCategoryColor = (category: string) => {
-    return (
-      categoryColors[category] ||
-      "#1A7A4A"
-    );
-  };
+  /* CATEGORY HELPERS */
 
-  const getCategoryIcon = (category: string) => {
-    return (
-      categoryIcons[category] ||
-      "📍"
-    );
-  };
+  const getCategoryColor = (category: string) =>
+    categoryColors[category] || "#2D3195";
 
+  const getCategoryIcon = (category: string) =>
+    categoryIcons[category] || "📍";
 
   const selectedColor = selected
     ? getCategoryColor(selected.category)
-    : "#1A7A4A";
+    : "#2D3195";
 
-  /* =========================================================
-     CONVERT EVENT FOR REUSABLE EVENT CARD
-  ========================================================= */
+  /* CONVERT EVENT FOR THE EXISTING EVENT CARD */
 
   const toEventCardItem = (
     event: Event,
-  ): EventCardItem => {
-    return {
-      _id: event._id,
-      title: event.title,
-      image: event.image,
-      category: event.category,
-      featured: event.featured,
-      startDate: event.startDate,
-      endDate: event.endDate,
-      venue: event.venue,
-      description: event.description,
-      organizer: event.organizer,
-      isFree: event.isFree,
-      ticketPrice: event.ticketPrice,
-      facebook: event.contact?.facebook,
-    };
-  };
+  ): EventCardItem => ({
+    _id: event._id,
+    title: event.title,
+    image: event.image,
+    category: event.category,
+    featured: event.featured,
+    startDate: event.startDate,
+    endDate: event.endDate,
+    venue: event.venue,
+    description: event.description,
+    organizer: event.organizer,
+    isFree: event.isFree,
+    ticketPrice: event.ticketPrice,
+    facebook: event.contact?.facebook,
+  });
 
-  /* =========================================================
-     RENDER
-  ========================================================= */
+  /* RENDER */
 
   return (
     <>
       <style>{styles}</style>
 
       <div className="page-enter events-page">
-
-        {/* ===================================================
-            HEADER
-        =================================================== */}
+        {/* PAGE HEADER */}
 
         <section className="events-header">
           <div className="events-header-inner">
             <h1 className="events-title">
-              EVENTS & FESTIVALS
+              EVENTS &amp; FESTIVALS
             </h1>
 
             <p className="events-subtitle">
-              Experience Calbayog's vibrant
-              celebrations, cultural traditions,
-              community gatherings, and memorable
-              events.
+              Experience Calbayog's vibrant celebrations,
+              cultural traditions, community gatherings,
+              and memorable events.
             </p>
           </div>
         </section>
 
-        {/* ===================================================
-            CONTENT
-        =================================================== */}
+        {/* MAIN CONTENT */}
 
         <Container className="events-container">
-
-          {/* =================================================
-              RESULTS BAR
-          ================================================= */}
+          {/* RESULTS BAR */}
 
           {!loading && (
             <div className="events-results-bar">
-
               <div className="events-results-left">
-
                 <div className="events-results-icon">
                   <CalendarDays
                     size={16}
@@ -945,29 +661,24 @@ const Events: React.FC = () => {
 
                   <div className="events-results-count">
                     {events.length} event
-                    {events.length !== 1
-                      ? "s"
-                      : ""}
+                    {events.length !== 1 ? "s" : ""}
                   </div>
                 </div>
               </div>
 
               <div className="events-results-right">
-
-                <span className="events-results-category">All events</span>
+                <span className="events-results-category">
+                  All events
+                </span>
               </div>
             </div>
           )}
 
-          {/* =================================================
-              LOADING
-          ================================================= */}
+          {/* LOADING STATE */}
 
           {loading ? (
             <div className="events-loading">
-
               <div className="events-loading-inner">
-
                 <div className="events-loading-icon">
                   <Spinner
                     animation="border"
@@ -985,13 +696,9 @@ const Events: React.FC = () => {
               </div>
             </div>
           ) : events.length === 0 ? (
-
-            /* ===============================================
-               EMPTY
-            =============================================== */
+            /* EMPTY STATE */
 
             <div className="events-empty">
-
               <div className="events-empty-icon">
                 <CalendarDays
                   size={27}
@@ -1004,27 +711,17 @@ const Events: React.FC = () => {
               </h3>
 
               <p className="events-empty-text">
-                There are currently no events to display. Please check back later.
+                There are currently no events to display.
+                Please check back later.
               </p>
-
             </div>
-
           ) : (
-
-            /* ===============================================
-               EVENT GRID
-            =============================================== */
+            /* EVENT GRID — EXISTING EVENT CARDS */
 
             <Row className="events-grid">
-
               {events.map((event, index) => {
-                /*
-                 * Your Event type uses `_id`, not `id`.
-                 * Keep `_id` as the source of truth.
-                 */
                 const eventId =
-                  event._id ||
-                  `event-${index}`;
+                  event._id || `event-${index}`;
 
                 return (
                   <Col
@@ -1037,9 +734,7 @@ const Events: React.FC = () => {
                     <EventCard
                       event={toEventCardItem(event)}
                       showFeatured={true}
-                      onClick={() =>
-                        setSelected(event)
-                      }
+                      onClick={() => setSelected(event)}
                     />
                   </Col>
                 );
@@ -1048,9 +743,7 @@ const Events: React.FC = () => {
           )}
         </Container>
 
-        {/* ===================================================
-            EVENT DETAIL MODAL
-        =================================================== */}
+        {/* EVENT DETAIL MODAL */}
 
         <Modal
           show={!!selected}
@@ -1063,9 +756,7 @@ const Events: React.FC = () => {
               <Modal.Header
                 closeButton
                 style={{
-                  borderBottom:
-                    "1px solid #edf0ed",
-                  padding: "15px 20px",
+                  borderBottom: "1px solid #E8EAF1",
                 }}
               >
                 <Modal.Title className="events-modal-title">
@@ -1073,13 +764,8 @@ const Events: React.FC = () => {
                 </Modal.Title>
               </Modal.Header>
 
-              <Modal.Body
-                style={{
-                  padding: 20,
-                }}
-              >
-
-                {/* IMAGE */}
+              <Modal.Body>
+                {/* EVENT IMAGE */}
 
                 {selected.image ? (
                   <img
@@ -1091,51 +777,41 @@ const Events: React.FC = () => {
                   <div
                     className="events-modal-image d-flex align-items-center justify-content-center"
                     style={{
-                      background: "#f3f7f4",
+                      background: "#EEF0FF",
                       color: selectedColor,
                       fontSize: "3rem",
                     }}
                   >
-                    {getCategoryIcon(
-                      selected.category,
-                    )}
+                    {getCategoryIcon(selected.category)}
                   </div>
                 )}
 
-                {/* BADGES */}
+                {/* EVENT BADGES */}
 
                 <div className="d-flex flex-wrap gap-2 mb-3">
-
                   <Badge
                     style={{
                       background: selectedColor,
-                      fontFamily:
-                        "Nunito, sans-serif",
+                      fontFamily: "Nunito, sans-serif",
                       fontSize: "0.67rem",
                       fontWeight: 800,
                       padding: "6px 9px",
                       borderRadius: 999,
                     }}
                   >
-                    {getCategoryIcon(
-                      selected.category,
-                    )}{" "}
-                    {selected.category ||
-                      "Event"}
+                    {getCategoryIcon(selected.category)}{" "}
+                    {selected.category || "Event"}
                   </Badge>
 
                   <Badge
                     style={{
-                      background:
-                        selected.isFree
-                          ? "#EEF8F2"
-                          : "#FFF7E7",
-                      color:
-                        selected.isFree
-                          ? "#1A7A4A"
-                          : "#A86400",
-                      fontFamily:
-                        "Nunito, sans-serif",
+                      background: selected.isFree
+                        ? "#EEF0FF"
+                        : "#FFF7E7",
+                      color: selected.isFree
+                        ? "#2D3195"
+                        : "#A86400",
+                      fontFamily: "Nunito, sans-serif",
                       fontSize: "0.67rem",
                       fontWeight: 800,
                       padding: "6px 9px",
@@ -1145,8 +821,7 @@ const Events: React.FC = () => {
                     {selected.isFree
                       ? "Free"
                       : `Ticketed · ${
-                          selected.ticketPrice ||
-                          "See details"
+                          selected.ticketPrice || "See details"
                         }`}
                   </Badge>
 
@@ -1155,8 +830,7 @@ const Events: React.FC = () => {
                       style={{
                         background: "#FFF7E7",
                         color: "#A86400",
-                        fontFamily:
-                          "Nunito, sans-serif",
+                        fontFamily: "Nunito, sans-serif",
                         fontSize: "0.67rem",
                         fontWeight: 800,
                         padding: "6px 9px",
@@ -1173,10 +847,9 @@ const Events: React.FC = () => {
                   )}
                 </div>
 
-                {/* DETAILS */}
+                {/* EVENT DETAILS */}
 
                 <div className="events-modal-details">
-
                   <div className="events-modal-detail">
                     <CalendarDays
                       size={15}
@@ -1189,9 +862,7 @@ const Events: React.FC = () => {
                     />
 
                     <span>
-                      <strong>
-                        Date:
-                      </strong>{" "}
+                      <strong>Date:</strong>{" "}
                       {formatDateRange(
                         selected.startDate,
                         selected.endDate,
@@ -1211,11 +882,8 @@ const Events: React.FC = () => {
                     />
 
                     <span>
-                      <strong>
-                        Venue:
-                      </strong>{" "}
-                      {selected.venue ||
-                        "Calbayog City"}
+                      <strong>Venue:</strong>{" "}
+                      {selected.venue || "Calbayog City"}
                     </span>
                   </div>
 
@@ -1232,9 +900,7 @@ const Events: React.FC = () => {
                       />
 
                       <span>
-                        <strong>
-                          Organizer:
-                        </strong>{" "}
+                        <strong>Organizer:</strong>{" "}
                         {selected.organizer}
                       </span>
                     </div>
@@ -1252,23 +918,20 @@ const Events: React.FC = () => {
                     "Discover this event and experience the vibrant culture and community of Calbayog City."}
                 </p>
 
-                {/* FACEBOOK */}
+                {/* FACEBOOK LINK */}
 
                 {selected.contact?.facebook && (
                   <a
-                    href={
-                      selected.contact.facebook
-                    }
+                    href={selected.contact.facebook}
                     target="_blank"
                     rel="noreferrer"
-                    className="btn btn-outline-success btn-sm"
+                    className="btn btn-outline-primary btn-sm"
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 6,
-                      borderRadius: 999,
-                      fontFamily:
-                        "Nunito, sans-serif",
+                      borderRadius: 11,
+                      fontFamily: "Nunito, sans-serif",
                       fontSize: "0.7rem",
                       fontWeight: 800,
                     }}
@@ -1278,23 +941,14 @@ const Events: React.FC = () => {
                 )}
               </Modal.Body>
 
-              <Modal.Footer
-                style={{
-                  borderTop:
-                    "1px solid #edf0ed",
-                  padding: "12px 20px",
-                }}
-              >
+              <Modal.Footer>
                 <Button
                   variant="outline-secondary"
-                  onClick={() =>
-                    setSelected(null)
-                  }
+                  onClick={() => setSelected(null)}
                   style={{
-                    borderRadius: 999,
+                    borderRadius: 11,
                     padding: "6px 14px",
-                    fontFamily:
-                      "Nunito, sans-serif",
+                    fontFamily: "Nunito, sans-serif",
                     fontSize: "0.7rem",
                     fontWeight: 800,
                   }}
