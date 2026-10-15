@@ -33,7 +33,7 @@ interface VerificationResponse {
 }
 
 interface VerificationNotice {
-  email?: string;
+  email: string;
   verifiedAt: number;
 }
 
@@ -56,19 +56,22 @@ const VerifyEmail: React.FC = () => {
   }, [location.search]);
 
   /*
-   * Notify the original website tab only after the backend
-   * confirms successful verification.
-   *
-   * This notice does not log the user in or create a session.
+   * Notify other tabs on the same website origin.
+   * This does not log the user in or create a session.
    */
   const notifyOtherTabs = (
     verifiedUser: VerifiedUser | null
   ) => {
+    const email = (
+      verifiedUser?.email ||
+      verifiedUser?.username ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
     const notice: VerificationNotice = {
-      email:
-        verifiedUser?.email?.trim().toLowerCase() ||
-        verifiedUser?.username?.trim().toLowerCase() ||
-        "",
+      email,
       verifiedAt: Date.now(),
     };
 
@@ -79,7 +82,7 @@ const VerifyEmail: React.FC = () => {
       );
     } catch (error) {
       console.warn(
-        "Could not notify the original browser tab about email verification.",
+        "Could not notify other tabs about email verification.",
         error
       );
     }
@@ -89,25 +92,24 @@ const VerifyEmail: React.FC = () => {
     let isActive = true;
     let timedOut = false;
 
-    if (!token) {
-      setStatus("error");
-      setMessage(
-        "This verification link is missing a valid verification token."
-      );
-
-      return () => {
-        isActive = false;
-      };
-    }
-
     const controller = new AbortController();
 
     const timeoutId = window.setTimeout(() => {
       timedOut = true;
       controller.abort();
-    }, 12000);
+    }, 15000);
 
     const verifyEmail = async () => {
+      if (!token) {
+        if (isActive) {
+          setStatus("error");
+          setMessage(
+            "This verification link is missing a valid verification token."
+          );
+        }
+        return;
+      }
+
       setStatus("verifying");
       setMessage("Verifying your email address...");
       setUser(null);
@@ -131,25 +133,19 @@ const VerifyEmail: React.FC = () => {
         const data: VerificationResponse =
           await response.json().catch(() => ({}));
 
-        // Ignore results from an effect that has been cleaned up.
         if (!isActive) {
           return;
         }
 
-        /*
-         * Accept an explicitly verified account or an
-         * explicit already-verified response.
-         */
+        const isAlreadyVerified =
+          data.alreadyVerified === true ||
+          /already verified/i.test(data.message || "");
+
         if (
           response.ok &&
-          (data.verified === true ||
-            data.alreadyVerified === true)
+          (data.verified === true || isAlreadyVerified)
         ) {
           const verifiedUser = data.user || null;
-
-          const isAlreadyVerified =
-            data.alreadyVerified === true ||
-            /already verified/i.test(data.message || "");
 
           setUser(verifiedUser);
 
@@ -171,7 +167,7 @@ const VerifyEmail: React.FC = () => {
           return;
         }
 
-        if (response.status === 400 && data.expired) {
+        if (data.expired === true) {
           setStatus("expired");
           setMessage(
             data.message ||
@@ -186,9 +182,10 @@ const VerifyEmail: React.FC = () => {
             "We could not complete your email verification."
         );
       } catch (error) {
-        // React StrictMode may clean up the first effect.
-        // Do not let that cancelled request overwrite the
-        // state of the active verification request.
+        /*
+         * Ignore requests cancelled by React StrictMode
+         * or by unmounting this component.
+         */
         if (!isActive) {
           return;
         }
@@ -226,12 +223,12 @@ const VerifyEmail: React.FC = () => {
   }, [token]);
 
   /*
-   * No automatic navigation occurs here.
-   * Users should return to their original browser tab
-   * to sign in after successful verification.
+   * Navigation happens only when a user explicitly clicks
+   * a button on an error or expired-link screen.
+   * Successful verification never redirects automatically.
    */
   const handleGoHome = () => {
-    window.location.href = "/";
+    window.location.assign("/");
   };
 
   const handleTryAgain = () => {
@@ -522,9 +519,6 @@ const VerifyEmail: React.FC = () => {
               Your login window should display the verification
               confirmation, and you can sign in there.
             </div>
-
-            {/* Intentionally no login or home navigation buttons
-                on the success screen. This page stays open. */}
           </>
         )}
 
