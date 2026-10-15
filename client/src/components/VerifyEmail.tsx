@@ -1,10 +1,19 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLocation } from "react-router-dom";
 
 const API_URL = (
   (import.meta as any).env?.VITE_API_URL ||
   "https://calbayog-city-tourism.onrender.com/api"
 ).replace(/\/$/, "");
+
+const VERIFICATION_STORAGE_KEY =
+  "calbayog_email_verification_success";
 
 type VerificationStatus =
   | "verifying"
@@ -28,6 +37,11 @@ interface VerificationResponse {
   user?: VerifiedUser;
 }
 
+interface VerificationNotice {
+  email?: string;
+  verifiedAt: number;
+}
+
 const VerifyEmail: React.FC = () => {
   const location = useLocation();
 
@@ -38,16 +52,45 @@ const VerifyEmail: React.FC = () => {
     "Verifying your email address..."
   );
 
-  const [user, setUser] = useState<VerifiedUser | null>(null);
+  const [user, setUser] =
+    useState<VerifiedUser | null>(null);
 
-  // Prevent duplicate handling of the same token during development
-  // and React 18 StrictMode.
-  const handledTokensRef = useRef<Set<string>>(new Set());
+  const handledTokensRef =
+    useRef<Set<string>>(new Set());
 
   const token = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return (params.get("token") || "").trim();
   }, [location.search]);
+
+  /*
+   * Notify other tabs only after the backend confirms
+   * that the account's email is verified.
+   *
+   * LoginModal listens for this localStorage change.
+   * The notice displays a message only; it does not
+   * authenticate the user or grant account access.
+   */
+  const notifyOtherTabs = (
+    verifiedUser: VerifiedUser | null
+  ) => {
+    const notice: VerificationNotice = {
+      email: verifiedUser?.email?.trim().toLowerCase() || "",
+      verifiedAt: Date.now(),
+    };
+
+    try {
+      window.localStorage.setItem(
+        VERIFICATION_STORAGE_KEY,
+        JSON.stringify(notice)
+      );
+    } catch (error) {
+      console.warn(
+        "Could not notify the original browser tab about email verification.",
+        error
+      );
+    }
+  };
 
   useEffect(() => {
     if (!token) {
@@ -58,9 +101,6 @@ const VerifyEmail: React.FC = () => {
       return;
     }
 
-    // We intentionally allow the backend to respond with
-    // "already verified", but avoid repeatedly processing
-    // the exact same token in this component instance.
     if (handledTokensRef.current.has(token)) {
       return;
     }
@@ -93,20 +133,21 @@ const VerifyEmail: React.FC = () => {
           }
         );
 
-        let data: VerificationResponse = {};
-
-        try {
-          data = await response.json();
-        } catch {
-          data = {};
-        }
+        const data: VerificationResponse =
+          await response.json().catch(() => ({}));
 
         if (controller.signal.aborted) {
           return;
         }
 
+        /*
+         * A successful HTTP response is not enough:
+         * the backend must explicitly confirm verified=true.
+         */
         if (response.ok && data.verified === true) {
-          setUser(data.user || null);
+          const verifiedUser = data.user || null;
+
+          setUser(verifiedUser);
 
           const isAlreadyVerified =
             data.alreadyVerified === true ||
@@ -125,6 +166,12 @@ const VerifyEmail: React.FC = () => {
                 "Your email address has been verified successfully."
             );
           }
+
+          /*
+           * Tell the original website tab that verification
+           * succeeded. This does not redirect either tab.
+           */
+          notifyOtherTabs(verifiedUser);
 
           return;
         }
@@ -171,11 +218,18 @@ const VerifyEmail: React.FC = () => {
     };
   }, [token]);
 
-  // Opens the existing login modal in the current website tab.
+  /*
+   * Ask the existing website to open its login modal.
+   * This button does not redirect the verification page.
+   */
   const handleOpenLogin = () => {
     window.dispatchEvent(new Event("open-login-modal"));
   };
 
+  /*
+   * Home navigation happens only if the user explicitly
+   * clicks the Go to Home button.
+   */
   const handleGoHome = () => {
     window.location.href = "/";
   };
@@ -185,7 +239,8 @@ const VerifyEmail: React.FC = () => {
   };
 
   const isSuccess =
-    status === "success" || status === "already-verified";
+    status === "success" ||
+    status === "already-verified";
 
   return (
     <div className="verify-page">
@@ -314,6 +369,7 @@ const VerifyEmail: React.FC = () => {
           color: #6c7892;
           font-size: 1.05rem;
           line-height: 1.7;
+          overflow-wrap: anywhere;
         }
 
         .verify-user {
@@ -323,6 +379,7 @@ const VerifyEmail: React.FC = () => {
           background: rgba(45, 49, 149, 0.06);
           color: #2D3195;
           font-weight: 700;
+          overflow-wrap: anywhere;
         }
 
         .verify-actions {
@@ -401,6 +458,16 @@ const VerifyEmail: React.FC = () => {
             font-size: 2rem;
           }
         }
+
+        @media (prefers-reduced-motion: reduce) {
+          .spinner {
+            animation: none;
+          }
+
+          .verify-button {
+            transition: none;
+          }
+        }
       `}</style>
 
       <div className="verify-card">
@@ -471,7 +538,7 @@ const VerifyEmail: React.FC = () => {
             <p className="verify-message">
               {status === "already-verified"
                 ? message
-                : "Your email address has been verified successfully. You can now sign in to your account."}
+                : "Your email address has been verified successfully. You can now return to your original browser tab and sign in."}
             </p>
 
             {user?.email && (
