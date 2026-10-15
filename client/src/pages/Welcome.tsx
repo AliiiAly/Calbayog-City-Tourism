@@ -962,7 +962,15 @@ const WelcomeMap: React.FC<{
 ========================================================= */ 
  
 const Welcome: React.FC = () => { 
-  const { user, isUserAuthenticated } = useAuth();
+  
+const { user, isUserAuthenticated } = useAuth();
+
+const isAdminLogout =
+  new URLSearchParams(window.location.search)
+    .get("adminLogout") === "1";
+
+const displayUser = isAdminLogout ? null : user;
+
 
   // Plan Trip and My Memories are protected user features.
   // If a visitor is not logged in, open the app-wide login form
@@ -975,7 +983,7 @@ const Welcome: React.FC = () => {
       destination === "/itinerary" ||
       destination === "/memories";
 
-    if (!requiresLogin || user) {
+    if (!requiresLogin || displayUser) {
       return;
     }
 
@@ -1125,8 +1133,8 @@ const Welcome: React.FC = () => {
      USER GREETING 
   ========================================================= */ 
  
-  const firstName = user?.name 
-    ? user.name 
+  const firstName = displayUser?.name 
+    ? displayUser.name 
         .trim() 
         .split(/\s+/)[0] 
     : ""; 
