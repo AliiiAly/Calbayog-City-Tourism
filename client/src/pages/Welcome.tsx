@@ -93,4 +93,4 @@ import "leaflet/dist/leaflet.css";
  
 const CALBAYOG_BLUE = "#2D3195"; 
  
-/* ========================================================= 
+// QUICK ACCESS CARDS 
