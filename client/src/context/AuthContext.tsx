@@ -785,16 +785,15 @@ export const AuthProvider = ({
   ======================================================= */
 
   
+
 const logout = (): void => {
-  // Clear admin authentication state.
   setToken(null);
   setAdmin(null);
   clearAdminStorage();
 
-  // Prevent the previous admin session from being
-  // mistaken for an active session after logout.
-  window.location.replace("/admin/login");
+  window.location.replace("/?openLogin=1");
 };
+
 
   /* =======================================================
      USER LOGIN
