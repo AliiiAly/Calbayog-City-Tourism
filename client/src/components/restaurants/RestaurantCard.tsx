@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, Clock, Globe2, Heart, MapPin, Phone, Utensils } from "lucide-react";
+import { ArrowUpRight, Clock, Globe2, Heart, MapPin, Utensils } from "lucide-react";
 
 import { useFavorites } from "../../context/FavoritesContext";
 
@@ -38,15 +38,7 @@ const getWebsiteHref = (website: string) => {
     : `https://${website}`;
 };
 
-const buildDirectionsUrl = (restaurant: RestaurantCardItem) => {
-  const query = [
-    restaurant.name,
-    restaurant.location_address,
-    "Calbayog City, Samar, Philippines",
-  ].filter(Boolean).join(", ");
 
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}`;
-};
 
 const RestaurantCard: React.FC<RestaurantCardProps> = ({
   restaurant,
@@ -78,7 +70,6 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
     "";
 
   const address = restaurant.location_address || "";
-  const phone = restaurant.contact_phone || "";
   const website = restaurant.contact_website || "";
   const cuisine = restaurant.cuisine_type || "";
   const priceRange = restaurant.price_range || "";
@@ -208,16 +199,7 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
 
           <div className="shared-restaurant-bottom-row">
             <div className="shared-restaurant-actions">
-              {phone && (
-                <a
-                  href={`tel:${phone}`}
-                  className="shared-restaurant-action-link"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <Phone size={14} />
-                  Call
-                </a>
-              )}
+            
 
               {website && (
                 <a
@@ -232,18 +214,7 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
                 </a>
               )}
 
-              {address && (
-                <a
-                  href={buildDirectionsUrl(restaurant)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="shared-restaurant-action-link"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <MapPin size={14} />
-                  Directions
-                </a>
-              )}
+              
             </div>
 
             <Link
