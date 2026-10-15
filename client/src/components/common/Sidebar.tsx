@@ -288,6 +288,12 @@ const userSections: SidebarSection[] = [
         description: "Stay comfortably",
       },
       {
+      to: "/restaurants",
+      icon: "hotel",
+      label: "Restaurants",
+      description: "Discover places to eat",
+    },
+      {
         to: "/guides",
         icon: "guide",
         label: "Tour Guides",
