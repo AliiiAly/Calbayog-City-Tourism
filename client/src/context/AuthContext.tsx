@@ -784,12 +784,17 @@ export const AuthProvider = ({
      ADMIN LOGOUT
   ======================================================= */
 
-  const logout = (): void => {
-    setToken(null);
-    setAdmin(null);
+  
+const logout = (): void => {
+  // Clear admin authentication state.
+  setToken(null);
+  setAdmin(null);
+  clearAdminStorage();
 
-    clearAdminStorage();
-  };
+  // Prevent the previous admin session from being
+  // mistaken for an active session after logout.
+  window.location.replace("/admin/login");
+};
 
   /* =======================================================
      USER LOGIN
