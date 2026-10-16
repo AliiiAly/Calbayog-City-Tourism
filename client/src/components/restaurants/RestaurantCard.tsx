@@ -1,8 +1,14 @@
 
 import React from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, Clock, Globe2, Heart, MapPin, Utensils } from "lucide-react";
-
+import {
+  ArrowUpRight,
+  Clock,
+  Globe2,
+  Heart,
+  MapPin,
+  Utensils,
+} from "lucide-react";
 import { useFavorites } from "../../context/FavoritesContext";
 
 const CALBAYOG_BLUE = "#2D3195";
@@ -31,14 +37,10 @@ interface RestaurantCardProps {
   compact?: boolean;
 }
 
-const getWebsiteHref = (website: string) => {
+const getWebsiteHref = (website: string): string => {
   if (!website) return "";
-  return /^https?:\/\//i.test(website)
-    ? website
-    : `https://${website}`;
+  return /^https?:\/\//i.test(website) ? website : `https://${website}`;
 };
-
-
 
 const RestaurantCard: React.FC<RestaurantCardProps> = ({
   restaurant,
@@ -65,14 +67,11 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
     : [];
 
   const safeImageIndex =
-    images.length > 0 ? imageIndex % images.length : 0;
+    images.length > 0 ? Math.abs(imageIndex) % images.length : 0;
 
   const currentImage = images[safeImageIndex] || "";
   const description =
-    restaurant.short_description ||
-    restaurant.description ||
-    "";
-
+    restaurant.short_description || restaurant.description || "";
   const address = restaurant.location_address || "";
   const website = restaurant.contact_website || "";
   const cuisine = restaurant.cuisine_type || "";
@@ -82,6 +81,17 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
   const detailPath = restaurantId
     ? `/restaurants/${encodeURIComponent(restaurantId)}`
     : "/restaurants";
+
+  const handleFavoriteClick = (
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (restaurantId) {
+      void toggleFavorite("restaurant", restaurantId);
+    }
+  };
 
   return (
     <>
@@ -137,21 +147,13 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
           </Link>
 
           {restaurantId && (
-            <div
-              className={`shared-restaurant-favorite-control ${
-                liked ? "is-liked" : ""
-              }`}
-            >
+            <div className="shared-restaurant-favorite-control">
               <button
                 type="button"
                 className={`shared-restaurant-favorite-button ${
                   liked ? "active" : ""
                 }`}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  void toggleFavorite("restaurant", restaurantId);
-                }}
+                onClick={handleFavoriteClick}
                 aria-label={
                   liked
                     ? `Remove ${restaurant.name} from favorites`
@@ -161,12 +163,14 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
               >
                 <span className="favorite-heart-glow" />
                 <span className="favorite-heart-ripple" />
+
                 <Heart
                   className="favorite-heart-icon"
                   size={22}
                   strokeWidth={liked ? 2.25 : 1.9}
                   fill={liked ? "currentColor" : "none"}
                 />
+
                 {liked && (
                   <>
                     <span className="favorite-particle particle-1" />
@@ -178,6 +182,7 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
                   </>
                 )}
               </button>
+
               {favoriteCount > 0 && (
                 <span
                   className="shared-restaurant-favorite-count"
@@ -230,8 +235,6 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
 
           <div className="shared-restaurant-bottom-row">
             <div className="shared-restaurant-actions">
-            
-
               {website && (
                 <a
                   href={getWebsiteHref(website)}
@@ -244,8 +247,6 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
                   Website
                 </a>
               )}
-
-              
             </div>
 
             <Link
@@ -342,6 +343,8 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
           color: #9b6400;
         }
 
+        /* FAVORITE CONTROL — MATCHES ATTRACTION CARD */
+
         .shared-restaurant-favorite-control {
           position: absolute;
           top: 11px;
@@ -369,11 +372,23 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
           cursor: pointer;
           pointer-events: auto;
           -webkit-tap-highlight-color: transparent;
-          transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.2s ease, filter 0.2s ease;
+          transition:
+            transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
+            color 0.2s ease,
+            filter 0.2s ease;
         }
 
         .shared-restaurant-favorite-button:hover {
           transform: scale(1.09);
+        }
+
+        .shared-restaurant-favorite-button:active {
+          transform: scale(0.87);
+        }
+
+        .shared-restaurant-favorite-button.active {
+          color: #ff4f6d;
+          animation: favoriteButtonPop 0.48s cubic-bezier(0.22, 1.4, 0.36, 1);
         }
 
         .favorite-heart-icon {
@@ -381,12 +396,9 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
           z-index: 4;
           transform-origin: center;
           filter: none;
-          transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.22s ease;
-        }
-
-        .shared-restaurant-favorite-button.active {
-          color: #ff4f6d;
-          animation: favoriteButtonPop 0.48s cubic-bezier(0.22, 1.4, 0.36, 1);
+          transition:
+            transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+            color 0.22s ease;
         }
 
         .shared-restaurant-favorite-button.active .favorite-heart-icon {
@@ -398,7 +410,12 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
           width: 29px;
           height: 29px;
           border-radius: 50%;
-          background: radial-gradient(circle, rgba(255, 79, 109, 0.48) 0%, rgba(255, 79, 109, 0.19) 32%, transparent 72%);
+          background: radial-gradient(
+            circle,
+            rgba(255, 79, 109, 0.48) 0%,
+            rgba(255, 79, 109, 0.19) 32%,
+            transparent 72%
+          );
           opacity: 0;
           transform: scale(0.55);
           filter: blur(7px);
@@ -441,15 +458,74 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
           animation: favoriteParticle 0.62s ease-out forwards;
         }
 
-        .particle-1 { top: 5px; left: 50%; --particle-x: 0px; --particle-y: -20px; animation-delay: 0s !important; }
-        .particle-2 { top: 12px; right: 4px; width: 3px; height: 3px; --particle-x: 13px; --particle-y: -13px; animation-delay: 0.03s !important; }
-        .particle-3 { right: 8px; bottom: 7px; --particle-x: 14px; --particle-y: 8px; animation-delay: 0.06s !important; }
-        .particle-4 { left: 7px; bottom: 7px; width: 3px; height: 3px; --particle-x: -14px; --particle-y: 8px; animation-delay: 0.09s !important; }
-        .particle-5 { top: 11px; left: 4px; --particle-x: -13px; --particle-y: -13px; animation-delay: 0.12s !important; }
-        .particle-6 { top: 3px; right: 11px; width: 3px; height: 3px; --particle-x: 8px; --particle-y: -18px; animation-delay: 0.15s !important; }
+        .particle-1 {
+          top: 5px;
+          left: 50%;
+          --particle-x: 0px;
+          --particle-y: -20px;
+          animation-delay: 0s !important;
+        }
 
-        .shared-restaurant-favorite-button:active {
-          transform: scale(0.87);
+        .particle-2 {
+          top: 12px;
+          right: 4px;
+          width: 3px;
+          height: 3px;
+          --particle-x: 13px;
+          --particle-y: -13px;
+          animation-delay: 0.03s !important;
+        }
+
+        .particle-3 {
+          right: 8px;
+          bottom: 7px;
+          --particle-x: 14px;
+          --particle-y: 8px;
+          animation-delay: 0.06s !important;
+        }
+
+        .particle-4 {
+          left: 7px;
+          bottom: 7px;
+          width: 3px;
+          height: 3px;
+          --particle-x: -14px;
+          --particle-y: 8px;
+          animation-delay: 0.09s !important;
+        }
+
+        .particle-5 {
+          top: 11px;
+          left: 4px;
+          --particle-x: -13px;
+          --particle-y: -13px;
+          animation-delay: 0.12s !important;
+        }
+
+        .particle-6 {
+          top: 3px;
+          right: 11px;
+          width: 3px;
+          height: 3px;
+          --particle-x: 8px;
+          --particle-y: -18px;
+          animation-delay: 0.15s !important;
+        }
+
+        .shared-restaurant-favorite-count {
+          min-width: 22px;
+          min-height: 18px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 2px 5px;
+          color: rgba(255, 255, 255, 0.96);
+          font-size: 0.62rem;
+          line-height: 1;
+          font-weight: 800;
+          text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+          pointer-events: none;
+          animation: favoriteCountAppear 0.24s ease-out;
         }
 
         @keyframes favoriteButtonPop {
@@ -482,23 +558,10 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
         @keyframes favoriteParticle {
           0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
           25% { opacity: 1; }
-          100% { opacity: 0; transform: translate(var(--particle-x), var(--particle-y)) scale(0); }
-        }
-
-        .shared-restaurant-favorite-count {
-          min-width: 22px;
-          min-height: 18px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          padding: 2px 5px;
-          color: rgba(255, 255, 255, 0.96);
-          font-size: 0.62rem;
-          line-height: 1;
-          font-weight: 800;
-          text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
-          pointer-events: none;
-          animation: favoriteCountAppear 0.24s ease-out;
+          100% {
+            opacity: 0;
+            transform: translate(var(--particle-x), var(--particle-y)) scale(0);
+          }
         }
 
         @keyframes favoriteCountAppear {
@@ -512,10 +575,12 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
           left: 50%;
           transform: translateX(-50%);
           display: flex;
+          align-items: center;
           gap: 5px;
           padding: 5px 8px;
           border-radius: 999px;
           background: rgba(0, 0, 0, 0.2);
+          z-index: 4;
         }
 
         .shared-restaurant-image-dot {
@@ -652,6 +717,15 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
 
           .shared-restaurant-favorite-count {
             font-size: 0.59rem;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .shared-restaurant-favorite-button,
+          .favorite-heart-icon,
+          .shared-restaurant-favorite-count {
+            animation-duration: 0.01ms !important;
+            transition-duration: 0.01ms !important;
           }
         }
       `}</style>
