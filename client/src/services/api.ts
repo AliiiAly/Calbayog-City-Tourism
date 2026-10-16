@@ -754,6 +754,85 @@ export const deleteRestaurant = (id: string) => {
 };
 
 
+
+/* =========================================================
+   CHANGE PASSWORD — AUTHENTICATED USER
+========================================================= */
+
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface ChangePasswordResponse {
+  success: boolean;
+  message: string;
+}
+
+export const changeUserPassword = async (
+  payload: ChangePasswordPayload,
+): Promise<ChangePasswordResponse> => {
+  const currentPassword = payload.currentPassword?.trim();
+  const newPassword = payload.newPassword;
+  const confirmPassword = payload.confirmPassword;
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    throw new Error("Please complete all password fields.");
+  }
+
+  if (newPassword.length < 8) {
+    throw new Error(
+      "Your new password must be at least 8 characters long.",
+    );
+  }
+
+  if (newPassword !== confirmPassword) {
+    throw new Error("Your new passwords do not match.");
+  }
+
+  if (currentPassword === newPassword) {
+    throw new Error(
+      "Your new password must be different from your current password.",
+    );
+  }
+
+  const token = getUserToken();
+
+  if (!token) {
+    throw new Error(
+      "Your user session has expired. Please log in again.",
+    );
+  }
+
+  try {
+    const response = await userApi.post<ChangePasswordResponse>(
+      "/auth/user/change-password",
+      {
+        currentPassword: payload.currentPassword,
+        newPassword,
+        confirmPassword,
+      },
+    );
+
+    return {
+      success: response.data?.success ?? true,
+      message:
+        response.data?.message ??
+        "Your password has been changed successfully.",
+    };
+  } catch (error: any) {
+    const message =
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      error?.message ||
+      "Unable to change your password. Please try again.";
+
+    throw new Error(message);
+  }
+};
+
+
 // =========================================================
 // FAVORITES
 // =========================================================
