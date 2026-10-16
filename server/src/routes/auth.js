@@ -2274,6 +2274,158 @@ router.post(
 );
 
 /* =========================================================
+   CHANGE PASSWORD — AUTHENTICATED NORMAL USERS
+========================================================= */
+
+router.post(
+  "/user/change-password",
+  protect,
+  async (req, res) => {
+    try {
+      // Only normal users may use this endpoint.
+      if (
+        !req.auth ||
+        req.auth.role !== "user" ||
+        !req.auth.id
+      ) {
+        return res.status(403).json({
+          message:
+            "Only authenticated user accounts can change their password.",
+        });
+      }
+
+      const currentPassword = String(
+        req.body?.currentPassword || ""
+      );
+
+      const newPassword = String(
+        req.body?.newPassword || ""
+      );
+
+      const confirmPassword = String(
+        req.body?.confirmPassword || ""
+      );
+
+      if (
+        !currentPassword ||
+        !newPassword ||
+        !confirmPassword
+      ) {
+        return res.status(400).json({
+          message: "Please complete all password fields.",
+        });
+      }
+
+      if (newPassword.length < 8) {
+        return res.status(400).json({
+          message:
+            "Your new password must be at least 8 characters long.",
+        });
+      }
+
+      if (newPassword !== confirmPassword) {
+        return res.status(400).json({
+          message: "Your new passwords do not match.",
+        });
+      }
+
+      if (currentPassword === newPassword) {
+        return res.status(400).json({
+          message:
+            "Your new password must be different from your current password.",
+        });
+      }
+
+      // Find only the account belonging to the authenticated user.
+      const {
+        data: user,
+        error: userError,
+      } = await supabase
+        .from("users")
+        .select("id, password, is_active")
+        .eq("id", req.auth.id)
+        .maybeSingle();
+
+      if (userError) {
+        console.error(
+          "Change password user lookup failed:",
+          userError.message
+        );
+
+        return res.status(500).json({
+          message: "Unable to verify your account right now.",
+        });
+      }
+
+      if (!user) {
+        return res.status(404).json({
+          message: "User account not found.",
+        });
+      }
+
+      if (user.is_active === false) {
+        return res.status(403).json({
+          message: "Your account is deactivated.",
+        });
+      }
+
+      const currentPasswordIsValid =
+        await bcrypt.compare(
+          currentPassword,
+          user.password
+        );
+
+      if (!currentPasswordIsValid) {
+        return res.status(400).json({
+          message: "Your current password is incorrect.",
+        });
+      }
+
+      const hashedPassword = await bcrypt.hash(
+        newPassword,
+        10
+      );
+
+      const {
+        error: updateError,
+      } = await supabase
+        .from("users")
+        .update({
+          password: hashedPassword,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+
+      if (updateError) {
+        console.error(
+          "Change password update failed:",
+          updateError.message
+        );
+
+        return res.status(500).json({
+          message: "Unable to update your password.",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Your password has been changed successfully.",
+      });
+    } catch (err) {
+      console.error(
+        "Change password error:",
+        err.message || err
+      );
+
+      return res.status(500).json({
+        message:
+          "An unexpected error occurred while changing your password.",
+      });
+    }
+  }
+);
+
+/* =========================================================
    ADMIN USER MANAGEMENT
 ========================================================= */
 
