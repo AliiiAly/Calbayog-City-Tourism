@@ -75,16 +75,23 @@ const IS_ADMIN_BUILD =
    APP
 ========================================================= */
 
+
 const App: React.FC = () => {
+  const pathname = window.location.pathname;
+
   const isAdmin =
-    IS_ADMIN_BUILD ||
-    window.location.pathname.startsWith("/admin");
+    IS_ADMIN_BUILD || pathname.startsWith("/admin");
+
+  // Email verification links must bypass the splash screen,
+  // even when opened in a new browser or on another device.
+  const isVerificationRoute =
+    !IS_ADMIN_BUILD && pathname === "/verify-email";
 
   const alreadySeen =
     sessionStorage.getItem(SPLASH_KEY) === "1";
 
   const [splashDone, setSplashDone] = useState(
-    isAdmin || alreadySeen
+    isAdmin || isVerificationRoute || alreadySeen
   );
 
   /* =========================================================
@@ -95,6 +102,10 @@ const App: React.FC = () => {
     if (isAdminRoute(window.location.pathname)) {
       document.body.classList.add("admin-page");
     }
+
+    return () => {
+      document.body.classList.remove("admin-page");
+    };
   }, []);
 
   /* =========================================================
@@ -111,9 +122,7 @@ const App: React.FC = () => {
   ========================================================= */
 
   if (!splashDone) {
-    return (
-      <SplashScreen onComplete={handleSplashComplete} />
-    );
+    return <SplashScreen onComplete={handleSplashComplete} />;
   }
 
   /* =========================================================
@@ -134,6 +143,7 @@ const App: React.FC = () => {
     </IonApp>
   );
 };
+
 
 /* =========================================================
    APP CONTENT
