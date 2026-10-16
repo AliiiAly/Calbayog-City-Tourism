@@ -1,15 +1,8 @@
 
 import React from "react";
 import { Link } from "react-router-dom";
-
+import { ArrowUpRight, Globe2, Heart, MapPin } from "lucide-react";
 import { useFavorites } from "../../context/FavoritesContext";
-
-import {
-  ArrowUpRight,
-  Globe2,
-  Heart,
-  MapPin,
-} from "lucide-react";
 
 const CALBAYOG_BLUE = "#2D3195";
 
@@ -36,18 +29,11 @@ interface AccommodationCardProps {
 
 const getAccommodationId = (
   accommodation: AccommodationCardItem,
-): string => {
-  return String(accommodation?.id ?? "").trim();
-};
+): string => String(accommodation?.id ?? "").trim();
 
 const getWebsiteHref = (website: string): string => {
   if (!website) return "";
-
-  if (/^https?:\/\//i.test(website)) {
-    return website;
-  }
-
-  return `https://${website}`;
+  return /^https?:\/\//i.test(website) ? website : `https://${website}`;
 };
 
 const AccommodationCard: React.FC<AccommodationCardProps> = ({
@@ -57,13 +43,7 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
   compact = false,
 }) => {
   const accommodationId = getAccommodationId(accommodation);
-
-  // FAVORITES
-  const {
-    isFavorite,
-    getFavoriteCount,
-    toggleFavorite,
-  } = useFavorites();
+  const { isFavorite, getFavoriteCount, toggleFavorite } = useFavorites();
 
   const liked = accommodationId
     ? isFavorite("accommodation", accommodationId)
@@ -74,17 +54,16 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
     : 0;
 
   const images = Array.isArray(accommodation.images)
-    ? accommodation.images.filter(Boolean)
+    ? accommodation.images.filter(
+        (image): image is string =>
+          typeof image === "string" && image.trim().length > 0,
+      )
     : [];
 
   const safeImageIndex =
-    images.length > 0
-      ? Math.abs(imageIndex) % images.length
-      : 0;
+    images.length > 0 ? Math.abs(imageIndex) % images.length : 0;
 
-  const currentImage =
-    images.length > 0 ? images[safeImageIndex] : "";
-
+  const currentImage = images[safeImageIndex] || "";
   const description = accommodation.description || "";
   const address = accommodation.address || "";
   const priceRange = accommodation.price_range || "";
@@ -94,6 +73,17 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
     ? `/accommodations/${encodeURIComponent(accommodationId)}`
     : "/accommodations";
 
+  const handleFavoriteClick = (
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (accommodationId) {
+      void toggleFavorite("accommodation", accommodationId);
+    }
+  };
+
   return (
     <>
       <div
@@ -101,7 +91,6 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
           compact ? "shared-accommodation-card-compact" : ""
         }`}
       >
-        {/* IMAGE */}
         <div
           className={`shared-accommodation-image-wrap ${
             compact ? "shared-accommodation-image-wrap-compact" : ""
@@ -132,21 +121,18 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
               </div>
             )}
 
-            {/* PRICE */}
             {priceRange && (
               <div className="shared-accommodation-price-badge">
                 {priceRange}
               </div>
             )}
 
-            {/* FEATURED */}
             {showFeatured && accommodation.featured && (
               <div className="shared-accommodation-featured-badge">
                 <span>Featured</span>
               </div>
             )}
 
-            {/* IMAGE DOTS */}
             {images.length > 1 && (
               <div className="shared-accommodation-image-dots">
                 {images.slice(0, 6).map((_, index) => (
@@ -161,29 +147,14 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
             )}
           </Link>
 
-          {/* FAVORITE BUTTON AND COUNT */}
           {accommodationId && (
-            <div
-              className={`shared-accommodation-favorite-control ${
-                liked ? "is-liked" : ""
-              }`}
-            >
+            <div className="shared-accommodation-favorite-control">
               <button
                 type="button"
                 className={`shared-accommodation-favorite-button ${
                   liked ? "active" : ""
                 }`}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-
-                  // FavoritesContext opens the login modal
-                  // when the user is not authenticated.
-                  void toggleFavorite(
-                    "accommodation",
-                    accommodationId,
-                  );
-                }}
+                onClick={handleFavoriteClick}
                 aria-label={
                   liked
                     ? `Remove ${accommodation.name} from favorites`
@@ -225,20 +196,17 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
           )}
         </div>
 
-        {/* CARD BODY */}
         <div className="shared-accommodation-card-body">
           <Link
             to={detailPath}
             className="shared-accommodation-content-link"
           >
-            {/* TITLE */}
             <div className="shared-accommodation-title-row">
               <div className="shared-accommodation-name">
                 {accommodation.name || "Unnamed Accommodation"}
               </div>
             </div>
 
-            {/* LOCATION */}
             {address && (
               <div className="shared-accommodation-location">
                 <MapPin size={15} strokeWidth={1.8} />
@@ -246,7 +214,6 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
               </div>
             )}
 
-            {/* DESCRIPTION */}
             {description && (
               <p className="shared-accommodation-description">
                 {description.slice(0, 170)}
@@ -254,21 +221,17 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
               </p>
             )}
 
-            {/* OWNER / MANAGER */}
             {(accommodation.owner || accommodation.manager) && (
               <div className="shared-accommodation-contact-info">
-                {accommodation.owner && (
+                {accommodation.owner ? (
                   <span>Owner: {accommodation.owner}</span>
-                )}
-
-                {!accommodation.owner && accommodation.manager && (
+                ) : accommodation.manager ? (
                   <span>Manager: {accommodation.manager}</span>
-                )}
+                ) : null}
               </div>
             )}
           </Link>
 
-          {/* BOTTOM ROW: WEBSITE AND VIEW DETAILS */}
           <div className="shared-accommodation-bottom-row">
             <div className="shared-accommodation-card-actions">
               {website && (
@@ -314,8 +277,7 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
           transition: box-shadow 0.28s ease;
         }
 
-        .shared-accommodation-card:hover
-          .shared-accommodation-image-wrap {
+        .shared-accommodation-card:hover .shared-accommodation-image-wrap {
           box-shadow: 0 12px 32px rgba(20, 30, 24, 0.11);
         }
 
@@ -336,8 +298,7 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
           transition: transform 0.65s cubic-bezier(0.2, 0.65, 0.3, 1);
         }
 
-        .shared-accommodation-card:hover
-          .shared-accommodation-image {
+        .shared-accommodation-card:hover .shared-accommodation-image {
           transform: scale(1.035);
         }
 
@@ -403,14 +364,17 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
           z-index: 3;
         }
 
+        /* FAVORITE CONTROL — MATCHES ATTRACTION CARD */
+
         .shared-accommodation-favorite-control {
           position: absolute;
           top: 11px;
           right: 11px;
           z-index: 8;
           display: flex;
+          flex-direction: column;
           align-items: center;
-          gap: 2px;
+          gap: 3px;
           pointer-events: none;
         }
 
@@ -422,13 +386,17 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
           align-items: center;
           justify-content: center;
           padding: 0;
-          border: none;
-          outline: none;
-          background: transparent;
+          border: none !important;
+          outline: none !important;
+          background: transparent !important;
           color: rgba(255, 255, 255, 0.98);
           cursor: pointer;
           pointer-events: auto;
-          transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+          -webkit-tap-highlight-color: transparent;
+          transition:
+            transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
+            color 0.2s ease,
+            filter 0.2s ease;
         }
 
         .shared-accommodation-favorite-button:hover {
@@ -441,18 +409,21 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
 
         .shared-accommodation-favorite-button.active {
           color: #ff4f6d;
-          animation: accommodationButtonPop 0.48s cubic-bezier(0.22, 1.4, 0.36, 1);
+          animation: favoriteButtonPop 0.48s cubic-bezier(0.22, 1.4, 0.36, 1);
         }
 
         .favorite-heart-icon {
           position: relative;
           z-index: 4;
-          transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+          transform-origin: center;
+          filter: none;
+          transition:
+            transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+            color 0.22s ease;
         }
 
-        .shared-accommodation-favorite-button.active
-          .favorite-heart-icon {
-          animation: accommodationHeartPop 0.52s cubic-bezier(0.34, 1.56, 0.64, 1);
+        .shared-accommodation-favorite-button.active .favorite-heart-icon {
+          animation: favoriteHeartPop 0.52s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         .favorite-heart-glow {
@@ -473,9 +444,8 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
           pointer-events: none;
         }
 
-        .shared-accommodation-favorite-button.active
-          .favorite-heart-glow {
-          animation: accommodationGlow 0.7s ease-out;
+        .shared-accommodation-favorite-button.active .favorite-heart-glow {
+          animation: favoriteGlow 0.7s ease-out;
         }
 
         .favorite-heart-ripple {
@@ -487,11 +457,11 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
           opacity: 0;
           transform: scale(0.35);
           z-index: 0;
+          pointer-events: none;
         }
 
-        .shared-accommodation-favorite-button.active
-          .favorite-heart-ripple {
-          animation: accommodationRipple 0.62s ease-out;
+        .shared-accommodation-favorite-button.active .favorite-heart-ripple {
+          animation: favoriteRipple 0.62s ease-out;
         }
 
         .favorite-particle {
@@ -502,11 +472,11 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
           background: #ff5b73;
           opacity: 0;
           z-index: 2;
+          pointer-events: none;
         }
 
-        .shared-accommodation-favorite-button.active
-          .favorite-particle {
-          animation: accommodationParticle 0.62s ease-out forwards;
+        .shared-accommodation-favorite-button.active .favorite-particle {
+          animation: favoriteParticle 0.62s ease-out forwards;
         }
 
         .particle-1 {
@@ -558,29 +528,16 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
           align-items: center;
           justify-content: center;
           padding: 2px 5px;
-          border-radius: 999px;
-          background: rgba(25, 29, 40, 0.55);
           color: rgba(255, 255, 255, 0.96);
           font-size: 0.62rem;
           line-height: 1;
           font-weight: 800;
           text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
           pointer-events: none;
-          animation: accommodationFavoriteCountAppear 0.24s ease-out;
+          animation: favoriteCountAppear 0.24s ease-out;
         }
 
-        @keyframes accommodationFavoriteCountAppear {
-          from {
-            opacity: 0;
-            transform: translateY(-4px) scale(0.8);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-
-        @keyframes accommodationButtonPop {
+        @keyframes favoriteButtonPop {
           0% { transform: scale(0.78); }
           35% { transform: scale(1.16); }
           58% { transform: scale(0.96); }
@@ -588,7 +545,7 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
           100% { transform: scale(1); }
         }
 
-        @keyframes accommodationHeartPop {
+        @keyframes favoriteHeartPop {
           0% { transform: scale(0.55) rotate(-8deg); }
           28% { transform: scale(1.28) rotate(5deg); }
           48% { transform: scale(0.90) rotate(-2deg); }
@@ -596,18 +553,18 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
           100% { transform: scale(1) rotate(0); }
         }
 
-        @keyframes accommodationGlow {
+        @keyframes favoriteGlow {
           0% { opacity: 0; transform: scale(0.45); }
           35% { opacity: 1; transform: scale(1.6); }
           100% { opacity: 0; transform: scale(2.25); }
         }
 
-        @keyframes accommodationRipple {
+        @keyframes favoriteRipple {
           0% { opacity: 0.65; transform: scale(0.4); }
           100% { opacity: 0; transform: scale(2.5); }
         }
 
-        @keyframes accommodationParticle {
+        @keyframes favoriteParticle {
           0% {
             opacity: 0;
             transform: translate(0, 0) scale(0.4);
@@ -616,6 +573,17 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
           100% {
             opacity: 0;
             transform: translate(var(--particle-x), var(--particle-y)) scale(0);
+          }
+        }
+
+        @keyframes favoriteCountAppear {
+          from {
+            opacity: 0;
+            transform: translateY(-4px) scale(0.8);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
           }
         }
 
@@ -643,7 +611,7 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
 
         .shared-accommodation-image-dot.active {
           width: 7px;
-          background: #ffffff;
+          background: #fff;
         }
 
         .shared-accommodation-card-body {
@@ -769,9 +737,27 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
         }
 
         @media (max-width: 479.98px) {
+          .shared-accommodation-favorite-control {
+            top: 9px;
+            right: 9px;
+          }
+
           .shared-accommodation-favorite-button {
             width: 39px;
             height: 39px;
+          }
+
+          .shared-accommodation-favorite-count {
+            font-size: 0.59rem;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .shared-accommodation-favorite-button,
+          .favorite-heart-icon,
+          .shared-accommodation-favorite-count {
+            animation-duration: 0.01ms !important;
+            transition-duration: 0.01ms !important;
           }
         }
       `}</style>
