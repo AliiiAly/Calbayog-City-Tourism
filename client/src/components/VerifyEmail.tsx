@@ -1,14 +1,10 @@
-
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 const API_URL = (
   (import.meta as any).env?.VITE_API_URL ||
   "https://calbayog-city-tourism.onrender.com/api"
-).replace(/\/$/, "");
-
-const VERIFICATION_STORAGE_KEY =
-  "calbayog_email_verification_success";
+).replace(/\/+$/, "");
 
 type VerificationStatus =
   | "verifying"
@@ -32,11 +28,6 @@ interface VerificationResponse {
   user?: VerifiedUser;
 }
 
-interface VerificationNotice {
-  email: string;
-  verifiedAt: number;
-}
-
 const VerifyEmail: React.FC = () => {
   const location = useLocation();
 
@@ -47,46 +38,12 @@ const VerifyEmail: React.FC = () => {
     "Verifying your email address..."
   );
 
-  const [user, setUser] =
-    useState<VerifiedUser | null>(null);
+  const [user, setUser] = useState<VerifiedUser | null>(null);
 
   const token = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return (params.get("token") || "").trim();
   }, [location.search]);
-
-  /*
-   * Notify other tabs on the same website origin.
-   * This does not log the user in or create a session.
-   */
-  const notifyOtherTabs = (
-    verifiedUser: VerifiedUser | null
-  ) => {
-    const email = (
-      verifiedUser?.email ||
-      verifiedUser?.username ||
-      ""
-    )
-      .trim()
-      .toLowerCase();
-
-    const notice: VerificationNotice = {
-      email,
-      verifiedAt: Date.now(),
-    };
-
-    try {
-      window.localStorage.setItem(
-        VERIFICATION_STORAGE_KEY,
-        JSON.stringify(notice)
-      );
-    } catch (error) {
-      console.warn(
-        "Could not notify other tabs about email verification.",
-        error
-      );
-    }
-  };
 
   useEffect(() => {
     let isActive = true;
@@ -97,16 +54,14 @@ const VerifyEmail: React.FC = () => {
     const timeoutId = window.setTimeout(() => {
       timedOut = true;
       controller.abort();
-    }, 15000);
+    }, 20000);
 
     const verifyEmail = async () => {
       if (!token) {
-        if (isActive) {
-          setStatus("error");
-          setMessage(
-            "This verification link is missing a valid verification token."
-          );
-        }
+        setStatus("error");
+        setMessage(
+          "This verification link is missing its token. Please request a new verification email."
+        );
         return;
       }
 
@@ -116,9 +71,7 @@ const VerifyEmail: React.FC = () => {
 
       try {
         const response = await fetch(
-          `${API_URL}/auth/user/verify-email?token=${encodeURIComponent(
-            token
-          )}`,
+          `${API_URL}/auth/user/verify-email?token=${encodeURIComponent(token)}`,
           {
             method: "GET",
             headers: {
@@ -133,44 +86,52 @@ const VerifyEmail: React.FC = () => {
         const data: VerificationResponse =
           await response.json().catch(() => ({}));
 
-        if (!isActive) {
-          return;
-        }
+        if (!isActive) return;
 
-        const isAlreadyVerified =
+        const responseMessage = data.message || "";
+
+        const alreadyVerified =
           data.alreadyVerified === true ||
-          /already verified/i.test(data.message || "");
+          /already verified/i.test(responseMessage);
+
+        const verifiedSuccessfully =
+          data.verified === true ||
+          /email (address )?verified successfully|successfully verified/i.test(
+            responseMessage
+          );
 
         if (
           response.ok &&
-          (data.verified === true || isAlreadyVerified)
+          (verifiedSuccessfully || alreadyVerified)
         ) {
-          const verifiedUser = data.user || null;
+          setUser(data.user || null);
 
-          setUser(verifiedUser);
-
-          if (isAlreadyVerified) {
+          if (alreadyVerified) {
             setStatus("already-verified");
             setMessage(
-              data.message ||
-                "Your email address is already verified."
+              responseMessage ||
+                "Your email address has already been verified."
             );
           } else {
             setStatus("success");
             setMessage(
-              data.message ||
+              responseMessage ||
                 "Your email address has been verified successfully."
             );
           }
 
-          notifyOtherTabs(verifiedUser);
           return;
         }
 
-        if (data.expired === true) {
+        if (
+          data.expired === true ||
+          /token.*expired|verification.*expired|expired.*token/i.test(
+            responseMessage
+          )
+        ) {
           setStatus("expired");
           setMessage(
-            data.message ||
+            responseMessage ||
               "This verification link has expired. Please request a new verification email."
           );
           return;
@@ -178,17 +139,11 @@ const VerifyEmail: React.FC = () => {
 
         setStatus("error");
         setMessage(
-          data.message ||
-            "We could not complete your email verification."
+          responseMessage ||
+            "We could not verify your email address. The link may be invalid or expired."
         );
       } catch (error) {
-        /*
-         * Ignore requests cancelled by React StrictMode
-         * or by unmounting this component.
-         */
-        if (!isActive) {
-          return;
-        }
+        if (!isActive) return;
 
         if (timedOut) {
           setStatus("error");
@@ -198,15 +153,13 @@ const VerifyEmail: React.FC = () => {
           return;
         }
 
-        if (controller.signal.aborted) {
-          return;
-        }
+        if (controller.signal.aborted) return;
 
         console.error("Email verification error:", error);
 
         setStatus("error");
         setMessage(
-          "Unable to connect to the verification server. Please try again."
+          "Unable to connect to the verification server. Please check your internet connection and try again."
         );
       } finally {
         window.clearTimeout(timeoutId);
@@ -222,69 +175,90 @@ const VerifyEmail: React.FC = () => {
     };
   }, [token]);
 
-  /*
-   * Navigation happens only when a user explicitly clicks
-   * a button on an error or expired-link screen.
-   * Successful verification never redirects automatically.
-   */
-  const handleGoHome = () => {
-    window.location.assign("/");
+  const goToSignIn = () => {
+    window.location.assign("/login");
   };
 
-  const handleTryAgain = () => {
+  const retryVerification = () => {
     window.location.reload();
   };
 
   const isSuccess =
-    status === "success" ||
-    status === "already-verified";
+    status === "success" || status === "already-verified";
 
   return (
-    <div className="verify-page">
+    <main className="verify-page">
       <style>{`
         .verify-page {
+          box-sizing: border-box;
           min-height: 100vh;
+          min-height: 100dvh;
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 32px 20px;
+          padding: 24px 16px;
           background:
-            radial-gradient(circle at top left, rgba(45,49,149,.08), transparent 38%),
-            radial-gradient(circle at bottom right, rgba(255,183,27,.09), transparent 36%),
+            radial-gradient(circle at top left, rgba(45,49,149,.09), transparent 38%),
+            radial-gradient(circle at bottom right, rgba(255,183,27,.12), transparent 36%),
             #f8faff;
           font-family: Inter, ui-sans-serif, system-ui, -apple-system,
             BlinkMacSystemFont, "Segoe UI", sans-serif;
           color: #17213c;
         }
 
+        .verify-page *,
+        .verify-page *::before,
+        .verify-page *::after {
+          box-sizing: border-box;
+        }
+
         .verify-card {
-          width: min(100%, 650px);
-          background: rgba(255,255,255,.94);
-          border: 1px solid rgba(45,49,149,.12);
-          border-radius: 28px;
-          padding: 48px 34px 42px;
+          width: 100%;
+          max-width: 560px;
+          padding: 42px 34px 32px;
           text-align: center;
-          box-shadow: 0 25px 70px rgba(27,38,75,.10),
-            0 8px 24px rgba(27,38,75,.05);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
+          background: rgba(255,255,255,.96);
+          border: 1px solid rgba(45,49,149,.12);
+          border-radius: 26px;
+          box-shadow: 0 24px 65px rgba(27,38,75,.10);
+          overflow-wrap: anywhere;
         }
 
         .verify-logo {
-          width: 78px;
-          height: 78px;
+          display: block;
+          width: 76px;
+          height: 76px;
           object-fit: contain;
-          margin-bottom: 24px;
+          margin: 0 auto 24px;
+        }
+
+        .verify-spinner {
+          width: 66px;
+          height: 66px;
+          margin: 0 auto 26px;
+          border: 5px solid rgba(45,49,149,.12);
+          border-top-color: #2D3195;
+          border-radius: 50%;
+          animation: verify-spin .85s linear infinite;
+        }
+
+        @keyframes verify-spin {
+          to { transform: rotate(360deg); }
         }
 
         .verify-icon {
-          width: 86px;
-          height: 86px;
-          margin: 0 auto 28px;
-          border-radius: 50%;
+          width: 78px;
+          height: 78px;
           display: flex;
           align-items: center;
           justify-content: center;
+          margin: 0 auto 24px;
+          border-radius: 50%;
+        }
+
+        .verify-icon svg {
+          width: 40px;
+          height: 40px;
         }
 
         .verify-icon.success {
@@ -293,8 +267,8 @@ const VerifyEmail: React.FC = () => {
         }
 
         .verify-icon.warning {
-          background: rgba(255,183,27,.14);
-          color: #d68e00;
+          background: rgba(255,183,27,.17);
+          color: #a66d00;
         }
 
         .verify-icon.error {
@@ -302,60 +276,27 @@ const VerifyEmail: React.FC = () => {
           color: #dc3545;
         }
 
-        .verify-icon svg {
-          width: 42px;
-          height: 42px;
-        }
-
-        .spinner {
-          width: 72px;
-          height: 72px;
-          margin: 0 auto 30px;
-          border-radius: 50%;
-          border: 4px solid rgba(45,49,149,.12);
-          border-top-color: #2D3195;
-          animation: verify-spin .9s linear infinite;
-          position: relative;
-        }
-
-        .spinner::after {
-          content: "";
-          position: absolute;
-          width: 9px;
-          height: 9px;
-          background: #FFB71B;
-          border-radius: 50%;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%,-50%);
-        }
-
-        @keyframes verify-spin {
-          to { transform: rotate(360deg); }
-        }
-
         .verify-title {
           margin: 0;
-          font-size: clamp(2rem,5vw,3rem);
-          line-height: 1.08;
-          font-weight: 800;
-          letter-spacing: -.04em;
           color: #16213d;
+          font-size: clamp(1.8rem, 5vw, 2.5rem);
+          line-height: 1.15;
+          font-weight: 800;
+          letter-spacing: -.035em;
         }
 
         .verify-message {
-          margin: 14px auto 0;
-          max-width: 500px;
-          color: #6c7892;
-          font-size: 1.05rem;
+          max-width: 440px;
+          margin: 16px auto 0;
+          color: #68758e;
+          font-size: 1rem;
           line-height: 1.7;
-          overflow-wrap: anywhere;
         }
 
         .verify-user {
-          margin-top: 22px;
-          padding: 14px 18px;
-          border-radius: 14px;
+          margin-top: 20px;
+          padding: 13px 16px;
+          border-radius: 12px;
           background: rgba(45,49,149,.06);
           color: #2D3195;
           font-weight: 700;
@@ -363,29 +304,35 @@ const VerifyEmail: React.FC = () => {
         }
 
         .verify-notice {
-          margin-top: 26px;
-          padding: 15px 17px;
-          border-radius: 14px;
-          background: rgba(45,49,149,.055);
+          margin-top: 24px;
+          padding: 15px;
+          border-radius: 12px;
+          background: #f3f5ff;
           color: #3d4770;
-          font-size: .9rem;
+          font-size: .93rem;
           line-height: 1.65;
         }
 
         .verify-actions {
-          margin-top: 30px;
           display: flex;
-          gap: 12px;
-          justify-content: center;
           flex-wrap: wrap;
+          justify-content: center;
+          gap: 12px;
+          margin-top: 26px;
         }
 
         .verify-button {
+          display: inline-flex;
+          min-height: 48px;
+          align-items: center;
+          justify-content: center;
+          padding: 13px 22px;
           border: 0;
           border-radius: 12px;
-          padding: 13px 20px;
+          font: inherit;
           font-size: .96rem;
-          font-weight: 700;
+          font-weight: 750;
+          text-decoration: none;
           cursor: pointer;
           transition: transform .18s ease, box-shadow .18s ease;
         }
@@ -394,10 +341,15 @@ const VerifyEmail: React.FC = () => {
           transform: translateY(-1px);
         }
 
+        .verify-button:focus-visible {
+          outline: 3px solid rgba(45,49,149,.35);
+          outline-offset: 3px;
+        }
+
         .verify-button.primary {
           color: #fff;
           background: #2D3195;
-          box-shadow: 0 8px 22px rgba(45,49,149,.22);
+          box-shadow: 0 7px 20px rgba(45,49,149,.20);
         }
 
         .verify-button.secondary {
@@ -405,44 +357,68 @@ const VerifyEmail: React.FC = () => {
           background: rgba(45,49,149,.08);
         }
 
-        .verify-button.warning-button {
-          color: #6b4700;
-          background: rgba(255,183,27,.16);
-        }
-
         .verify-brand {
-          margin-top: 34px;
+          margin-top: 32px;
         }
 
         .verify-brand-name {
           margin: 0;
-          font-weight: 800;
           color: #2D3195;
+          font-weight: 800;
         }
 
         .verify-brand-tagline {
-          margin: 4px 0 0;
-          color: #6f7a91;
+          margin: 5px 0 0;
+          color: #78839a;
+          font-size: .9rem;
           font-weight: 600;
-          font-size: .92rem;
         }
 
         @media (max-width: 576px) {
-          .verify-page { padding: 18px; }
-          .verify-card {
-            padding: 38px 22px 32px;
-            border-radius: 22px;
+          .verify-page {
+            padding: 16px;
           }
-          .verify-title { font-size: 2rem; }
+
+          .verify-card {
+            padding: 32px 20px 26px;
+            border-radius: 20px;
+          }
+
+          .verify-logo {
+            width: 66px;
+            height: 66px;
+            margin-bottom: 20px;
+          }
+
+          .verify-title {
+            font-size: 1.85rem;
+          }
+
+          .verify-message {
+            font-size: .96rem;
+          }
+
+          .verify-actions {
+            flex-direction: column;
+          }
+
+          .verify-button {
+            width: 100%;
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .spinner { animation: none; }
-          .verify-button { transition: none; }
+          .verify-spinner {
+            animation: none;
+          }
+
+          .verify-button {
+            transition: none;
+          }
         }
       `}</style>
 
-      <div className="verify-card">
+      <section className="verify-card" aria-live="polite">
         <img
           src="/logo2.svg"
           alt="Calbayog City Tourism"
@@ -451,16 +427,18 @@ const VerifyEmail: React.FC = () => {
 
         {status === "verifying" && (
           <>
-            <div className="spinner" aria-hidden="true" />
+            <div
+              className="verify-spinner"
+              role="status"
+              aria-label="Verifying email"
+            />
 
             <h1 className="verify-title">
               Verifying your email
             </h1>
 
-            <p className="verify-message">{message}</p>
-
             <p className="verify-message">
-              Please wait while your verification request is processed.
+              Please wait while we confirm your email address.
             </p>
           </>
         )}
@@ -507,17 +485,27 @@ const VerifyEmail: React.FC = () => {
             <p className="verify-message">
               {status === "already-verified"
                 ? message
-                : "Your email address has been verified successfully."}
+                : "Your email address has been verified successfully. You can now sign in to your account."}
             </p>
 
             {user?.email && (
               <div className="verify-user">{user.email}</div>
             )}
 
-            <div className="verify-notice" role="status">
-              You can now return to your original browser tab.
-              Your login window should display the verification
-              confirmation, and you can sign in there.
+            <div className="verify-notice">
+              You can sign in on this device or return to the device
+              where you registered. Email verification is complete;
+              signing in is the next step.
+            </div>
+
+            <div className="verify-actions">
+              <button
+                type="button"
+                className="verify-button primary"
+                onClick={goToSignIn}
+              >
+                Continue to Sign In
+              </button>
             </div>
           </>
         )}
@@ -548,9 +536,9 @@ const VerifyEmail: React.FC = () => {
               <button
                 type="button"
                 className="verify-button primary"
-                onClick={handleGoHome}
+                onClick={goToSignIn}
               >
-                Go to Home
+                Go to Sign In
               </button>
             </div>
           </>
@@ -583,7 +571,7 @@ const VerifyEmail: React.FC = () => {
               <button
                 type="button"
                 className="verify-button primary"
-                onClick={handleTryAgain}
+                onClick={retryVerification}
               >
                 Try Again
               </button>
@@ -591,25 +579,24 @@ const VerifyEmail: React.FC = () => {
               <button
                 type="button"
                 className="verify-button secondary"
-                onClick={handleGoHome}
+                onClick={goToSignIn}
               >
-                Go to Home
+                Go to Sign In
               </button>
             </div>
           </>
         )}
 
-        <div className="verify-brand">
+        <footer className="verify-brand">
           <p className="verify-brand-name">
             Calbayog City Tourism
           </p>
-
           <p className="verify-brand-tagline">
             Discover. Explore. Experience.
           </p>
-        </div>
-      </div>
-    </div>
+        </footer>
+      </section>
+    </main>
   );
 };
 
