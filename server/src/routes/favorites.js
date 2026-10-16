@@ -41,6 +41,10 @@ const FAVORITE_TYPES = {
     table: "accommodations",
   },
 
+  restaurant: {
+    table: "restaurants",
+  },
+
   event: {
     table: "events",
   },
@@ -354,7 +358,7 @@ router.post(
       ) {
         return res.status(400).json({
           message:
-            "Invalid favorite item type. Allowed values are attraction, accommodation, and event.",
+            "Invalid favorite item type. Allowed values are attraction, accommodation, restaurant, and event.",
         });
       }
 
