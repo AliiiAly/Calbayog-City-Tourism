@@ -6,21 +6,16 @@ import { useAuth } from "../../context/AuthContext";
 
 import LoginModal from "../LoginModal";
 import SignupModal from "../SignupModal";
+import ChangePasswordModal from "../ChangePasswordModal";
 
 interface AppHeaderProps {
   onMenuClick: () => void;
   onSearch?: (query: string) => void;
-
   showSearch?: boolean;
-
   searchPath?: string;
-
   searchPlaceholder?: string;
-
   showAnnouncements?: boolean;
-
   extraActions?: React.ReactNode;
-
   isAdmin?: boolean;
 }
 
@@ -60,7 +55,7 @@ const HeaderIcon: React.FC<HeaderIconProps> = ({
     strokeWidth,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
-    "aria-hidden": true,
+    "aria-hidden": true as const,
   };
 
   switch (name) {
@@ -80,9 +75,6 @@ const HeaderIcon: React.FC<HeaderIconProps> = ({
           <path d="m16 16 4.5 4.5" />
         </svg>
       );
-
-
-
 
     case "close":
       return (
@@ -168,708 +160,330 @@ const AppHeaderStyles: React.FC = () => (
       --calbayog-blue-dark: #242875;
       --calbayog-blue-soft: rgba(45, 49, 149, 0.09);
       --calbayog-blue-border: rgba(45, 49, 149, 0.18);
-
       --calbayog-yellow: #FFB71B;
       --calbayog-yellow-soft: rgba(255, 183, 27, 0.12);
       --calbayog-yellow-border: rgba(255, 183, 27, 0.28);
-
       --header-text: #142033;
       --header-muted: #687386;
-
       --glass-border: rgba(255, 255, 255, 0.42);
-
-      --header-shadow:
-        0 8px 30px rgba(17, 24, 39, 0.06);
+      --header-shadow: 0 8px 30px rgba(17, 24, 39, 0.06);
     }
 
     html.dark-mode {
       --header-text: #f5f8fc;
       --header-muted: #9aa8ba;
-
-      --glass-border:
-        rgba(255, 255, 255, 0.09);
-
-      --header-shadow:
-        0 10px 34px rgba(0, 0, 0, 0.22);
+      --glass-border: rgba(255, 255, 255, 0.09);
+      --header-shadow: 0 10px 34px rgba(0, 0, 0, 0.22);
     }
-
-    /* =====================================================
-       HEADER
-    ===================================================== */
 
     .sticky-search-header {
       position: sticky;
       top: 0;
       z-index: 1100;
       width: 100%;
-
-      background:
-        linear-gradient(
-          180deg,
-          rgba(255, 255, 255, 0.70) 0%,
-          rgba(255, 255, 255, 0.48) 100%
-        );
-
-      backdrop-filter:
-        blur(22px)
-        saturate(160%);
-
-      -webkit-backdrop-filter:
-        blur(22px)
-        saturate(160%);
-
-      border-bottom:
-        1px solid rgba(45, 49, 149, 0.08);
-
-      box-shadow:
-        var(--header-shadow);
-
+      background: linear-gradient(180deg, rgba(255,255,255,.70), rgba(255,255,255,.48));
+      backdrop-filter: blur(22px) saturate(160%);
+      -webkit-backdrop-filter: blur(22px) saturate(160%);
+      border-bottom: 1px solid rgba(45,49,149,.08);
+      box-shadow: var(--header-shadow);
       isolation: isolate;
-
-      animation:
-        headerReveal 0.35s ease-out both;
+      animation: headerReveal .35s ease-out both;
     }
 
     @keyframes headerReveal {
-      from {
-        opacity: 0;
-        transform: translateY(-5px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     html.dark-mode .sticky-search-header {
-      background:
-        linear-gradient(
-          180deg,
-          rgba(10, 20, 34, 0.74) 0%,
-          rgba(10, 20, 34, 0.54) 100%
-        );
-
-      border-bottom:
-        1px solid rgba(255, 255, 255, 0.07);
+      background: linear-gradient(180deg, rgba(10,20,34,.74), rgba(10,20,34,.54));
+      border-bottom: 1px solid rgba(255,255,255,.07);
     }
 
-    .app-header-container {
-      width: 100%;
-    }
-
-    .app-header-container.container {
-      max-width: 1480px;
-    }
+    .app-header-container { width: 100%; }
+    .app-header-container.container { max-width: 1480px; }
 
     .app-header-inner {
       width: 100%;
       min-height: 64px;
-
       display: flex;
       align-items: center;
-
       gap: 9px;
       padding: 0;
     }
 
-    /* =====================================================
-       GENERAL HEADER BUTTON
-    ===================================================== */
-
     .header-icon-btn {
       position: relative;
-
       width: 42px;
       height: 42px;
       min-width: 42px;
-
       padding: 0;
-
       display: inline-flex;
       align-items: center;
       justify-content: center;
-
-      border:
-        1px solid transparent;
-
+      border: 1px solid transparent;
       border-radius: 13px;
-
       background: transparent;
-
       color: var(--header-text);
-
       cursor: pointer;
-
       flex-shrink: 0;
-
-      transition:
-        background 0.22s cubic-bezier(.2,.8,.2,1),
-        color 0.22s cubic-bezier(.2,.8,.2,1),
-        border-color 0.22s cubic-bezier(.2,.8,.2,1),
-        transform 0.22s cubic-bezier(.2,.8,.2,1),
-        box-shadow 0.22s ease;
+      transition: background .22s, color .22s, border-color .22s, transform .22s, box-shadow .22s;
     }
 
-    .header-icon-btn svg {
-      transition:
-        transform 0.22s cubic-bezier(.2,.8,.2,1);
-    }
+    .header-icon-btn svg { transition: transform .22s; }
 
     .header-icon-btn:hover {
       color: var(--calbayog-blue);
-
-      background:
-        var(--calbayog-blue-soft);
-
-      border-color:
-        var(--calbayog-blue-border);
-
-      transform:
-        translateY(-1px);
+      background: var(--calbayog-blue-soft);
+      border-color: var(--calbayog-blue-border);
+      transform: translateY(-1px);
     }
 
-    .header-icon-btn:hover svg {
-      transform: scale(1.05);
-    }
-
-    .header-icon-btn:active {
-      transform: scale(0.94);
-    }
-
-    .header-icon-btn:focus-visible {
-      outline:
-        2px solid rgba(45, 49, 149, 0.35);
-
-      outline-offset: 2px;
-    }
-
-    .menu-btn {
-      margin-right: 1px;
-    }
-
-    /* =====================================================
-       BRAND
-    ===================================================== */
+    .header-icon-btn:hover svg { transform: scale(1.05); }
+    .header-icon-btn:active { transform: scale(.94); }
+    .header-icon-btn:focus-visible { outline: 2px solid rgba(45,49,149,.35); outline-offset: 2px; }
+    .menu-btn { margin-right: 1px; }
 
     .header-brand {
       display: flex;
       align-items: center;
-
       flex-shrink: 0;
-
       margin-right: 4px;
-
-      animation:
-        brandReveal 0.45s ease-out 0.05s both;
+      animation: brandReveal .45s ease-out .05s both;
     }
 
     @keyframes brandReveal {
-      from {
-        opacity: 0;
-        transform: translateX(-5px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
+      from { opacity: 0; transform: translateX(-5px); }
+      to { opacity: 1; transform: translateX(0); }
     }
 
     .header-brand-mark {
       width: 48px;
       height: 48px;
-
       display: flex;
       align-items: center;
       justify-content: center;
-
       flex-shrink: 0;
     }
 
     .header-brand-mark img {
       width: 100%;
       height: 100%;
-
       display: block;
-
       object-fit: contain;
-
-      transition:
-        transform 0.28s cubic-bezier(.2,.8,.2,1),
-        filter 0.28s ease;
+      transition: transform .28s, filter .28s;
     }
 
-    .header-brand:hover .header-brand-mark img {
-      transform:
-        scale(1.045)
-        rotate(-1deg);
-    }
-
-    /* =====================================================
-       SEARCH
-    ===================================================== */
+    .header-brand:hover .header-brand-mark img { transform: scale(1.045) rotate(-1deg); }
 
     .header-search-container {
       flex: 1 1 auto;
-
       min-width: 170px;
       max-width: 720px;
-
       margin-left: 10px;
-
-      animation:
-        searchReveal 0.4s ease-out 0.08s both;
+      animation: searchReveal .4s ease-out .08s both;
     }
 
     @keyframes searchReveal {
-      from {
-        opacity: 0;
-        transform: translateY(-3px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(-3px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
-    .header-search-form {
-      width: 100%;
-      margin: 0;
-    }
+    .header-search-form { width: 100%; margin: 0; }
 
     .search-input-wrapper {
       position: relative;
-
       width: 100%;
       min-height: 44px;
-
       display: flex;
       align-items: center;
-
       overflow: hidden;
-
-      border:
-        1px solid rgba(15, 23, 42, 0.08) !important;
-
+      border: 1px solid rgba(15,23,42,.08) !important;
       border-radius: 14px !important;
-
-      background:
-        rgba(255, 255, 255, 0.34) !important;
-
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.5);
-
-      transition:
-        background 0.24s ease,
-        border-color 0.24s ease,
-        box-shadow 0.24s ease,
-        transform 0.24s cubic-bezier(.2,.8,.2,1);
+      background: rgba(255,255,255,.34) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
+      transition: background .24s, border-color .24s, box-shadow .24s, transform .24s;
     }
 
     html.dark-mode .search-input-wrapper {
-      border-color:
-        rgba(255, 255, 255, 0.08) !important;
-
-      background:
-        rgba(255, 255, 255, 0.045) !important;
+      border-color: rgba(255,255,255,.08) !important;
+      background: rgba(255,255,255,.045) !important;
     }
 
-    .search-input-wrapper:hover {
-      border-color:
-        rgba(45, 49, 149, 0.18) !important;
-    }
+    .search-input-wrapper:hover { border-color: rgba(45,49,149,.18) !important; }
 
     .search-input-wrapper:focus-within {
-      border-color:
-        rgba(45, 49, 149, 0.38) !important;
-
-      background:
-        rgba(255, 255, 255, 0.66) !important;
-
-      box-shadow:
-        0 0 0 3px rgba(45, 49, 149, 0.08);
-
-      transform:
-        translateY(-1px);
+      border-color: rgba(45,49,149,.38) !important;
+      background: rgba(255,255,255,.66) !important;
+      box-shadow: 0 0 0 3px rgba(45,49,149,.08);
+      transform: translateY(-1px);
     }
 
-    html.dark-mode .search-input-wrapper:focus-within {
-      background:
-        rgba(255, 255, 255, 0.075) !important;
-    }
+    html.dark-mode .search-input-wrapper:focus-within { background: rgba(255,255,255,.075) !important; }
 
     .search-icon {
       width: 44px;
-
-      padding:
-        0 0 0 14px !important;
-
+      padding: 0 0 0 14px !important;
       display: inline-flex !important;
-
       align-items: center;
       justify-content: center;
-
       border: 0 !important;
-
       background: transparent !important;
-
-      color:
-        var(--header-muted) !important;
-
-      transition:
-        color 0.2s ease,
-        transform 0.2s ease;
+      color: var(--header-muted) !important;
+      transition: color .2s, transform .2s;
     }
 
     .search-input-wrapper:focus-within .search-icon {
-      color:
-        var(--calbayog-blue) !important;
-
-      transform:
-        scale(1.04);
+      color: var(--calbayog-blue) !important;
+      transform: scale(1.04);
     }
 
     .search-input {
       min-height: 44px;
       height: 44px;
-
-      padding:
-        0 8px !important;
-
+      padding: 0 8px !important;
       border: 0 !important;
-
       background: transparent !important;
-
-      color:
-        var(--header-text) !important;
-
+      color: var(--header-text) !important;
       box-shadow: none !important;
-
-      font-size: 0.9rem;
-
+      font-size: .9rem;
       outline: none !important;
     }
 
-    .search-input::placeholder {
-      color:
-        var(--header-muted);
-
-      opacity: 0.82;
-
-      transition:
-        opacity 0.2s ease;
-    }
-
-    .search-input:focus::placeholder {
-      opacity: 0.58;
-    }
+    .search-input::placeholder { color: var(--header-muted); opacity: .82; transition: opacity .2s; }
+    .search-input:focus::placeholder { opacity: .58; }
 
     .search-submit-btn {
       width: 36px;
       height: 36px;
-
-      margin:
-        3px 4px 3px 0;
-
+      margin: 3px 4px 3px 0;
       padding: 0;
-
       display: inline-flex;
-
       align-items: center;
       justify-content: center;
-
       border: 0;
-
       border-radius: 10px;
-
-      background:
-        var(--calbayog-blue);
-
+      background: var(--calbayog-blue);
       color: #fff;
-
       cursor: pointer;
-
       flex-shrink: 0;
-
-      box-shadow:
-        0 4px 12px rgba(45, 49, 149, 0.16);
-
-      transition:
-        background 0.2s ease,
-        transform 0.22s cubic-bezier(.2,.8,.2,1),
-        box-shadow 0.2s ease;
+      box-shadow: 0 4px 12px rgba(45,49,149,.16);
+      transition: background .2s, transform .22s, box-shadow .2s;
     }
 
     .search-submit-btn:hover {
-      background:
-        var(--calbayog-blue-dark);
-
-      box-shadow:
-        0 6px 16px rgba(45, 49, 149, 0.23);
-
-      transform:
-        translateY(-1px)
-        scale(1.02);
+      background: var(--calbayog-blue-dark);
+      box-shadow: 0 6px 16px rgba(45,49,149,.23);
+      transform: translateY(-1px) scale(1.02);
     }
 
-    .search-submit-btn:active {
-      transform:
-        scale(0.94);
-    }
-
-    /* =====================================================
-       RIGHT ACTIONS
-    ===================================================== */
+    .search-submit-btn:active { transform: scale(.94); }
 
     .header-actions {
       display: flex;
       align-items: center;
-
       gap: 4px;
-
       margin-left: auto;
-
       flex-shrink: 0;
-
-      animation:
-        actionsReveal 0.42s ease-out 0.1s both;
+      animation: actionsReveal .42s ease-out .1s both;
     }
 
     @keyframes actionsReveal {
-      from {
-        opacity: 0;
-        transform: translateX(5px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
+      from { opacity: 0; transform: translateX(5px); }
+      to { opacity: 1; transform: translateX(0); }
     }
 
-    .header-extra-actions {
-      display: flex;
-      align-items: center;
-
-      gap: 4px;
-    }
-
-    /* =====================================================
-       LOGIN / SIGNUP
-    ===================================================== */
+    .header-extra-actions { display: flex; align-items: center; gap: 4px; }
 
     .header-login-btn,
     .header-signup-btn {
       min-height: 42px;
-
-      padding:
-        0 13px;
-
+      padding: 0 13px;
       display: inline-flex;
-
       align-items: center;
       justify-content: center;
-
       gap: 7px;
-
       border-radius: 13px;
-
-      font-size: 0.85rem;
-
+      font-size: .85rem;
       white-space: nowrap;
-
       cursor: pointer;
-
-      transition:
-        background 0.22s cubic-bezier(.2,.8,.2,1),
-        border-color 0.22s ease,
-        color 0.22s ease,
-        transform 0.22s cubic-bezier(.2,.8,.2,1),
-        box-shadow 0.22s ease;
+      transition: background .22s, border-color .22s, color .22s, transform .22s, box-shadow .22s;
     }
 
     .header-login-btn svg,
-    .header-signup-btn svg {
-      transition:
-        transform 0.22s cubic-bezier(.2,.8,.2,1);
-    }
+    .header-signup-btn svg { transition: transform .22s; }
 
     .header-login-btn {
-      border:
-        1px solid rgba(45, 49, 149, 0.16);
-
-      background:
-        rgba(255, 255, 255, 0.34);
-
-      color:
-        var(--header-text);
-
+      border: 1px solid rgba(45,49,149,.16);
+      background: rgba(255,255,255,.34);
+      color: var(--header-text);
       font-weight: 650;
     }
 
     .header-login-btn:hover {
-      color:
-        var(--calbayog-blue);
-
-      background:
-        var(--calbayog-blue-soft);
-
-      border-color:
-        rgba(45, 49, 149, 0.25);
-
-      transform:
-        translateY(-1px);
-
-      box-shadow:
-        0 5px 15px rgba(45, 49, 149, 0.08);
+      color: var(--calbayog-blue);
+      background: var(--calbayog-blue-soft);
+      border-color: rgba(45,49,149,.25);
+      transform: translateY(-1px);
+      box-shadow: 0 5px 15px rgba(45,49,149,.08);
     }
 
-    .header-login-btn:hover svg {
-      transform:
-        translateX(1px);
-    }
+    .header-login-btn:hover svg { transform: translateX(1px); }
 
     .header-signup-btn {
-      padding:
-        0 15px;
-
-      border:
-        1px solid var(--calbayog-blue);
-
-      background:
-        var(--calbayog-blue);
-
+      padding: 0 15px;
+      border: 1px solid var(--calbayog-blue);
+      background: var(--calbayog-blue);
       color: #fff;
-
       font-weight: 700;
-
-      box-shadow:
-        0 5px 15px rgba(45, 49, 149, 0.16);
+      box-shadow: 0 5px 15px rgba(45,49,149,.16);
     }
 
     .header-signup-btn:hover {
-      background:
-        var(--calbayog-blue-dark);
-
-      border-color:
-        var(--calbayog-blue-dark);
-
-      box-shadow:
-        0 7px 19px rgba(45, 49, 149, 0.24);
-
-      transform:
-        translateY(-1px);
+      background: var(--calbayog-blue-dark);
+      border-color: var(--calbayog-blue-dark);
+      box-shadow: 0 7px 19px rgba(45,49,149,.24);
+      transform: translateY(-1px);
     }
 
-    .header-signup-btn:hover svg {
-      transform:
-        translateY(-1px)
-        scale(1.03);
-    }
+    .header-signup-btn:hover svg { transform: translateY(-1px) scale(1.03); }
 
     .header-login-btn:active,
-    .header-signup-btn:active {
-      transform:
-        scale(0.96);
-    }
-
-    /* =====================================================
-       INSTALL APP
-    ===================================================== */
+    .header-signup-btn:active { transform: scale(.96); }
 
     .header-install-btn {
       min-height: 42px;
-
-      padding:
-        0 13px;
-
+      padding: 0 13px;
       display: inline-flex;
-
       align-items: center;
       justify-content: center;
-
       gap: 7px;
-
-      border:
-        1px solid var(--calbayog-blue);
-
+      border: 1px solid var(--calbayog-blue);
       border-radius: 13px;
-
-      background:
-        rgba(45, 49, 149, 0.08);
-
-      color:
-        var(--calbayog-blue);
-
-      font-size: 0.82rem;
-
+      background: rgba(45,49,149,.08);
+      color: var(--calbayog-blue);
+      font-size: .82rem;
       font-weight: 750;
-
       white-space: nowrap;
-
       cursor: pointer;
-
-      box-shadow:
-        0 4px 12px rgba(45, 49, 149, 0.08);
-
-      transition:
-        background 0.22s cubic-bezier(.2,.8,.2,1),
-        border-color 0.22s ease,
-        color 0.22s ease,
-        transform 0.22s cubic-bezier(.2,.8,.2,1),
-        box-shadow 0.22s ease;
+      box-shadow: 0 4px 12px rgba(45,49,149,.08);
+      transition: background .22s, border-color .22s, color .22s, transform .22s, box-shadow .22s;
     }
 
     .header-install-btn:hover {
-      background:
-        var(--calbayog-blue);
-
-      border-color:
-        var(--calbayog-blue);
-
-      color:
-        #fff;
-
-      transform:
-        translateY(-1px);
-
-      box-shadow:
-        0 7px 18px rgba(45, 49, 149, 0.18);
+      background: var(--calbayog-blue);
+      border-color: var(--calbayog-blue);
+      color: #fff;
+      transform: translateY(-1px);
+      box-shadow: 0 7px 18px rgba(45,49,149,.18);
     }
 
-    .header-install-btn:active {
-      transform:
-        scale(0.96);
-    }
+    .header-install-btn:active { transform: scale(.96); }
+    .header-install-btn:focus-visible { outline: 2px solid rgba(45,49,149,.35); outline-offset: 2px; }
+    .header-install-btn svg { transition: transform .22s; }
+    .header-install-btn:hover svg { transform: translateY(-1px); }
 
-    .header-install-btn:focus-visible {
-      outline:
-        2px solid rgba(45, 49, 149, 0.35);
-
-      outline-offset:
-        2px;
-    }
-
-    .header-install-btn svg {
-      transition:
-        transform 0.22s cubic-bezier(.2,.8,.2,1);
-    }
-
-    .header-install-btn:hover svg {
-      transform:
-        translateY(-1px);
-    }
-
-    /* =====================================================
-       PROFILE
-    ===================================================== */
-
-    .header-profile-wrapper {
-      position: relative;
-      flex-shrink: 0;
-    }
+    .header-profile-wrapper { position: relative; flex-shrink: 0; }
 
     .header-profile-btn {
       min-height: 42px;
@@ -878,12 +492,12 @@ const AppHeaderStyles: React.FC = () => (
       align-items: center;
       justify-content: center;
       gap: 7px;
-      border: 1px solid rgba(45, 49, 149, 0.14);
+      border: 1px solid rgba(45,49,149,.14);
       border-radius: 13px;
-      background: rgba(255, 255, 255, 0.34);
+      background: rgba(255,255,255,.34);
       color: var(--header-text);
       cursor: pointer;
-      transition: background 0.22s ease, border-color 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease;
+      transition: background .22s, border-color .22s, transform .22s, box-shadow .22s;
     }
 
     .header-profile-btn:hover,
@@ -892,7 +506,7 @@ const AppHeaderStyles: React.FC = () => (
       background: var(--calbayog-blue-soft);
       border-color: var(--calbayog-blue-border);
       transform: translateY(-1px);
-      box-shadow: 0 5px 15px rgba(45, 49, 149, 0.08);
+      box-shadow: 0 5px 15px rgba(45,49,149,.08);
     }
 
     .header-profile-avatar {
@@ -904,10 +518,10 @@ const AppHeaderStyles: React.FC = () => (
       justify-content: center;
       background: linear-gradient(145deg, var(--calbayog-blue), var(--calbayog-blue-dark));
       color: #fff;
-      font-size: 0.72rem;
+      font-size: .72rem;
       font-weight: 800;
       flex-shrink: 0;
-      box-shadow: 0 4px 12px rgba(45, 49, 149, 0.18);
+      box-shadow: 0 4px 12px rgba(45,49,149,.18);
     }
 
     .header-profile-name {
@@ -915,18 +529,12 @@ const AppHeaderStyles: React.FC = () => (
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-size: 0.78rem;
+      font-size: .78rem;
       font-weight: 750;
     }
 
-    .header-profile-chevron {
-      display: inline-flex;
-      transition: transform 0.2s ease;
-    }
-
-    .header-profile-btn.is-open .header-profile-chevron {
-      transform: rotate(180deg);
-    }
+    .header-profile-chevron { display: inline-flex; transition: transform .2s; }
+    .header-profile-btn.is-open .header-profile-chevron { transform: rotate(180deg); }
 
     .header-profile-dropdown {
       position: absolute;
@@ -935,39 +543,37 @@ const AppHeaderStyles: React.FC = () => (
       width: min(260px, calc(100vw - 28px));
       padding: 7px;
       overflow: hidden;
-      border: 1px solid rgba(45, 49, 149, 0.12);
+      border: 1px solid rgba(45,49,149,.12);
       border-radius: 17px;
-      background: rgba(255, 255, 255, 0.84);
+      background: rgba(255,255,255,.84);
       backdrop-filter: blur(25px) saturate(170%);
       -webkit-backdrop-filter: blur(25px) saturate(170%);
-      box-shadow: 0 22px 55px rgba(15, 23, 42, 0.16);
-      animation: profileOpen 0.2s cubic-bezier(.2,.8,.2,1) both;
+      box-shadow: 0 22px 55px rgba(15,23,42,.16);
+      animation: profileOpen .2s cubic-bezier(.2,.8,.2,1) both;
       z-index: 1200;
     }
 
     html.dark-mode .header-profile-dropdown {
-      background: rgba(12, 22, 36, 0.88);
-      border-color: rgba(255, 255, 255, 0.09);
-      box-shadow: 0 22px 55px rgba(0, 0, 0, 0.32);
+      background: rgba(12,22,36,.88);
+      border-color: rgba(255,255,255,.09);
+      box-shadow: 0 22px 55px rgba(0,0,0,.32);
     }
 
     @keyframes profileOpen {
-      from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+      from { opacity: 0; transform: translateY(-6px) scale(.98); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
     .header-profile-summary {
       padding: 11px 12px 12px;
-      border-bottom: 1px solid rgba(15, 23, 42, 0.07);
+      border-bottom: 1px solid rgba(15,23,42,.07);
     }
 
-    html.dark-mode .header-profile-summary {
-      border-bottom-color: rgba(255, 255, 255, 0.07);
-    }
+    html.dark-mode .header-profile-summary { border-bottom-color: rgba(255,255,255,.07); }
 
     .header-profile-summary-name {
       color: var(--header-text);
-      font-size: 0.82rem;
+      font-size: .82rem;
       font-weight: 800;
       line-height: 1.3;
     }
@@ -975,7 +581,7 @@ const AppHeaderStyles: React.FC = () => (
     .header-profile-summary-email {
       margin-top: 3px;
       color: var(--header-muted);
-      font-size: 0.7rem;
+      font-size: .7rem;
       line-height: 1.35;
       word-break: break-word;
     }
@@ -987,7 +593,7 @@ const AppHeaderStyles: React.FC = () => (
       border-radius: 999px;
       background: var(--calbayog-blue-soft);
       color: var(--calbayog-blue);
-      font-size: 0.62rem;
+      font-size: .62rem;
       font-weight: 800;
     }
 
@@ -1004,9 +610,9 @@ const AppHeaderStyles: React.FC = () => (
       color: var(--header-text);
       text-align: left;
       cursor: pointer;
-      font-size: 0.77rem;
+      font-size: .77rem;
       font-weight: 700;
-      transition: background 0.18s ease, color 0.18s ease;
+      transition: background .18s, color .18s;
     }
 
     .header-profile-menu-item:hover {
@@ -1014,14 +620,8 @@ const AppHeaderStyles: React.FC = () => (
       color: var(--calbayog-blue);
     }
 
-    .header-profile-menu-item.logout {
-      color: #c7473c;
-    }
-
-    .header-profile-menu-item.logout:hover {
-      background: rgba(199, 71, 60, 0.07);
-      color: #b53d33;
-    }
+    .header-profile-menu-item.logout { color: #c7473c; }
+    .header-profile-menu-item.logout:hover { background: rgba(199,71,60,.07); color: #b53d33; }
 
     .header-profile-notice {
       margin: 4px 6px 5px;
@@ -1030,537 +630,220 @@ const AppHeaderStyles: React.FC = () => (
       background: var(--calbayog-yellow-soft);
       border: 1px solid var(--calbayog-yellow-border);
       color: var(--header-text);
-      font-size: 0.66rem;
+      font-size: .66rem;
       line-height: 1.4;
     }
 
-    /* =====================================================
-       ANNOUNCEMENTS
-    ===================================================== */
-
-    .announcement-wrapper {
-      position: relative;
-      flex-shrink: 0;
-    }
-
-    .announcement-btn {
-      color:
-        var(--header-text);
-    }
+    .announcement-wrapper { position: relative; flex-shrink: 0; }
+    .announcement-btn { color: var(--header-text); }
 
     .announcement-btn.is-active {
-      color:
-        var(--calbayog-blue);
-
-      background:
-        var(--calbayog-blue-soft);
-
-      border-color:
-        var(--calbayog-blue-border);
-
-      box-shadow:
-        0 4px 14px rgba(45, 49, 149, 0.08);
+      color: var(--calbayog-blue);
+      background: var(--calbayog-blue-soft);
+      border-color: var(--calbayog-blue-border);
+      box-shadow: 0 4px 14px rgba(45,49,149,.08);
     }
 
-    .announcement-btn.is-active svg {
-      animation:
-        bellPulse 0.42s ease;
-    }
+    .announcement-btn.is-active svg { animation: bellPulse .42s ease; }
 
     @keyframes bellPulse {
-      0% {
-        transform: rotate(0deg);
-      }
-
-      35% {
-        transform: rotate(-7deg);
-      }
-
-      65% {
-        transform: rotate(7deg);
-      }
-
-      100% {
-        transform: rotate(0deg);
-      }
+      0%,100% { transform: rotate(0); }
+      35% { transform: rotate(-7deg); }
+      65% { transform: rotate(7deg); }
     }
 
     .announcement-badge {
       position: absolute;
-
       top: 2px;
       right: 1px;
-
       min-width: 17px;
       height: 17px;
-
-      padding:
-        0 4px;
-
+      padding: 0 4px;
       display: inline-flex;
-
       align-items: center;
       justify-content: center;
-
-      border:
-        2px solid rgba(255, 255, 255, 0.7);
-
+      border: 2px solid rgba(255,255,255,.7);
       border-radius: 999px;
-
-      background:
-        var(--calbayog-yellow);
-
-      color:
-        #1f2430;
-
-      font-size: 0.6rem;
-
+      background: var(--calbayog-yellow);
+      color: #1f2430;
+      font-size: .6rem;
       font-weight: 800;
-
       line-height: 1;
-
-      box-shadow:
-        0 2px 7px rgba(255, 183, 27, 0.25);
-
-      animation:
-        badgePop 0.4s cubic-bezier(.2,.8,.2,1) both;
+      box-shadow: 0 2px 7px rgba(255,183,27,.25);
+      animation: badgePop .4s cubic-bezier(.2,.8,.2,1) both;
     }
 
     @keyframes badgePop {
-      from {
-        opacity: 0;
-        transform:
-          scale(0.55)
-          translateY(-2px);
-      }
-
-      70% {
-        transform:
-          scale(1.08)
-          translateY(0);
-      }
-
-      to {
-        opacity: 1;
-        transform:
-          scale(1);
-      }
+      from { opacity: 0; transform: scale(.55) translateY(-2px); }
+      70% { transform: scale(1.08) translateY(0); }
+      to { opacity: 1; transform: scale(1); }
     }
-
-    /* =====================================================
-       ANNOUNCEMENT DROPDOWN
-    ===================================================== */
 
     .announcement-dropdown {
       position: absolute;
-
-      top:
-        calc(100% + 11px);
-
+      top: calc(100% + 11px);
       right: 0;
-
-      width:
-        min(390px, calc(100vw - 28px));
-
+      width: min(390px, calc(100vw - 28px));
       overflow: hidden;
-
-      border:
-        1px solid rgba(45, 49, 149, 0.12);
-
+      border: 1px solid rgba(45,49,149,.12);
       border-radius: 18px;
-
-      background:
-        rgba(255, 255, 255, 0.78);
-
-      backdrop-filter:
-        blur(25px)
-        saturate(170%);
-
-      -webkit-backdrop-filter:
-        blur(25px)
-        saturate(170%);
-
-      box-shadow:
-        0 22px 55px rgba(15, 23, 42, 0.16);
-
-      transform-origin:
-        top right;
-
-      animation:
-        announcementOpen
-        0.22s
-        cubic-bezier(.2,.8,.2,1)
-        both;
+      background: rgba(255,255,255,.78);
+      backdrop-filter: blur(25px) saturate(170%);
+      -webkit-backdrop-filter: blur(25px) saturate(170%);
+      box-shadow: 0 22px 55px rgba(15,23,42,.16);
+      transform-origin: top right;
+      animation: announcementOpen .22s cubic-bezier(.2,.8,.2,1) both;
     }
 
     @keyframes announcementOpen {
-      from {
-        opacity: 0;
-        transform:
-          translateY(-7px)
-          scale(0.97);
-      }
-
-      to {
-        opacity: 1;
-        transform:
-          translateY(0)
-          scale(1);
-      }
+      from { opacity: 0; transform: translateY(-7px) scale(.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
     html.dark-mode .announcement-dropdown {
-      background:
-        rgba(12, 22, 36, 0.84);
-
-      border-color:
-        rgba(255, 255, 255, 0.09);
-
-      box-shadow:
-        0 22px 55px rgba(0, 0, 0, 0.32);
+      background: rgba(12,22,36,.84);
+      border-color: rgba(255,255,255,.09);
+      box-shadow: 0 22px 55px rgba(0,0,0,.32);
     }
 
     .announcement-header {
       display: flex;
-
       align-items: center;
       justify-content: space-between;
-
       gap: 12px;
-
-      padding:
-        16px 17px;
-
-      border-bottom:
-        1px solid rgba(15, 23, 42, 0.07);
+      padding: 16px 17px;
+      border-bottom: 1px solid rgba(15,23,42,.07);
     }
 
-    html.dark-mode .announcement-header {
-      border-bottom-color:
-        rgba(255, 255, 255, 0.07);
-    }
-
-    .announcement-heading {
-      min-width: 0;
-    }
-
-    .announcement-title {
-      color:
-        var(--header-text);
-
-      font-size: 0.96rem;
-
-      font-weight: 800;
-    }
-
-    .announcement-subtitle {
-      margin-top: 3px;
-
-      color:
-        var(--header-muted);
-
-      font-size: 0.75rem;
-    }
+    html.dark-mode .announcement-header { border-bottom-color: rgba(255,255,255,.07); }
+    .announcement-heading { min-width: 0; }
+    .announcement-title { color: var(--header-text); font-size: .96rem; font-weight: 800; }
+    .announcement-subtitle { margin-top: 3px; color: var(--header-muted); font-size: .75rem; }
 
     .announcement-close {
       width: 33px;
       height: 33px;
-
       display: inline-flex;
-
       align-items: center;
       justify-content: center;
-
       padding: 0;
-
-      border:
-        1px solid rgba(15, 23, 42, 0.08);
-
+      border: 1px solid rgba(15,23,42,.08);
       border-radius: 9px;
-
       background: transparent;
-
-      color:
-        var(--header-muted);
-
+      color: var(--header-muted);
       cursor: pointer;
-
-      transition:
-        background 0.18s ease,
-        color 0.18s ease,
-        transform 0.18s ease;
+      transition: background .18s, color .18s, transform .18s;
     }
 
     .announcement-close:hover {
-      background:
-        var(--calbayog-blue-soft);
-
-      color:
-        var(--calbayog-blue);
-
-      transform:
-        rotate(3deg);
+      background: var(--calbayog-blue-soft);
+      color: var(--calbayog-blue);
+      transform: rotate(3deg);
     }
 
-    .announcement-list {
-      max-height: 360px;
-
-      overflow-y: auto;
-
-      padding: 7px;
-    }
+    .announcement-list { max-height: 360px; overflow-y: auto; padding: 7px; }
 
     .announcement-item {
       display: flex;
-
       gap: 11px;
-
       padding: 12px;
-
       border-radius: 13px;
-
-      transition:
-        background 0.18s ease,
-        transform 0.18s cubic-bezier(.2,.8,.2,1);
+      transition: background .18s, transform .18s;
     }
 
     .announcement-item:hover {
-      background:
-        var(--calbayog-blue-soft);
-
-      transform:
-        translateX(2px);
+      background: var(--calbayog-blue-soft);
+      transform: translateX(2px);
     }
 
     .announcement-item-icon {
       width: 41px;
       height: 41px;
-
       display: flex;
-
       align-items: center;
       justify-content: center;
-
       flex-shrink: 0;
-
       border-radius: 12px;
-
-      background:
-        var(--calbayog-yellow-soft);
-
-      border:
-        1px solid var(--calbayog-yellow-border);
-
+      background: var(--calbayog-yellow-soft);
+      border: 1px solid var(--calbayog-yellow-border);
       font-size: 1.18rem;
-
-      transition:
-        transform 0.2s cubic-bezier(.2,.8,.2,1);
+      transition: transform .2s;
     }
 
-    .announcement-item:hover
-    .announcement-item-icon {
-      transform:
-        scale(1.05)
-        rotate(-2deg);
-    }
-
-    .announcement-item-content {
-      min-width: 0;
-    }
-
-    .announcement-item-title {
-      color:
-        var(--header-text);
-
-      font-size: 0.85rem;
-
-      font-weight: 800;
-    }
-
-    .announcement-item-description {
-      margin-top: 4px;
-
-      color:
-        var(--header-muted);
-
-      font-size: 0.75rem;
-
-      line-height: 1.48;
-    }
-
-    .announcement-item-date {
-      margin-top: 6px;
-
-      color:
-        var(--calbayog-blue);
-
-      font-size: 0.68rem;
-
-      font-weight: 700;
-    }
-
-    .announcement-footer {
-      padding:
-        11px 16px;
-
-      border-top:
-        1px solid rgba(15, 23, 42, 0.07);
-
-      color:
-        var(--header-muted);
-
-      font-size: 0.69rem;
-
-      text-align: center;
-    }
-
-    /* =====================================================
-       RESPONSIVE
-    ===================================================== */
+    .announcement-item:hover .announcement-item-icon { transform: scale(1.05) rotate(-2deg); }
+    .announcement-item-content { min-width: 0; }
+    .announcement-item-title { color: var(--header-text); font-size: .85rem; font-weight: 800; }
+    .announcement-item-description { margin-top: 4px; color: var(--header-muted); font-size: .75rem; line-height: 1.48; }
+    .announcement-item-date { margin-top: 6px; color: var(--calbayog-blue); font-size: .68rem; font-weight: 700; }
+    .announcement-footer { padding: 11px 16px; border-top: 1px solid rgba(15,23,42,.07); color: var(--header-muted); font-size: .69rem; text-align: center; }
 
     @media (max-width: 1199.98px) {
-      .header-search-container {
-        max-width: none;
-      }
-
+      .header-search-container { max-width: none; }
       .header-login-btn span,
       .header-signup-btn span,
       .header-install-btn span,
       .header-profile-name,
-      .header-profile-chevron {
-        display: none;
-      }
+      .header-profile-chevron { display: none; }
 
       .header-login-btn,
       .header-signup-btn,
       .header-install-btn,
       .header-profile-btn {
         width: 42px;
-
         min-width: 42px;
-
         padding: 0;
       }
     }
 
     @media (max-width: 991.98px) {
-      .app-header-inner {
-        flex-wrap: wrap;
-
-        min-height: auto;
-
-        padding:
-          8px 0;
-      }
-
-      .header-search-container {
-        order: 3;
-
-        flex-basis: 100%;
-
-        margin:
-          3px 0 0;
-
-        max-width: none;
-      }
+      .app-header-inner { flex-wrap: wrap; min-height: auto; padding: 8px 0; }
+      .header-search-container { order: 3; flex-basis: 100%; margin: 3px 0 0; max-width: none; }
     }
 
     @media (max-width: 767.98px) {
-      .sticky-search-header {
-        padding:
-          4px 0;
-      }
-
-      .app-header-container.container {
-        padding-left: 11px;
-        padding-right: 11px;
-      }
-
-      .app-header-inner {
-        padding:
-          5px 0;
-
-        gap: 6px;
-      }
-
-      .header-brand-mark {
-        width: 43px;
-        height: 43px;
-      }
-
-      .header-icon-btn {
-        width: 40px;
-        height: 40px;
-
-        min-width: 40px;
-
-        border-radius: 12px;
-      }
+      .sticky-search-header { padding: 4px 0; }
+      .app-header-container.container { padding-left: 11px; padding-right: 11px; }
+      .app-header-inner { padding: 5px 0; gap: 6px; }
+      .header-brand-mark { width: 43px; height: 43px; }
+      .header-icon-btn { width: 40px; height: 40px; min-width: 40px; border-radius: 12px; }
 
       .header-login-btn,
       .header-signup-btn {
         width: 40px;
         height: 40px;
-
         min-width: 40px;
         min-height: 40px;
-
         padding: 0;
-
         border-radius: 12px;
       }
 
-      /* Keep the Install App action visible on mobile. */
       .header-install-btn {
         width: auto;
         min-width: 40px;
         height: 40px;
         min-height: 40px;
-
         padding: 0 10px;
-
         border-radius: 12px;
       }
 
-      .header-install-btn span {
-        display: inline;
-      }
-
-      .search-input-wrapper,
-      .search-input {
-        min-height: 43px;
-        height: 43px;
-      }
+      .header-install-btn span { display: inline; }
+      .search-input-wrapper, .search-input { min-height: 43px; height: 43px; }
     }
 
     @media (max-width: 390px) {
-      .header-install-btn {
-        width: 40px;
-        min-width: 40px;
-        padding: 0;
-      }
-
-      .header-install-btn span {
-        display: none;
-      }
+      .header-install-btn { width: 40px; min-width: 40px; padding: 0; }
+      .header-install-btn span { display: none; }
     }
 
     @media (max-width: 480px) {
       .announcement-dropdown {
         position: fixed;
-
         top: 70px;
-
         left: 12px;
         right: 12px;
-
         width: auto;
       }
     }
-
-    /* =====================================================
-       REDUCED MOTION
-    ===================================================== */
 
     @media (prefers-reduced-motion: reduce) {
       .sticky-search-header,
@@ -1569,9 +852,7 @@ const AppHeaderStyles: React.FC = () => (
       .header-actions,
       .announcement-badge,
       .announcement-dropdown,
-      .announcement-btn.is-active svg {
-        animation: none !important;
-      }
+      .announcement-btn.is-active svg { animation: none !important; }
 
       .header-icon-btn,
       .header-icon-btn svg,
@@ -1583,9 +864,7 @@ const AppHeaderStyles: React.FC = () => (
       .header-install-btn,
       .announcement-close,
       .announcement-item,
-      .announcement-item-icon {
-        transition: none !important;
-      }
+      .announcement-item-icon { transition: none !important; }
     }
   `}</style>
 );
@@ -1615,21 +894,21 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   const history = useHistory();
   const auth = useAuth();
 
-  // Kept for API compatibility; the announcements UI is temporarily disabled.
+  // Kept for API compatibility; announcements are currently disabled.
   void showAnnouncements;
 
   const isUserAuthenticated = Boolean(
     (auth as any)?.isUserAuthenticated && (auth as any)?.user,
   );
+
   const currentUser = (auth as any)?.user || null;
   const userLogout = (auth as any)?.userLogout;
+
   const storedAdmin = (() => {
     try {
       const raw = localStorage.getItem("admin_user");
 
-      if (!raw) {
-        return null;
-      }
+      if (!raw) return null;
 
       const parsed = JSON.parse(raw);
 
@@ -1640,22 +919,22 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   })();
 
   const currentAdmin =
-    (auth as any)?.adminUser || (auth as any)?.admin || storedAdmin || null;
+    (auth as any)?.adminUser ||
+    (auth as any)?.admin ||
+    storedAdmin ||
+    null;
+
   const adminLogout =
     (auth as any)?.adminLogout ||
     (auth as any)?.logout ||
     (auth as any)?.adminLogoutUser;
 
   const [search, setSearch] = useState("");
-
   const [showAnnouncementsMenu, setShowAnnouncementsMenu] = useState(false);
-
   const [showLoginModal, setShowLoginModal] = useState(false);
-
   const [showSignupModal, setShowSignupModal] = useState(false);
-
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-
   const [profileNotice, setProfileNotice] = useState("");
 
   const profileRef = useRef<HTMLDivElement>(null);
@@ -1664,9 +943,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
     useState<BeforeInstallPromptEvent | null>(null);
 
   const [canInstallApp, setCanInstallApp] = useState(false);
-
   const [isMobileInstallDevice, setIsMobileInstallDevice] = useState(false);
-
   const [isStandalone, setIsStandalone] = useState(false);
 
   const isLoggedInHeader = isAdmin ? true : isUserAuthenticated;
@@ -1698,35 +975,29 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       .map((part: string) => part.charAt(0).toUpperCase())
       .join("") || (isAdmin ? "A" : "U");
 
-
   /* =========================================================
      SEARCH
   ========================================================= */
 
-  
-const handleSearch = (event: React.FormEvent) => {
-  event.preventDefault();
+  const handleSearch = (event: React.FormEvent) => {
+    event.preventDefault();
 
-  const query = search.trim();
+    const query = search.trim();
 
-  if (!query) {
-    return;
-  }
+    if (!query) return;
 
-  if (onSearch) {
-    onSearch(query);
-    return;
-  }
+    if (onSearch) {
+      onSearch(query);
+      return;
+    }
 
-  const targetPath = searchPath || "/destinations";
-  const separator = targetPath.includes("?") ? "&" : "?";
+    const targetPath = searchPath || "/destinations";
+    const separator = targetPath.includes("?") ? "&" : "?";
 
-  history.push(
-    `${targetPath}${separator}search=${encodeURIComponent(query)}`,
-  );
-};
-
-
+    history.push(
+      `${targetPath}${separator}search=${encodeURIComponent(query)}`,
+    );
+  };
 
   /* =========================================================
      PWA INSTALL
@@ -1735,7 +1006,8 @@ const handleSearch = (event: React.FormEvent) => {
   useEffect(() => {
     const standalone =
       window.matchMedia?.("(display-mode: standalone)").matches ||
-      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+      (window.navigator as Navigator & { standalone?: boolean }).standalone ===
+        true;
 
     const mobileDevice =
       /Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent) ||
@@ -1750,16 +1022,12 @@ const handleSearch = (event: React.FormEvent) => {
       return;
     }
 
-    // On mobile devices, keep the Install App button visible even before
-    // Chrome sends beforeinstallprompt. If the browser supports the native
-    // prompt, the event below will replace the fallback with the real prompt.
     if (mobileDevice) {
       setCanInstallApp(true);
     }
 
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
-
       setDeferredInstallPrompt(event as BeforeInstallPromptEvent);
       setCanInstallApp(true);
     };
@@ -1808,9 +1076,6 @@ const handleSearch = (event: React.FormEvent) => {
 
       const choice = await deferredInstallPrompt.userChoice;
 
-      // beforeinstallprompt events are one-use events. If the user dismisses
-      // the native prompt, keep the button visible so they can try again or
-      // follow the browser's manual installation instructions.
       setDeferredInstallPrompt(null);
 
       if (choice.outcome === "accepted") {
@@ -1870,51 +1135,14 @@ const handleSearch = (event: React.FormEvent) => {
   /* =========================================================
      CHANGE PASSWORD
 
-     Uses the existing secure Gmail password-reset flow.
-     No new password endpoint is invented here.
+     Opens the actual password-change modal.
+     Does not call the forgot-password endpoint.
   ========================================================= */
 
-  const handleChangePassword = async () => {
-    const email = String(
-      currentUser?.email || currentUser?.username || "",
-    ).trim();
-
+  const handleChangePassword = () => {
     setProfileNotice("");
-
-    if (!email) {
-      setProfileNotice("Your account email could not be found.");
-      return;
-    }
-
-    try {
-      const apiUrl = (
-        (import.meta as any).env?.VITE_API_URL || "http://localhost:5000/api"
-      ).replace(/\/$/, "");
-
-      const response = await fetch(`${apiUrl}/auth/user/forgot-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ username: email }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(
-          data?.message || "Unable to send the password reset email.",
-        );
-      }
-
-      setProfileNotice(`A password reset link was sent to ${email}.`);
-    } catch (error: any) {
-      console.error("Change password request failed:", error);
-      setProfileNotice(
-        error?.message || "Unable to start the password change process.",
-      );
-    }
+    setShowProfileMenu(false);
+    setShowChangePasswordModal(true);
   };
 
   const handleProfileLogout = () => {
@@ -1965,23 +1193,11 @@ const handleSearch = (event: React.FormEvent) => {
 
   /* =========================================================
      VERIFY EMAIL → LOGIN MODAL BRIDGE
-
-     VerifyEmail.tsx dispatches:
-
-       new Event("open-login-modal")
-
-     This listener opens the same LoginModal used by
-     the header.
-
-     IMPORTANT:
-     This listener does NOT run in admin mode.
   ========================================================= */
 
   useEffect(() => {
     const handleOpenLoginModal = () => {
-      if (isAdmin) {
-        return;
-      }
+      if (isAdmin) return;
 
       setShowSignupModal(false);
 
@@ -2008,10 +1224,7 @@ const handleSearch = (event: React.FormEvent) => {
       <header className="sticky-search-header">
         <Container className="app-header-container">
           <div className="app-header-inner">
-            {/* =================================================
-               MENU
-            ================================================= */}
-
+            {/* MENU */}
             <button
               type="button"
               className="header-icon-btn menu-btn"
@@ -2022,20 +1235,14 @@ const handleSearch = (event: React.FormEvent) => {
               <HeaderIcon name="menu" size={22} strokeWidth={1.9} />
             </button>
 
-            {/* =================================================
-               LOGO
-            ================================================= */}
-
+            {/* LOGO */}
             <div className="header-brand" aria-label="Calbayog City Tourism">
               <div className="header-brand-mark">
                 <img src="/logo2.png" alt="Calbayog City Tourism" />
               </div>
             </div>
 
-            {/* =================================================
-               SEARCH
-            ================================================= */}
-
+            {/* SEARCH */}
             {showSearch && (
               <div className="header-search-container">
                 <Form
@@ -2070,22 +1277,13 @@ const handleSearch = (event: React.FormEvent) => {
               </div>
             )}
 
-            {/* =================================================
-               RIGHT ACTIONS
-            ================================================= */}
-
+            {/* RIGHT ACTIONS */}
             <div className="header-actions">
-              {/* EXTRA ACTIONS */}
-
               {extraActions && (
                 <div className="header-extra-actions">{extraActions}</div>
               )}
 
-
-              {/* =================================================
-                 INSTALL APP
-              ================================================= */}
-
+              {/* INSTALL APP */}
               {canInstallApp && (
                 <button
                   type="button"
@@ -2094,20 +1292,12 @@ const handleSearch = (event: React.FormEvent) => {
                   aria-label="Install Calbayog City Tourism app"
                   title="Install Calbayog City Tourism"
                 >
-                  <HeaderIcon
-                    name="download"
-                    size={18}
-                    strokeWidth={1.9}
-                  />
+                  <HeaderIcon name="download" size={18} strokeWidth={1.9} />
                   <span>Install App</span>
                 </button>
               )}
 
-
-              {/* =================================================
-                 AUTH / PROFILE
-              ================================================= */}
-
+              {/* AUTH / PROFILE */}
               {!isLoggedInHeader ? (
                 <>
                   <button
@@ -2118,7 +1308,6 @@ const handleSearch = (event: React.FormEvent) => {
                     title="Log in"
                   >
                     <HeaderIcon name="login" size={18} strokeWidth={1.9} />
-
                     <span>Log in</span>
                   </button>
 
@@ -2130,7 +1319,6 @@ const handleSearch = (event: React.FormEvent) => {
                     title="Sign up"
                   >
                     <HeaderIcon name="signup" size={18} strokeWidth={1.9} />
-
                     <span>Sign up</span>
                   </button>
                 </>
@@ -2182,6 +1370,7 @@ const handleSearch = (event: React.FormEvent) => {
                           {isAdmin ? "Administrator" : "Traveler"}
                         </span>
                       </div>
+
                       {!isAdmin && (
                         <button
                           type="button"
@@ -2218,12 +1407,7 @@ const handleSearch = (event: React.FormEvent) => {
         </Container>
       </header>
 
-      {/* =======================================================
-          LOGIN MODAL
-          
-          Login CAN close after successful login.
-      ======================================================= */}
-
+      {/* LOGIN MODAL */}
       <LoginModal
         show={showLoginModal}
         onClose={() => {
@@ -2237,25 +1421,11 @@ const handleSearch = (event: React.FormEvent) => {
           });
         }}
         onSuccess={() => {
-          /*
-           * Successful login:
-           * close the login modal and return to the page.
-           */
           setShowLoginModal(false);
         }}
       />
 
-      {/* =======================================================
-          SIGNUP MODAL
-
-          IMPORTANT:
-          DO NOT PASS onSuccess THAT CLOSES THE MODAL.
-
-          SignupModal itself handles the successful signup
-          state and displays the "Verify your email" message
-          inside this same modal.
-      ======================================================= */}
-
+      {/* SIGNUP MODAL */}
       <SignupModal
         show={showSignupModal}
         onClose={() => {
@@ -2267,6 +1437,17 @@ const handleSearch = (event: React.FormEvent) => {
           requestAnimationFrame(() => {
             setShowLoginModal(true);
           });
+        }}
+      />
+
+      {/* CHANGE PASSWORD MODAL */}
+      <ChangePasswordModal
+        show={showChangePasswordModal}
+        onClose={() => {
+          setShowChangePasswordModal(false);
+        }}
+        onSuccess={() => {
+          setProfileNotice("");
         }}
       />
     </>
