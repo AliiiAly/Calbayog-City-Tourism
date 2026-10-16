@@ -191,24 +191,24 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
                 }
                 aria-pressed={liked}
               >
-                <span className="accommodation-heart-glow" />
-                <span className="accommodation-heart-ripple" />
+                <span className="favorite-heart-glow" />
+                <span className="favorite-heart-ripple" />
 
                 <Heart
                   size={22}
                   strokeWidth={liked ? 2.25 : 1.9}
                   fill={liked ? "currentColor" : "none"}
-                  className="accommodation-heart-icon"
+                  className="favorite-heart-icon"
                 />
 
                 {liked && (
                   <>
-                    <span className="accommodation-particle particle-1" />
-                    <span className="accommodation-particle particle-2" />
-                    <span className="accommodation-particle particle-3" />
-                    <span className="accommodation-particle particle-4" />
-                    <span className="accommodation-particle particle-5" />
-                    <span className="accommodation-particle particle-6" />
+                    <span className="favorite-particle particle-1" />
+                    <span className="favorite-particle particle-2" />
+                    <span className="favorite-particle particle-3" />
+                    <span className="favorite-particle particle-4" />
+                    <span className="favorite-particle particle-5" />
+                    <span className="favorite-particle particle-6" />
                   </>
                 )}
               </button>
@@ -444,18 +444,18 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
           animation: accommodationButtonPop 0.48s cubic-bezier(0.22, 1.4, 0.36, 1);
         }
 
-        .accommodation-heart-icon {
+        .favorite-heart-icon {
           position: relative;
           z-index: 4;
           transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         .shared-accommodation-favorite-button.active
-          .accommodation-heart-icon {
+          .favorite-heart-icon {
           animation: accommodationHeartPop 0.52s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
-        .accommodation-heart-glow {
+        .favorite-heart-glow {
           position: absolute;
           width: 29px;
           height: 29px;
@@ -474,11 +474,11 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
         }
 
         .shared-accommodation-favorite-button.active
-          .accommodation-heart-glow {
+          .favorite-heart-glow {
           animation: accommodationGlow 0.7s ease-out;
         }
 
-        .accommodation-heart-ripple {
+        .favorite-heart-ripple {
           position: absolute;
           width: 20px;
           height: 20px;
@@ -490,11 +490,11 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
         }
 
         .shared-accommodation-favorite-button.active
-          .accommodation-heart-ripple {
+          .favorite-heart-ripple {
           animation: accommodationRipple 0.62s ease-out;
         }
 
-        .accommodation-particle {
+        .favorite-particle {
           position: absolute;
           width: 4px;
           height: 4px;
@@ -505,7 +505,7 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
         }
 
         .shared-accommodation-favorite-button.active
-          .accommodation-particle {
+          .favorite-particle {
           animation: accommodationParticle 0.62s ease-out forwards;
         }
 
