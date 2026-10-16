@@ -47,11 +47,15 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
   compact = false,
 }) => {
   const restaurantId = String(restaurant?.id ?? "").trim();
-  const { isFavorite, toggleFavorite } = useFavorites();
+  const { isFavorite, getFavoriteCount, toggleFavorite } = useFavorites();
 
   const liked = restaurantId
     ? isFavorite("restaurant", restaurantId)
     : false;
+
+  const favoriteCount = restaurantId
+    ? getFavoriteCount("restaurant", restaurantId)
+    : 0;
 
   const images = Array.isArray(restaurant.images)
     ? restaurant.images.filter(
@@ -133,29 +137,56 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
           </Link>
 
           {restaurantId && (
-            <button
-              type="button"
-              className={`shared-restaurant-favorite-button ${
-                liked ? "active" : ""
+            <div
+              className={`shared-restaurant-favorite-control ${
+                liked ? "is-liked" : ""
               }`}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                void toggleFavorite("restaurant", restaurantId);
-              }}
-              aria-label={
-                liked
-                  ? `Remove ${restaurant.name} from favorites`
-                  : `Add ${restaurant.name} to favorites`
-              }
-              aria-pressed={liked}
             >
-              <Heart
-                size={22}
-                strokeWidth={liked ? 2.25 : 1.9}
-                fill={liked ? "currentColor" : "none"}
-              />
-            </button>
+              <button
+                type="button"
+                className={`shared-restaurant-favorite-button ${
+                  liked ? "active" : ""
+                }`}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  void toggleFavorite("restaurant", restaurantId);
+                }}
+                aria-label={
+                  liked
+                    ? `Remove ${restaurant.name} from favorites`
+                    : `Add ${restaurant.name} to favorites`
+                }
+                aria-pressed={liked}
+              >
+                <span className="favorite-heart-glow" />
+                <span className="favorite-heart-ripple" />
+                <Heart
+                  className="favorite-heart-icon"
+                  size={22}
+                  strokeWidth={liked ? 2.25 : 1.9}
+                  fill={liked ? "currentColor" : "none"}
+                />
+                {liked && (
+                  <>
+                    <span className="favorite-particle particle-1" />
+                    <span className="favorite-particle particle-2" />
+                    <span className="favorite-particle particle-3" />
+                    <span className="favorite-particle particle-4" />
+                    <span className="favorite-particle particle-5" />
+                    <span className="favorite-particle particle-6" />
+                  </>
+                )}
+              </button>
+              {favoriteCount > 0 && (
+                <span
+                  className="shared-restaurant-favorite-count"
+                  aria-label={`${favoriteCount} users favorited ${restaurant.name}`}
+                >
+                  {favoriteCount}
+                </span>
+              )}
+            </div>
           )}
         </div>
 
@@ -311,31 +342,168 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
           color: #9b6400;
         }
 
-        .shared-restaurant-favorite-button {
+        .shared-restaurant-favorite-control {
           position: absolute;
           top: 11px;
           right: 11px;
           z-index: 8;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 3px;
+          pointer-events: none;
+        }
+
+        .shared-restaurant-favorite-button {
+          position: relative;
           width: 44px;
           height: 44px;
           display: flex;
           align-items: center;
           justify-content: center;
-          border: 0;
-          border-radius: 50%;
-          background: rgba(25, 25, 25, 0.32);
-          color: #fff;
+          padding: 0;
+          border: none !important;
+          outline: none !important;
+          background: transparent !important;
+          color: rgba(255, 255, 255, 0.98);
           cursor: pointer;
-          transition: transform 0.2s ease, background 0.2s ease;
+          pointer-events: auto;
+          -webkit-tap-highlight-color: transparent;
+          transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.2s ease, filter 0.2s ease;
         }
 
         .shared-restaurant-favorite-button:hover {
-          transform: scale(1.08);
+          transform: scale(1.09);
+        }
+
+        .favorite-heart-icon {
+          position: relative;
+          z-index: 4;
+          transform-origin: center;
+          filter: none;
+          transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.22s ease;
         }
 
         .shared-restaurant-favorite-button.active {
           color: #ff4f6d;
-          background: #fff;
+          animation: favoriteButtonPop 0.48s cubic-bezier(0.22, 1.4, 0.36, 1);
+        }
+
+        .shared-restaurant-favorite-button.active .favorite-heart-icon {
+          animation: favoriteHeartPop 0.52s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .favorite-heart-glow {
+          position: absolute;
+          width: 29px;
+          height: 29px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(255, 79, 109, 0.48) 0%, rgba(255, 79, 109, 0.19) 32%, transparent 72%);
+          opacity: 0;
+          transform: scale(0.55);
+          filter: blur(7px);
+          z-index: 1;
+          pointer-events: none;
+        }
+
+        .shared-restaurant-favorite-button.active .favorite-heart-glow {
+          animation: favoriteGlow 0.7s ease-out;
+        }
+
+        .favorite-heart-ripple {
+          position: absolute;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          border: 1px solid rgba(255, 255, 255, 0.48);
+          opacity: 0;
+          transform: scale(0.35);
+          pointer-events: none;
+          z-index: 0;
+        }
+
+        .shared-restaurant-favorite-button.active .favorite-heart-ripple {
+          animation: favoriteRipple 0.62s ease-out;
+        }
+
+        .favorite-particle {
+          position: absolute;
+          width: 4px;
+          height: 4px;
+          border-radius: 50%;
+          background: #ff5b73;
+          opacity: 0;
+          z-index: 2;
+          pointer-events: none;
+        }
+
+        .shared-restaurant-favorite-button.active .favorite-particle {
+          animation: favoriteParticle 0.62s ease-out forwards;
+        }
+
+        .particle-1 { top: 5px; left: 50%; --particle-x: 0px; --particle-y: -20px; animation-delay: 0s !important; }
+        .particle-2 { top: 12px; right: 4px; width: 3px; height: 3px; --particle-x: 13px; --particle-y: -13px; animation-delay: 0.03s !important; }
+        .particle-3 { right: 8px; bottom: 7px; --particle-x: 14px; --particle-y: 8px; animation-delay: 0.06s !important; }
+        .particle-4 { left: 7px; bottom: 7px; width: 3px; height: 3px; --particle-x: -14px; --particle-y: 8px; animation-delay: 0.09s !important; }
+        .particle-5 { top: 11px; left: 4px; --particle-x: -13px; --particle-y: -13px; animation-delay: 0.12s !important; }
+        .particle-6 { top: 3px; right: 11px; width: 3px; height: 3px; --particle-x: 8px; --particle-y: -18px; animation-delay: 0.15s !important; }
+
+        .shared-restaurant-favorite-button:active {
+          transform: scale(0.87);
+        }
+
+        @keyframes favoriteButtonPop {
+          0% { transform: scale(0.78); }
+          35% { transform: scale(1.16); }
+          58% { transform: scale(0.96); }
+          78% { transform: scale(1.08); }
+          100% { transform: scale(1); }
+        }
+
+        @keyframes favoriteHeartPop {
+          0% { transform: scale(0.55) rotate(-8deg); }
+          28% { transform: scale(1.28) rotate(5deg); }
+          48% { transform: scale(0.90) rotate(-2deg); }
+          72% { transform: scale(1.12) rotate(1deg); }
+          100% { transform: scale(1) rotate(0); }
+        }
+
+        @keyframes favoriteGlow {
+          0% { opacity: 0; transform: scale(0.45); }
+          35% { opacity: 1; transform: scale(1.6); }
+          100% { opacity: 0; transform: scale(2.25); }
+        }
+
+        @keyframes favoriteRipple {
+          0% { opacity: 0.65; transform: scale(0.4); }
+          100% { opacity: 0; transform: scale(2.5); }
+        }
+
+        @keyframes favoriteParticle {
+          0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
+          25% { opacity: 1; }
+          100% { opacity: 0; transform: translate(var(--particle-x), var(--particle-y)) scale(0); }
+        }
+
+        .shared-restaurant-favorite-count {
+          min-width: 22px;
+          min-height: 18px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 2px 5px;
+          color: rgba(255, 255, 255, 0.96);
+          font-size: 0.62rem;
+          line-height: 1;
+          font-weight: 800;
+          text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+          pointer-events: none;
+          animation: favoriteCountAppear 0.24s ease-out;
+        }
+
+        @keyframes favoriteCountAppear {
+          from { opacity: 0; transform: translateY(-4px) scale(0.8); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         .shared-restaurant-image-dots {
@@ -468,6 +636,22 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
           .shared-restaurant-favorite-button {
             width: 40px;
             height: 40px;
+          }
+        }
+
+        @media (max-width: 479.98px) {
+          .shared-restaurant-favorite-control {
+            top: 9px;
+            right: 9px;
+          }
+
+          .shared-restaurant-favorite-button {
+            width: 39px;
+            height: 39px;
+          }
+
+          .shared-restaurant-favorite-count {
+            font-size: 0.59rem;
           }
         }
       `}</style>
