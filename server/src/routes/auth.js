@@ -2273,6 +2273,7 @@ router.post(
   }
 );
 
+
 /* =========================================================
    CHANGE PASSWORD — AUTHENTICATED NORMAL USERS
 ========================================================= */
@@ -2282,28 +2283,40 @@ router.post(
   protect,
   async (req, res) => {
     try {
-      // Only normal users may use this endpoint.
-      if (
-        !req.auth ||
-        req.auth.role !== "user" ||
-        !req.auth.id
-      ) {
-        return res.status(403).json({
-          message:
-            "Only authenticated user accounts can change their password.",
+      /* -----------------------------------------------------
+         1. VERIFY THE AUTHENTICATED ACCOUNT
+      ----------------------------------------------------- */
+
+      const auth = req.auth;
+
+      if (!auth || !auth.id) {
+        return res.status(401).json({
+          success: false,
+          message: "Please log in again to change your password.",
         });
       }
 
+      if (auth.role !== "user") {
+        return res.status(403).json({
+          success: false,
+          message: "Only normal user accounts can use this feature.",
+        });
+      }
+
+      /* -----------------------------------------------------
+         2. VALIDATE THE PASSWORD FIELDS
+      ----------------------------------------------------- */
+
       const currentPassword = String(
-        req.body?.currentPassword || ""
+        req.body?.currentPassword ?? ""
       );
 
       const newPassword = String(
-        req.body?.newPassword || ""
+        req.body?.newPassword ?? ""
       );
 
       const confirmPassword = String(
-        req.body?.confirmPassword || ""
+        req.body?.confirmPassword ?? ""
       );
 
       if (
@@ -2312,100 +2325,190 @@ router.post(
         !confirmPassword
       ) {
         return res.status(400).json({
+          success: false,
           message: "Please complete all password fields.",
         });
       }
 
       if (newPassword.length < 8) {
         return res.status(400).json({
-          message:
-            "Your new password must be at least 8 characters long.",
+          success: false,
+          message: "Your new password must be at least 8 characters long.",
         });
       }
 
       if (newPassword !== confirmPassword) {
         return res.status(400).json({
+          success: false,
           message: "Your new passwords do not match.",
         });
       }
 
       if (currentPassword === newPassword) {
         return res.status(400).json({
-          message:
-            "Your new password must be different from your current password.",
+          success: false,
+          message: "Your new password must be different from your current password.",
         });
       }
 
-      // Find only the account belonging to the authenticated user.
-      const {
-        data: user,
-        error: userError,
-      } = await supabase
-        .from("users")
-        .select("id, password, is_active")
-        .eq("id", req.auth.id)
-        .maybeSingle();
+      /* -----------------------------------------------------
+         3. FETCH THE EXACT LOGGED-IN USER
 
-      if (userError) {
+         The verified JWT supplies the account ID.
+         Never use an ID or email supplied by the frontend
+         to decide whose password will be changed.
+      ----------------------------------------------------- */
+
+      let user;
+
+      try {
+        const userResponse = await axios.get(
+          `${getSupabaseRestUrl("users")}` +
+            `?id=eq.${encodeURIComponent(auth.id)}` +
+            "&select=id,password,is_active&limit=1",
+          {
+            headers: supabaseHeaders,
+            timeout: 15000,
+          }
+        );
+
+        user = userResponse.data?.[0] || null;
+      } catch (lookupError) {
         console.error(
-          "Change password user lookup failed:",
-          userError.message
+          "Change-password account lookup failed:",
+          lookupError.response?.data ||
+            lookupError.message
         );
 
         return res.status(500).json({
-          message: "Unable to verify your account right now.",
+          success: false,
+          message: "Unable to retrieve your account. Please try again later.",
         });
       }
 
       if (!user) {
         return res.status(404).json({
-          message: "User account not found.",
+          success: false,
+          message: "Your user account could not be found.",
         });
       }
 
       if (user.is_active === false) {
         return res.status(403).json({
+          success: false,
           message: "Your account is deactivated.",
         });
       }
 
-      const currentPasswordIsValid =
-        await bcrypt.compare(
+      /* -----------------------------------------------------
+         4. VERIFY THE CURRENT PASSWORD
+
+         User passwords are stored as bcrypt hashes.
+         Compare the submitted password against the hash
+         belonging to this authenticated user's database row.
+      ----------------------------------------------------- */
+
+      if (
+        typeof user.password !== "string" ||
+        !user.password.trim()
+      ) {
+        console.error(
+          "Change-password failed: stored password hash is missing.",
+          { userId: user.id }
+        );
+
+        return res.status(500).json({
+          success: false,
+          message: "Your stored password could not be verified. Please contact support.",
+        });
+      }
+
+      let currentPasswordIsValid = false;
+
+      try {
+        currentPasswordIsValid = await bcrypt.compare(
           currentPassword,
           user.password
         );
+      } catch (compareError) {
+        console.error(
+          "Change-password bcrypt comparison failed:",
+          compareError.message
+        );
+
+        return res.status(500).json({
+          success: false,
+          message: "Unable to verify your current password. Please try again later.",
+        });
+      }
 
       if (!currentPasswordIsValid) {
         return res.status(400).json({
+          success: false,
           message: "Your current password is incorrect.",
         });
       }
+
+      /* -----------------------------------------------------
+         5. HASH THE NEW PASSWORD
+      ----------------------------------------------------- */
 
       const hashedPassword = await bcrypt.hash(
         newPassword,
         10
       );
 
-      const {
-        error: updateError,
-      } = await supabase
-        .from("users")
-        .update({
-          password: hashedPassword,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id);
+      /* -----------------------------------------------------
+         6. UPDATE ONLY THIS USER'S PASSWORD
+      ----------------------------------------------------- */
 
-      if (updateError) {
+      try {
+        const updateResponse = await axios.patch(
+          `${getSupabaseRestUrl("users")}` +
+            `?id=eq.${encodeURIComponent(user.id)}`,
+          {
+            password: hashedPassword,
+            updated_at: new Date().toISOString(),
+          },
+          {
+            headers: {
+              ...supabaseJsonHeaders,
+              Prefer: "return=representation",
+            },
+            timeout: 15000,
+          }
+        );
+
+        if (
+          !Array.isArray(updateResponse.data) ||
+          updateResponse.data.length === 0
+        ) {
+          console.error(
+            "Change-password update returned no updated account.",
+            { userId: user.id }
+          );
+
+          return res.status(500).json({
+            success: false,
+            message: "Your password could not be updated. Please try again.",
+          });
+        }
+      } catch (updateError) {
         console.error(
-          "Change password update failed:",
-          updateError.message
+          "Change-password database update failed:",
+          updateError.response?.data ||
+            updateError.message
         );
 
         return res.status(500).json({
-          message: "Unable to update your password.",
+          success: false,
+          message: "Unable to save your new password. Please try again later.",
         });
       }
+
+      /* -----------------------------------------------------
+         7. SUCCESS
+      ----------------------------------------------------- */
 
       return res.status(200).json({
         success: true,
@@ -2413,17 +2516,20 @@ router.post(
       });
     } catch (err) {
       console.error(
-        "Change password error:",
-        err.message || err
+        "Unexpected change-password error:",
+        err.response?.data ||
+          err.message ||
+          err
       );
 
       return res.status(500).json({
-        message:
-          "An unexpected error occurred while changing your password.",
+        success: false,
+        message: "An unexpected error occurred while changing your password.",
       });
     }
   }
 );
+
 
 /* =========================================================
    ADMIN USER MANAGEMENT
