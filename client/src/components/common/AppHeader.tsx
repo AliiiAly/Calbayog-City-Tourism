@@ -41,8 +41,6 @@ interface HeaderIconProps {
   strokeWidth?: number;
 }
 
-const [showInstallHelp, setShowInstallHelp] = useState(false);
-
 const HeaderIcon: React.FC<HeaderIconProps> = ({
   name,
   size = 20,
@@ -1088,29 +1086,35 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   }, []);
 
   
-const handleInstallApp = async () => {
-  if (isStandalone) return;
 
-  if (deferredInstallPrompt) {
-    try {
-      const installEvent = deferredInstallPrompt;
+  const handleInstallApp = async () => {
+    if (isStandalone) return;
 
-      // A prompt event can only be used once.
-      setDeferredInstallPrompt(null);
+    if (deferredInstallPrompt) {
+      try {
+        const installEvent = deferredInstallPrompt;
 
-      await installEvent.prompt();
+        // A prompt event can only be used once.
+        setDeferredInstallPrompt(null);
 
-      const choice = await installEvent.userChoice;
+        await installEvent.prompt();
 
-      if (choice.outcome === "accepted") {
-        setCanInstallApp(false);
+        const choice = await installEvent.userChoice;
+
+        if (choice.outcome === "accepted") {
+          setCanInstallApp(false);
+        }
+      } catch (error) {
+        console.error("PWA installation failed:", error);
       }
-    } catch (error) {
-      console.error("PWA installation failed:", error);
+
+      return;
     }
 
-    return;
-  }
+    // The native prompt is unavailable on some devices.
+    // No blocking alert or false success message is shown.
+  };
+
 
   // Do not show a browser-menu alert when the native prompt
   // is unavailable. An in-app installation guide can be
