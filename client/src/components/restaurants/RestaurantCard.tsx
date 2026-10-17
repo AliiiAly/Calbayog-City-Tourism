@@ -185,11 +185,11 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
 
               {favoriteCount > 0 && (
                 <span
-                  className="shared-restaurant-favorite-count"
-                  aria-label={`${favoriteCount} users favorited ${restaurant.name}`}
-                >
-                  {favoriteCount}
-                </span>
+  className="shared-restaurant-favorite-count"
+  aria-label={`${favoriteCount} users favorited ${restaurant.name}`}
+>
+  {favoriteCount}
+</span>
               )}
             </div>
           )}
