@@ -353,14 +353,14 @@ const AttractionCard: React.FC<
 
               {/* FAVORITE COUNT */}
 
-              {showFavoriteCount && (
-  <span
-    className="shared-attraction-favorite-count"
-    aria-label={`${favoriteCount} users favorited ${attraction.name}`}
-  >
-    {favoriteCount}
-  </span>
-)}
+              {showFavoriteCount && favoriteCount > 0 && (
+                <span
+                  className="shared-attraction-favorite-count"
+                  aria-label={`${favoriteCount} users favorited ${attraction.name}`}
+                >
+                  {favoriteCount}
+                </span>
+              )}
             </div>
           )}
         </div>
