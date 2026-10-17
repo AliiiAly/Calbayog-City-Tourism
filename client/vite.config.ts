@@ -1,97 +1,149 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import { VitePWA } from 'vite-plugin-pwa';
+
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
   plugins: [
     react(),
 
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: "autoUpdate",
+      devOptions: {
+        enabled: true,
+        type: "module",
+      },
 
       includeAssets: [
-        'favicon.ico',
-        'apple-touch-icon.png',
-        'logo.png',
-        'app-icon.png',
+        "favicon.ico",
+        "apple-touch-icon.png",
+        "logo.png",
+        "logo2.png",
+        "app-icon.png",
       ],
 
       manifest: {
-        id: '/',
-        name: 'Calbayog City Tourism',
-        short_name: 'Calbayog City Tourism',
-
+        id: "/",
+        name: "Calbayog City Tourism",
+        short_name: "Calbayog Tourism",
         description:
-          'Explore Calbayog City, discover beautiful destinations, plan your trip, and experience the culture and attractions of Samar.',
-
-        lang: 'en',
-        dir: 'ltr',
-
-        theme_color: '#263A9F',
-        background_color: '#263A9F',
-
-        display: 'standalone',
-        orientation: 'portrait-primary',
-
-        start_url: '/',
-        scope: '/',
+          "Explore Calbayog City, discover beautiful destinations, plan your trip, and experience the culture and attractions of Samar.",
+        lang: "en",
+        dir: "ltr",
+        theme_color: "#263A9F",
+        background_color: "#263A9F",
+        display: "standalone",
+        display_override: ["standalone"],
+        orientation: "portrait-primary",
+        start_url: "/",
+        scope: "/",
 
         icons: [
           {
-            src: '/logo2.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any',
+            src: "/logo2.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any",
           },
         ],
 
-        categories: [
-          'travel',
-          'lifestyle',
-        ],
+        categories: ["travel", "lifestyle"],
       },
 
       workbox: {
+        cleanupOutdatedCaches: true,
+
         globPatterns: [
-          '**/*.{js,css,html,ico,png,svg,webp}',
+          "**/*.{js,css,html,ico,png,jpg,jpeg,svg,webp,avif,woff,woff2}",
         ],
+
+        navigateFallback: "index.html",
 
         runtimeCaching: [
           {
-            urlPattern:
-              /^https?:\/\/localhost:5000\/api\/(destinations|events|accommodations|guides)/,
-            handler: 'StaleWhileRevalidate',
+            // Public tourism API responses.
+            // Private/user-specific API data is intentionally excluded.
+            urlPattern: ({ url }) =>
+              /^\/api\/(destinations|events|accommodations|guides)(\/|$)/.test(
+                url.pathname,
+              ),
+
+            handler: "NetworkFirst",
+
             options: {
-              cacheName: 'api-cache',
+              cacheName: "calbayog-public-api",
+              networkTimeoutSeconds: 3,
               expiration: {
-                maxEntries: 200,
-                maxAgeSeconds: 86400,
+                maxEntries: 100,
+                maxAgeSeconds: 24 * 60 * 60,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
               },
             },
           },
 
           {
-            urlPattern:
-              /^https?:\/\/calbayog-city-tourism\.onrender\.com\/api\/(destinations|events|accommodations|guides)/,
-            handler: 'StaleWhileRevalidate',
+            // Public tourism API when deployed on Render.
+            urlPattern: ({ url }) =>
+              url.origin ===
+                "https://calbayog-city-tourism.onrender.com" &&
+              /^\/api\/(destinations|events|accommodations|guides)(\/|$)/.test(
+                url.pathname,
+              ),
+
+            handler: "NetworkFirst",
+
             options: {
-              cacheName: 'render-api-cache',
+              cacheName: "calbayog-render-public-api",
+              networkTimeoutSeconds: 3,
               expiration: {
-                maxEntries: 200,
-                maxAgeSeconds: 86400,
+                maxEntries: 100,
+                maxAgeSeconds: 24 * 60 * 60,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
               },
             },
           },
 
           {
-            urlPattern:
-              /^https?:\/\/tile\.openstreetmap\.org\/.*/,
-            handler: 'CacheFirst',
+            // Cache public images so previously viewed photos
+            // may remain available without a connection.
+            urlPattern: ({ request, url }) =>
+              request.destination === "image" &&
+              (url.origin === self.location.origin ||
+                url.hostname.endsWith(".supabase.co")),
+
+            handler: "CacheFirst",
+
             options: {
-              cacheName: 'map-tiles',
+              cacheName: "calbayog-public-images",
               expiration: {
-                maxEntries: 500,
-                maxAgeSeconds: 604800,
+                maxEntries: 250,
+                maxAgeSeconds: 7 * 24 * 60 * 60,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+
+          {
+            // OpenStreetMap tiles: only previously cached tiles
+            // can be shown offline.
+            urlPattern: /^https:\/\/tile\.openstreetmap\.org\/.*/,
+
+            handler: "CacheFirst",
+
+            options: {
+              cacheName: "calbayog-map-tiles",
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 7 * 24 * 60 * 60,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
               },
             },
           },
@@ -102,14 +154,14 @@ export default defineConfig({
 
   server: {
     proxy: {
-      '/api': {
-        target: 'http://localhost:5000',
+      "/api": {
+        target: "http://localhost:5000",
         changeOrigin: true,
         timeout: 180000,
       },
 
-      '/uploads': {
-        target: 'http://localhost:5000',
+      "/uploads": {
+        target: "http://localhost:5000",
         changeOrigin: true,
         timeout: 180000,
       },
