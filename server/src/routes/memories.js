@@ -1,4 +1,3 @@
-
 const express = require("express");
 const axios = require("axios");
 
@@ -89,11 +88,13 @@ const getUserId = (req) => {
  *
  * Supports:
  *
- * image_urls: ["url1", "url2"]
+ * image_urls: ["url1", "url2", ...]
  *
  * and:
  *
  * image_url: "url1"
+ *
+ * There is no maximum number of images per memory.
  */
 const normalizeImageUrls = (body = {}) => {
   let incomingImages = [];
@@ -375,7 +376,8 @@ router.get(
 //   "caption": "Beautiful experience!",
 //   "image_urls": [
 //     "https://example.com/image1.jpg",
-//     "https://example.com/image2.jpg"
+//     "https://example.com/image2.jpg",
+//     ...any number of images
 //   ]
 // }
 // =====================================================
@@ -438,18 +440,14 @@ router.post("/", protectUser, async (req, res) => {
 
     // -------------------------------------------------
     // VALIDATE IMAGES
+    //
+    // At least one image is required. There is no
+    // maximum number of images per memory.
     // -------------------------------------------------
 
     if (imageUrls.length === 0) {
       return res.status(400).json({
         message: "At least one image URL is required.",
-      });
-    }
-
-    if (imageUrls.length > 10) {
-      return res.status(400).json({
-        message:
-          "You can upload a maximum of 10 pictures per memory.",
       });
     }
 
