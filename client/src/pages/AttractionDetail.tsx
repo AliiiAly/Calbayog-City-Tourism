@@ -2234,17 +2234,12 @@ const AttractionDetail: React.FC =
             );
           }
 
-          await createMyMemory(
-            {
-              attraction_id:
-                attractionId,
-
-              caption,
-
-              image_urls:
-                uploadedUrls,
-            },
-          );
+          await createMyMemory({
+  item_id: attractionId,
+  attraction_id: attractionId,
+  caption,
+  image_urls: uploadedUrls,
+});
 
           setMemoryCaption(
             "",
