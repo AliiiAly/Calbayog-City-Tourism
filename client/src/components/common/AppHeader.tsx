@@ -1087,31 +1087,36 @@ const AppHeader: React.FC<AppHeaderProps> = ({
     };
   }, []);
 
-  const handleInstallApp = async () => {
-    // Already installed: don't show an installation prompt.
-    if (isStandalone) return;
+  
+const handleInstallApp = async () => {
+  if (isStandalone) return;
 
-    // Supported browsers: invoke the native install prompt.
-    if (deferredInstallPrompt) {
-      try {
-        const installEvent = deferredInstallPrompt;
+  if (deferredInstallPrompt) {
+    try {
+      const installEvent = deferredInstallPrompt;
 
-        // Clear the saved prompt before awaiting the result.
-        setDeferredInstallPrompt(null);
+      // A prompt event can only be used once.
+      setDeferredInstallPrompt(null);
 
-        await installEvent.prompt();
+      await installEvent.prompt();
 
-        const choice = await installEvent.userChoice;
+      const choice = await installEvent.userChoice;
 
-        if (choice.outcome === "accepted") {
-          setCanInstallApp(false);
-        }
-      } catch (error) {
-        console.error("PWA installation failed:", error);
+      if (choice.outcome === "accepted") {
+        setCanInstallApp(false);
       }
-
-      return;
+    } catch (error) {
+      console.error("PWA installation failed:", error);
     }
+
+    return;
+  }
+
+  // Do not show a browser-menu alert when the native prompt
+  // is unavailable. An in-app installation guide can be
+  // shown here for platforms such as iOS.
+};
+
 
     // No browser-provided install prompt is available.
     // Do not display a blocking alert or falsely claim success.
