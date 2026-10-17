@@ -899,14 +899,7 @@ const TourismMap: React.FC<TourismMapProps> = ({
         {interactive ? (
           <>
             <LayersControl position="topright">
-              <LayersControl.BaseLayer checked name="Street">
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-              </LayersControl.BaseLayer>
-
-              <LayersControl.BaseLayer name="Satellite">
+<LayersControl.BaseLayer checked name="Satellite">
                 <LayerGroup>
                   <TileLayer
                     attribution="Tiles &copy; Esri"
@@ -937,10 +930,23 @@ const TourismMap: React.FC<TourismMapProps> = ({
             <MapLocateControl />
           </>
         ) : (
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+          <LayerGroup>
+            <TileLayer
+              attribution="Tiles &copy; Esri"
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+              zIndex={1}
+            />
+            <TileLayer
+              attribution="Place and boundary labels &copy; Esri"
+              url={SATELLITE_LABELS_URL}
+              zIndex={2}
+            />
+            <TileLayer
+              attribution="Transportation labels &copy; Esri"
+              url={SATELLITE_ROADS_URL}
+              zIndex={3}
+            />
+          </LayerGroup>
         )}
 
         {attractions.map((place) => (
