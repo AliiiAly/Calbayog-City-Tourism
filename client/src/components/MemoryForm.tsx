@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, X } from "lucide-react";
 
 import {
@@ -15,7 +14,6 @@ interface MemoryFormProps {
 }
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
-const MAX_IMAGES = 10;
 
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
@@ -24,6 +22,7 @@ const ALLOWED_IMAGE_TYPES = [
 ];
 
 interface SelectedPhoto {
+  key: string;
   file: File;
   previewUrl: string;
 }
@@ -41,35 +40,46 @@ const MemoryForm: React.FC<MemoryFormProps> = ({
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
+  // Always holds the latest photos so previews can be released safely.
+  const photosRef = useRef<SelectedPhoto[]>([]);
+
+  useEffect(() => {
+    photosRef.current = photos;
+  }, [photos]);
+
   // =====================================================
-  // CLEAN UP PREVIEW URLS
+  // CLEAN UP PREVIEW URLS (only when the form unmounts)
   // =====================================================
 
   useEffect(() => {
     return () => {
-      photos.forEach((photo) => {
+      photosRef.current.forEach((photo) => {
         URL.revokeObjectURL(photo.previewUrl);
       });
     };
-  }, [photos]);
+  }, []);
 
   // =====================================================
   // RESET FORM
   // =====================================================
 
-  const resetForm = () => {
-    photos.forEach((photo) => {
+  const resetForm = useCallback(() => {
+    photosRef.current.forEach((photo) => {
       URL.revokeObjectURL(photo.previewUrl);
     });
+
+    photosRef.current = [];
 
     setCaption("");
     setPhotos([]);
     setErrorMessage("");
-    setSuccessMessage("");
-  };
+  }, []);
 
   // =====================================================
   // SELECT MULTIPLE PHOTOS
+  //
+  // Valid photos are kept. Photos with a wrong type or
+  // that are too large are skipped and the user is told.
   // =====================================================
 
   const handlePhotoChange = (
@@ -79,6 +89,9 @@ const MemoryForm: React.FC<MemoryFormProps> = ({
       event.target.files || [],
     );
 
+    // Reset so the same file can be picked again later.
+    event.target.value = "";
+
     if (selectedFiles.length === 0) {
       return;
     }
@@ -86,83 +99,88 @@ const MemoryForm: React.FC<MemoryFormProps> = ({
     setErrorMessage("");
     setSuccessMessage("");
 
-    const availableSlots = MAX_IMAGES - photos.length;
-
-    if (availableSlots <= 0) {
-      setErrorMessage(
-        `You can upload a maximum of ${MAX_IMAGES} pictures.`,
-      );
-
-      event.target.value = "";
-      return;
-    }
-
-    const filesToProcess = selectedFiles.slice(
-      0,
-      availableSlots,
+    const existingKeys = new Set(
+      photosRef.current.map((photo) => photo.key),
     );
 
-    const invalidFile = filesToProcess.find(
-      (file) =>
-        !ALLOWED_IMAGE_TYPES.includes(file.type),
-    );
+    const accepted: SelectedPhoto[] = [];
 
-    if (invalidFile) {
-      setErrorMessage(
-        "Please upload JPG, PNG, or WEBP images only.",
-      );
+    let wrongType = 0;
+    let tooLarge = 0;
 
-      event.target.value = "";
-      return;
-    }
+    selectedFiles.forEach((file) => {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        wrongType += 1;
+        return;
+      }
 
-    const oversizedFile = filesToProcess.find(
-      (file) => file.size > MAX_FILE_SIZE,
-    );
+      if (file.size > MAX_FILE_SIZE) {
+        tooLarge += 1;
+        return;
+      }
 
-    if (oversizedFile) {
-      setErrorMessage(
-        "Each image must be smaller than 5 MB.",
-      );
+      const key = `${file.name}-${file.size}-${file.lastModified}`;
 
-      event.target.value = "";
-      return;
-    }
+      // Ignore the exact same photo picked twice.
+      if (existingKeys.has(key)) {
+        return;
+      }
 
-    const newPhotos: SelectedPhoto[] =
-      filesToProcess.map((file) => ({
+      existingKeys.add(key);
+
+      accepted.push({
+        key,
         file,
         previewUrl: URL.createObjectURL(file),
-      }));
+      });
+    });
 
-    setPhotos((previousPhotos) => [
-      ...previousPhotos,
-      ...newPhotos,
-    ]);
+    if (accepted.length > 0) {
+      setPhotos((previousPhotos) => [
+        ...previousPhotos,
+        ...accepted,
+      ]);
+    }
 
-    if (selectedFiles.length > availableSlots) {
-      setErrorMessage(
-        `Only ${availableSlots} more picture(s) could be added. Maximum: ${MAX_IMAGES}.`,
+    const problems: string[] = [];
+
+    if (wrongType > 0) {
+      problems.push(
+        `${wrongType} ${
+          wrongType === 1 ? "file was" : "files were"
+        } skipped because only JPG, PNG, or WEBP images are allowed.`,
       );
     }
 
-    event.target.value = "";
+    if (tooLarge > 0) {
+      problems.push(
+        `${tooLarge} ${
+          tooLarge === 1 ? "photo was" : "photos were"
+        } skipped because each photo must be smaller than 5 MB.`,
+      );
+    }
+
+    if (problems.length > 0) {
+      setErrorMessage(problems.join(" "));
+    }
   };
 
   // =====================================================
   // REMOVE ONE PHOTO
   // =====================================================
 
-  const handleRemovePhoto = (index: number) => {
+  const handleRemovePhoto = (key: string) => {
     setPhotos((previousPhotos) => {
-      const photoToRemove = previousPhotos[index];
+      const photoToRemove = previousPhotos.find(
+        (photo) => photo.key === key,
+      );
 
       if (photoToRemove) {
         URL.revokeObjectURL(photoToRemove.previewUrl);
       }
 
       return previousPhotos.filter(
-        (_, photoIndex) => photoIndex !== index,
+        (photo) => photo.key !== key,
       );
     });
 
@@ -178,6 +196,10 @@ const MemoryForm: React.FC<MemoryFormProps> = ({
     event: React.FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
+
+    if (submitting) {
+      return;
+    }
 
     setErrorMessage("");
     setSuccessMessage("");
@@ -222,15 +244,9 @@ const MemoryForm: React.FC<MemoryFormProps> = ({
     try {
       setSubmitting(true);
 
-      // =================================================
-      // UPLOAD PHOTOS DIRECTLY TO SUPABASE STORAGE
-      // =================================================
-      //
-      // This uses the existing "images" bucket through
-      // uploadMultipleImages() in services/api.ts.
-      //
+      // Upload photos to Supabase Storage through the
+      // existing uploadMultipleImages() in services/api.
       // The result is an array of public image URLs.
-      //
 
       const selectedFiles = photos.map(
         (photo) => photo.file,
@@ -256,13 +272,8 @@ const MemoryForm: React.FC<MemoryFormProps> = ({
         );
       }
 
-      // =================================================
-      // CREATE MEMORY RECORD THROUGH THE USER API
-      // =================================================
-      //
       // The backend obtains user_id from the JWT.
       // Do not send user_id manually.
-      //
 
       await createMyMemory({
         attraction_id: attractionId,
@@ -273,9 +284,9 @@ const MemoryForm: React.FC<MemoryFormProps> = ({
       const message =
         "Your memory and pictures have been added successfully!";
 
-      setSuccessMessage(message);
-
       resetForm();
+
+      setSuccessMessage(message);
 
       onSuccess?.(message);
     } catch (error: any) {
@@ -311,6 +322,7 @@ const MemoryForm: React.FC<MemoryFormProps> = ({
     }
 
     resetForm();
+    setSuccessMessage("");
     onCancel?.();
   };
 
@@ -348,17 +360,11 @@ const MemoryForm: React.FC<MemoryFormProps> = ({
           accept="image/jpeg,image/png,image/webp"
           multiple
           onChange={handlePhotoChange}
-          disabled={
-            submitting || photos.length >= MAX_IMAGES
-          }
+          disabled={submitting}
         />
 
         <small>
-          JPG, PNG, or WEBP. Maximum 5 MB per image.
-          <br />
-          You can upload up to {MAX_IMAGES} pictures.
-          <br />
-          Selected: {photos.length}/{MAX_IMAGES}
+          JPG, PNG, or WEBP. Maximum 5 MB per photo.
         </small>
       </div>
 
@@ -367,7 +373,7 @@ const MemoryForm: React.FC<MemoryFormProps> = ({
           {photos.map((photo, index) => (
             <div
               className="detail-memory-preview"
-              key={photo.previewUrl}
+              key={photo.key}
             >
               <img
                 src={photo.previewUrl}
@@ -380,7 +386,7 @@ const MemoryForm: React.FC<MemoryFormProps> = ({
                 type="button"
                 className="detail-memory-remove-photo"
                 onClick={() =>
-                  handleRemovePhoto(index)
+                  handleRemovePhoto(photo.key)
                 }
                 disabled={submitting}
                 aria-label={`Remove photo ${
