@@ -543,6 +543,112 @@ router.post("/", protectUser, async (req, res) => {
   }
 });
 
+
+/* =====================================================
+   UPDATE A MEMORY
+   ONLY THE OWNER CAN UPDATE THEIR MEMORY.
+
+   PUT /api/memories/:memoryId
+===================================================== */
+
+router.put("/:memoryId", protectUser, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { memoryId } = req.params;
+    const { caption } = req.body || {};
+    const imageUrls = normalizeImageUrls(req.body || {});
+
+    if (!userId) {
+      return res.status(401).json({
+        message: "Authenticated user ID is missing.",
+      });
+    }
+
+    if (!isValidUuid(memoryId)) {
+      return res.status(400).json({
+        message: "Invalid memory ID.",
+      });
+    }
+
+    // Require the caption and images to remain valid.
+    const trimmedCaption = String(caption || "").trim();
+
+    if (!trimmedCaption) {
+      return res.status(400).json({
+        message: "Memory caption is required.",
+      });
+    }
+
+    if (trimmedCaption.length > 500) {
+      return res.status(400).json({
+        message: "Memory caption must not exceed 500 characters.",
+      });
+    }
+
+    if (imageUrls.length === 0) {
+      return res.status(400).json({
+        message: "At least one image URL is required.",
+      });
+    }
+
+    if (imageUrls.some((url) => !isValidImageUrl(url))) {
+      return res.status(400).json({
+        message: "One or more image URLs are invalid.",
+      });
+    }
+
+    // Update only this user's memory.
+    const updateUrl =
+      `${getSupabaseRestUrl("memories")}` +
+      `?id=eq.${encodeURIComponent(memoryId)}` +
+      `&user_id=eq.${encodeURIComponent(userId)}` +
+      `&select=*`;
+
+    const response = await axios.patch(
+      updateUrl,
+      {
+        caption: trimmedCaption,
+        image_urls: imageUrls,
+      },
+      {
+        headers: {
+          ...supabaseJsonHeaders,
+          Prefer: "return=representation",
+        },
+      }
+    );
+
+    const updatedMemory = response.data?.[0];
+
+    if (!updatedMemory) {
+      return res.status(404).json({
+        message:
+          "Memory not found or you do not have permission to update it.",
+      });
+    }
+
+    const [memoryWithAttraction] =
+      await attachAttractionDetails([updatedMemory]);
+
+    return res.status(200).json({
+      message: "Memory updated successfully.",
+      memory: memoryWithAttraction || updatedMemory,
+    });
+  } catch (error) {
+    console.error(
+      "Update memory error:",
+      error.response?.data || error.message
+    );
+
+    return res.status(500).json({
+      message:
+        getSupabaseErrorMessage(error) ||
+        "Failed to update memory.",
+    });
+  }
+});
+
+
 // =====================================================
 // DELETE A MEMORY
 //
