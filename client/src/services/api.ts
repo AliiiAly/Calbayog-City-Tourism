@@ -670,12 +670,17 @@ export const getRestaurants = async (params?: {
   search?: string;
   cuisine_type?: string;
   featured?: boolean;
+  show_on_welcome?: boolean;
 }) => {
   let query = supabase
     .from("restaurants")
     .select("*")
     .eq("is_active", true)
     .order("created_at", { ascending: false });
+
+  if (params?.show_on_welcome !== undefined) {
+    query = query.eq("show_on_welcome", params.show_on_welcome);
+  }
 
   if (params?.search?.trim()) {
     const term = params.search.trim();
