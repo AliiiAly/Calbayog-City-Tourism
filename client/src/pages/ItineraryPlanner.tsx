@@ -67,7 +67,8 @@ import {
   Zap,
 } from "lucide-react";
 
-import { getAttractions } from "../services/api";
+import { getAccommodations, getAttractions } from "../services/api";
+import { supabase } from "../services/supabase";
 import { useAuth } from "../context/AuthContext";
 import { Destination, ItineraryDay } from "../types";
 import DayRouteMap from "../components/DayRouteMap";
@@ -78,6 +79,7 @@ import {
   formatDuration,
   getSpeed,
   getTravelLeg,
+  getCoords,
   getStopKind,
   nearestOf,
   splitIntoDays,
@@ -377,6 +379,67 @@ const getDateForDay = (startDate: string, dayNumber: number) => {
 };
 
 const normalize = (value: unknown) => String(value ?? "").toLowerCase().trim();
+
+/* =========================================================
+   ACCOMMODATIONS + RESTAURANTS -> PLANNER PLACES
+   They live in their own tables, so they are converted into the
+   same shape the planner already uses for attractions.
+========================================================= */
+
+const toNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const toImageList = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
+const normalizeAccommodation = (row: any): Destination =>
+  ({
+    id: `accommodation-${row?.id ?? row?._id}`,
+    name: String(row?.name ?? "").trim(),
+    category: "Accommodation",
+    attraction_type: "Hotels & Resorts",
+    description: row?.description || "",
+    short_description: row?.description || "",
+    location_address: row?.address || "",
+    location_lat: toNumber(row?.latitude),
+    location_lng: toNumber(row?.longitude),
+    images: toImageList(row?.images),
+    entrance_fee: row?.price_range || "",
+    contact_number: row?.contact_number || "",
+    __kind: "stay",
+  }) as unknown as Destination;
+
+const normalizeRestaurant = (row: any): Destination =>
+  ({
+    id: `restaurant-${row?.id}`,
+    name: String(row?.name ?? "").trim(),
+    category: "Food and Dining",
+    attraction_type: String(row?.cuisine_type ?? "").trim() || "Restaurant",
+    description: row?.description || "",
+    short_description: row?.short_description || "",
+    location_address: row?.location_address || "",
+    location_lat: toNumber(row?.location_lat ?? row?.latitude),
+    location_lng: toNumber(row?.location_lng ?? row?.longitude),
+    images: toImageList(row?.images),
+    entrance_fee: row?.price_range || "",
+    opening_hours: row?.opening_hours || "",
+    featured: Boolean(row?.featured),
+    is_active: row?.is_active !== false,
+    __kind: "food",
+  }) as unknown as Destination;
 
 const flat = (value: unknown) =>
   Array.isArray(value) ? value.join(" ") : String(value ?? "");
@@ -940,14 +1003,62 @@ const ItineraryPlanner: React.FC = () => {
   ===================================================== */
 
   useEffect(() => {
-    getAttractions()
-      .then((response) => {
-        setDestinations(Array.isArray(response.data) ? response.data : []);
-      })
-      .catch((error) => {
-        console.error("Failed to load attractions:", error);
-        setDestinations([]);
+    let cancelled = false;
+
+    const loadPlaces = async () => {
+      const [attractionResult, accommodationResult, restaurantResult] =
+        await Promise.allSettled([
+          getAttractions(),
+          getAccommodations(),
+          supabase.from("restaurants").select("*"),
+        ]);
+
+      if (cancelled) return;
+
+      [attractionResult, accommodationResult, restaurantResult].forEach((result) => {
+        if (result.status === "rejected") {
+          console.error("Failed to load some places:", result.reason);
+        }
       });
+
+      const attractions: Destination[] =
+        attractionResult.status === "fulfilled" &&
+        Array.isArray((attractionResult.value as any)?.data)
+          ? (attractionResult.value as any).data
+          : [];
+
+      const accommodations: Destination[] =
+        accommodationResult.status === "fulfilled" &&
+        Array.isArray((accommodationResult.value as any)?.data)
+          ? (accommodationResult.value as any).data
+              .map(normalizeAccommodation)
+              .filter((item: Destination) => item.name)
+          : [];
+
+      const restaurantValue: any =
+        restaurantResult.status === "fulfilled" ? restaurantResult.value : null;
+
+      const restaurants: Destination[] =
+        restaurantValue && !restaurantValue.error && Array.isArray(restaurantValue.data)
+          ? restaurantValue.data
+              .filter((row: any) => row?.is_active !== false)
+              .map(normalizeRestaurant)
+              .filter((item: Destination) => item.name)
+          : [];
+
+      // Only places with a saved map pin can be planned, so the rest never appear here.
+      setDestinations(
+        [...attractions, ...accommodations, ...restaurants].filter(
+          (dest) => getCoords(dest) !== null,
+        ),
+      );
+    };
+
+    void loadPlaces();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Keep stops up to date with the latest attraction data (new photos, fixed pins).
