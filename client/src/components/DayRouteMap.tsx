@@ -16,7 +16,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 import { Destination } from "../types";
-import { getCoords, getTravelLeg } from "../utils/itineraryUtils";
+import { getCoords, getStopKind, getTravelLeg } from "../utils/itineraryUtils";
 
 const BRAND_BLUE = "#2D3195";
 const DEFAULT_CENTER: [number, number] = [12.0668, 124.6041];
@@ -45,13 +45,15 @@ const SATELLITE_LABELS_URL =
 const SATELLITE_ROADS_URL =
   "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}";
 
-const numberIcon = (n: number) =>
+const KIND_COLORS = { attraction: BRAND_BLUE, food: "#C2410C", stay: "#2563EB" };
+
+const numberIcon = (n: number, color: string) =>
   L.divIcon({
     className: "",
     iconSize: [30, 30],
     iconAnchor: [15, 15],
     popupAnchor: [0, -14],
-    html: `<div style="width:30px;height:30px;border-radius:50%;background:${BRAND_BLUE};color:#fff;display:flex;align-items:center;justify-content:center;font:800 13px Nunito,sans-serif;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);">${n}</div>`,
+    html: `<div style="width:30px;height:30px;border-radius:50%;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;font:800 13px Nunito,sans-serif;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);">${n}</div>`,
   });
 
 // Small pill placed at the middle of each leg, e.g. "7.4 km".
@@ -184,7 +186,7 @@ const DayRouteMap: React.FC<Props> = ({ destinations, height = 260 }) => {
             <Marker
               key={dest.id}
               position={[coords!.lat, coords!.lng]}
-              icon={numberIcon(index + 1)}
+              icon={numberIcon(index + 1, KIND_COLORS[getStopKind(dest)])}
               zIndexOffset={1000}
             >
               <Popup>
@@ -216,12 +218,6 @@ const DayRouteMap: React.FC<Props> = ({ destinations, height = 260 }) => {
         </div>
       )}
 
-      {stops.length < destinations.length && (
-        <div className="planner-map-note">
-          {destinations.length - stops.length} stop(s) have no saved map location
-          and are not shown.
-        </div>
-      )}
     </div>
   );
 };
