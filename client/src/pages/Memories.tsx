@@ -1,7 +1,8 @@
-
 import React, {
   useCallback,
   useEffect,
+  useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -21,18 +22,36 @@ import {
 import { useHistory } from "react-router-dom";
 
 import {
+  BedDouble,
+  CalendarDays,
   Camera,
+  Check,
   Compass,
   Image as ImageIcon,
+  ImagePlus,
   MapPin,
+  Pencil,
   Plus,
+  Search,
   Trash2,
+  UtensilsCrossed,
+  X,
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
-import { createMyMemory, getAttractions } from "../services/api";
+
+import {
+  createMyMemory,
+  deleteMyMemory,
+  getMemoryPlaces,
+  getMyMemories,
+  updateMyMemory,
+  MemoryItemType,
+  MemoryPlace,
+  UserMemory,
+} from "../services/api";
+
 import { supabase } from "../services/supabase";
-import { Destination } from "../types";
 
 /* =========================================================
    BRAND COLOR
@@ -41,38 +60,79 @@ import { Destination } from "../types";
 const CALBAYOG_BLUE = "#2D3195";
 
 /* =========================================================
-   API CONFIGURATION
+   MEMORY PHOTO SETTINGS
 ========================================================= */
 
-const API_BASE_URL =
-  "https://calbayog-city-tourism.onrender.com";
+const MEMORY_BUCKET = "memory-images";
+
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+];
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+/* How many photos are uploaded at the same time */
+const UPLOAD_BATCH_SIZE = 3;
+
+interface NewPhoto {
+  id: string;
+  key: string;
+  file: File;
+  url: string;
+}
 
 /* =========================================================
-   TYPES
+   MEMORY TYPES (attraction, accommodation, restaurant, event)
 ========================================================= */
 
-interface AttractionDetails {
-  id?: string;
-  name?: string;
-  image?: string | null;
-}
+const ITEM_TYPE_META: Record<
+  MemoryItemType,
+  {
+    label: string;
+    singular: string;
+    icon: React.ElementType;
+    fallbackName: string;
+    searchHint: string;
+  }
+> = {
+  attraction: {
+    label: "Attractions",
+    singular: "Attraction",
+    icon: MapPin,
+    fallbackName: "Calbayog City Attraction",
+    searchHint: "Search attractions...",
+  },
+  accommodation: {
+    label: "Accommodations",
+    singular: "Accommodation",
+    icon: BedDouble,
+    fallbackName: "Calbayog City Accommodation",
+    searchHint: "Search accommodations...",
+  },
+  restaurant: {
+    label: "Restaurants",
+    singular: "Restaurant",
+    icon: UtensilsCrossed,
+    fallbackName: "Calbayog City Restaurant",
+    searchHint: "Search restaurants...",
+  },
+  event: {
+    label: "Events",
+    singular: "Event",
+    icon: CalendarDays,
+    fallbackName: "Calbayog City Event",
+    searchHint: "Search events...",
+  },
+};
 
-interface Memory {
-  id: string;
-  user_id: string;
-  attraction_id: string;
-  caption: string;
-  image_url?: string | null;
-  image_urls?: string[] | null;
-  created_at: string;
-  updated_at?: string;
-  attraction?: AttractionDetails | null;
-}
-
-interface MemoriesResponse {
-  memories?: Memory[];
-  message?: string;
-}
+const ITEM_TYPE_ORDER: MemoryItemType[] = [
+  "attraction",
+  "accommodation",
+  "restaurant",
+  "event",
+];
 
 /* =========================================================
    HELPER FUNCTIONS
@@ -81,9 +141,7 @@ interface MemoriesResponse {
 /**
  * Returns all valid image URLs attached to a memory.
  */
-const getImageUrls = (
-  memory: Memory,
-): string[] => {
+const getImageUrls = (memory: UserMemory): string[] => {
   const imageUrls: string[] = [];
 
   if (Array.isArray(memory.image_urls)) {
@@ -106,12 +164,7 @@ const getImageUrls = (
   return [...new Set(imageUrls)];
 };
 
-/**
- * Formats the memory creation date.
- */
-const formatMemoryDate = (
-  dateValue: string,
-): string => {
+const formatMemoryDate = (dateValue?: string): string => {
   if (!dateValue) {
     return "Date unavailable";
   }
@@ -128,6 +181,27 @@ const formatMemoryDate = (
     day: "numeric",
   });
 };
+
+/* A memory counts as edited if it changed more than a minute after creation */
+const wasEdited = (memory: UserMemory): boolean => {
+  if (!memory.created_at || !memory.updated_at) {
+    return false;
+  }
+
+  const created = new Date(memory.created_at).getTime();
+  const updated = new Date(memory.updated_at).getTime();
+
+  if (Number.isNaN(created) || Number.isNaN(updated)) {
+    return false;
+  }
+
+  return updated - created > 60 * 1000;
+};
+
+const getErrorMessage = (error: any, fallback: string): string =>
+  error?.response?.data?.message ||
+  error?.message ||
+  fallback;
 
 /* =========================================================
    MEMORIES COMPONENT
@@ -146,166 +220,137 @@ const Memories: React.FC = () => {
      PAGE STATE
   ======================================================= */
 
-  const [
-    memories,
-    setMemories,
-  ] = useState<Memory[]>([]);
-
-  const [
-    loading,
-    setLoading,
-  ] = useState<boolean>(true);
-
-  const [
-    error,
-    setError,
-  ] = useState<string>("");
-
-  const [
-    successMessage,
-    setSuccessMessage,
-  ] = useState<string>("");
-
-  const [
-    deletingMemoryId,
-    setDeletingMemoryId,
-  ] = useState<string | null>(null);
-
-  const [
-    selectedMemory,
-    setSelectedMemory,
-  ] = useState<Memory | null>(null);
-
-  const [
-    showDeleteModal,
-    setShowDeleteModal,
-  ] = useState<boolean>(false);
-
-  const [showAddMemoryModal, setShowAddMemoryModal] =
-    useState<boolean>(false);
-  const [attractions, setAttractions] = useState<Destination[]>([]);
-  const [loadingAttractions, setLoadingAttractions] = useState<boolean>(false);
-  const [savingMemory, setSavingMemory] = useState<boolean>(false);
-  const [selectedAttractionId, setSelectedAttractionId] = useState<string>("");
-  const [newMemoryCaption, setNewMemoryCaption] = useState<string>("");
-  const [newMemoryPhoto, setNewMemoryPhoto] = useState<File | null>(null);
-  const [newMemoryPhotoPreview, setNewMemoryPhotoPreview] = useState<string>("");
+  const [memories, setMemories] = useState<UserMemory[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
+  const [successMessage, setSuccessMessage] =
+    useState<string>("");
 
   /* =======================================================
-     REQUEST HEADERS
+     DELETE STATE
   ======================================================= */
 
-  const getHeaders = useCallback(
-    (): HeadersInit => {
-      const headers: HeadersInit = {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      };
+  const [deletingMemoryId, setDeletingMemoryId] =
+    useState<string | null>(null);
 
-      if (userToken) {
-        headers.Authorization = `Bearer ${userToken}`;
-      }
+  const [selectedMemory, setSelectedMemory] =
+    useState<UserMemory | null>(null);
 
-      return headers;
-    },
-    [userToken],
+  const [showDeleteModal, setShowDeleteModal] =
+    useState<boolean>(false);
+
+  /* =======================================================
+     ADD / EDIT FORM STATE
+  ======================================================= */
+
+  const [showFormModal, setShowFormModal] =
+    useState<boolean>(false);
+
+  const [formMode, setFormMode] = useState<"add" | "edit">(
+    "add",
   );
+
+  const [editingMemory, setEditingMemory] =
+    useState<UserMemory | null>(null);
+
+  const [formItemType, setFormItemType] =
+    useState<MemoryItemType>("attraction");
+
+  const [formItemId, setFormItemId] = useState<string>("");
+  const [formItemName, setFormItemName] = useState<string>("");
+
+  const [placeSearch, setPlaceSearch] = useState<string>("");
+
+  const [placesByType, setPlacesByType] = useState<
+    Partial<Record<MemoryItemType, MemoryPlace[]>>
+  >({});
+
+  const [loadingPlaces, setLoadingPlaces] =
+    useState<boolean>(false);
+
+  const [formCaption, setFormCaption] = useState<string>("");
+
+  /* Photos already saved on the memory (edit mode) */
+  const [existingImages, setExistingImages] = useState<
+    string[]
+  >([]);
+
+  /* Photos picked in this session */
+  const [newPhotos, setNewPhotos] = useState<NewPhoto[]>([]);
+
+  const [savingMemory, setSavingMemory] =
+    useState<boolean>(false);
+
+  const [uploadProgress, setUploadProgress] =
+    useState<number>(0);
+
+  const [formError, setFormError] = useState<string>("");
+
+  /* Always holds the latest new photos so previews can be released */
+  const newPhotosRef = useRef<NewPhoto[]>([]);
+
+  useEffect(() => {
+    newPhotosRef.current = newPhotos;
+  }, [newPhotos]);
+
+  const revokePreviews = useCallback((photos: NewPhoto[]) => {
+    photos.forEach((photo) => {
+      URL.revokeObjectURL(photo.url);
+    });
+  }, []);
+
+  const clearNewPhotos = useCallback(() => {
+    revokePreviews(newPhotosRef.current);
+    newPhotosRef.current = [];
+    setNewPhotos([]);
+  }, [revokePreviews]);
+
+  /* Release preview URLs when leaving the page */
+  useEffect(() => {
+    return () => {
+      revokePreviews(newPhotosRef.current);
+    };
+  }, [revokePreviews]);
 
   /* =======================================================
      FETCH MEMORIES
   ======================================================= */
 
-  const fetchMemories = useCallback(
-    async (): Promise<void> => {
-      if (authLoading) {
-        return;
-      }
+  const fetchMemories = useCallback(async (): Promise<void> => {
+    if (authLoading) {
+      return;
+    }
 
-      if (!user || !userToken) {
-        setMemories([]);
-        setLoading(false);
-        setError(
-          "Please log in to view your memories.",
-        );
+    if (!user || !userToken) {
+      setMemories([]);
+      setLoading(false);
+      setError("Please log in to view your memories.");
 
-        return;
-      }
+      return;
+    }
 
-      try {
-        setLoading(true);
-        setError("");
+    try {
+      setLoading(true);
+      setError("");
 
-        const response = await fetch(
-          `${API_BASE_URL}/api/memories`,
-          {
-            method: "GET",
-            headers: getHeaders(),
-          },
-        );
+      const result = await getMyMemories();
 
-        let data:
-          | Memory[]
-          | MemoriesResponse = {};
+      setMemories(result.data);
+    } catch (fetchError: any) {
+      console.error("Fetch memories error:", fetchError);
 
-        try {
-          data = await response.json();
-        } catch (jsonError) {
-          console.error(
-            "Failed to read memories response:",
-            jsonError,
-          );
-
-          throw new Error(
-            "The server returned an invalid response.",
-          );
-        }
-
-        if (!response.ok) {
-          const errorMessage =
-            !Array.isArray(data) &&
-            data.message
-              ? data.message
-              : response.status === 401
-                ? "Your session has expired. Please log in again."
-                : "Failed to load your memories.";
-
-          throw new Error(errorMessage);
-        }
-
-        const receivedMemories: Memory[] =
-          Array.isArray(data)
-            ? data
-            : Array.isArray(data.memories)
-              ? data.memories
-              : [];
-
-        setMemories(receivedMemories);
-      } catch (fetchError) {
-        console.error(
-          "Fetch memories error:",
-          fetchError,
-        );
-
-        setError(
-          fetchError instanceof Error
-            ? fetchError.message
-            : "Failed to load your memories.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [
-      authLoading,
-      getHeaders,
-      user,
-      userToken,
-    ],
-  );
-
-  /* =======================================================
-     INITIAL FETCH
-  ======================================================= */
+      setError(
+        fetchError?.response?.status === 401
+          ? "Your session has expired. Please log in again."
+          : getErrorMessage(
+              fetchError,
+              "Failed to load your memories.",
+            ),
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [authLoading, user, userToken]);
 
   useEffect(() => {
     if (authLoading) {
@@ -313,10 +358,7 @@ const Memories: React.FC = () => {
     }
 
     void fetchMemories();
-  }, [
-    authLoading,
-    fetchMemories,
-  ]);
+  }, [authLoading, fetchMemories]);
 
   /* =======================================================
      NAVIGATION
@@ -326,7 +368,73 @@ const Memories: React.FC = () => {
     history.push("/attractions");
   };
 
-  const openAddMemoryModal = async (): Promise<void> => {
+  /* =======================================================
+     PLACES (for the picker in "Add Memory")
+  ======================================================= */
+
+  const loadPlaces = useCallback(
+    async (type: MemoryItemType): Promise<void> => {
+      if (placesByType[type]) {
+        return;
+      }
+
+      try {
+        setLoadingPlaces(true);
+
+        const places = await getMemoryPlaces(type);
+
+        setPlacesByType((previous) => ({
+          ...previous,
+          [type]: places,
+        }));
+      } catch (loadError) {
+        console.error(
+          `Failed to load ${type} places:`,
+          loadError,
+        );
+
+        setFormError(
+          `Could not load ${ITEM_TYPE_META[type].label.toLowerCase()}. Please try again.`,
+        );
+      } finally {
+        setLoadingPlaces(false);
+      }
+    },
+    [placesByType],
+  );
+
+  const visiblePlaces = useMemo(() => {
+    const list = placesByType[formItemType] || [];
+    const query = placeSearch.trim().toLowerCase();
+
+    if (!query) {
+      return list;
+    }
+
+    return list.filter(
+      (place) =>
+        place.name.toLowerCase().includes(query) ||
+        place.subtitle.toLowerCase().includes(query),
+    );
+  }, [placesByType, formItemType, placeSearch]);
+
+  /* =======================================================
+     OPEN / CLOSE FORM
+  ======================================================= */
+
+  const resetFormState = (): void => {
+    clearNewPhotos();
+    setFormCaption("");
+    setExistingImages([]);
+    setFormItemId("");
+    setFormItemName("");
+    setPlaceSearch("");
+    setFormError("");
+    setUploadProgress(0);
+    setEditingMemory(null);
+  };
+
+  const openAddMemoryModal = (): void => {
     if (!user || !userToken) {
       setError("Please log in before adding a memory.");
       return;
@@ -334,154 +442,368 @@ const Memories: React.FC = () => {
 
     setError("");
     setSuccessMessage("");
-    setShowAddMemoryModal(true);
 
-    if (attractions.length > 0) return;
+    resetFormState();
 
-    try {
-      setLoadingAttractions(true);
-      const result: any = await getAttractions();
-      const list = Array.isArray(result)
-        ? result
-        : Array.isArray(result?.data)
-          ? result.data
-          : Array.isArray(result?.data?.data)
-            ? result.data.data
-            : [];
-      setAttractions(list);
-      if (list.length === 0) {
-        setError("No attractions are available right now. Please try again later.");
-      }
-    } catch (loadError) {
-      console.error("Failed to load attractions:", loadError);
-      setError("Could not load attractions. Please close this form and try again.");
-    } finally {
-      setLoadingAttractions(false);
-    }
+    setFormMode("add");
+    setFormItemType("attraction");
+    setShowFormModal(true);
+
+    void loadPlaces("attraction");
   };
 
-  const handleNewMemoryPhotoChange = (
+  const openEditMemoryModal = (memory: UserMemory): void => {
+    setError("");
+    setSuccessMessage("");
+
+    resetFormState();
+
+    const itemType = memory.item_type || "attraction";
+
+    setFormMode("edit");
+    setEditingMemory(memory);
+    setFormItemType(itemType);
+    setFormItemId(memory.item_id || "");
+    setFormItemName(
+      memory.item?.name ||
+        memory.attraction?.name ||
+        ITEM_TYPE_META[itemType].fallbackName,
+    );
+    setFormCaption(memory.caption || "");
+    setExistingImages(getImageUrls(memory));
+    setShowFormModal(true);
+  };
+
+  const closeFormModal = (): void => {
+    if (savingMemory) {
+      return;
+    }
+
+    resetFormState();
+    setShowFormModal(false);
+  };
+
+  const handleChangeItemType = (type: MemoryItemType): void => {
+    if (type === formItemType) {
+      return;
+    }
+
+    setFormItemType(type);
+    setFormItemId("");
+    setFormItemName("");
+    setPlaceSearch("");
+    setFormError("");
+
+    void loadPlaces(type);
+  };
+
+  const handleSelectPlace = (place: MemoryPlace): void => {
+    setFormItemId(place.id);
+    setFormItemName(place.name);
+    setFormError("");
+  };
+
+  /* =======================================================
+     PHOTOS
+  ======================================================= */
+
+  const handlePhotosChange = (
     event: React.ChangeEvent<HTMLInputElement>,
   ): void => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const selectedFiles = Array.from(event.target.files || []);
 
-    setError("");
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      setError("Please choose a JPG, PNG, or WEBP image.");
-      event.target.value = "";
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setError("The photo must be 5 MB or smaller.");
-      event.target.value = "";
+    // Reset so the same file can be picked again later.
+    event.target.value = "";
+
+    if (selectedFiles.length === 0) {
       return;
     }
 
-    if (newMemoryPhotoPreview) URL.revokeObjectURL(newMemoryPhotoPreview);
-    setNewMemoryPhoto(file);
-    setNewMemoryPhotoPreview(URL.createObjectURL(file));
+    setFormError("");
+
+    const existingKeys = new Set(
+      newPhotosRef.current.map((photo) => photo.key),
+    );
+
+    const accepted: NewPhoto[] = [];
+
+    let wrongType = 0;
+    let tooLarge = 0;
+
+    selectedFiles.forEach((file) => {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        wrongType += 1;
+        return;
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        tooLarge += 1;
+        return;
+      }
+
+      const key = `${file.name}-${file.size}-${file.lastModified}`;
+
+      // Ignore the exact same photo picked twice.
+      if (existingKeys.has(key)) {
+        return;
+      }
+
+      existingKeys.add(key);
+
+      accepted.push({
+        id: `${key}-${Math.random().toString(36).slice(2, 8)}`,
+        key,
+        file,
+        url: URL.createObjectURL(file),
+      });
+    });
+
+    if (accepted.length > 0) {
+      setNewPhotos((previous) => [...previous, ...accepted]);
+    }
+
+    const problems: string[] = [];
+
+    if (wrongType > 0) {
+      problems.push(
+        `${wrongType} ${
+          wrongType === 1 ? "file was" : "files were"
+        } skipped because only JPG, PNG, or WEBP images are allowed.`,
+      );
+    }
+
+    if (tooLarge > 0) {
+      problems.push(
+        `${tooLarge} ${
+          tooLarge === 1 ? "photo was" : "photos were"
+        } skipped because each photo must be smaller than 5 MB.`,
+      );
+    }
+
+    if (problems.length > 0) {
+      setFormError(problems.join(" "));
+    }
   };
 
-  const closeAddMemoryModal = (): void => {
-    if (savingMemory) return;
-    if (newMemoryPhotoPreview) URL.revokeObjectURL(newMemoryPhotoPreview);
-    setNewMemoryPhoto(null);
-    setNewMemoryPhotoPreview("");
-    setNewMemoryCaption("");
-    setSelectedAttractionId("");
-    setShowAddMemoryModal(false);
+  const handleRemoveNewPhoto = (photoId: string): void => {
+    setFormError("");
+
+    setNewPhotos((previous) => {
+      const removed = previous.find(
+        (photo) => photo.id === photoId,
+      );
+
+      if (removed) {
+        URL.revokeObjectURL(removed.url);
+      }
+
+      return previous.filter((photo) => photo.id !== photoId);
+    });
   };
 
-  const handleCreateMemory = async (
+  const handleRemoveExistingPhoto = (url: string): void => {
+    setFormError("");
+
+    setExistingImages((previous) =>
+      previous.filter((imageUrl) => imageUrl !== url),
+    );
+  };
+
+  /* =======================================================
+     SAVE (ADD OR EDIT)
+  ======================================================= */
+
+  const handleSaveMemory = async (
     event: React.FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     event.preventDefault();
+
+    if (savingMemory) {
+      return;
+    }
+
+    setFormError("");
     setError("");
     setSuccessMessage("");
 
     if (!user || !userToken) {
-      setError("Your session has expired. Please log in again.");
-      return;
-    }
-    if (!selectedAttractionId) {
-      setError("Please select an attraction.");
-      return;
-    }
-    if (!newMemoryPhoto) {
-      setError("Please choose a photo for your memory.");
-      return;
-    }
-    const caption = newMemoryCaption.trim();
-    if (!caption) {
-      setError("Please write a caption for your memory.");
-      return;
-    }
-    if (caption.length > 500) {
-      setError("Your caption must be 500 characters or less.");
+      setFormError(
+        "Your session has expired. Please log in again.",
+      );
       return;
     }
 
     const userId = String((user as any)?.id || "").trim();
+
     if (!userId) {
-      setError("Your user session could not be verified. Please log in again.");
+      setFormError(
+        "Your user session could not be verified. Please log in again.",
+      );
       return;
     }
 
+    if (formMode === "add" && !formItemId) {
+      setFormError("Please choose a place for your memory.");
+      return;
+    }
+
+    if (existingImages.length + newPhotos.length === 0) {
+      setFormError("Please add at least one photo.");
+      return;
+    }
+
+    const caption = formCaption.trim();
+
+    if (!caption) {
+      setFormError("Please write a caption for your memory.");
+      return;
+    }
+
+    if (caption.length > 500) {
+      setFormError(
+        "Your caption must be 500 characters or less.",
+      );
+      return;
+    }
+
+    // Paths uploaded so far, so they can be cleaned up on failure.
+    const uploadedPaths: string[] = [];
+
     try {
       setSavingMemory(true);
-      const extension = newMemoryPhoto.name.split(".").pop()?.toLowerCase() || "jpg";
-      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
-      const filePath = `${userId}/${selectedAttractionId}/${fileName}`;
+      setUploadProgress(0);
 
-      const { error: uploadError } = await supabase.storage
-        .from("memory-images")
-        .upload(filePath, newMemoryPhoto, {
-          cacheControl: "3600",
-          upsert: false,
-          contentType: newMemoryPhoto.type,
+      const photosToUpload = [...newPhotos];
+      const newUrls: string[] = new Array(photosToUpload.length);
+
+      const uploadOne = async (
+        photo: NewPhoto,
+        index: number,
+      ): Promise<void> => {
+        const extension =
+          photo.file.name.split(".").pop()?.toLowerCase() ||
+          "jpg";
+
+        const fileName = `${Date.now()}-${index}-${Math.random()
+          .toString(36)
+          .slice(2)}.${extension}`;
+
+        const filePath = `${userId}/${formItemType}/${formItemId}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from(MEMORY_BUCKET)
+          .upload(filePath, photo.file, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: photo.file.type,
+          });
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        uploadedPaths.push(filePath);
+
+        const { data: publicUrlData } = supabase.storage
+          .from(MEMORY_BUCKET)
+          .getPublicUrl(filePath);
+
+        const imageUrl = publicUrlData?.publicUrl || "";
+
+        if (!imageUrl) {
+          throw new Error(
+            "The uploaded image URL could not be created.",
+          );
+        }
+
+        newUrls[index] = imageUrl;
+
+        setUploadProgress((previous) => previous + 1);
+      };
+
+      // Upload in small batches so many photos do not
+      // overwhelm the connection.
+      for (
+        let start = 0;
+        start < photosToUpload.length;
+        start += UPLOAD_BATCH_SIZE
+      ) {
+        const batch = photosToUpload.slice(
+          start,
+          start + UPLOAD_BATCH_SIZE,
+        );
+
+        await Promise.all(
+          batch.map((photo, offset) =>
+            uploadOne(photo, start + offset),
+          ),
+        );
+      }
+
+      const finalImageUrls = [...existingImages, ...newUrls];
+
+      if (formMode === "edit" && editingMemory) {
+        await updateMyMemory(editingMemory.id, {
+          caption,
+          image_urls: finalImageUrls,
         });
-      if (uploadError) throw uploadError;
+      } else {
+        await createMyMemory({
+          item_type: formItemType,
+          item_id: formItemId,
+          caption,
+          image_urls: finalImageUrls,
+        });
+      }
 
-      const { data: publicUrlData } = supabase.storage
-        .from("memory-images")
-        .getPublicUrl(filePath);
-      const imageUrl = publicUrlData?.publicUrl || "";
-      if (!imageUrl) throw new Error("The uploaded image URL could not be created.");
+      const wasEditing = formMode === "edit";
 
-      await createMyMemory({
-        attraction_id: selectedAttractionId,
-        caption,
-        image_urls: [imageUrl],
-      });
+      // Close the form (saving is finished at this point).
+      resetFormState();
+      setShowFormModal(false);
 
-      if (newMemoryPhotoPreview) URL.revokeObjectURL(newMemoryPhotoPreview);
-      setNewMemoryPhoto(null);
-      setNewMemoryPhotoPreview("");
-      setNewMemoryCaption("");
-      setSelectedAttractionId("");
-      setShowAddMemoryModal(false);
       await fetchMemories();
-      setSuccessMessage("Your memory has been added successfully!");
-    } catch (createError: any) {
-      console.error("Create memory error:", createError);
-      setError(
-        createError?.response?.data?.message ||
-          createError?.message ||
+
+      setSuccessMessage(
+        wasEditing
+          ? "Your memory has been updated successfully!"
+          : "Your memory has been added successfully!",
+      );
+    } catch (saveError: any) {
+      console.error("Save memory error:", saveError);
+
+      // Remove photos that were already uploaded so a failed
+      // save does not leave unused files in storage.
+      if (uploadedPaths.length > 0) {
+        try {
+          await supabase.storage
+            .from(MEMORY_BUCKET)
+            .remove(uploadedPaths);
+        } catch (cleanupError) {
+          console.error(
+            "Failed to clean up uploaded memory images:",
+            cleanupError,
+          );
+        }
+      }
+
+      setFormError(
+        getErrorMessage(
+          saveError,
           "Something went wrong while saving your memory.",
+        ),
       );
     } finally {
       setSavingMemory(false);
+      setUploadProgress(0);
     }
   };
 
   /* =======================================================
-     DELETE MODAL
+     DELETE
   ======================================================= */
 
-  const handleOpenDeleteModal = (
-    memory: Memory,
-  ): void => {
+  const handleOpenDeleteModal = (memory: UserMemory): void => {
     setSelectedMemory(memory);
     setShowDeleteModal(true);
     setError("");
@@ -497,15 +819,9 @@ const Memories: React.FC = () => {
     setShowDeleteModal(false);
   };
 
-  /* =======================================================
-     DELETE MEMORY
-  ======================================================= */
-
   const handleDeleteMemory = async (): Promise<void> => {
     if (!selectedMemory?.id || !userToken) {
-      setError(
-        "Your session has expired. Please log in again.",
-      );
+      setError("Your session has expired. Please log in again.");
 
       return;
     }
@@ -515,68 +831,52 @@ const Memories: React.FC = () => {
       setError("");
       setSuccessMessage("");
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/memories/${encodeURIComponent(
-          selectedMemory.id,
-        )}`,
-        {
-          method: "DELETE",
-          headers: getHeaders(),
-        },
-      );
+      const result = await deleteMyMemory(selectedMemory.id);
 
-      let data: {
-        message?: string;
-      } = {};
-
-      try {
-        data = await response.json();
-      } catch (jsonError) {
-        console.error(
-          "Failed to read delete response:",
-          jsonError,
-        );
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          data.message ||
-            (response.status === 401
-              ? "Your session has expired. Please log in again."
-              : "Failed to delete this memory."),
-        );
-      }
-
-      setMemories(
-        (currentMemories) =>
-          currentMemories.filter(
-            (memory) =>
-              memory.id !== selectedMemory.id,
-          ),
+      setMemories((currentMemories) =>
+        currentMemories.filter(
+          (memory) => memory.id !== selectedMemory.id,
+        ),
       );
 
       setSuccessMessage(
-        data.message ||
-          "Memory deleted successfully.",
+        result.message || "Memory deleted successfully.",
       );
 
       setSelectedMemory(null);
       setShowDeleteModal(false);
-    } catch (deleteError) {
-      console.error(
-        "Delete memory error:",
-        deleteError,
-      );
+    } catch (deleteError: any) {
+      console.error("Delete memory error:", deleteError);
 
       setError(
-        deleteError instanceof Error
-          ? deleteError.message
-          : "Failed to delete this memory.",
+        getErrorMessage(
+          deleteError,
+          "Failed to delete this memory.",
+        ),
       );
     } finally {
       setDeletingMemoryId(null);
     }
   };
+
+  /* =======================================================
+     DERIVED VALUES FOR THE FORM
+  ======================================================= */
+
+  const totalPhotos = existingImages.length + newPhotos.length;
+
+  const saveButtonLabel = savingMemory
+    ? newPhotos.length > 1
+      ? `Saving ${Math.min(
+          uploadProgress,
+          newPhotos.length,
+        )}/${newPhotos.length}...`
+      : "Saving Memory..."
+    : formMode === "edit"
+      ? "Save Changes"
+      : "Save Memory";
+
+  const FormTypeIcon = ITEM_TYPE_META[formItemType].icon;
 
   /* =========================================================
      RENDER
@@ -591,14 +891,11 @@ const Memories: React.FC = () => {
 
         <section className="memories-header">
           <div className="memories-header-inner">
-            <h1 className="memories-title">
-              MY MEMORIES
-            </h1>
+            <h1 className="memories-title">MY MEMORIES</h1>
 
             <p className="memories-subtitle">
-              Keep your favorite moments and
-              experiences from exploring
-              Calbayog City.
+              Keep your favorite moments and experiences from
+              exploring Calbayog City.
             </p>
           </div>
         </section>
@@ -615,10 +912,7 @@ const Memories: React.FC = () => {
           <div className="memories-top-row">
             <div className="memories-intro">
               <div className="memories-intro-icon">
-                <Camera
-                  size={18}
-                  strokeWidth={1.9}
-                />
+                <Camera size={18} strokeWidth={1.9} />
               </div>
 
               <div>
@@ -636,11 +930,7 @@ const Memories: React.FC = () => {
               className="memories-add-button"
               onClick={openAddMemoryModal}
             >
-              <Plus
-                size={15}
-                strokeWidth={2.2}
-              />
-
+              <Plus size={15} strokeWidth={2.2} />
               Add Memory
             </Button>
           </div>
@@ -653,9 +943,7 @@ const Memories: React.FC = () => {
             <Alert
               variant="success"
               dismissible
-              onClose={() =>
-                setSuccessMessage("")
-              }
+              onClose={() => setSuccessMessage("")}
               className="memories-alert"
             >
               {successMessage}
@@ -666,9 +954,7 @@ const Memories: React.FC = () => {
             <Alert
               variant="danger"
               dismissible
-              onClose={() =>
-                setError("")
-              }
+              onClose={() => setError("")}
               className="memories-alert"
             >
               {error}
@@ -685,10 +971,7 @@ const Memories: React.FC = () => {
               <div className="memories-results-bar">
                 <div className="memories-results-left">
                   <div className="memories-results-icon">
-                    <ImageIcon
-                      size={17}
-                      strokeWidth={1.9}
-                    />
+                    <ImageIcon size={17} strokeWidth={1.9} />
                   </div>
 
                   <div>
@@ -697,13 +980,9 @@ const Memories: React.FC = () => {
                     </div>
 
                     <div className="memories-results-count">
-                      <strong>
-                        {memories.length}
-                      </strong>{" "}
-                      saved moment
-                      {memories.length !== 1
-                        ? "s"
-                        : ""}
+                      <strong>{memories.length}</strong> saved
+                      moment
+                      {memories.length !== 1 ? "s" : ""}
                     </div>
                   </div>
                 </div>
@@ -721,10 +1000,7 @@ const Memories: React.FC = () => {
           {authLoading || loading ? (
             <div className="memories-loading">
               <div className="loading-icon">
-                <Spinner
-                  animation="border"
-                  size="sm"
-                />
+                <Spinner animation="border" size="sm" />
               </div>
 
               <div className="loading-title">
@@ -742,31 +1018,21 @@ const Memories: React.FC = () => {
 
             <div className="memories-empty-state">
               <div className="empty-icon">
-                <Camera
-                  size={29}
-                  strokeWidth={1.6}
-                />
+                <Camera size={29} strokeWidth={1.6} />
               </div>
 
-              <h3>
-                No memories yet
-              </h3>
+              <h3>No memories yet</h3>
 
               <p>
-                Start exploring Calbayog City
-                and save your favorite
-                travel moments here.
+                Start exploring Calbayog City and save your
+                favorite travel moments here.
               </p>
 
               <Button
                 className="empty-button"
                 onClick={handleGoToAttractions}
               >
-                <Compass
-                  size={15}
-                  strokeWidth={1.9}
-                />
-
+                <Compass size={15} strokeWidth={1.9} />
                 Explore attractions
               </Button>
             </div>
@@ -777,20 +1043,23 @@ const Memories: React.FC = () => {
 
             <Row className="memories-grid">
               {memories.map((memory) => {
-                const imageUrls =
-                  getImageUrls(memory);
+                const imageUrls = getImageUrls(memory);
 
-                const attractionName =
-                  memory.attraction?.name ||
-                  "Calbayog City Attraction";
+                const itemType: MemoryItemType =
+                  memory.item_type || "attraction";
 
-                const attractionImage =
-                  memory.attraction?.image ||
-                  null;
+                const typeMeta = ITEM_TYPE_META[itemType];
 
-                const firstImage =
-                  imageUrls[0] ||
-                  attractionImage;
+                const TypeIcon = typeMeta.icon;
+
+                const item = memory.item || memory.attraction;
+
+                const placeName =
+                  item?.name || typeMeta.fallbackName;
+
+                const placeImage = item?.image || null;
+
+                const firstImage = imageUrls[0] || placeImage;
 
                 return (
                   <Col
@@ -809,7 +1078,7 @@ const Memories: React.FC = () => {
                         <div className="memory-image-wrapper">
                           <img
                             src={firstImage}
-                            alt={attractionName}
+                            alt={placeName}
                             className="memory-image"
                             onError={(event) => {
                               event.currentTarget.style.display =
@@ -820,14 +1089,12 @@ const Memories: React.FC = () => {
                           <div className="memory-image-overlay" />
 
                           <div className="memory-location-badge">
-                            <MapPin
+                            <TypeIcon
                               size={12}
                               strokeWidth={2}
                             />
 
-                            <span>
-                              {attractionName}
-                            </span>
+                            <span>{placeName}</span>
                           </div>
 
                           {imageUrls.length > 1 && (
@@ -843,14 +1110,9 @@ const Memories: React.FC = () => {
                         </div>
                       ) : (
                         <div className="memory-image-placeholder">
-                          <Camera
-                            size={30}
-                            strokeWidth={1.5}
-                          />
+                          <Camera size={30} strokeWidth={1.5} />
 
-                          <span>
-                            No image available
-                          </span>
+                          <span>No image available</span>
                         </div>
                       )}
 
@@ -860,13 +1122,16 @@ const Memories: React.FC = () => {
 
                       <Card.Body className="memory-card-body">
                         <div className="memory-date">
-                          {formatMemoryDate(
-                            memory.created_at,
+                          {formatMemoryDate(memory.created_at)}
+                          {wasEdited(memory) && (
+                            <span className="memory-edited-tag">
+                              Edited
+                            </span>
                           )}
                         </div>
 
                         <h3 className="memory-attraction-name">
-                          {attractionName}
+                          {placeName}
                         </h3>
 
                         <p className="memory-caption">
@@ -875,35 +1140,51 @@ const Memories: React.FC = () => {
 
                         <div className="memory-card-footer">
                           <div className="memory-card-type">
-                            <Camera
+                            <TypeIcon
                               size={13}
                               strokeWidth={1.8}
                             />
 
-                            Travel memory
+                            {typeMeta.singular} memory
                           </div>
 
-                          <Button
-                            variant="outline-danger"
-                            size="sm"
-                            className="memory-delete-button"
-                            onClick={() =>
-                              handleOpenDeleteModal(
-                                memory,
-                              )
-                            }
-                            disabled={
-                              deletingMemoryId ===
-                              memory.id
-                            }
-                          >
-                            <Trash2
-                              size={13}
-                              strokeWidth={1.9}
-                            />
+                          <div className="memory-card-actions">
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
+                              className="memory-edit-button"
+                              onClick={() =>
+                                openEditMemoryModal(memory)
+                              }
+                              disabled={
+                                deletingMemoryId === memory.id
+                              }
+                            >
+                              <Pencil
+                                size={13}
+                                strokeWidth={1.9}
+                              />
+                              Edit
+                            </Button>
 
-                            Delete
-                          </Button>
+                            <Button
+                              variant="outline-danger"
+                              size="sm"
+                              className="memory-delete-button"
+                              onClick={() =>
+                                handleOpenDeleteModal(memory)
+                              }
+                              disabled={
+                                deletingMemoryId === memory.id
+                              }
+                            >
+                              <Trash2
+                                size={13}
+                                strokeWidth={1.9}
+                              />
+                              Delete
+                            </Button>
+                          </div>
                         </div>
                       </Card.Body>
                     </Card>
@@ -916,85 +1197,316 @@ const Memories: React.FC = () => {
       </div>
 
       {/* ===================================================
-          ADD MEMORY MODAL
+          ADD / EDIT MEMORY MODAL
       =================================================== */}
+
       <Modal
-        show={showAddMemoryModal}
-        onHide={closeAddMemoryModal}
+        show={showFormModal}
+        onHide={closeFormModal}
         centered
         size="lg"
+        scrollable
         backdrop={savingMemory ? "static" : true}
         keyboard={!savingMemory}
       >
-        <Form onSubmit={handleCreateMemory}>
+        <Form onSubmit={handleSaveMemory}>
           <Modal.Header closeButton={!savingMemory}>
-            <Modal.Title>Share a Travel Memory</Modal.Title>
+            <Modal.Title>
+              {formMode === "edit"
+                ? "Edit Your Memory"
+                : "Share a Travel Memory"}
+            </Modal.Title>
           </Modal.Header>
+
           <Modal.Body>
-            <p>Save a favorite moment from your visit to Calbayog City.</p>
-            <Form.Group className="mb-3">
-              <Form.Label>Attraction</Form.Label>
-              <Form.Select
-                value={selectedAttractionId}
-                onChange={(event) => setSelectedAttractionId(event.target.value)}
-                disabled={savingMemory || loadingAttractions}
-                required
+            {formError && (
+              <Alert
+                variant="danger"
+                dismissible
+                onClose={() => setFormError("")}
+                className="memories-alert"
               >
-                <option value="">
-                  {loadingAttractions ? "Loading attractions..." : "Choose an attraction"}
-                </option>
-                {attractions.map((attraction: any) => (
-                  <option key={attraction.id} value={attraction.id}>
-                    {attraction.name || "Unnamed attraction"}
-                  </option>
-                ))}
-              </Form.Select>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Photo</Form.Label>
-              <Form.Control
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handleNewMemoryPhotoChange}
-                disabled={savingMemory}
-                required
-              />
-              <Form.Text muted>JPG, PNG, or WEBP. Maximum size: 5 MB.</Form.Text>
-            </Form.Group>
-            {newMemoryPhotoPreview && (
-              <div className="mb-3">
-                <img
-                  src={newMemoryPhotoPreview}
-                  alt="Preview of your memory"
-                  style={{ width: "100%", maxHeight: 280, objectFit: "cover", borderRadius: 12 }}
-                />
-              </div>
+                {formError}
+              </Alert>
             )}
-            <Form.Group className="mb-2">
-              <Form.Label>Caption</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={4}
-                maxLength={500}
-                placeholder="Tell us about this moment..."
-                value={newMemoryCaption}
-                onChange={(event) => setNewMemoryCaption(event.target.value)}
-                disabled={savingMemory}
-                required
-              />
-              <Form.Text muted>{newMemoryCaption.length}/500 characters</Form.Text>
-            </Form.Group>
+
+            {/* ---------------------------------------------
+                PLACE
+            --------------------------------------------- */}
+
+            <div className="memory-form-section">
+              <div className="memory-form-label">Place</div>
+
+              {formMode === "edit" ? (
+                <div className="memory-place-fixed">
+                  <div className="memory-place-fixed-icon">
+                    <FormTypeIcon size={16} strokeWidth={1.9} />
+                  </div>
+
+                  <div>
+                    <div className="memory-place-fixed-type">
+                      {ITEM_TYPE_META[formItemType].singular}
+                    </div>
+
+                    <div className="memory-place-fixed-name">
+                      {formItemName}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="memory-type-tabs">
+                    {ITEM_TYPE_ORDER.map((type) => {
+                      const meta = ITEM_TYPE_META[type];
+                      const TabIcon = meta.icon;
+
+                      return (
+                        <button
+                          type="button"
+                          key={type}
+                          className={`memory-type-tab ${
+                            formItemType === type
+                              ? "memory-type-tab-active"
+                              : ""
+                          }`}
+                          onClick={() =>
+                            handleChangeItemType(type)
+                          }
+                          disabled={savingMemory}
+                        >
+                          <TabIcon size={14} strokeWidth={1.9} />
+                          {meta.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="memory-place-search">
+                    <Search size={15} strokeWidth={1.9} />
+
+                    <input
+                      type="search"
+                      value={placeSearch}
+                      onChange={(event) =>
+                        setPlaceSearch(event.target.value)
+                      }
+                      placeholder={
+                        ITEM_TYPE_META[formItemType].searchHint
+                      }
+                      disabled={savingMemory}
+                    />
+                  </div>
+
+                  <div className="memory-place-list">
+                    {loadingPlaces &&
+                    !placesByType[formItemType] ? (
+                      <div className="memory-place-empty">
+                        <Spinner
+                          animation="border"
+                          size="sm"
+                          className="me-2"
+                        />
+                        Loading...
+                      </div>
+                    ) : visiblePlaces.length === 0 ? (
+                      <div className="memory-place-empty">
+                        {placeSearch.trim()
+                          ? "No matches found."
+                          : `No ${ITEM_TYPE_META[
+                              formItemType
+                            ].label.toLowerCase()} available right now.`}
+                      </div>
+                    ) : (
+                      visiblePlaces.map((place) => {
+                        const selected =
+                          formItemId === place.id;
+
+                        return (
+                          <button
+                            type="button"
+                            key={place.id}
+                            className={`memory-place-item ${
+                              selected
+                                ? "memory-place-item-active"
+                                : ""
+                            }`}
+                            onClick={() =>
+                              handleSelectPlace(place)
+                            }
+                            disabled={savingMemory}
+                          >
+                            {place.image ? (
+                              <img
+                                src={place.image}
+                                alt=""
+                                loading="lazy"
+                              />
+                            ) : (
+                              <span className="memory-place-item-thumb">
+                                <FormTypeIcon
+                                  size={16}
+                                  strokeWidth={1.7}
+                                />
+                              </span>
+                            )}
+
+                            <span className="memory-place-item-text">
+                              <strong>{place.name}</strong>
+
+                              {place.subtitle && (
+                                <small>{place.subtitle}</small>
+                              )}
+                            </span>
+
+                            {selected && (
+                              <span className="memory-place-item-check">
+                                <Check size={13} />
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* ---------------------------------------------
+                PHOTOS
+            --------------------------------------------- */}
+
+            <div className="memory-form-section">
+              <div className="memory-form-label">Photos</div>
+
+              <div className="memory-photo-grid">
+                {existingImages.map((url, index) => (
+                  <div
+                    className="memory-photo-tile"
+                    key={url}
+                  >
+                    <img
+                      src={url}
+                      alt={`Saved photo ${index + 1}`}
+                    />
+
+                    <button
+                      type="button"
+                      className="memory-photo-remove"
+                      onClick={() =>
+                        handleRemoveExistingPhoto(url)
+                      }
+                      disabled={savingMemory}
+                      aria-label={`Remove saved photo ${
+                        index + 1
+                      }`}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+
+                {newPhotos.map((photo, index) => (
+                  <div
+                    className="memory-photo-tile"
+                    key={photo.id}
+                  >
+                    <img
+                      src={photo.url}
+                      alt={`New photo ${index + 1}`}
+                    />
+
+                    <button
+                      type="button"
+                      className="memory-photo-remove"
+                      onClick={() =>
+                        handleRemoveNewPhoto(photo.id)
+                      }
+                      disabled={savingMemory}
+                      aria-label={`Remove new photo ${
+                        index + 1
+                      }`}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+
+                {!savingMemory && (
+                  <label className="memory-photo-add">
+                    <ImagePlus size={20} strokeWidth={1.8} />
+                    {totalPhotos === 0
+                      ? "Add photos"
+                      : "Add more"}
+
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      multiple
+                      onChange={handlePhotosChange}
+                    />
+                  </label>
+                )}
+              </div>
+
+              <Form.Text muted>
+                JPG, PNG, or WEBP. Maximum 5 MB per photo.
+              </Form.Text>
+            </div>
+
+            {/* ---------------------------------------------
+                CAPTION
+            --------------------------------------------- */}
+
+            <div className="memory-form-section">
+              <Form.Group>
+                <div className="memory-form-label">Caption</div>
+
+                <Form.Control
+                  as="textarea"
+                  rows={4}
+                  maxLength={500}
+                  placeholder="Tell us about this moment..."
+                  value={formCaption}
+                  onChange={(event) =>
+                    setFormCaption(event.target.value)
+                  }
+                  disabled={savingMemory}
+                />
+
+                <Form.Text muted>
+                  {formCaption.length}/500 characters
+                </Form.Text>
+              </Form.Group>
+            </div>
           </Modal.Body>
+
           <Modal.Footer>
-            <Button variant="outline-secondary" type="button" onClick={closeAddMemoryModal} disabled={savingMemory}>
+            <Button
+              variant="outline-secondary"
+              type="button"
+              onClick={closeFormModal}
+              disabled={savingMemory}
+            >
               Cancel
             </Button>
+
             <Button
               type="submit"
-              disabled={savingMemory || loadingAttractions || attractions.length === 0}
-              style={{ backgroundColor: CALBAYOG_BLUE, borderColor: CALBAYOG_BLUE }}
+              disabled={savingMemory}
+              style={{
+                backgroundColor: CALBAYOG_BLUE,
+                borderColor: CALBAYOG_BLUE,
+              }}
             >
-              {savingMemory ? <><Spinner animation="border" size="sm" className="me-2" />Saving Memory...</> : "Save Memory"}
+              {savingMemory && (
+                <Spinner
+                  animation="border"
+                  size="sm"
+                  className="me-2"
+                />
+              )}
+              {saveButtonLabel}
             </Button>
           </Modal.Footer>
         </Form>
@@ -1009,26 +1521,20 @@ const Memories: React.FC = () => {
         onHide={handleCloseDeleteModal}
         centered
       >
-        <Modal.Header
-          closeButton={!deletingMemoryId}
-        >
-          <Modal.Title>
-            Delete Memory
-          </Modal.Title>
+        <Modal.Header closeButton={!deletingMemoryId}>
+          <Modal.Title>Delete Memory</Modal.Title>
         </Modal.Header>
 
         <Modal.Body>
-          Are you sure you want to delete this
-          memory? This action cannot be undone.
+          Are you sure you want to delete this memory? This
+          action cannot be undone.
         </Modal.Body>
 
         <Modal.Footer>
           <Button
             variant="secondary"
             onClick={handleCloseDeleteModal}
-            disabled={Boolean(
-              deletingMemoryId,
-            )}
+            disabled={Boolean(deletingMemoryId)}
           >
             Cancel
           </Button>
@@ -1036,9 +1542,7 @@ const Memories: React.FC = () => {
           <Button
             variant="danger"
             onClick={handleDeleteMemory}
-            disabled={Boolean(
-              deletingMemoryId,
-            )}
+            disabled={Boolean(deletingMemoryId)}
           >
             {deletingMemoryId ? (
               <>
@@ -1047,16 +1551,11 @@ const Memories: React.FC = () => {
                   size="sm"
                   className="me-2"
                 />
-
                 Deleting...
               </>
             ) : (
               <>
-                <Trash2
-                  size={14}
-                  className="me-1"
-                />
-
+                <Trash2 size={14} className="me-1" />
                 Delete Memory
               </>
             )}
@@ -1108,12 +1607,7 @@ const Memories: React.FC = () => {
         .memories-title {
           margin: 0;
           font-family: "Barabara", sans-serif !important;
-          font-size:
-            clamp(
-              1.65rem,
-              2.8vw,
-              2.4rem
-            );
+          font-size: clamp(1.65rem, 2.8vw, 2.4rem);
           font-weight: 400;
           line-height: 0.95;
           letter-spacing: 0.015em;
@@ -1123,11 +1617,7 @@ const Memories: React.FC = () => {
         .memories-subtitle {
           max-width: 590px;
           margin: 6px 0 0;
-          font-family:
-            "Nunito",
-            "Poppins",
-            "Segoe UI",
-            sans-serif;
+          font-family: "Nunito", "Poppins", "Segoe UI", sans-serif;
           font-size: 0.81rem;
           line-height: 1.55;
           font-weight: 500;
@@ -1429,10 +1919,6 @@ const Memories: React.FC = () => {
           box-shadow: 0 13px 30px rgba(30, 45, 35, 0.09);
         }
 
-        /* =================================================
-           MEMORY IMAGE
-        ================================================= */
-
         .memory-image-wrapper {
           position: relative;
           height: 220px;
@@ -1508,10 +1994,6 @@ const Memories: React.FC = () => {
           font-size: 0.73rem;
         }
 
-        /* =================================================
-           CARD BODY
-        ================================================= */
-
         .memory-card-body {
           display: flex;
           flex-direction: column;
@@ -1519,11 +2001,23 @@ const Memories: React.FC = () => {
         }
 
         .memory-date {
+          display: flex;
+          align-items: center;
+          gap: 7px;
           margin-bottom: 7px;
           color: #969e99;
           font-family: "Nunito", sans-serif;
           font-size: 0.67rem;
           font-weight: 700;
+        }
+
+        .memory-edited-tag {
+          padding: 2px 7px;
+          border-radius: 999px;
+          background: #eef0ff;
+          color: ${CALBAYOG_BLUE};
+          font-size: 0.58rem;
+          font-weight: 800;
         }
 
         .memory-attraction-name {
@@ -1553,10 +2047,6 @@ const Memories: React.FC = () => {
           -webkit-line-clamp: 4;
         }
 
-        /* =================================================
-           CARD FOOTER
-        ================================================= */
-
         .memory-card-footer {
           display: flex;
           align-items: center;
@@ -1577,6 +2067,13 @@ const Memories: React.FC = () => {
           font-weight: 700;
         }
 
+        .memory-card-actions {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .memory-edit-button,
         .memory-delete-button {
           display: inline-flex !important;
           align-items: center;
@@ -1587,6 +2084,308 @@ const Memories: React.FC = () => {
           font-family: "Nunito", sans-serif;
           font-size: 0.65rem !important;
           font-weight: 800 !important;
+        }
+
+        .memory-edit-button {
+          border-color: #cfd2f1 !important;
+          color: ${CALBAYOG_BLUE} !important;
+        }
+
+        .memory-edit-button:hover:not(:disabled) {
+          background: #eef0ff !important;
+          border-color: ${CALBAYOG_BLUE} !important;
+        }
+
+        /* =================================================
+           ADD / EDIT FORM
+        ================================================= */
+
+        .memory-form-section {
+          margin-bottom: 18px;
+        }
+
+        .memory-form-section:last-child {
+          margin-bottom: 0;
+        }
+
+        .memory-form-label {
+          margin-bottom: 8px;
+          color: #2a302c;
+          font-family: "Poppins", sans-serif;
+          font-size: 0.78rem;
+          font-weight: 700;
+        }
+
+        .memory-place-fixed {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 11px 12px;
+          border: 1px solid #e4e7ed;
+          border-radius: 12px;
+          background: #fafbfc;
+        }
+
+        .memory-place-fixed-icon {
+          width: 34px;
+          height: 34px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 10px;
+          background: #eef0ff;
+          color: ${CALBAYOG_BLUE};
+        }
+
+        .memory-place-fixed-type {
+          color: #8b938e;
+          font-size: 0.62rem;
+          font-weight: 800;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+
+        .memory-place-fixed-name {
+          color: #252b27;
+          font-size: 0.82rem;
+          font-weight: 800;
+        }
+
+        .memory-type-tabs {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin-bottom: 10px;
+        }
+
+        .memory-type-tab {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          min-height: 34px;
+          padding: 6px 12px;
+          border: 1px solid #e0e5e2;
+          border-radius: 999px;
+          background: #ffffff;
+          color: #68716c;
+          font-family: "Nunito", sans-serif;
+          font-size: 0.68rem;
+          font-weight: 800;
+          cursor: pointer;
+          transition:
+            color 0.2s ease,
+            border-color 0.2s ease,
+            background 0.2s ease;
+        }
+
+        .memory-type-tab:hover:not(:disabled) {
+          border-color: #c9cecb;
+        }
+
+        .memory-type-tab-active {
+          border-color: ${CALBAYOG_BLUE};
+          background: #eef0ff;
+          color: ${CALBAYOG_BLUE};
+        }
+
+        .memory-place-search {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 0 11px;
+          margin-bottom: 8px;
+          border: 1px solid #dfe3ed;
+          border-radius: 10px;
+          background: #ffffff;
+          color: #8c948f;
+        }
+
+        .memory-place-search input {
+          flex: 1;
+          min-width: 0;
+          min-height: 38px;
+          border: 0;
+          outline: 0;
+          background: transparent;
+          color: #333a35;
+          font-family: "Nunito", sans-serif;
+          font-size: 0.75rem;
+        }
+
+        .memory-place-list {
+          max-height: 240px;
+          overflow-y: auto;
+          border: 1px solid #e4e7ed;
+          border-radius: 12px;
+          background: #ffffff;
+        }
+
+        .memory-place-empty {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 26px 14px;
+          color: #8b938e;
+          font-family: "Nunito", sans-serif;
+          font-size: 0.73rem;
+          text-align: center;
+        }
+
+        .memory-place-item {
+          position: relative;
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 9px 12px;
+          border: 0;
+          border-bottom: 1px solid #f0f2f0;
+          background: #ffffff;
+          text-align: left;
+          cursor: pointer;
+          transition: background 0.15s ease;
+        }
+
+        .memory-place-item:last-child {
+          border-bottom: 0;
+        }
+
+        .memory-place-item:hover:not(:disabled) {
+          background: #f7f8ff;
+        }
+
+        .memory-place-item-active {
+          background: #eef0ff !important;
+        }
+
+        .memory-place-item img,
+        .memory-place-item-thumb {
+          width: 42px;
+          height: 42px;
+          flex-shrink: 0;
+          border-radius: 9px;
+          object-fit: cover;
+        }
+
+        .memory-place-item-thumb {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #eef0ff;
+          color: ${CALBAYOG_BLUE};
+        }
+
+        .memory-place-item-text {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .memory-place-item-text strong {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          color: #2a302c;
+          font-family: "Nunito", sans-serif;
+          font-size: 0.76rem;
+          font-weight: 800;
+        }
+
+        .memory-place-item-text small {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          color: #8b938e;
+          font-family: "Nunito", sans-serif;
+          font-size: 0.64rem;
+        }
+
+        .memory-place-item-check {
+          width: 22px;
+          height: 22px;
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          background: ${CALBAYOG_BLUE};
+          color: #ffffff;
+        }
+
+        .memory-photo-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+          gap: 8px;
+          margin-bottom: 6px;
+        }
+
+        .memory-photo-tile {
+          position: relative;
+          aspect-ratio: 1 / 1;
+          overflow: hidden;
+          border: 1px solid #e4e7ed;
+          border-radius: 10px;
+          background: #eef1f5;
+        }
+
+        .memory-photo-tile img {
+          width: 100%;
+          height: 100%;
+          display: block;
+          object-fit: cover;
+        }
+
+        .memory-photo-remove {
+          position: absolute;
+          top: 4px;
+          right: 4px;
+          width: 22px;
+          height: 22px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          border: 0;
+          border-radius: 50%;
+          background: rgba(17, 21, 40, 0.72);
+          color: #ffffff;
+          cursor: pointer;
+        }
+
+        .memory-photo-remove:hover:not(:disabled) {
+          background: #e33f5f;
+        }
+
+        .memory-photo-add {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          aspect-ratio: 1 / 1;
+          margin: 0;
+          border: 1px dashed #c9cfdc;
+          border-radius: 10px;
+          background: #ffffff;
+          color: ${CALBAYOG_BLUE};
+          font-family: "Nunito", sans-serif;
+          font-size: 0.66rem;
+          font-weight: 800;
+          text-align: center;
+          cursor: pointer;
+          transition:
+            background 0.2s ease,
+            border-color 0.2s ease;
+        }
+
+        .memory-photo-add:hover {
+          border-color: ${CALBAYOG_BLUE};
+          background: #eef0ff;
+        }
+
+        .memory-photo-add input {
+          display: none;
         }
 
         /* =================================================
@@ -1629,12 +2428,7 @@ const Memories: React.FC = () => {
           }
 
           .memories-title {
-            font-size:
-              clamp(
-                1.65rem,
-                4.5vw,
-                2.25rem
-              );
+            font-size: clamp(1.65rem, 4.5vw, 2.25rem);
           }
 
           .memories-grid {
@@ -1648,8 +2442,7 @@ const Memories: React.FC = () => {
 
         @media (max-width: 767.98px) {
           .memories-header {
-            padding:
-              25px 17px 16px;
+            padding: 25px 17px 16px;
           }
 
           .memories-title {
@@ -1694,6 +2487,10 @@ const Memories: React.FC = () => {
           .memory-image-placeholder {
             height: 215px;
           }
+
+          .memory-photo-grid {
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+          }
         }
 
         /* =================================================
@@ -1714,7 +2511,7 @@ const Memories: React.FC = () => {
             flex-direction: column;
           }
 
-          .memory-delete-button {
+          .memory-card-actions {
             align-self: flex-end;
           }
         }
