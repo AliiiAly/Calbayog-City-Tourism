@@ -54,6 +54,7 @@ import {
   Leaf,
   Map as MapIcon,
   MapPin,
+  Maximize2,
   Pencil,
   Plus,
   Search,
@@ -762,6 +763,10 @@ const ItineraryPlanner: React.FC = () => {
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [activeDayId, setActiveDayId] = useState<string | null>(null);
   const [openMapDayId, setOpenMapDayId] = useState<string | null>(null);
+  // Large (full-screen) map. The map only mounts after the modal finishes
+  // opening so Leaflet measures the real size and fills the screen correctly.
+  const [expandedMapDayId, setExpandedMapDayId] = useState<string | null>(null);
+  const [expandedMapReady, setExpandedMapReady] = useState(false);
   const [generated, setGenerated] = useState(false);
   const [customizationSaved, setCustomizationSaved] = useState(false);
   const [search, setSearch] = useState("");
@@ -1143,6 +1148,8 @@ const ItineraryPlanner: React.FC = () => {
   const activeDay = days.find((day) => day.id === activeDayId) || null;
   const lastStop = activeDay?.destinations[activeDay.destinations.length - 1] || null;
 
+  const expandedMapDay = days.find((day) => day.id === expandedMapDayId) || null;
+
   const filteredDestinations = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -1172,6 +1179,20 @@ const ItineraryPlanner: React.FC = () => {
   }, [destinations, search, category, nearestFirst, lastStop, speedKmh, pickerKind]);
 
   /* =====================================================
+     LARGE MAP
+  ===================================================== */
+
+  const openExpandedMap = (dayId: string) => {
+    setExpandedMapReady(false);
+    setExpandedMapDayId(dayId);
+  };
+
+  const closeExpandedMap = () => {
+    setExpandedMapDayId(null);
+    setExpandedMapReady(false);
+  };
+
+  /* =====================================================
      DAY ACTIONS
   ===================================================== */
 
@@ -1190,6 +1211,8 @@ const ItineraryPlanner: React.FC = () => {
   };
 
   const removeDay = (dayId: string) => {
+    if (expandedMapDayId === dayId) closeExpandedMap();
+
     setDays((previous) =>
       previous
         .filter((day) => day.id !== dayId)
@@ -1377,6 +1400,7 @@ const ItineraryPlanner: React.FC = () => {
     setCustomizerError("");
     setShowCustomizer(false);
     setOpenMapDayId(null);
+    closeExpandedMap();
 
     if (isLoggedIn) void syncToServer(generatedDays, p);
 
@@ -1437,6 +1461,7 @@ const ItineraryPlanner: React.FC = () => {
       setDays([]);
       setGenerated(false);
       setOpenMapDayId(null);
+      closeExpandedMap();
       setSyncState("idle");
       setShowClearModal(false);
     } catch (error) {
@@ -2062,12 +2087,31 @@ const ItineraryPlanner: React.FC = () => {
                             <MapIcon size={13} strokeWidth={2} />
                             {openMapDayId === day.id ? "Hide Map" : "View Map"}
                           </button>
+
+                          <button
+                            type="button"
+                            onClick={() => openExpandedMap(day.id)}
+                            title="Open a large map"
+                          >
+                            <Maximize2 size={13} strokeWidth={2} />
+                            Large Map
+                          </button>
                         </div>
                       )}
 
                       {openMapDayId === day.id && (
-                        <div className="mt-2">
+                        <div className="mt-2 planner-inline-map">
                           <DayRouteMap destinations={day.destinations} />
+
+                          <button
+                            type="button"
+                            className="planner-map-expand-fab"
+                            onClick={() => openExpandedMap(day.id)}
+                            aria-label={`Open a large map for Day ${day.day}`}
+                            title="Open large map"
+                          >
+                            <Maximize2 size={15} strokeWidth={2} />
+                          </button>
                         </div>
                       )}
                     </Card.Body>
@@ -2096,6 +2140,39 @@ const ItineraryPlanner: React.FC = () => {
           </div>
         )}
       </Container>
+
+      {/* =====================================================
+          LARGE MAP (full screen)
+      ===================================================== */}
+
+      <Modal
+        show={Boolean(expandedMapDay)}
+        onHide={closeExpandedMap}
+        onEntered={() => setExpandedMapReady(true)}
+        fullscreen
+        className="planner-modal planner-map-modal"
+      >
+        <Modal.Header closeButton className="planner-modal-header">
+          <div>
+            <div className="planner-modal-eyebrow">ROUTE MAP</div>
+            <Modal.Title className="planner-modal-title">
+              {expandedMapDay ? `Day ${expandedMapDay.day}` : "Route"}
+              {expandedMapDay?.date ? ` · ${formatDate(expandedMapDay.date)}` : ""}
+            </Modal.Title>
+            <p className="planner-modal-subtitle">
+              Drag to move, pinch or scroll to zoom, and tap a pin for details.
+            </p>
+          </div>
+        </Modal.Header>
+
+        <Modal.Body className="planner-map-large-body">
+          {expandedMapDay && expandedMapReady ? (
+            <DayRouteMap destinations={expandedMapDay.destinations} />
+          ) : (
+            <div className="planner-map-large-loading">Loading map…</div>
+          )}
+        </Modal.Body>
+      </Modal>
 
       {/* =====================================================
           CUSTOMIZER MODAL
@@ -2934,6 +3011,34 @@ const ItineraryPlanner: React.FC = () => {
         }
         .planner-day-tools button:hover { border-color: ${CALBAYOG_BLUE}; color: ${CALBAYOG_BLUE}; background: ${SOFT_BLUE}; }
 
+        /* INLINE MAP + EXPAND BUTTON */
+        .planner-inline-map { position: relative; }
+        .planner-map-expand-fab {
+          position: absolute; z-index: 1000; left: 10px; bottom: 10px; width: 34px; height: 34px;
+          display: flex; align-items: center; justify-content: center; padding: 0;
+          border: 1px solid rgba(45,49,149,.18); border-radius: 10px; background: rgba(255,255,255,.96);
+          color: ${CALBAYOG_BLUE}; cursor: pointer; box-shadow: 0 5px 16px rgba(15,23,42,.18);
+          transition: background .2s ease, transform .2s ease;
+        }
+        .planner-map-expand-fab:hover { background: ${SOFT_BLUE}; transform: scale(1.05); }
+
+        /* LARGE MAP MODAL */
+        .planner-map-modal .modal-content { border-radius: 0 !important; }
+        .planner-map-large-body {
+          position: relative; padding: 0 !important; background: #eef2f7 !important;
+          overflow: hidden !important;
+        }
+        .planner-map-large-body > div:not(.planner-map-large-loading) {
+          width: 100% !important; height: 100% !important; margin: 0 !important; border-radius: 0 !important;
+        }
+        .planner-map-large-body .leaflet-container {
+          width: 100% !important; height: 100% !important; min-height: calc(100vh - 92px); border-radius: 0 !important;
+        }
+        .planner-map-large-loading {
+          height: 100%; min-height: 240px; display: flex; align-items: center; justify-content: center;
+          font-family: "Nunito", sans-serif; font-size: .75rem; font-weight: 700; color: #737b76;
+        }
+
         /* SUGGESTIONS + KIND TABS */
         .planner-suggest { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 8px; }
         .planner-suggest-item {
@@ -3156,6 +3261,7 @@ const ItineraryPlanner: React.FC = () => {
           .planner-stop-number { width: 25px; height: 25px; }
           .planner-modal-footer { flex-wrap: wrap; }
           .planner-modal-cancel, .planner-modal-save, .planner-modal-generate { flex: 1 1 auto; }
+          .planner-map-large-body .leaflet-container { min-height: calc(100vh - 84px); }
         }
 
         @media (max-width: 479.98px) {
