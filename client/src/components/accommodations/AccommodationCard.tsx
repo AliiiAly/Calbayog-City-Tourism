@@ -186,11 +186,11 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({
 
               {favoriteCount > 0 && (
                 <span
-                  className="shared-accommodation-favorite-count"
-                  aria-label={`${favoriteCount} users favorited ${accommodation.name}`}
-                >
-                  {favoriteCount}
-                </span>
+  className="shared-accommodation-favorite-count"
+  aria-label={`${favoriteCount} users favorited ${accommodation.name}`}
+>
+  {favoriteCount}
+</span>
               )}
             </div>
           )}
