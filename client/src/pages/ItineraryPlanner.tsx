@@ -1547,16 +1547,6 @@ const ItineraryPlanner: React.FC = () => {
 
           <Button
             variant="outline-primary"
-            onClick={optimizeAll}
-            disabled={totalDests < 2}
-            className="planner-action-button"
-          >
-            <Route size={15} strokeWidth={1.9} />
-            Optimize All Routes
-          </Button>
-
-          <Button
-            variant="outline-primary"
             onClick={exportPDF}
             disabled={totalDests === 0}
             className="planner-action-button"
