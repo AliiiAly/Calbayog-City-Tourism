@@ -41,6 +41,8 @@ interface HeaderIconProps {
   strokeWidth?: number;
 }
 
+const [showInstallHelp, setShowInstallHelp] = useState(false);
+
 const HeaderIcon: React.FC<HeaderIconProps> = ({
   name,
   size = 20,
@@ -999,36 +1001,38 @@ const AppHeader: React.FC<AppHeaderProps> = ({
     );
   };
 
+ 
   /* =========================================================
      PWA INSTALL
   ========================================================= */
 
   useEffect(() => {
-    const standalone =
+    const isAppStandalone = () =>
       window.matchMedia?.("(display-mode: standalone)").matches ||
-      (window.navigator as Navigator & { standalone?: boolean }).standalone ===
-        true;
+      (window.navigator as Navigator & { standalone?: boolean })
+        .standalone === true;
 
-    const mobileDevice =
-      /Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent) ||
-      window.navigator.maxTouchPoints > 1;
+    const isIOS =
+      /iPad|iPhone|iPod/i.test(window.navigator.userAgent) ||
+      (window.navigator.platform === "MacIntel" &&
+        window.navigator.maxTouchPoints > 1);
 
-    setIsStandalone(standalone);
-    setIsMobileInstallDevice(mobileDevice);
+    setIsStandalone(isAppStandalone());
 
-    if (standalone) {
-      setDeferredInstallPrompt(null);
-      setCanInstallApp(false);
-      return;
-    }
-
-    if (mobileDevice) {
+    // iOS does not support beforeinstallprompt.
+    // Keep its install option available for a custom in-app guide.
+    if (isIOS && !isAppStandalone()) {
       setCanInstallApp(true);
     }
 
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
-      setDeferredInstallPrompt(event as BeforeInstallPromptEvent);
+
+      if (isAppStandalone()) return;
+
+      setDeferredInstallPrompt(
+        event as BeforeInstallPromptEvent
+      );
       setCanInstallApp(true);
     };
 
@@ -1038,58 +1042,91 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       setIsStandalone(true);
     };
 
+    const handleDisplayModeChange = () => {
+      const installed = isAppStandalone();
+
+      setIsStandalone(installed);
+
+      if (installed) {
+        setDeferredInstallPrompt(null);
+        setCanInstallApp(false);
+      }
+    };
+
+    const displayMode = window.matchMedia(
+      "(display-mode: standalone)"
+    );
+
     window.addEventListener(
       "beforeinstallprompt",
-      handleBeforeInstallPrompt,
+      handleBeforeInstallPrompt
     );
 
     window.addEventListener("appinstalled", handleAppInstalled);
 
+    displayMode.addEventListener?.(
+      "change",
+      handleDisplayModeChange
+    );
+
     return () => {
       window.removeEventListener(
         "beforeinstallprompt",
-        handleBeforeInstallPrompt,
+        handleBeforeInstallPrompt
       );
 
-      window.removeEventListener("appinstalled", handleAppInstalled);
+      window.removeEventListener(
+        "appinstalled",
+        handleAppInstalled
+      );
+
+      displayMode.removeEventListener?.(
+        "change",
+        handleDisplayModeChange
+      );
     };
   }, []);
 
   const handleInstallApp = async () => {
-    if (!deferredInstallPrompt) {
-      const isIOS =
-        /iPad|iPhone|iPod/i.test(window.navigator.userAgent) ||
-        (window.navigator.platform === "MacIntel" &&
-          window.navigator.maxTouchPoints > 1);
+    // Already installed: don't show an installation prompt.
+    if (isStandalone) return;
 
-      window.alert(
-        isIOS
-          ? 'To install Calbayog City Tourism, tap the Share button in your browser and choose "Add to Home Screen".'
-          : 'To install Calbayog City Tourism, open your browser menu (⋮) and choose "Install app" or "Add to Home screen".',
-      );
+    // Supported browsers: invoke the native install prompt.
+    if (deferredInstallPrompt) {
+      try {
+        const installEvent = deferredInstallPrompt;
+
+        // Clear the saved prompt before awaiting the result.
+        setDeferredInstallPrompt(null);
+
+        await installEvent.prompt();
+
+        const choice = await installEvent.userChoice;
+
+        if (choice.outcome === "accepted") {
+          setCanInstallApp(false);
+        }
+      } catch (error) {
+        console.error("PWA installation failed:", error);
+      }
 
       return;
     }
 
-    try {
-      await deferredInstallPrompt.prompt();
+    // No browser-provided install prompt is available.
+    // Do not display a blocking alert or falsely claim success.
+    const isIOS =
+      /iPad|iPhone|iPod/i.test(window.navigator.userAgent) ||
+      (window.navigator.platform === "MacIntel" &&
+        window.navigator.maxTouchPoints > 1);
 
-      const choice = await deferredInstallPrompt.userChoice;
-
-      setDeferredInstallPrompt(null);
-
-      if (choice.outcome === "accepted") {
-        setCanInstallApp(false);
-      } else {
-        setCanInstallApp(!isStandalone);
-      }
-    } catch (error) {
-      console.error("PWA install prompt failed:", error);
-
-      setDeferredInstallPrompt(null);
-      setCanInstallApp(!isStandalone && isMobileInstallDevice);
+    if (isIOS) {
+      // This will be connected to a non-blocking in-app
+      // installation guide in the next step.
+      setShowInstallHelp(true);
     }
   };
+
 
   /* =========================================================
      PROFILE OUTSIDE CLICK
