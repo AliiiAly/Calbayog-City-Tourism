@@ -1,75 +1,59 @@
-import React, { 
+import React, {
   useCallback,
-  useEffect, 
+  useEffect,
   useMemo,
-  useRef, 
-  useState, 
-} from "react"; 
- 
-import { Link } from "react-router-dom"; 
- 
-import { 
-  Container, 
-  Row, 
-  Col, 
-  Card, 
-} from "react-bootstrap"; 
- 
-import { 
-  getAccommodations, 
-  getAttractions, 
-  getFeaturedVideos, 
-  FeaturedVideo, 
-} from "../services/api"; 
- 
-import { 
-  Destination, 
-  Accommodation, 
-} from "../types"; 
- 
-import { useAuth } from "../context/AuthContext"; 
- 
-import { useFavorites } from "../context/FavoritesContext"; 
- 
-import AttractionCard from "../components/attractions/AttractionCard"; 
+  useRef,
+  useState,
+} from "react";
 
+import { Link, useNavigate } from "react-router-dom";
+
+import { Container, Row, Col, Card } from "react-bootstrap";
+
+import {
+  getAccommodations,
+  getAttractions,
+  getFeaturedVideos,
+  getRestaurants,
+  getEvents,
+  FeaturedVideo,
+} from "../services/api";
+
+import { Destination, Accommodation } from "../types";
+
+import { useAuth } from "../context/AuthContext";
+import { useFavorites } from "../context/FavoritesContext";
+
+import AttractionCard from "../components/attractions/AttractionCard";
 import AccommodationCard, {
   AccommodationCardItem,
 } from "../components/accommodations/AccommodationCard";
- 
-import { 
+import RestaurantCard, {
+  RestaurantCardItem,
+} from "../components/restaurants/RestaurantCard";
+import EventCard, { EventCardItem } from "../components/events/EventCard";
+
+import {
   Mountain,
   Hotel,
   CalendarDays,
   Compass,
   NotebookPen,
   Images,
-  MapPin, 
-  CloudSun, 
-  ChevronLeft, 
-  ChevronRight, 
-  Play, 
-} from "lucide-react"; 
- 
-import { 
-  Swiper, 
-  SwiperSlide, 
-} from "swiper/react"; 
- 
-import { 
-  EffectCoverflow, 
-  Navigation, 
-  Pagination, 
-  A11y, 
-} from "swiper/modules"; 
- 
-import type { 
-  Swiper as SwiperInstance, 
-} from "swiper"; 
- 
-import "swiper/css"; 
-import "swiper/css/effect-coverflow"; 
-import "swiper/css/navigation"; 
+  MapPin,
+  CloudSun,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+} from "lucide-react";
+
+import { Swiper, SwiperSlide } from "swiper/react";
+import { EffectCoverflow, Navigation, Pagination, A11y } from "swiper/modules";
+import type { Swiper as SwiperInstance } from "swiper";
+
+import "swiper/css";
+import "swiper/css/effect-coverflow";
+import "swiper/css/navigation";
 import "swiper/css/pagination";
 
 import {
@@ -84,269 +68,165 @@ import {
 } from "react-leaflet";
 
 import L from "leaflet";
-
 import "leaflet/dist/leaflet.css";
- 
-/* ========================================================= 
-   BRAND COLOR 
-========================================================= */ 
- 
-const CALBAYOG_BLUE = "#2D3195"; 
- 
-/* ========================================================= 
-   QUICK ACCESS CARDS 
-========================================================= */ 
- 
-const quickCards: Array<{ 
-  icon: React.ReactNode; 
-  label: string; 
-  to: string; 
-  color: string; 
-  bg: string; 
-}> = [ 
-  { 
-    icon: ( 
-      <Mountain 
-        size={23} 
-        strokeWidth={2.15} 
-        aria-hidden="true" 
-      /> 
-    ), 
-    label: "Attractions", 
-    to: "/attractions", 
-    color: "#0077B6", 
-    bg: "#e0f2ff", 
-  }, 
- 
-  { 
-    icon: ( 
-      <Hotel 
-        size={23} 
-        strokeWidth={2.15} 
-        aria-hidden="true" 
-      /> 
-    ), 
-    label: "Stays", 
-    to: "/accommodations", 
-    color: "#F4A226", 
-    bg: "#fff8e6", 
-  }, 
- 
-  { 
-    icon: ( 
-      <CalendarDays 
-        size={23} 
-        strokeWidth={2.15} 
-        aria-hidden="true" 
-      /> 
-    ), 
-    label: "Events", 
-    to: "/events", 
-    color: "#e63946", 
-    bg: "#ffe8ea", 
-  }, 
- 
-  { 
-    icon: ( 
-      <Compass 
-        size={22} 
-        strokeWidth={2.2} 
-        aria-hidden="true" 
-      /> 
-    ), 
-    label: "Guides", 
-    to: "/guides", 
-    color: "#2d6a4f", 
-    bg: "#e8f5ee", 
-  }, 
- 
-  { 
-    icon: ( 
-      <NotebookPen 
-        size={22} 
-        strokeWidth={2.2} 
-        aria-hidden="true" 
-      /> 
-    ), 
-    label: "Plan Trip", 
-    to: "/itinerary", 
-    color: "#6d4c41", 
-    bg: "#f0ebe6", 
-  }, 
- 
-  { 
-    icon: ( 
-      <Images
-        size={23}
-        strokeWidth={2.15}
-        aria-hidden="true"
-      /> 
-    ), 
+
+/* =========================================================
+   BRAND COLOR
+========================================================= */
+
+const CALBAYOG_BLUE = "#2D3195";
+
+/* =========================================================
+   SMALL SHARED PIECES
+========================================================= */
+
+const BUNTING_COLORS = ["red", "orange", "yellow", "teal"];
+
+const Bunting: React.FC<{ className: string; count: number }> = ({
+  className,
+  count,
+}) => (
+  <div className={className} aria-hidden="true">
+    {Array.from({ length: count }, (_, index) => (
+      <span
+        key={index}
+        className={`bunting-flag bunting-${BUNTING_COLORS[index % 4]}`}
+      />
+    ))}
+  </div>
+);
+
+const SectionHeading: React.FC<{
+  headingClass: string;
+  titleClass: string;
+  eyebrowClass: string;
+  title: string;
+  subtitle: string;
+}> = ({ headingClass, titleClass, eyebrowClass, title, subtitle }) => (
+  <div className={headingClass}>
+    <Bunting className="welcome-mobile-bunting" count={12} />
+
+    <h2 className={`${titleClass} barabara-display`}>{title}</h2>
+
+    <div className={`welcome-section-eyebrow ${eyebrowClass}`}>
+      <span className="welcome-heading-line" />
+      <span>{subtitle}</span>
+      <span className="welcome-heading-line" />
+    </div>
+  </div>
+);
+
+/* =========================================================
+   QUICK ACCESS CARDS
+========================================================= */
+
+const quickCards: Array<{
+  icon: React.ReactNode;
+  label: string;
+  to: string;
+  color: string;
+  bg: string;
+}> = [
+  {
+    icon: <Mountain size={23} strokeWidth={2.15} aria-hidden="true" />,
+    label: "Attractions",
+    to: "/attractions",
+    color: "#0077B6",
+    bg: "#e0f2ff",
+  },
+  {
+    icon: <Hotel size={23} strokeWidth={2.15} aria-hidden="true" />,
+    label: "Stays",
+    to: "/accommodations",
+    color: "#F4A226",
+    bg: "#fff8e6",
+  },
+  {
+    icon: <CalendarDays size={23} strokeWidth={2.15} aria-hidden="true" />,
+    label: "Events",
+    to: "/events",
+    color: "#e63946",
+    bg: "#ffe8ea",
+  },
+  {
+    icon: <Compass size={22} strokeWidth={2.2} aria-hidden="true" />,
+    label: "Guides",
+    to: "/guides",
+    color: "#2d6a4f",
+    bg: "#e8f5ee",
+  },
+  {
+    icon: <NotebookPen size={22} strokeWidth={2.2} aria-hidden="true" />,
+    label: "Plan Trip",
+    to: "/itinerary",
+    color: "#6d4c41",
+    bg: "#f0ebe6",
+  },
+  {
+    icon: <Images size={23} strokeWidth={2.15} aria-hidden="true" />,
     label: "My Memories",
     to: "/memories",
     color: "#C45A8D",
-    bg: "#fcecf4", 
-  }, 
-]; 
- 
-/* ========================================================= 
-   HERO SLIDES 
-========================================================= */ 
- 
-const heroSlides = [ 
-  { 
-    id: "calbayog-1", 
-    image: "/calbayog1.jpg", 
-    alt: "Calbayog City", 
-  }, 
- 
-  { 
-    id: "calbayog-2", 
-    image: "/calbayog2.jpeg", 
-    alt: "Calbayog City", 
-  }, 
- 
-  { 
-    id: "calbayog-3", 
-    image: "/calbayog3.jpg", 
-    alt: "Calbayog City", 
-  }, 
- 
-  { 
-    id: "calbayogonair", 
-    image: "/calbayogonair.webp", 
-    alt: "Calbayog City", 
-  }, 
-]; 
- 
-/* ========================================================= 
-   WEATHER TYPES 
-========================================================= */ 
- 
-type WeatherState = { 
-  temperature: number | null; 
-  weatherCode: number | null; 
-  isDay: boolean; 
-  loading: boolean; 
-  error: boolean; 
-}; 
- 
-/* ========================================================= 
-   WEATHER DESCRIPTION 
-========================================================= */ 
- 
-const getWeatherDescription = ( 
-  weatherCode: number | null, 
-): string => { 
-  if (weatherCode === null) { 
-    return "Weather unavailable"; 
-  } 
- 
-  if (weatherCode === 0) { 
-    return "Clear sky"; 
-  } 
- 
-  if ( 
-    weatherCode === 1 || 
-    weatherCode === 2 
-  ) { 
-    return "Partly cloudy"; 
-  } 
- 
-  if (weatherCode === 3) { 
-    return "Overcast"; 
-  } 
- 
-  if ( 
-    weatherCode === 45 || 
-    weatherCode === 48 
-  ) { 
-    return "Foggy"; 
-  } 
- 
-  if ( 
-    weatherCode === 51 || 
-    weatherCode === 53 || 
-    weatherCode === 55 
-  ) { 
-    return "Drizzle"; 
-  } 
- 
-  if ( 
-    weatherCode === 56 || 
-    weatherCode === 57 
-  ) { 
-    return "Freezing drizzle"; 
-  } 
- 
-  if ( 
-    weatherCode === 61 || 
-    weatherCode === 63 || 
-    weatherCode === 65 
-  ) { 
-    return "Rain"; 
-  } 
- 
-  if ( 
-    weatherCode === 66 || 
-    weatherCode === 67 
-  ) { 
-    return "Freezing rain"; 
-  } 
- 
-  if ( 
-    weatherCode === 71 || 
-    weatherCode === 73 || 
-    weatherCode === 75 
-  ) { 
-    return "Snow"; 
-  } 
- 
-  if (weatherCode === 77) { 
-    return "Snow grains"; 
-  } 
- 
-  if ( 
-    weatherCode === 80 || 
-    weatherCode === 81 || 
-    weatherCode === 82 
-  ) { 
-    return "Rain showers"; 
-  } 
- 
-  if ( 
-    weatherCode === 85 || 
-    weatherCode === 86 
-  ) { 
-    return "Snow showers"; 
-  } 
- 
-  if (weatherCode === 95) { 
-    return "Thunderstorm"; 
-  } 
- 
-  if ( 
-    weatherCode === 96 || 
-    weatherCode === 99 
-  ) { 
-    return "Thunderstorm with hail"; 
-  } 
- 
-  return "Current weather"; 
-}; 
- 
-/* =========================================================
-   WELCOME PAGE MAP
+    bg: "#fcecf4",
+  },
+];
 
-   The map uses the exact saved location_lat / location_lng
-   coordinates from attractions and accommodations. It does not
-   geocode addresses or guess locations.
+/* =========================================================
+   HERO SLIDES
 ========================================================= */
 
-const DEFAULT_CALBAYOG_CENTER: [number, number] = [
-  12.0667,
-  124.6,
+const heroSlides = [
+  { id: "calbayog-1", image: "/calbayog1.jpg", alt: "Calbayog City" },
+  { id: "calbayog-2", image: "/calbayog2.jpeg", alt: "Calbayog City" },
+  { id: "calbayog-3", image: "/calbayog3.jpg", alt: "Calbayog City" },
+  { id: "calbayogonair", image: "/calbayogonair.webp", alt: "Calbayog City" },
 ];
+
+/* =========================================================
+   WEATHER
+========================================================= */
+
+type WeatherState = {
+  temperature: number | null;
+  weatherCode: number | null;
+  isDay: boolean;
+  loading: boolean;
+  error: boolean;
+};
+
+const WEATHER_DESCRIPTIONS: Array<[number[], string]> = [
+  [[0], "Clear sky"],
+  [[1, 2], "Partly cloudy"],
+  [[3], "Overcast"],
+  [[45, 48], "Foggy"],
+  [[51, 53, 55], "Drizzle"],
+  [[56, 57], "Freezing drizzle"],
+  [[61, 63, 65], "Rain"],
+  [[66, 67], "Freezing rain"],
+  [[71, 73, 75], "Snow"],
+  [[77], "Snow grains"],
+  [[80, 81, 82], "Rain showers"],
+  [[85, 86], "Snow showers"],
+  [[95], "Thunderstorm"],
+  [[96, 99], "Thunderstorm with hail"],
+];
+
+const getWeatherDescription = (weatherCode: number | null): string => {
+  if (weatherCode === null) return "Weather unavailable";
+
+  const match = WEATHER_DESCRIPTIONS.find(([codes]) =>
+    codes.includes(weatherCode),
+  );
+
+  return match ? match[1] : "Current weather";
+};
+
+/* =========================================================
+   WELCOME PAGE MAP
+   Uses the exact saved location_lat / location_lng values.
+========================================================= */
+
+const DEFAULT_CALBAYOG_CENTER: [number, number] = [12.0667, 124.6];
 
 const SATELLITE_LABELS_URL =
   "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
@@ -385,9 +265,7 @@ const normalizeMapLabel = (value: unknown): string =>
     .trim()
     .replace(/\s+/g, " ");
 
-const getWelcomeCoordinates = (
-  item: any,
-): WelcomeMapCoordinates | null => {
+const getWelcomeCoordinates = (item: any): WelcomeMapCoordinates | null => {
   const latitudeValue =
     item?.location_lat ??
     item?.locationLat ??
@@ -420,17 +298,11 @@ const getWelcomeCoordinates = (
   return { lat, lng };
 };
 
-const getWelcomeFirstValue = (
-  item: any,
-  keys: string[],
-): string => {
+const getWelcomeFirstValue = (item: any, keys: string[]): string => {
   for (const key of keys) {
     const value = item?.[key];
-    if (
-      value !== null &&
-      value !== undefined &&
-      String(value).trim()
-    ) {
+
+    if (value !== null && value !== undefined && String(value).trim()) {
       return String(value).trim();
     }
   }
@@ -438,9 +310,7 @@ const getWelcomeFirstValue = (
   return "";
 };
 
-const getWelcomeAttractionSubcategory = (
-  item: any,
-): string => {
+const getWelcomeAttractionSubcategory = (item: any): string => {
   const type = getWelcomeFirstValue(item, [
     "attraction_type",
     "attractionType",
@@ -466,22 +336,13 @@ const WELCOME_CATEGORY_MARKER_DESIGNS: Record<
   { color: string; icon: string }
 > = {
   Nature: { color: "#16845B", icon: "🌿" },
-  "History and Culture": {
-    color: "#A66A3F",
-    icon: "🏛️",
-  },
-  "Industrial Tourism": {
-    color: "#526477",
-    icon: "🏭",
-  },
+  "History and Culture": { color: "#A66A3F", icon: "🏛️" },
+  "Industrial Tourism": { color: "#526477", icon: "🏭" },
   Shopping: { color: "#D9468F", icon: "🛍️" },
   Other: { color: CALBAYOG_BLUE, icon: "📍" },
 };
 
-const WELCOME_SUBCATEGORY_MARKER_ICONS: Record<
-  string,
-  string
-> = {
+const WELCOME_SUBCATEGORY_MARKER_ICONS: Record<string, string> = {
   waterfalls: "💧",
   beaches: "🏖️",
   caves: "🪨",
@@ -502,9 +363,7 @@ const WELCOME_SUBCATEGORY_MARKER_ICONS: Record<
   other: "📍",
 };
 
-const WELCOME_MARKER_KEYWORD_ICONS: Array<
-  [string, string]
-> = [
+const WELCOME_MARKER_KEYWORD_ICONS: Array<[string, string]> = [
   ["waterfall", "💧"],
   ["falls", "💧"],
   ["beach", "🏖️"],
@@ -526,20 +385,14 @@ const WELCOME_MARKER_KEYWORD_ICONS: Array<
   ["craft", "🧺"],
 ];
 
-const getWelcomeCategoryDesign = (
-  category: string,
-) => {
-  const exact =
-    WELCOME_CATEGORY_MARKER_DESIGNS[category];
+const getWelcomeCategoryDesign = (category: string) => {
+  const exact = WELCOME_CATEGORY_MARKER_DESIGNS[category];
 
   if (exact) return exact;
 
   const target = normalizeMapLabel(category);
-  const key = Object.keys(
-    WELCOME_CATEGORY_MARKER_DESIGNS,
-  ).find(
-    (item) =>
-      normalizeMapLabel(item) === target,
+  const key = Object.keys(WELCOME_CATEGORY_MARKER_DESIGNS).find(
+    (item) => normalizeMapLabel(item) === target,
   );
 
   return key
@@ -547,22 +400,16 @@ const getWelcomeCategoryDesign = (
     : WELCOME_CATEGORY_MARKER_DESIGNS.Other;
 };
 
-const getWelcomeMarkerGlyph = (
-  markerType: string,
-  fallback: string,
-): string => {
+const getWelcomeMarkerGlyph = (markerType: string, fallback: string): string => {
   const key = normalizeMapLabel(markerType);
 
-  if (
-    WELCOME_SUBCATEGORY_MARKER_ICONS[key]
-  ) {
+  if (WELCOME_SUBCATEGORY_MARKER_ICONS[key]) {
     return WELCOME_SUBCATEGORY_MARKER_ICONS[key];
   }
 
-  const match =
-    WELCOME_MARKER_KEYWORD_ICONS.find(
-      ([keyword]) => key.includes(keyword),
-    );
+  const match = WELCOME_MARKER_KEYWORD_ICONS.find(([keyword]) =>
+    key.includes(keyword),
+  );
 
   return match ? match[1] : fallback;
 };
@@ -571,16 +418,11 @@ const createWelcomeAttractionMarkerIcon = (
   category: string,
   markerType: string,
 ) => {
-  const design =
-    getWelcomeCategoryDesign(category);
-  const glyph = getWelcomeMarkerGlyph(
-    markerType,
-    design.icon,
-  );
+  const design = getWelcomeCategoryDesign(category);
+  const glyph = getWelcomeMarkerGlyph(markerType, design.icon);
 
   return L.divIcon({
-    className:
-      "welcome-map-attraction-marker",
+    className: "welcome-map-attraction-marker",
     html: `
       <div class="welcome-map-marker-shell">
         <div class="welcome-map-marker-pin" style="background:${design.color}"></div>
@@ -596,22 +438,11 @@ const createWelcomeAttractionMarkerIcon = (
 
 const createWelcomeAccommodationMarkerIcon = () =>
   L.divIcon({
-    className:
-      "welcome-map-accommodation-marker",
+    className: "welcome-map-accommodation-marker",
     html: `
       <div class="welcome-map-accommodation-pin">
         <div class="welcome-map-accommodation-icon">
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#2563EB"
-            stroke-width="2.1"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M3 21h18"/>
             <path d="M5 21V7l7-4 7 4v14"/>
             <path d="M9 21v-4h6v4"/>
@@ -649,14 +480,11 @@ const WelcomeMapScaleControl: React.FC = () => {
 
 const WelcomeMapLocateControl: React.FC = () => {
   const map = useMap();
-  const [locating, setLocating] =
-    useState(false);
+  const [locating, setLocating] = useState(false);
 
   const locate = useCallback(() => {
     if (!navigator.geolocation) {
-      window.alert(
-        "Location services are not available in this browser.",
-      );
+      window.alert("Location services are not available in this browser.");
       return;
     }
 
@@ -669,11 +497,7 @@ const WelcomeMapLocateControl: React.FC = () => {
           position.coords.longitude,
         ];
 
-        map.flyTo(
-          next,
-          Math.max(map.getZoom(), 15),
-          { duration: 0.8 },
-        );
+        map.flyTo(next, Math.max(map.getZoom(), 15), { duration: 0.8 });
         setLocating(false);
       },
       () => {
@@ -682,11 +506,7 @@ const WelcomeMapLocateControl: React.FC = () => {
         );
         setLocating(false);
       },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000,
-      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
     );
   }, [map]);
 
@@ -713,34 +533,25 @@ const WelcomeMapFitPlaces: React.FC<{
 
   useEffect(() => {
     const points = [
-      ...attractions.map((place) => [
-        place.coordinates.lat,
-        place.coordinates.lng,
-      ] as [number, number]),
-      ...accommodations.map((place) => [
-        place.coordinates.lat,
-        place.coordinates.lng,
-      ] as [number, number]),
+      ...attractions.map(
+        (place) => [place.coordinates.lat, place.coordinates.lng] as [number, number],
+      ),
+      ...accommodations.map(
+        (place) => [place.coordinates.lat, place.coordinates.lng] as [number, number],
+      ),
     ];
 
     if (points.length === 0) {
-      map.setView(
-        DEFAULT_CALBAYOG_CENTER,
-        12,
-        { animate: false },
-      );
+      map.setView(DEFAULT_CALBAYOG_CENTER, 12, { animate: false });
       return;
     }
 
     if (points.length === 1) {
-      map.setView(points[0], 14, {
-        animate: false,
-      });
+      map.setView(points[0], 14, { animate: false });
       return;
     }
 
-    const bounds = L.latLngBounds(points);
-    map.fitBounds(bounds, {
+    map.fitBounds(L.latLngBounds(points), {
       padding: [35, 35],
       maxZoom: 14,
       animate: false,
@@ -759,10 +570,7 @@ const WelcomeMap: React.FC<{
       new Map(
         attractions.map((place) => [
           place.id,
-          createWelcomeAttractionMarkerIcon(
-            place.category,
-            place.markerType,
-          ),
+          createWelcomeAttractionMarkerIcon(place.category, place.markerType),
         ]),
       ),
     [attractions],
@@ -793,10 +601,7 @@ const WelcomeMap: React.FC<{
         />
 
         <LayersControl position="topright">
-          <LayersControl.BaseLayer
-            checked
-            name="Street"
-          >
+          <LayersControl.BaseLayer checked name="Street">
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -837,10 +642,7 @@ const WelcomeMap: React.FC<{
         {attractions.map((place) => (
           <Marker
             key={`welcome-attraction-${place.id}`}
-            position={[
-              place.coordinates.lat,
-              place.coordinates.lng,
-            ]}
+            position={[place.coordinates.lat, place.coordinates.lng]}
             icon={attractionIcons.get(place.id)}
             zIndexOffset={100}
           >
@@ -851,13 +653,9 @@ const WelcomeMap: React.FC<{
               opacity={1}
               className="welcome-map-label"
             >
-              <span className="welcome-map-label-name">
-                {place.name}
-              </span>
+              <span className="welcome-map-label-name">{place.name}</span>
               {place.subcategory && (
-                <span className="welcome-map-label-sub">
-                  {place.subcategory}
-                </span>
+                <span className="welcome-map-label-sub">{place.subcategory}</span>
               )}
             </Tooltip>
 
@@ -867,24 +665,16 @@ const WelcomeMap: React.FC<{
                   <MapPin size={10} />
                   Attraction
                 </div>
-                <h3 className="welcome-map-popup-title">
-                  {place.name}
-                </h3>
-                {(place.category ||
-                  place.subcategory) && (
+                <h3 className="welcome-map-popup-title">{place.name}</h3>
+                {(place.category || place.subcategory) && (
                   <p className="welcome-map-popup-category">
-                    {[
-                      place.category,
-                      place.subcategory,
-                    ]
+                    {[place.category, place.subcategory]
                       .filter(Boolean)
                       .join(" • ")}
                   </p>
                 )}
                 {place.address && (
-                  <p className="welcome-map-popup-address">
-                    {place.address}
-                  </p>
+                  <p className="welcome-map-popup-address">{place.address}</p>
                 )}
               </div>
             </Popup>
@@ -894,10 +684,7 @@ const WelcomeMap: React.FC<{
         {accommodations.map((place) => (
           <Marker
             key={`welcome-accommodation-${place.id}`}
-            position={[
-              place.coordinates.lat,
-              place.coordinates.lng,
-            ]}
+            position={[place.coordinates.lat, place.coordinates.lng]}
             icon={accommodationIcon}
             zIndexOffset={80}
           >
@@ -908,13 +695,9 @@ const WelcomeMap: React.FC<{
               opacity={1}
               className="welcome-map-label accommodation"
             >
-              <span className="welcome-map-label-name">
-                {place.name}
-              </span>
+              <span className="welcome-map-label-name">{place.name}</span>
               {place.type && (
-                <span className="welcome-map-label-sub">
-                  {place.type}
-                </span>
+                <span className="welcome-map-label-sub">{place.type}</span>
               )}
             </Tooltip>
 
@@ -924,18 +707,12 @@ const WelcomeMap: React.FC<{
                   <Hotel size={10} />
                   Accommodation
                 </div>
-                <h3 className="welcome-map-popup-title">
-                  {place.name}
-                </h3>
+                <h3 className="welcome-map-popup-title">{place.name}</h3>
                 {place.type && (
-                  <p className="welcome-map-popup-category">
-                    {place.type}
-                  </p>
+                  <p className="welcome-map-popup-category">{place.type}</p>
                 )}
                 {place.address && (
-                  <p className="welcome-map-popup-address">
-                    {place.address}
-                  </p>
+                  <p className="welcome-map-popup-address">{place.address}</p>
                 )}
               </div>
             </Popup>
@@ -957,949 +734,569 @@ const WelcomeMap: React.FC<{
   );
 };
 
-/* ========================================================= 
-   WELCOME COMPONENT 
-========================================================= */ 
- 
-const Welcome: React.FC = () => { 
-  
-const { user, isUserAuthenticated } = useAuth();
+/* =========================================================
+   HELPERS FOR RESTAURANTS + EVENTS
+========================================================= */
 
-const isAdminLogout =
-  new URLSearchParams(window.location.search)
-    .get("adminLogout") === "1";
+const WELCOME_CAROUSEL_LIMIT = 8;
 
-const displayUser = isAdminLogout ? null : user;
+const toImageList = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.filter(
+      (image): image is string =>
+        typeof image === "string" && image.trim().length > 0,
+    );
+  }
 
+  if (typeof value === "string" && value.trim()) {
+    return value
+      .split(",")
+      .map((image) => image.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+const toRestaurantCardItem = (item: any): RestaurantCardItem => ({
+  ...item,
+  id: String(item?.id ?? "").trim(),
+  name: item?.name ?? "",
+  images: toImageList(item?.images),
+});
+
+const toEventCardItem = (item: any): EventCardItem => ({
+  ...item,
+  id: String(item?.id ?? item?._id ?? "").trim(),
+  title: item?.title ?? item?.name ?? "",
+  image:
+    item?.image ||
+    item?.image_url ||
+    toImageList(item?.images)[0] ||
+    "",
+});
+
+/* =========================================================
+   WELCOME COMPONENT
+========================================================= */
+
+const Welcome: React.FC = () => {
+  const navigate = useNavigate();
+  const { user, isUserAuthenticated } = useAuth();
+
+  const isAdminLogout =
+    new URLSearchParams(window.location.search).get("adminLogout") === "1";
+
+  const displayUser = isAdminLogout ? null : user;
 
   // Plan Trip and My Memories are protected user features.
-  // If a visitor is not logged in, open the app-wide login form
-  // instead of navigating to the protected route.
   const handleProtectedQuickCardClick = (
     event: React.MouseEvent<HTMLAnchorElement>,
     destination: string,
   ) => {
     const requiresLogin =
-      destination === "/itinerary" ||
-      destination === "/memories";
+      destination === "/itinerary" || destination === "/memories";
 
-    if (!requiresLogin || displayUser) {
-      return;
-    }
+    if (!requiresLogin || displayUser) return;
 
     event.preventDefault();
     event.stopPropagation();
     window.dispatchEvent(new Event("open-login-modal"));
   };
- 
-  const { 
-    setFavoriteCount, 
-  } = useFavorites(); 
- 
-  /* ========================================================= 
-     WELCOME DATA 
-  ========================================================= */ 
- 
-  const [ 
-    welcomeDestinations, 
-    setWelcomeDestinations, 
-  ] = useState<Destination[]>([]); 
- 
-  const [ 
-    welcomeAccommodations, 
-    setWelcomeAccommodations, 
-  ] = useState<Accommodation[]>([]); 
- 
-  const [ 
-    loadingDestinations, 
-    setLoadingDestinations, 
-  ] = useState(true); 
- 
-  const [ 
-    loadingAccommodations, 
-    setLoadingAccommodations, 
-  ] = useState(true); 
 
-  const [
-    mapAttractions,
-    setMapAttractions,
-  ] = useState<WelcomeMapAttraction[]>([]);
+  const { setFavoriteCount } = useFavorites();
 
-  const [
-    mapAccommodations,
-    setMapAccommodations,
-  ] = useState<WelcomeMapAccommodation[]>([]);
+  /* ---------- welcome data ---------- */
 
-  const [
-    loadingMap,
-    setLoadingMap,
-  ] = useState(true);
- 
-  /* ========================================================= 
-     IMAGE ROTATION 
-  ========================================================= */ 
- 
-  const [ 
-    imageIndexes, 
-    setImageIndexes, 
-  ] = useState<Record<string, number>>({}); 
- 
-  /* ========================================================= 
-     HERO SLIDER STATE 
-  ========================================================= */ 
- 
-  const [ 
-    activeSlide, 
-    setActiveSlide, 
-  ] = useState(0); 
- 
-  /* ========================================================= 
-     HERO TOUCH / SWIPE 
-  ========================================================= */ 
- 
-  const touchStartX = 
-    useRef<number | null>(null); 
- 
-  const touchEndX = 
-    useRef<number | null>(null); 
- 
-  /* ========================================================= 
-     HERO MOUSE DRAG 
-  ========================================================= */ 
- 
-  const mouseStartX = 
-    useRef<number | null>(null); 
- 
-  const isDragging = 
-    useRef(false); 
- 
-  /* ========================================================= 
-     FEATURED VIDEO CAROUSEL 
-  ========================================================= */ 
- 
-  const [ 
-    featuredVideos, 
-    setFeaturedVideos, 
-  ] = useState<FeaturedVideo[]>([]); 
- 
-  const [ 
-    loadingFeaturedVideos, 
-    setLoadingFeaturedVideos, 
-  ] = useState(true); 
- 
-  const [ 
-    featuredVideosError, 
-    setFeaturedVideosError, 
-  ] = useState(false); 
- 
-  const [ 
-    activeVideo, 
-    setActiveVideo, 
-  ] = useState(0); 
- 
-  const [ 
-    videoSwiper, 
-    setVideoSwiper, 
-  ] = useState<SwiperInstance | null>(null);
+  const [welcomeDestinations, setWelcomeDestinations] = useState<Destination[]>([]);
+  const [welcomeAccommodations, setWelcomeAccommodations] = useState<Accommodation[]>([]);
+  const [welcomeRestaurants, setWelcomeRestaurants] = useState<RestaurantCardItem[]>([]);
+  const [welcomeEvents, setWelcomeEvents] = useState<EventCardItem[]>([]);
 
-  const videoRefs =
-    useRef<Record<string, HTMLVideoElement | null>>({}); 
- 
-  /* ========================================================= 
-     DATE 
-  ========================================================= */ 
- 
-  const [ 
-    currentDate, 
-    setCurrentDate, 
-  ] = useState(""); 
- 
-  /* ========================================================= 
-     WEATHER 
-  ========================================================= */ 
- 
-  const [ 
-    weather, 
-    setWeather, 
-  ] = useState<WeatherState>({ 
-    temperature: null, 
-    weatherCode: null, 
-    isDay: true, 
-    loading: true, 
-    error: false, 
-  }); 
- 
-  /* ========================================================= 
-     USER GREETING 
-  ========================================================= */ 
- 
-  const firstName = displayUser?.name 
-    ? displayUser.name 
-        .trim() 
-        .split(/\s+/)[0] 
-    : ""; 
- 
-  const welcomeGreeting = 
-    firstName 
-      ? `MABUHAY, ${firstName.toUpperCase()}!` 
-      : "MABUHAY!"; 
- 
-  /* ========================================================= 
-     LOAD CURRENT DATE 
-  ========================================================= */ 
- 
-  useEffect(() => { 
-    const updateDate = () => { 
-      const now = new Date(); 
- 
-      const formattedDate = 
-        new Intl.DateTimeFormat( 
-          "en-PH", 
-          { 
-            month: "long", 
-            day: "numeric", 
-            year: "numeric", 
-            timeZone: 
-              "Asia/Manila", 
-          }, 
-        ).format(now); 
- 
-      setCurrentDate( 
-        formattedDate, 
-      ); 
-    }; 
- 
-    updateDate(); 
- 
-    const interval = 
-      window.setInterval( 
-        updateDate, 
-        60 * 1000, 
-      ); 
- 
-    return () => { 
-      window.clearInterval( 
-        interval, 
-      ); 
-    }; 
-  }, []); 
- 
-  /* ========================================================= 
-     LOAD CURRENT CALBAYOG WEATHER 
-  ========================================================= */ 
- 
-  useEffect(() => { 
-    const controller = 
-      new AbortController(); 
- 
-    const loadWeather = 
-      async () => { 
-        try { 
-          setWeather( 
-            (previous) => ({ 
-              ...previous, 
-              loading: true, 
-              error: false, 
-            }), 
-          ); 
- 
-          const geocodingResponse = 
-            await fetch( 
-              "https://geocoding-api.open-meteo.com/v1/search?name=Calbayog&count=10&language=en&format=json",
-              {
-                signal:
-                  controller.signal,
-              },
-            );
+  const [loadingDestinations, setLoadingDestinations] = useState(true);
+  const [loadingAccommodations, setLoadingAccommodations] = useState(true);
+  const [loadingRestaurants, setLoadingRestaurants] = useState(true);
+  const [loadingEvents, setLoadingEvents] = useState(true);
 
-          if (
-            !geocodingResponse.ok
-          ) {
-            throw new Error(
-              "Unable to find Calbayog location.",
-            );
-          }
+  const [mapAttractions, setMapAttractions] = useState<WelcomeMapAttraction[]>([]);
+  const [mapAccommodations, setMapAccommodations] = useState<WelcomeMapAccommodation[]>([]);
+  const [loadingMap, setLoadingMap] = useState(true);
 
-          const geocodingData =
-            await geocodingResponse.json();
+  /* ---------- image rotation ---------- */
 
-          const results =
-            Array.isArray(
-              geocodingData?.results,
-            )
-              ? geocodingData.results
-              : [];
+  const [imageIndexes, setImageIndexes] = useState<Record<string, number>>({});
+  const [restaurantImageIndexes, setRestaurantImageIndexes] = useState<
+    Record<string, number>
+  >({});
 
-          const calbayogLocation =
-            results.find(
-              (location: any) =>
-                location?.country_code ===
-                  "PH" &&
-                String(
-                  location?.name ||
-                    "",
-                ).toLowerCase() ===
-                  "calbayog",
-            ) ||
-            results.find(
-              (location: any) =>
-                location?.country_code ===
-                "PH",
-            );
+  /* ---------- hero ---------- */
 
-          if (
-            !calbayogLocation?.latitude ||
-            !calbayogLocation?.longitude
-          ) {
-            throw new Error(
-              "Calbayog location was not found.",
-            );
-          }
+  const [activeSlide, setActiveSlide] = useState(0);
 
-          const weatherResponse =
-            await fetch(
-              `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(
-                calbayogLocation.latitude,
-              )}&longitude=${encodeURIComponent(
-                calbayogLocation.longitude,
-              )}&current=temperature_2m,weather_code,is_day&timezone=Asia%2FManila`,
-              {
-                signal:
-                  controller.signal,
-              },
-            );
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const mouseStartX = useRef<number | null>(null);
+  const isDragging = useRef(false);
 
-          if (
-            !weatherResponse.ok
-          ) {
-            throw new Error(
-              "Unable to load current weather.",
-            );
-          }
+  /* ---------- featured videos ---------- */
 
-          const weatherData =
-            await weatherResponse.json();
+  const [featuredVideos, setFeaturedVideos] = useState<FeaturedVideo[]>([]);
+  const [loadingFeaturedVideos, setLoadingFeaturedVideos] = useState(true);
+  const [featuredVideosError, setFeaturedVideosError] = useState(false);
+  const [activeVideo, setActiveVideo] = useState(0);
+  const [videoSwiper, setVideoSwiper] = useState<SwiperInstance | null>(null);
 
-          const current =
-            weatherData?.current;
+  const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
 
-          if (!current) {
-            throw new Error(
-              "Current weather data is unavailable.",
-            );
-          }
+  /* ---------- date + weather ---------- */
 
-          setWeather({
-            temperature:
-              typeof current.temperature_2m ===
-              "number"
-                ? current.temperature_2m
-                : null,
+  const [currentDate, setCurrentDate] = useState("");
 
-            weatherCode:
-              typeof current.weather_code ===
-              "number"
-                ? current.weather_code
-                : null,
+  const [weather, setWeather] = useState<WeatherState>({
+    temperature: null,
+    weatherCode: null,
+    isDay: true,
+    loading: true,
+    error: false,
+  });
 
-            isDay:
-              Number(
-                current.is_day,
-              ) === 1,
+  /* ---------- greeting ---------- */
 
-            loading: false,
-            error: false,
-          });
-        } catch (error: any) {
-          if (
-            error?.name ===
-            "AbortError"
-          ) {
-            return;
-          }
+  const firstName = displayUser?.name
+    ? displayUser.name.trim().split(/\s+/)[0]
+    : "";
 
-          console.error(
-            "Failed to load Calbayog weather:",
-            error,
-          );
+  const welcomeGreeting = firstName
+    ? `MABUHAY, ${firstName.toUpperCase()}!`
+    : "MABUHAY!";
 
-          setWeather({
-            temperature: null,
-            weatherCode: null,
-            isDay: true,
-            loading: false,
-            error: true,
-          });
+  /* =========================================================
+     CURRENT DATE
+  ========================================================= */
+
+  useEffect(() => {
+    const updateDate = () => {
+      setCurrentDate(
+        new Intl.DateTimeFormat("en-PH", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+          timeZone: "Asia/Manila",
+        }).format(new Date()),
+      );
+    };
+
+    updateDate();
+
+    const interval = window.setInterval(updateDate, 60 * 1000);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
+  /* =========================================================
+     CALBAYOG WEATHER
+  ========================================================= */
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadWeather = async () => {
+      try {
+        setWeather((previous) => ({ ...previous, loading: true, error: false }));
+
+        const geocodingResponse = await fetch(
+          "https://geocoding-api.open-meteo.com/v1/search?name=Calbayog&count=10&language=en&format=json",
+          { signal: controller.signal },
+        );
+
+        if (!geocodingResponse.ok) {
+          throw new Error("Unable to find Calbayog location.");
         }
-      };
+
+        const geocodingData = await geocodingResponse.json();
+
+        const results = Array.isArray(geocodingData?.results)
+          ? geocodingData.results
+          : [];
+
+        const calbayogLocation =
+          results.find(
+            (location: any) =>
+              location?.country_code === "PH" &&
+              String(location?.name || "").toLowerCase() === "calbayog",
+          ) || results.find((location: any) => location?.country_code === "PH");
+
+        if (!calbayogLocation?.latitude || !calbayogLocation?.longitude) {
+          throw new Error("Calbayog location was not found.");
+        }
+
+        const weatherResponse = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(
+            calbayogLocation.latitude,
+          )}&longitude=${encodeURIComponent(
+            calbayogLocation.longitude,
+          )}&current=temperature_2m,weather_code,is_day&timezone=Asia%2FManila`,
+          { signal: controller.signal },
+        );
+
+        if (!weatherResponse.ok) {
+          throw new Error("Unable to load current weather.");
+        }
+
+        const weatherData = await weatherResponse.json();
+        const current = weatherData?.current;
+
+        if (!current) {
+          throw new Error("Current weather data is unavailable.");
+        }
+
+        setWeather({
+          temperature:
+            typeof current.temperature_2m === "number"
+              ? current.temperature_2m
+              : null,
+          weatherCode:
+            typeof current.weather_code === "number"
+              ? current.weather_code
+              : null,
+          isDay: Number(current.is_day) === 1,
+          loading: false,
+          error: false,
+        });
+      } catch (error: any) {
+        if (error?.name === "AbortError") return;
+
+        console.error("Failed to load Calbayog weather:", error);
+
+        setWeather({
+          temperature: null,
+          weatherCode: null,
+          isDay: true,
+          loading: false,
+          error: true,
+        });
+      }
+    };
 
     void loadWeather();
 
-    const weatherInterval =
-      window.setInterval(
-        loadWeather,
-        15 * 60 * 1000,
-      );
+    const weatherInterval = window.setInterval(loadWeather, 15 * 60 * 1000);
 
     return () => {
       controller.abort();
-
-      window.clearInterval(
-        weatherInterval,
-      );
+      window.clearInterval(weatherInterval);
     };
   }, []);
 
   /* =========================================================
-     PRELOAD HERO IMAGES
+     HERO
   ========================================================= */
 
   useEffect(() => {
-    heroSlides.forEach(
-      (slide) => {
-        const image =
-          new Image();
-
-        image.src =
-          slide.image;
-      },
-    );
+    heroSlides.forEach((slide) => {
+      const image = new Image();
+      image.src = slide.image;
+    });
   }, []);
 
-  /* =========================================================
-     HERO NEXT
-  ========================================================= */
+  const nextSlide = () =>
+    setActiveSlide((current) => (current + 1) % heroSlides.length);
 
-  const nextSlide = () => {
-    setActiveSlide(
-      (current) =>
-        (current + 1) %
-        heroSlides.length,
+  const previousSlide = () =>
+    setActiveSlide((current) =>
+      current === 0 ? heroSlides.length - 1 : current - 1,
     );
-  };
-
-  /* =========================================================
-     HERO PREVIOUS
-  ========================================================= */
-
-  const previousSlide = () => {
-    setActiveSlide(
-      (current) =>
-        current === 0
-          ? heroSlides.length - 1
-          : current - 1,
-    );
-  };
-
-  /* =========================================================
-     HERO AUTOMATIC SLIDESHOW
-  ========================================================= */
 
   useEffect(() => {
-    const interval =
-      window.setInterval(
-        () => {
-          setActiveSlide(
-            (current) =>
-              (current + 1) %
-              heroSlides.length,
-          );
-        },
-        6000,
-      );
+    const interval = window.setInterval(() => {
+      setActiveSlide((current) => (current + 1) % heroSlides.length);
+    }, 6000);
 
-    return () => {
-      window.clearInterval(
-        interval,
-      );
-    };
+    return () => window.clearInterval(interval);
   }, []);
 
-  /* =========================================================
-     HERO TOUCH START
-  ========================================================= */
-
-  const handleTouchStart = (
-    e: React.TouchEvent<HTMLDivElement>,
-  ) => {
-    touchStartX.current =
-      e.touches[0].clientX;
-
-    touchEndX.current =
-      null;
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchEndX.current = null;
   };
 
-  /* =========================================================
-     HERO TOUCH MOVE
-  ========================================================= */
-
-  const handleTouchMove = (
-    e: React.TouchEvent<HTMLDivElement>,
-  ) => {
-    touchEndX.current =
-      e.touches[0].clientX;
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    touchEndX.current = e.touches[0].clientX;
   };
-
-  /* =========================================================
-     HERO TOUCH END
-  ========================================================= */
 
   const handleTouchEnd = () => {
-    if (
-      touchStartX.current ===
-        null ||
-      touchEndX.current ===
-        null
-    ) {
-      return;
+    if (touchStartX.current === null || touchEndX.current === null) return;
+
+    const distance = touchStartX.current - touchEndX.current;
+
+    if (Math.abs(distance) >= 50) {
+      if (distance > 0) nextSlide();
+      else previousSlide();
     }
 
-    const distance =
-      touchStartX.current -
-      touchEndX.current;
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
 
-    const minimumSwipeDistance = 50;
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    mouseStartX.current = e.clientX;
+    isDragging.current = true;
+  };
 
-    if (
-      Math.abs(distance) <
-      minimumSwipeDistance
-    ) {
-      touchStartX.current =
-        null;
+  const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (mouseStartX.current === null || !isDragging.current) return;
 
-      touchEndX.current =
-        null;
+    const distance = mouseStartX.current - e.clientX;
 
-      return;
+    if (Math.abs(distance) >= 50) {
+      if (distance > 0) nextSlide();
+      else previousSlide();
     }
 
-    if (distance > 0) {
-      nextSlide();
-    } else {
-      previousSlide();
-    }
+    mouseStartX.current = null;
+    isDragging.current = false;
+  };
 
-    touchStartX.current =
-      null;
-
-    touchEndX.current =
-      null;
+  const handleMouseLeave = () => {
+    mouseStartX.current = null;
+    isDragging.current = false;
   };
 
   /* =========================================================
-     HERO MOUSE DOWN
-  ========================================================= */
-
-  const handleMouseDown = (
-    e: React.MouseEvent<HTMLDivElement>,
-  ) => {
-    mouseStartX.current =
-      e.clientX;
-
-    isDragging.current =
-      true;
-  };
-
-  /* =========================================================
-     HERO MOUSE UP
-  ========================================================= */
-
-  const handleMouseUp = (
-    e: React.MouseEvent<HTMLDivElement>,
-  ) => {
-    if (
-      mouseStartX.current ===
-        null ||
-      !isDragging.current
-    ) {
-      return;
-    }
-
-    const distance =
-      mouseStartX.current -
-      e.clientX;
-
-    const minimumDragDistance = 50;
-
-    if (
-      Math.abs(distance) >=
-      minimumDragDistance
-    ) {
-      if (distance > 0) {
-        nextSlide();
-      } else {
-        previousSlide();
-      }
-    }
-
-    mouseStartX.current =
-      null;
-
-    isDragging.current =
-      false;
-  };
-
-  /* =========================================================
-     HERO MOUSE LEAVE
-  ========================================================= */
-
-  const handleMouseLeave =
-    () => {
-      mouseStartX.current =
-        null;
-
-      isDragging.current =
-        false;
-    };
-
-  /* =========================================================
-     PAUSE ALL FEATURED VIDEOS
+     VIDEOS
   ========================================================= */
 
   const pauseAllFeaturedVideos = () => {
-    Object.values(
-      videoRefs.current,
-    ).forEach((video) => {
-      if (video) {
-        video.pause();
-      }
+    Object.values(videoRefs.current).forEach((video) => {
+      if (video) video.pause();
     });
   };
 
-  /* =========================================================
-     LOAD FEATURED VIDEOS
-  ========================================================= */
+  const loadFeaturedVideos = async () => {
+    setLoadingFeaturedVideos(true);
+    setFeaturedVideosError(false);
 
-  const loadFeaturedVideos =
-    async () => {
-      setLoadingFeaturedVideos(
-        true,
-      );
+    try {
+      const response = await getFeaturedVideos();
 
-      setFeaturedVideosError(
-        false,
-      );
-
-      try {
-        const response =
-          await getFeaturedVideos();
-
-        const data =
-          Array.isArray(
-            response?.data,
+      const data = Array.isArray(response?.data)
+        ? response.data.filter((video) =>
+            Boolean(video?.id && video?.video_url),
           )
-            ? response.data.filter(
-                (video) =>
-                  Boolean(
-                    video?.id &&
-                    video?.video_url,
-                  ),
-              )
-            : [];
+        : [];
 
-        setFeaturedVideos(
-          data,
-        );
-
-        setActiveVideo(0);
-      } catch (error) {
-        console.error(
-          "Failed to load Featured Videos:",
-          error,
-        );
-
-        setFeaturedVideos(
-          [],
-        );
-
-        setFeaturedVideosError(
-          true,
-        );
-      } finally {
-        setLoadingFeaturedVideos(
-          false,
-        );
-      }
-    };
+      setFeaturedVideos(data);
+      setActiveVideo(0);
+    } catch (error) {
+      console.error("Failed to load Featured Videos:", error);
+      setFeaturedVideos([]);
+      setFeaturedVideosError(true);
+    } finally {
+      setLoadingFeaturedVideos(false);
+    }
+  };
 
   /* =========================================================
-     LOAD SELECTED ATTRACTIONS
+     ATTRACTIONS
   ========================================================= */
 
-  const loadWelcomeDestinations =
-    async () => {
-      setLoadingDestinations(
-        true,
-      );
+  const loadWelcomeDestinations = async () => {
+    setLoadingDestinations(true);
 
-      try {
-        const response =
-          await getAttractions({
-            show_on_welcome: true,
-          });
+    try {
+      const response = await getAttractions({ show_on_welcome: true });
 
-        const data =
-          Array.isArray(
-            response?.data,
-          )
-            ? response.data
-            : [];
+      const data = Array.isArray(response?.data) ? response.data : [];
+      const selected = data.slice(0, 4);
 
-        const selected =
-          data.slice(0, 4);
+      setWelcomeDestinations(selected);
 
-        setWelcomeDestinations(
-          selected,
+      selected.forEach((attraction: Destination) => {
+        const attractionId = String((attraction as any)?.id ?? "").trim();
+
+        if (!attractionId) return;
+
+        const count = Math.max(
+          0,
+          Number((attraction as any)?.favorites ?? 0) || 0,
         );
 
-        selected.forEach(
-          (
-            attraction: Destination,
-          ) => {
-            const attractionId =
-              String(
-                (attraction as any)
-                  ?.id ?? "",
-              ).trim();
+        setFavoriteCount("attraction", attractionId, count);
+      });
 
-            if (
-              !attractionId
-            ) {
-              return;
-            }
-
-            const count =
-              Math.max(
-                0,
-                Number(
-                  (
-                    attraction as any
-                  )?.favorites ??
-                    0,
-                ) || 0,
-              );
-
-            setFavoriteCount(
-              "attraction",
-              attractionId,
-              count,
-            );
-          },
-        );
-
-        setImageIndexes({});
-      } catch (error) {
-        console.error(
-          "Failed to load Welcome Page attractions:",
-          error,
-        );
-
-        setWelcomeDestinations(
-          [],
-        );
-      } finally {
-        setLoadingDestinations(
-          false,
-        );
-      }
-    };
+      setImageIndexes({});
+    } catch (error) {
+      console.error("Failed to load Welcome Page attractions:", error);
+      setWelcomeDestinations([]);
+    } finally {
+      setLoadingDestinations(false);
+    }
+  };
 
   /* =========================================================
-     LOAD SELECTED ACCOMMODATIONS
+     ACCOMMODATIONS
   ========================================================= */
 
-  const loadWelcomeAccommodations =
-    async () => {
-      setLoadingAccommodations(
-        true,
-      );
+  const loadWelcomeAccommodations = async () => {
+    setLoadingAccommodations(true);
 
-      try {
-        const response =
-          await getAccommodations({
-            show_on_welcome: true,
-          });
+    try {
+      const response = await getAccommodations({ show_on_welcome: true });
 
-        const data =
-          Array.isArray(
-            response?.data,
-          )
-            ? response.data
-            : [];
+      const data = Array.isArray(response?.data) ? response.data : [];
 
-        setWelcomeAccommodations(
-          data.slice(0, 4),
-        );
-      } catch (error) {
-        console.error(
-          "Failed to load Welcome Page accommodations:",
-          error,
-        );
-
-        setWelcomeAccommodations(
-          [],
-        );
-      } finally {
-        setLoadingAccommodations(
-          false,
-        );
-      }
-    };
+      setWelcomeAccommodations(data.slice(0, 4));
+    } catch (error) {
+      console.error("Failed to load Welcome Page accommodations:", error);
+      setWelcomeAccommodations([]);
+    } finally {
+      setLoadingAccommodations(false);
+    }
+  };
 
   /* =========================================================
-     LOAD ALL MAP PINS
+     RESTAURANTS
   ========================================================= */
 
-  const loadWelcomeMapPlaces =
-    async () => {
-      setLoadingMap(true);
+  const loadWelcomeRestaurants = async () => {
+    setLoadingRestaurants(true);
 
-      try {
-        const [
-          attractionsResponse,
-          accommodationsResponse,
-        ] = await Promise.all([
-          getAttractions(),
-          getAccommodations(),
-        ]);
+    try {
+      const response: any = await getRestaurants({ show_on_welcome: true });
 
-        const attractionData =
-          Array.isArray(
-            attractionsResponse?.data,
-          )
-            ? attractionsResponse.data
-            : [];
+      const data = Array.isArray(response?.data) ? response.data : [];
 
-        const accommodationData =
-          Array.isArray(
-            accommodationsResponse?.data,
-          )
-            ? accommodationsResponse.data
-            : [];
+      const selected: RestaurantCardItem[] = data
+        .map(toRestaurantCardItem)
+        .filter((restaurant: RestaurantCardItem) => Boolean(restaurant.id))
+        .slice(0, WELCOME_CAROUSEL_LIMIT);
 
-        const nextAttractions =
-          attractionData
-            .map((item: any) => {
-              const coordinates =
-                getWelcomeCoordinates(item);
+      setWelcomeRestaurants(selected);
 
-              if (!coordinates) {
-                return null;
-              }
+      selected.forEach((restaurant) => {
+        const count = Math.max(0, Number(restaurant.favorites ?? 0) || 0);
 
-              const id = String(
-                item?.id ?? "",
-              ).trim();
+        setFavoriteCount("restaurant", restaurant.id, count);
+      });
 
-              if (!id) {
-                return null;
-              }
+      setRestaurantImageIndexes({});
+    } catch (error) {
+      console.error("Failed to load Welcome Page restaurants:", error);
+      setWelcomeRestaurants([]);
+    } finally {
+      setLoadingRestaurants(false);
+    }
+  };
 
-              return {
-                id,
-                name:
-                  String(
-                    item?.name ??
-                      "Unnamed attraction",
-                  ).trim(),
-                category:
-                  getWelcomeFirstValue(
-                    item,
-                    [
-                      "category",
-                      "destination_category",
-                    ],
-                  ) || "Other",
-                subcategory:
-                  getWelcomeAttractionSubcategory(
-                    item,
-                  ),
-                markerType:
-                  getWelcomeAttractionSubcategory(
-                    item,
-                  ),
-                address:
-                  getWelcomeFirstValue(
-                    item,
-                    [
-                      "location_address",
-                      "address",
-                    ],
-                  ),
-                coordinates,
-              };
-            })
-            .filter(
-              Boolean,
-            ) as WelcomeMapAttraction[];
+  /* =========================================================
+     EVENTS
+  ========================================================= */
 
-        const nextAccommodations =
-          accommodationData
-            .map((item: any) => {
-              const coordinates =
-                getWelcomeCoordinates(item);
+  const loadWelcomeEvents = async () => {
+    setLoadingEvents(true);
 
-              if (!coordinates) {
-                return null;
-              }
+    try {
+      const response: any = await getEvents({ show_on_welcome: true });
 
-              const id = String(
-                item?.id ?? "",
-              ).trim();
+      const data = Array.isArray(response?.data) ? response.data : [];
 
-              if (!id) {
-                return null;
-              }
+      const selected: EventCardItem[] = data
+        .map(toEventCardItem)
+        .filter((event: EventCardItem) => Boolean(event.id))
+        .slice(0, WELCOME_CAROUSEL_LIMIT);
 
-              return {
-                id,
-                name:
-                  String(
-                    item?.name ??
-                      "Unnamed accommodation",
-                  ).trim(),
-                type:
-                  getWelcomeFirstValue(
-                    item,
-                    [
-                      "type",
-                      "accommodation_type",
-                      "category",
-                    ],
-                  ),
-                address:
-                  getWelcomeFirstValue(
-                    item,
-                    [
-                      "address",
-                      "location_address",
-                    ],
-                  ),
-                coordinates,
-              };
-            })
-            .filter(
-              Boolean,
-            ) as WelcomeMapAccommodation[];
+      setWelcomeEvents(selected);
+    } catch (error) {
+      console.error("Failed to load Welcome Page events:", error);
+      setWelcomeEvents([]);
+    } finally {
+      setLoadingEvents(false);
+    }
+  };
 
-        setMapAttractions(
-          nextAttractions,
-        );
-        setMapAccommodations(
-          nextAccommodations,
-        );
-      } catch (error) {
-        console.error(
-          "Failed to load Welcome Page map pins:",
-          error,
-        );
+  const handleEventClick = (event: EventCardItem) => {
+    navigate("/events", { state: { eventId: event.id } });
+  };
 
-        setMapAttractions([]);
-        setMapAccommodations([]);
-      } finally {
-        setLoadingMap(false);
-      }
-    };
+  /* =========================================================
+     MAP PINS
+  ========================================================= */
+
+  const loadWelcomeMapPlaces = async () => {
+    setLoadingMap(true);
+
+    try {
+      const [attractionsResponse, accommodationsResponse] = await Promise.all([
+        getAttractions(),
+        getAccommodations(),
+      ]);
+
+      const attractionData = Array.isArray(attractionsResponse?.data)
+        ? attractionsResponse.data
+        : [];
+
+      const accommodationData = Array.isArray(accommodationsResponse?.data)
+        ? accommodationsResponse.data
+        : [];
+
+      const nextAttractions = attractionData
+        .map((item: any) => {
+          const coordinates = getWelcomeCoordinates(item);
+          const id = String(item?.id ?? "").trim();
+
+          if (!coordinates || !id) return null;
+
+          return {
+            id,
+            name: String(item?.name ?? "Unnamed attraction").trim(),
+            category:
+              getWelcomeFirstValue(item, ["category", "destination_category"]) ||
+              "Other",
+            subcategory: getWelcomeAttractionSubcategory(item),
+            markerType: getWelcomeAttractionSubcategory(item),
+            address: getWelcomeFirstValue(item, [
+              "location_address",
+              "address",
+            ]),
+            coordinates,
+          };
+        })
+        .filter(Boolean) as WelcomeMapAttraction[];
+
+      const nextAccommodations = accommodationData
+        .map((item: any) => {
+          const coordinates = getWelcomeCoordinates(item);
+          const id = String(item?.id ?? "").trim();
+
+          if (!coordinates || !id) return null;
+
+          return {
+            id,
+            name: String(item?.name ?? "Unnamed accommodation").trim(),
+            type: getWelcomeFirstValue(item, [
+              "type",
+              "accommodation_type",
+              "category",
+            ]),
+            address: getWelcomeFirstValue(item, [
+              "address",
+              "location_address",
+            ]),
+            coordinates,
+          };
+        })
+        .filter(Boolean) as WelcomeMapAccommodation[];
+
+      setMapAttractions(nextAttractions);
+      setMapAccommodations(nextAccommodations);
+    } catch (error) {
+      console.error("Failed to load Welcome Page map pins:", error);
+      setMapAttractions([]);
+      setMapAccommodations([]);
+    } finally {
+      setLoadingMap(false);
+    }
+  };
 
   /* =========================================================
      INITIAL LOAD
@@ -1907,152 +1304,103 @@ const displayUser = isAdminLogout ? null : user;
 
   useEffect(() => {
     void loadWelcomeDestinations();
-
     void loadWelcomeAccommodations();
-
+    void loadWelcomeRestaurants();
+    void loadWelcomeEvents();
     void loadWelcomeMapPlaces();
-
     void loadFeaturedVideos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* =========================================================
-     AUTO ROTATE ATTRACTION IMAGES
+     AUTO ROTATE CARD IMAGES
   ========================================================= */
 
   useEffect(() => {
-    if (
-      welcomeDestinations.length ===
-      0
-    ) {
-      return;
-    }
+    if (welcomeDestinations.length === 0) return;
 
-    const interval =
-      window.setInterval(
-        () => {
-          setImageIndexes(
-            (previous) => {
-              const next = {
-                ...previous,
-              };
+    const interval = window.setInterval(() => {
+      setImageIndexes((previous) => {
+        const next = { ...previous };
 
-              welcomeDestinations.forEach(
-                (destination) => {
-                  const images =
-                    Array.isArray(
-                      destination.images,
-                    )
-                      ? destination.images.filter(
-                          Boolean,
-                        )
-                      : [];
+        welcomeDestinations.forEach((destination) => {
+          const images = Array.isArray(destination.images)
+            ? destination.images.filter(Boolean)
+            : [];
 
-                  const id =
-                    String(
-                      (
-                        destination as any
-                      )?.id ?? "",
-                    ).trim();
+          const id = String((destination as any)?.id ?? "").trim();
 
-                  if (
-                    id &&
-                    images.length >
-                      1
-                  ) {
-                    const currentIndex =
-                      previous[
-                        id
-                      ] || 0;
+          if (id && images.length > 1) {
+            next[id] = ((previous[id] || 0) + 1) % images.length;
+          }
+        });
 
-                    next[id] =
-                      (currentIndex +
-                        1) %
-                      images.length;
-                  }
-                },
-              );
+        return next;
+      });
+    }, 5500);
 
-              return next;
-            },
-          );
-        },
-        5500,
-      );
+    return () => window.clearInterval(interval);
+  }, [welcomeDestinations]);
 
-    return () => {
-      window.clearInterval(
-        interval,
-      );
-    };
-  }, [
-    welcomeDestinations,
-  ]);
+  useEffect(() => {
+    if (welcomeRestaurants.length === 0) return;
+
+    const interval = window.setInterval(() => {
+      setRestaurantImageIndexes((previous) => {
+        const next = { ...previous };
+
+        welcomeRestaurants.forEach((restaurant) => {
+          const images = restaurant.images || [];
+
+          if (restaurant.id && images.length > 1) {
+            next[restaurant.id] =
+              ((previous[restaurant.id] || 0) + 1) % images.length;
+          }
+        });
+
+        return next;
+      });
+    }, 5500);
+
+    return () => window.clearInterval(interval);
+  }, [welcomeRestaurants]);
 
   /* =========================================================
-     FEATURED VIDEO ACTIVE INDEX
+     FEATURED VIDEO INDEX
   ========================================================= */
 
   useEffect(() => {
-    if (
-      featuredVideos.length ===
-      0
-    ) {
+    if (featuredVideos.length === 0) {
       setActiveVideo(0);
       return;
     }
 
-    if (
-      activeVideo >=
-      featuredVideos.length
-    ) {
+    if (activeVideo >= featuredVideos.length) {
       setActiveVideo(0);
     }
-  }, [
-    featuredVideos.length,
-    activeVideo,
-  ]);
-
-  /* =========================================================
-     STOP PREVIOUS VIDEO WHEN CAROUSEL CHANGES
-  ========================================================= */
+  }, [featuredVideos.length, activeVideo]);
 
   useEffect(() => {
-    Object.values(videoRefs.current).forEach(
-      (videoElement) => {
-        if (videoElement) {
-          videoElement.pause();
-        }
-      },
-    );
+    Object.values(videoRefs.current).forEach((videoElement) => {
+      if (videoElement) videoElement.pause();
+    });
   }, [activeVideo]);
 
   /* =========================================================
-     CURRENT HERO
+     DERIVED VALUES
   ========================================================= */
 
-  const currentHero =
-    heroSlides[activeSlide];
+  const currentHero = heroSlides[activeSlide];
 
-  /* =========================================================
-     WEATHER DISPLAY
-  ========================================================= */
+  const weatherDescription = getWeatherDescription(weather.weatherCode);
 
-  const weatherDescription =
-    getWeatherDescription(
-      weather.weatherCode,
-    );
-
-  const weatherText =
-    weather.loading
-      ? "Loading weather..."
-      : weather.error
-        ? "Weather unavailable"
-        : weather.temperature !==
-            null
-          ? `${weather.temperature.toFixed(
-              1,
-            )}°C`
-          : weatherDescription;
+  const weatherText = weather.loading
+    ? "Loading weather..."
+    : weather.error
+      ? "Weather unavailable"
+      : weather.temperature !== null
+        ? `${weather.temperature.toFixed(1)}°C`
+        : weatherDescription;
 
   /* =========================================================
      RENDER
@@ -2061,43 +1409,24 @@ const displayUser = isAdminLogout ? null : user;
   return (
     <div className="page-enter welcome-page">
       <Container className="welcome-container py-4 py-md-5">
-
         {/* =====================================================
-            SWIPEABLE WELCOME HERO
+            HERO
         ===================================================== */}
 
         <section className="welcome-hero-section mb-5">
           <div
             className="welcome-hero-slider"
-            onTouchStart={
-              handleTouchStart
-            }
-            onTouchMove={
-              handleTouchMove
-            }
-            onTouchEnd={
-              handleTouchEnd
-            }
-            onMouseDown={
-              handleMouseDown
-            }
-            onMouseUp={
-              handleMouseUp
-            }
-            onMouseLeave={
-              handleMouseLeave
-            }
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onMouseDown={handleMouseDown}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
           >
             <img
-              key={
-                currentHero.id
-              }
-              src={
-                currentHero.image
-              }
-              alt={
-                currentHero.alt
-              }
+              key={currentHero.id}
+              src={currentHero.image}
+              alt={currentHero.alt}
               className="welcome-hero-image"
               draggable={false}
             />
@@ -2111,54 +1440,23 @@ const displayUser = isAdminLogout ? null : user;
 
               <div className="welcome-hero-detail">
                 <span className="welcome-hero-detail-icon">
-                  <MapPin
-                    size={23}
-                    strokeWidth={
-                      2.1
-                    }
-                    aria-hidden="true"
-                  />
+                  <MapPin size={23} strokeWidth={2.1} aria-hidden="true" />
                 </span>
-
-                <span>
-                  Calbayog City, Philippines
-                </span>
+                <span>Calbayog City, Philippines</span>
               </div>
 
               <div className="welcome-hero-detail">
                 <span className="welcome-hero-detail-icon">
-                  <CalendarDays
-                    size={23}
-                    strokeWidth={
-                      2.1
-                    }
-                    aria-hidden="true"
-                  />
+                  <CalendarDays size={23} strokeWidth={2.1} aria-hidden="true" />
                 </span>
-
-                <span>
-                  {currentDate ||
-                    "Loading date..."}
-                </span>
+                <span>{currentDate || "Loading date..."}</span>
               </div>
 
-              <div
-                className="welcome-hero-detail"
-                aria-live="polite"
-              >
+              <div className="welcome-hero-detail" aria-live="polite">
                 <span className="welcome-hero-detail-icon">
-                  <CloudSun
-                    size={25}
-                    strokeWidth={
-                      2.1
-                    }
-                    aria-hidden="true"
-                  />
+                  <CloudSun size={25} strokeWidth={2.1} aria-hidden="true" />
                 </span>
-
-                <span>
-                  {weatherText}
-                </span>
+                <span>{weatherText}</span>
               </div>
             </div>
 
@@ -2187,41 +1485,21 @@ const displayUser = isAdminLogout ? null : user;
             </button>
 
             <div className="welcome-hero-dots">
-              {heroSlides.map(
-                (
-                  slide,
-                  index,
-                ) => (
-                  <button
-                    type="button"
-                    key={
-                      slide.id
-                    }
-                    className={`welcome-hero-dot ${
-                      activeSlide ===
-                      index
-                        ? "active"
-                        : ""
-                    }`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-
-                      setActiveSlide(
-                        index,
-                      );
-                    }}
-                    aria-label={`Show hero image ${
-                      index + 1
-                    }`}
-                    aria-current={
-                      activeSlide ===
-                      index
-                        ? "true"
-                        : undefined
-                    }
-                  />
-                ),
-              )}
+              {heroSlides.map((slide, index) => (
+                <button
+                  type="button"
+                  key={slide.id}
+                  className={`welcome-hero-dot ${
+                    activeSlide === index ? "active" : ""
+                  }`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveSlide(index);
+                  }}
+                  aria-label={`Show hero image ${index + 1}`}
+                  aria-current={activeSlide === index ? "true" : undefined}
+                />
+              ))}
             </div>
           </div>
         </section>
@@ -2233,85 +1511,35 @@ const displayUser = isAdminLogout ? null : user;
         <section className="welcome-explore-section mb-5">
           <div className="welcome-explore-top">
             <div className="welcome-section-heading">
-            <div className="welcome-intro">
-              <div className="welcome-intro-eyebrow">
-                WELCOME TO CALBAYOG
+              <div className="welcome-intro">
+                <div className="welcome-intro-eyebrow">WELCOME TO CALBAYOG</div>
+
+                <p className="welcome-intro-text">
+                  Explore breathtaking waterfalls, peaceful coastlines, rich
+                  heritage, and local experiences waiting to be discovered.
+                </p>
               </div>
 
-              <p className="welcome-intro-text">
-                Explore breathtaking
-                waterfalls, peaceful
-                coastlines, rich heritage,
-                and local experiences
-                waiting to be discovered.
-              </p>
-            </div>
+              <Bunting className="welcome-bunting" count={20} />
 
-            <div
-              className="welcome-bunting"
-              aria-hidden="true"
-            >
-              <span className="bunting-flag bunting-red" />
-              <span className="bunting-flag bunting-orange" />
-              <span className="bunting-flag bunting-yellow" />
-              <span className="bunting-flag bunting-teal" />
+              <Bunting
+                className="welcome-mobile-bunting welcome-explore-mobile-bunting"
+                count={12}
+              />
 
-              <span className="bunting-flag bunting-red" />
-              <span className="bunting-flag bunting-orange" />
-              <span className="bunting-flag bunting-yellow" />
-              <span className="bunting-flag bunting-teal" />
-
-              <span className="bunting-flag bunting-red" />
-              <span className="bunting-flag bunting-orange" />
-              <span className="bunting-flag bunting-yellow" />
-              <span className="bunting-flag bunting-teal" />
-
-              <span className="bunting-flag bunting-red" />
-              <span className="bunting-flag bunting-orange" />
-              <span className="bunting-flag bunting-yellow" />
-              <span className="bunting-flag bunting-teal" />
-
-              <span className="bunting-flag bunting-red" />
-              <span className="bunting-flag bunting-orange" />
-              <span className="bunting-flag bunting-yellow" />
-              <span className="bunting-flag bunting-teal" />
-            </div>
-
-            <div
-              className="welcome-mobile-bunting welcome-explore-mobile-bunting"
-              aria-hidden="true"
-            >
-              <span className="bunting-flag bunting-red" />
-              <span className="bunting-flag bunting-orange" />
-              <span className="bunting-flag bunting-yellow" />
-              <span className="bunting-flag bunting-teal" />
-              <span className="bunting-flag bunting-red" />
-              <span className="bunting-flag bunting-orange" />
-              <span className="bunting-flag bunting-yellow" />
-              <span className="bunting-flag bunting-teal" />
-              <span className="bunting-flag bunting-red" />
-              <span className="bunting-flag bunting-orange" />
-              <span className="bunting-flag bunting-yellow" />
-              <span className="bunting-flag bunting-teal" />
-            </div>
-
-            <div className="section-header welcome-main-heading">
-              <div>
-                <h2 className="section-title welcome-display-title barabara-display">
-                  EXPLORE CALBAYOG
-                </h2>
+              <div className="section-header welcome-main-heading">
+                <div>
+                  <h2 className="section-title welcome-display-title barabara-display">
+                    EXPLORE CALBAYOG
+                  </h2>
+                </div>
               </div>
-            </div>
 
-            <div className="welcome-section-eyebrow welcome-explore-eyebrow">
-              <span className="welcome-heading-line" />
-
-              <span>
-                Find a place worth slowing down for
-              </span>
-
-              <span className="welcome-heading-line" />
-            </div>
+              <div className="welcome-section-eyebrow welcome-explore-eyebrow">
+                <span className="welcome-heading-line" />
+                <span>Find a place worth slowing down for</span>
+                <span className="welcome-heading-line" />
+              </div>
             </div>
 
             <div className="welcome-explore-map-column">
@@ -2331,19 +1559,11 @@ const displayUser = isAdminLogout ? null : user;
 
           <Row className="g-3 g-md-4 welcome-quick-grid">
             {quickCards
-  .filter(
-    (card) =>
-      card.to !== "/memories" || isUserAuthenticated,
-  )
-  .map(
-              (card) => (
-                <Col
-                  xs={4}
-                  sm={4}
-                  md={3}
-                  lg={3}
-                  key={card.to}
-                >
+              .filter(
+                (card) => card.to !== "/memories" || isUserAuthenticated,
+              )
+              .map((card) => (
+                <Col xs={4} sm={4} md={3} lg={3} key={card.to}>
                   <Link
                     to={card.to}
                     className="welcome-quick-link"
@@ -2355,22 +1575,14 @@ const displayUser = isAdminLogout ? null : user;
                       <Card.Body className="quick-card-body">
                         <div
                           className="quick-card-icon-wrap"
-                          style={{
-                            background:
-                              card.bg,
-                          }}
+                          style={{ background: card.bg }}
                         >
-                          <span className="quick-card-icon">
-                            {card.icon}
-                          </span>
+                          <span className="quick-card-icon">{card.icon}</span>
                         </div>
 
                         <div
                           className="quick-card-label"
-                          style={{
-                            color:
-                              card.color,
-                          }}
+                          style={{ color: card.color }}
                         >
                           {card.label}
                         </div>
@@ -2378,8 +1590,7 @@ const displayUser = isAdminLogout ? null : user;
                     </Card>
                   </Link>
                 </Col>
-              ),
-            )}
+              ))}
           </Row>
         </section>
 
@@ -2387,431 +1598,315 @@ const displayUser = isAdminLogout ? null : user;
             ATTRACTIONS
         ===================================================== */}
 
-        {!loadingDestinations &&
-          welcomeDestinations.length >
-            0 && (
-            <section className="welcome-discover-section mb-5">
-              <div className="welcome-attractions-heading">
-                <div className="welcome-mobile-bunting" aria-hidden="true">
-                  <span className="bunting-flag bunting-red" />
-                  <span className="bunting-flag bunting-orange" />
-                  <span className="bunting-flag bunting-yellow" />
-                  <span className="bunting-flag bunting-teal" />
-                  <span className="bunting-flag bunting-red" />
-                  <span className="bunting-flag bunting-orange" />
-                  <span className="bunting-flag bunting-yellow" />
-                  <span className="bunting-flag bunting-teal" />
-                  <span className="bunting-flag bunting-red" />
-                  <span className="bunting-flag bunting-orange" />
-                  <span className="bunting-flag bunting-yellow" />
-                  <span className="bunting-flag bunting-teal" />
-                </div>
+        {!loadingDestinations && welcomeDestinations.length > 0 && (
+          <section className="welcome-discover-section mb-5">
+            <SectionHeading
+              headingClass="welcome-attractions-heading"
+              titleClass="welcome-attractions-title"
+              eyebrowClass="welcome-attractions-eyebrow"
+              title="ATTRACTIONS"
+              subtitle="Places worth discovering in Calbayog"
+            />
 
-                <h2 className="welcome-attractions-title barabara-display">
-                  ATTRACTIONS
-                </h2>
+            <div className="welcome-attractions-toolbar">
+              <Link to="/attractions" className="welcome-view-more-button">
+                View more attractions
+                <ChevronRight size={17} strokeWidth={2} aria-hidden="true" />
+              </Link>
+            </div>
 
-                <div className="welcome-section-eyebrow welcome-attractions-eyebrow">
-                  <span className="welcome-heading-line" />
+            <div className="welcome-attractions-carousel">
+              <Swiper
+                modules={[A11y]}
+                slidesPerView={1.12}
+                spaceBetween={16}
+                centeredSlides={false}
+                grabCursor
+                watchOverflow
+                resistanceRatio={0.85}
+                touchRatio={1}
+                breakpoints={{
+                  576: { slidesPerView: 2.1, spaceBetween: 18 },
+                  768: { slidesPerView: 2.35, spaceBetween: 20 },
+                  992: { slidesPerView: 3.1, spaceBetween: 22 },
+                  1200: { slidesPerView: 4, spaceBetween: 24 },
+                }}
+                className="welcome-attractions-swiper"
+              >
+                {welcomeDestinations.map((attraction) => {
+                  const attractionId = String(
+                    (attraction as any)?.id ?? "",
+                  ).trim();
 
-                  <span>
-                    Places worth discovering in Calbayog
-                  </span>
-
-                  <span className="welcome-heading-line" />
-                </div>
-              </div>
-
-              <div className="welcome-attractions-toolbar">
-                <Link
-                  to="/attractions"
-                  className="welcome-view-more-button"
-                >
-                  View more attractions
-                  <ChevronRight
-                    size={17}
-                    strokeWidth={2}
-                    aria-hidden="true"
-                  />
-                </Link>
-              </div>
-
-              <div className="welcome-attractions-carousel">
-                <Swiper
-                  modules={[A11y]}
-                  slidesPerView={1.12}
-                  spaceBetween={16}
-                  centeredSlides={false}
-                  grabCursor
-                  watchOverflow
-                  resistanceRatio={0.85}
-                  touchRatio={1}
-                  breakpoints={{
-                    576: {
-                      slidesPerView: 2.1,
-                      spaceBetween: 18,
-                    },
-                    768: {
-                      slidesPerView: 2.35,
-                      spaceBetween: 20,
-                    },
-                    992: {
-                      slidesPerView: 3.1,
-                      spaceBetween: 22,
-                    },
-                    1200: {
-                      slidesPerView: 4,
-                      spaceBetween: 24,
-                    },
-                  }}
-                  className="welcome-attractions-swiper"
-                >
-                  {welcomeDestinations.map(
-                    (attraction) => {
-                      const attractionId =
-                        String(
-                          (attraction as any)
-                            ?.id ?? "",
-                        ).trim();
-
-                      return (
-                        <SwiperSlide
-                          key={
-                            attractionId ||
-                            attraction.name
+                  return (
+                    <SwiperSlide
+                      key={attractionId || attraction.name}
+                      className="welcome-attraction-slide"
+                    >
+                      <div className="welcome-attraction-card-shell">
+                        <AttractionCard
+                          attraction={attraction}
+                          imageIndex={
+                            attractionId ? imageIndexes[attractionId] || 0 : 0
                           }
-                          className="welcome-attraction-slide"
-                        >
-                          <div className="welcome-attraction-card-shell">
-                            <AttractionCard
-                              attraction={
-                                attraction
-                              }
-                              imageIndex={
-                                attractionId
-                                  ? imageIndexes[
-                                      attractionId
-                                    ] || 0
-                                  : 0
-                              }
-                              showFavoriteCount={
-                                true
-                              }
-                              showFeatured={
-                                true
-                              }
-                            />
-                          </div>
-                        </SwiperSlide>
-                      );
-                    },
-                  )}
-                </Swiper>
-              </div>
-            </section>
-          )}
+                          showFavoriteCount={true}
+                          showFeatured={true}
+                        />
+                      </div>
+                    </SwiperSlide>
+                  );
+                })}
+              </Swiper>
+            </div>
+          </section>
+        )}
 
         {/* =====================================================
             ACCOMMODATIONS
         ===================================================== */}
 
-        {!loadingAccommodations &&
-          welcomeAccommodations.length >
-            0 && (
-            <section className="welcome-accommodations-section mb-5">
-              <div className="welcome-accommodations-heading">
-                <div className="welcome-mobile-bunting" aria-hidden="true">
-                  <span className="bunting-flag bunting-red" />
-                  <span className="bunting-flag bunting-orange" />
-                  <span className="bunting-flag bunting-yellow" />
-                  <span className="bunting-flag bunting-teal" />
-                  <span className="bunting-flag bunting-red" />
-                  <span className="bunting-flag bunting-orange" />
-                  <span className="bunting-flag bunting-yellow" />
-                  <span className="bunting-flag bunting-teal" />
-                  <span className="bunting-flag bunting-red" />
-                  <span className="bunting-flag bunting-orange" />
-                  <span className="bunting-flag bunting-yellow" />
-                  <span className="bunting-flag bunting-teal" />
-                </div>
+        {!loadingAccommodations && welcomeAccommodations.length > 0 && (
+          <section className="welcome-accommodations-section mb-5">
+            <SectionHeading
+              headingClass="welcome-accommodations-heading"
+              titleClass="welcome-accommodations-title"
+              eyebrowClass="welcome-accommodations-eyebrow"
+              title="ACCOMMODATIONS"
+              subtitle="Places to stay in Calbayog"
+            />
 
-                <h2 className="welcome-accommodations-title barabara-display">
-                  ACCOMMODATIONS
-                </h2>
+            <div className="welcome-accommodations-toolbar">
+              <Link to="/accommodations" className="welcome-view-more-link">
+                View more accommodations
+                <ChevronRight size={17} strokeWidth={2} aria-hidden="true" />
+              </Link>
+            </div>
 
-                <div className="welcome-section-eyebrow welcome-accommodations-eyebrow">
-                  <span className="welcome-heading-line" />
+            <Row className="g-3 g-md-4">
+              {welcomeAccommodations.map((accommodation) => {
+                const accommodationData = accommodation as any;
 
-                  <span>
-                    Places to stay in Calbayog
-                  </span>
+                const images: string[] = toImageList(accommodationData.images);
 
-                  <span className="welcome-heading-line" />
-                </div>
-              </div>
+                const priceMin = accommodationData.price_min;
+                const priceMax = accommodationData.price_max;
 
-              <div className="welcome-accommodations-toolbar">
-                <Link
-                  to="/accommodations"
-                  className="welcome-view-more-link"
-                >
-                  View more accommodations
-                  <ChevronRight
-                    size={17}
-                    strokeWidth={2}
-                    aria-hidden="true"
-                  />
-                </Link>
-              </div>
+                const hasPriceMin =
+                  priceMin !== null && priceMin !== undefined && priceMin !== "";
+                const hasPriceMax =
+                  priceMax !== null && priceMax !== undefined && priceMax !== "";
 
-              <Row className="g-3 g-md-4">
-                {welcomeAccommodations.map(
-                  (
-                    accommodation,
-                  ) => {
-                    const accommodationData =
-                      accommodation as any;
+                let priceText = "";
 
-                    const images: string[] =
-                      Array.isArray(
-                        accommodationData.images,
-                      )
-                        ? accommodationData.images
-                        : typeof accommodationData.images ===
-                              "string" &&
-                            accommodationData.images.trim()
-                          ? accommodationData.images
-                              .split(",")
-                              .map(
-                                (
-                                  image: string,
-                                ) =>
-                                  image.trim(),
-                              )
-                              .filter(
-                                Boolean,
-                              )
-                          : [];
+                if (hasPriceMin && hasPriceMax) {
+                  priceText = `₱${Number(priceMin).toLocaleString()} – ₱${Number(
+                    priceMax,
+                  ).toLocaleString()}`;
+                } else if (hasPriceMin) {
+                  priceText = `From ₱${Number(priceMin).toLocaleString()}`;
+                } else if (hasPriceMax) {
+                  priceText = `Up to ₱${Number(priceMax).toLocaleString()}`;
+                }
 
-                    const priceMin =
-                      accommodationData.price_min;
+                const cardItem: AccommodationCardItem = {
+                  id: String(accommodationData.id ?? ""),
+                  name: accommodationData.name,
+                  owner: accommodationData.owner ?? null,
+                  manager: accommodationData.manager ?? null,
+                  address:
+                    accommodationData.address ||
+                    accommodationData.location_address ||
+                    null,
+                  contact_number: accommodationData.contact_number ?? null,
+                  website: accommodationData.website ?? null,
+                  images,
+                  description: accommodationData.description ?? null,
+                  price_range: accommodationData.price_range || priceText || null,
+                  featured: Boolean(accommodationData.featured),
+                };
 
-                    const priceMax =
-                      accommodationData.price_max;
+                return (
+                  <Col xs={12} sm={6} lg={3} key={accommodation.id}>
+                    <AccommodationCard accommodation={cardItem} />
+                  </Col>
+                );
+              })}
+            </Row>
+          </section>
+        )}
 
-                    const hasPriceMin =
-                      priceMin !== null &&
-                      priceMin !==
-                        undefined &&
-                      priceMin !== "";
+        {/* =====================================================
+            RESTAURANTS (swipe left / right)
+        ===================================================== */}
 
-                    const hasPriceMax =
-                      priceMax !== null &&
-                      priceMax !==
-                        undefined &&
-                      priceMax !== "";
+        {!loadingRestaurants && welcomeRestaurants.length > 0 && (
+          <section className="welcome-discover-section welcome-restaurants-section mb-5">
+            <SectionHeading
+              headingClass="welcome-attractions-heading"
+              titleClass="welcome-attractions-title"
+              eyebrowClass="welcome-attractions-eyebrow"
+              title="RESTAURANTS"
+              subtitle="Taste the flavors of Calbayog"
+            />
 
-                    let priceText =
-                      "";
+            <div className="welcome-attractions-toolbar">
+              <Link to="/restaurants" className="welcome-view-more-button">
+                View more restaurants
+                <ChevronRight size={17} strokeWidth={2} aria-hidden="true" />
+              </Link>
+            </div>
 
-                    if (
-                      hasPriceMin &&
-                      hasPriceMax
-                    ) {
-                      priceText = `₱${Number(
-                        priceMin,
-                      ).toLocaleString()} – ₱${Number(
-                        priceMax,
-                      ).toLocaleString()}`;
-                    } else if (
-                      hasPriceMin
-                    ) {
-                      priceText = `From ₱${Number(
-                        priceMin,
-                      ).toLocaleString()}`;
-                    } else if (
-                      hasPriceMax
-                    ) {
-                      priceText = `Up to ₱${Number(
-                        priceMax,
-                      ).toLocaleString()}`;
-                    }
+            <div className="welcome-attractions-carousel">
+              <Swiper
+                modules={[A11y]}
+                slidesPerView={1.12}
+                spaceBetween={16}
+                centeredSlides={false}
+                grabCursor
+                watchOverflow
+                resistanceRatio={0.85}
+                touchRatio={1}
+                breakpoints={{
+                  576: { slidesPerView: 2.1, spaceBetween: 18 },
+                  768: { slidesPerView: 2.35, spaceBetween: 20 },
+                  992: { slidesPerView: 3.1, spaceBetween: 22 },
+                  1200: { slidesPerView: 4, spaceBetween: 24 },
+                }}
+                className="welcome-attractions-swiper"
+              >
+                {welcomeRestaurants.map((restaurant) => (
+                  <SwiperSlide
+                    key={restaurant.id}
+                    className="welcome-attraction-slide"
+                  >
+                    <div className="welcome-attraction-card-shell">
+                      <RestaurantCard
+                        restaurant={restaurant}
+                        imageIndex={restaurantImageIndexes[restaurant.id] || 0}
+                        showFeatured={true}
+                      />
+                    </div>
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+            </div>
+          </section>
+        )}
 
-                    const cardItem: AccommodationCardItem =
-                      {
-                        id: String(
-                          accommodationData.id ??
-                            "",
-                        ),
-                        name:
-                          accommodationData.name,
-                        owner:
-                          accommodationData.owner ??
-                          null,
-                        manager:
-                          accommodationData.manager ??
-                          null,
-                        address:
-                          accommodationData.address ||
-                          accommodationData.location_address ||
-                          null,
-                        contact_number:
-                          accommodationData.contact_number ??
-                          null,
-                        website:
-                          accommodationData.website ??
-                          null,
-                        images,
-                        description:
-                          accommodationData.description ??
-                          null,
-                        price_range:
-                          accommodationData.price_range ||
-                          priceText ||
-                          null,
-                        featured: Boolean(
-                          accommodationData.featured,
-                        ),
-                      };
+        {/* =====================================================
+            EVENTS (swipe left / right)
+        ===================================================== */}
 
-                    return (
-                      <Col
-                        xs={12}
-                        sm={6}
-                        lg={3}
-                        key={
-                          accommodation.id
-                        }
-                      >
-                        <AccommodationCard
-                          accommodation={
-                            cardItem
-                          }
-                        />
-                      </Col>
-                    );
-                  },
-                )}
-              </Row>
-            </section>
-          )}
+        {!loadingEvents && welcomeEvents.length > 0 && (
+          <section className="welcome-discover-section welcome-events-section mb-5">
+            <SectionHeading
+              headingClass="welcome-attractions-heading"
+              titleClass="welcome-attractions-title"
+              eyebrowClass="welcome-attractions-eyebrow"
+              title="EVENTS"
+              subtitle="Celebrations and happenings in Calbayog"
+            />
+
+            <div className="welcome-attractions-toolbar">
+              <Link to="/events" className="welcome-view-more-button">
+                View more events
+                <ChevronRight size={17} strokeWidth={2} aria-hidden="true" />
+              </Link>
+            </div>
+
+            <div className="welcome-attractions-carousel">
+              <Swiper
+                modules={[A11y]}
+                slidesPerView={1.5}
+                spaceBetween={12}
+                centeredSlides={false}
+                grabCursor
+                watchOverflow
+                resistanceRatio={0.85}
+                touchRatio={1}
+                breakpoints={{
+                  400: { slidesPerView: 1.8, spaceBetween: 14 },
+                  576: { slidesPerView: 2.4, spaceBetween: 16 },
+                  768: { slidesPerView: 3.2, spaceBetween: 18 },
+                  992: { slidesPerView: 3.8, spaceBetween: 22 },
+                  1200: { slidesPerView: 4.4, spaceBetween: 24 },
+                }}
+                className="welcome-attractions-swiper welcome-events-swiper"
+              >
+                {welcomeEvents.map((event) => (
+                  <SwiperSlide
+                    key={event.id}
+                    className="welcome-attraction-slide welcome-event-slide"
+                  >
+                    <div className="welcome-attraction-card-shell">
+                      <EventCard
+                        event={event}
+                        showFeatured={true}
+                        onClick={handleEventClick}
+                      />
+                    </div>
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+            </div>
+          </section>
+        )}
 
         {/* =====================================================
             FEATURED VIDEOS
-            UI INITIATIVE / SWIPER 3D CAROUSEL
         ===================================================== */}
 
         <section className="welcome-videos-section mb-5">
-          <div className="welcome-videos-heading">
-            <div className="welcome-mobile-bunting" aria-hidden="true">
-                  <span className="bunting-flag bunting-red" />
-                  <span className="bunting-flag bunting-orange" />
-                  <span className="bunting-flag bunting-yellow" />
-                  <span className="bunting-flag bunting-teal" />
-                  <span className="bunting-flag bunting-red" />
-                  <span className="bunting-flag bunting-orange" />
-                  <span className="bunting-flag bunting-yellow" />
-                  <span className="bunting-flag bunting-teal" />
-                  <span className="bunting-flag bunting-red" />
-                  <span className="bunting-flag bunting-orange" />
-                  <span className="bunting-flag bunting-yellow" />
-                  <span className="bunting-flag bunting-teal" />
-                </div>
-
-                <h2 className="welcome-videos-title barabara-display">
-              FEATURED VIDEOS
-            </h2>
-
-            <div className="welcome-section-eyebrow welcome-videos-eyebrow">
-              <span className="welcome-heading-line" />
-
-              <span>
-                Experience Calbayog through video
-              </span>
-
-              <span className="welcome-heading-line" />
-            </div>
-          </div>
+          <SectionHeading
+            headingClass="welcome-videos-heading"
+            titleClass="welcome-videos-title"
+            eyebrowClass="welcome-videos-eyebrow"
+            title="FEATURED VIDEOS"
+            subtitle="Experience Calbayog through video"
+          />
 
           {loadingFeaturedVideos ? (
-            <div
-              className="welcome-video-loading"
-              aria-live="polite"
-            >
+            <div className="welcome-video-loading" aria-live="polite">
               <div className="welcome-video-loading-spinner" />
-
-              <span>
-                Loading featured videos...
-              </span>
+              <span>Loading featured videos...</span>
             </div>
-          ) : featuredVideos.length ===
-            0 ? (
-            <div
-              className="welcome-video-empty"
-              aria-live="polite"
-            >
+          ) : featuredVideos.length === 0 ? (
+            <div className="welcome-video-empty" aria-live="polite">
               <div className="welcome-video-empty-icon">
-                <Play
-                  size={25}
-                  strokeWidth={1.8}
-                />
+                <Play size={25} strokeWidth={1.8} />
               </div>
 
-              <h3>
-                No featured videos yet
-              </h3>
+              <h3>No featured videos yet</h3>
 
               <p>
-                Featured videos uploaded from the
-                admin dashboard will appear here.
+                Featured videos uploaded from the admin dashboard will appear
+                here.
               </p>
 
               {featuredVideosError && (
-                <small>
-                  Unable to load featured videos
-                  right now.
-                </small>
+                <small>Unable to load featured videos right now.</small>
               )}
             </div>
           ) : (
             <div className="welcome-video-carousel">
               <Swiper
-                modules={[
-                  EffectCoverflow,
-                  Navigation,
-                  Pagination,
-                  A11y,
-                ]}
+                modules={[EffectCoverflow, Navigation, Pagination, A11y]}
                 effect="coverflow"
                 centeredSlides
                 grabCursor
-                loop={
-                  featuredVideos.length > 2
-                }
+                loop={featuredVideos.length > 2}
                 slidesPerView="auto"
                 speed={700}
                 watchSlidesProgress
                 observer
                 observeParents
-                onSwiper={(
-                  swiper,
-                ) => {
-                  setVideoSwiper(
-                    swiper,
-                  );
-
-                  setActiveVideo(
-                    swiper.realIndex,
-                  );
+                onSwiper={(swiper) => {
+                  setVideoSwiper(swiper);
+                  setActiveVideo(swiper.realIndex);
                 }}
-                onSlideChange={(
-                  swiper,
-                ) => {
+                onSlideChange={(swiper) => {
                   pauseAllFeaturedVideos();
-
-                  setActiveVideo(
-                    swiper.realIndex,
-                  );
+                  setActiveVideo(swiper.realIndex);
                 }}
                 coverflowEffect={{
                   rotate: 0,
@@ -2822,113 +1917,73 @@ const displayUser = isAdminLogout ? null : user;
                   slideShadows: false,
                 }}
                 navigation={{
-                  prevEl:
-                    ".welcome-video-prev",
-                  nextEl:
-                    ".welcome-video-next",
+                  prevEl: ".welcome-video-prev",
+                  nextEl: ".welcome-video-next",
                 }}
                 pagination={{
-                  el:
-                    ".welcome-video-pagination",
+                  el: ".welcome-video-pagination",
                   clickable: true,
                   dynamicBullets: true,
                 }}
                 className="welcome-featured-swiper"
               >
-                {featuredVideos.map(
-                  (
-                    video,
-                    index,
-                  ) => (
-                    <SwiperSlide
-                      key={
-                        video.id
-                      }
-                      className="welcome-featured-swiper-slide"
-                    >
-                      <div className="welcome-video-cinematic-card">
-                        <div className="welcome-video-media">
-                          <video
-                            ref={(element) => {
-                              videoRefs.current[String(video.id)] =
-                                element;
-                            }}
-                            className="welcome-video-player"
-                            controls={
-                              activeVideo ===
-                              index
+                {featuredVideos.map((video, index) => (
+                  <SwiperSlide
+                    key={video.id}
+                    className="welcome-featured-swiper-slide"
+                  >
+                    <div className="welcome-video-cinematic-card">
+                      <div className="welcome-video-media">
+                        <video
+                          ref={(element) => {
+                            videoRefs.current[String(video.id)] = element;
+                          }}
+                          className="welcome-video-player"
+                          controls={activeVideo === index}
+                          playsInline
+                          preload={activeVideo === index ? "metadata" : "none"}
+                          onPlay={(event) => {
+                            Object.entries(videoRefs.current).forEach(
+                              ([videoId, videoElement]) => {
+                                if (
+                                  videoElement &&
+                                  videoElement !== event.currentTarget &&
+                                  videoId !== String(video.id)
+                                ) {
+                                  videoElement.pause();
+                                }
+                              },
+                            );
+                          }}
+                          onEnded={() => {
+                            if (videoSwiper && featuredVideos.length > 1) {
+                              videoSwiper.slideNext();
                             }
-                            playsInline
-                            preload={
-                              activeVideo ===
-                              index
-                                ? "metadata"
-                                : "none"
-                            }
-                            onPlay={(event) => {
-                              Object.entries(videoRefs.current).forEach(
-                                ([videoId, videoElement]) => {
-                                  if (
-                                    videoElement &&
-                                    videoElement !== event.currentTarget &&
-                                    videoId !== String(video.id)
-                                  ) {
-                                    videoElement.pause();
-                                  }
-                                },
-                              );
-                            }}
-                            onEnded={() => {
-                              if (
-                                videoSwiper &&
-                                featuredVideos.length >
-                                  1
-                              ) {
-                                videoSwiper.slideNext();
-                              }
-                            }}
-                          >
-                            <source
-                              src={
-                                video.video_url
-                              }
-                              type="video/mp4"
-                            />
+                          }}
+                        >
+                          <source src={video.video_url} type="video/mp4" />
+                          Your browser does not support the video element.
+                        </video>
 
-                            Your browser does not
-                            support the video element.
-                          </video>
+                        <div className="welcome-video-gradient" />
 
-                          <div className="welcome-video-gradient" />
-
-                          <div className="welcome-video-play-badge">
-                            <Play
-                              size={20}
-                              fill="currentColor"
-                              strokeWidth={
-                                2
-                              }
-                            />
-                          </div>
+                        <div className="welcome-video-play-badge">
+                          <Play size={20} fill="currentColor" strokeWidth={2} />
                         </div>
                       </div>
-                    </SwiperSlide>
-                  ),
-                )}
+                    </div>
+                  </SwiperSlide>
+                ))}
               </Swiper>
 
-              {featuredVideos.length >
-                1 && (
+              {featuredVideos.length > 1 && (
                 <>
                   <button
                     type="button"
                     className="welcome-video-arrow welcome-video-prev"
                     aria-label="Previous featured video"
                   >
-                    <ChevronLeft
-                      size={25}
-                      strokeWidth={2}
-                    />
+                    <ChevronLeft size={25} strokeWidth={2} />
                   </button>
 
                   <button
@@ -2936,10 +1991,7 @@ const displayUser = isAdminLogout ? null : user;
                     className="welcome-video-arrow welcome-video-next"
                     aria-label="Next featured video"
                   >
-                    <ChevronRight
-                      size={25}
-                      strokeWidth={2}
-                    />
+                    <ChevronRight size={25} strokeWidth={2} />
                   </button>
 
                   <div className="welcome-video-pagination" />
@@ -2955,63 +2007,36 @@ const displayUser = isAdminLogout ? null : user;
       ======================================================= */}
 
       <style>{`
-        @import url(
-          'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
-        );
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
         @font-face {
           font-family: "Barabara";
-          src: url("/fonts/BARABARA-final.otf")
-            format("opentype");
+          src: url("/fonts/BARABARA-final.otf") format("opentype");
           font-weight: 400;
           font-style: normal;
           font-display: swap;
         }
 
         .welcome-page,
-        .welcome-page * {
-          font-family:
-            "Inter",
-            sans-serif;
-        }
+        .welcome-page * { font-family: "Inter", sans-serif; }
 
-        .welcome-container {
-          width: 100%;
-          max-width: 1240px;
-        }
+        .welcome-container { width: 100%; max-width: 1240px; }
 
         .barabara-display {
-          font-family:
-            "Barabara",
-            "Arial Black",
-            Arial,
-            sans-serif !important;
+          font-family: "Barabara", "Arial Black", Arial, sans-serif !important;
           font-style: normal;
           font-weight: 400;
         }
 
-        .welcome-display-title {
-          color:
-            #2D3195 !important;
-          font-size:
-            1.70rem;
-        }
+        /* ---------- section spacing ---------- */
 
-        .welcome-explore-section {
-          margin-bottom: 96px !important;
-        }
+        .welcome-explore-section,
+        .welcome-discover-section,
+        .welcome-accommodations-section { margin-bottom: 96px !important; }
 
-        .welcome-discover-section {
-          margin-bottom: 96px !important;
-        }
+        .welcome-videos-section { margin-bottom: 70px !important; }
 
-        .welcome-accommodations-section {
-          margin-bottom: 96px !important;
-        }
-
-        .welcome-videos-section {
-          margin-bottom: 70px !important;
-        }
+        /* ---------- explore + map ---------- */
 
         .welcome-explore-top {
           width: 100%;
@@ -3022,20 +2047,9 @@ const displayUser = isAdminLogout ? null : user;
           margin-bottom: 2.6rem;
         }
 
-        .welcome-explore-top .welcome-section-heading {
-          margin-bottom: 0;
-          padding-top: 0;
-        }
-
-        .welcome-explore-top .welcome-intro {
-          max-width: 680px;
-          margin-bottom: 30px;
-        }
-
-        .welcome-explore-map-column {
-          width: 100%;
-          min-width: 0;
-        }
+        .welcome-explore-top .welcome-section-heading { margin-bottom: 0; padding-top: 0; }
+        .welcome-explore-top .welcome-intro { max-width: 680px; margin-bottom: 30px; }
+        .welcome-explore-map-column { width: 100%; min-width: 0; }
 
         .welcome-map-shell {
           position: relative;
@@ -3048,11 +2062,7 @@ const displayUser = isAdminLogout ? null : user;
           box-shadow: 0 18px 45px rgba(27, 35, 74, 0.12);
         }
 
-        .welcome-map {
-          width: 100%;
-          height: 100%;
-          z-index: 1;
-        }
+        .welcome-map { width: 100%; height: 100%; z-index: 1; }
 
         .welcome-map-loading {
           width: 100%;
@@ -3079,9 +2089,7 @@ const displayUser = isAdminLogout ? null : user;
           animation: welcome-map-spin 0.85s linear infinite;
         }
 
-        @keyframes welcome-map-spin {
-          to { transform: rotate(360deg); }
-        }
+        @keyframes welcome-map-spin { to { transform: rotate(360deg); } }
 
         .welcome-map-shell .leaflet-control-layers {
           border: 0;
@@ -3092,10 +2100,7 @@ const displayUser = isAdminLogout ? null : user;
           font-size: 0.72rem;
         }
 
-        .welcome-map-shell .leaflet-control-layers-toggle {
-          width: 38px;
-          height: 38px;
-        }
+        .welcome-map-shell .leaflet-control-layers-toggle { width: 38px; height: 38px; }
 
         .welcome-map-shell .leaflet-control-zoom {
           border: 0;
@@ -3113,9 +2118,7 @@ const displayUser = isAdminLogout ? null : user;
           background: rgba(255, 255, 255, 0.96);
         }
 
-        .welcome-map-shell .leaflet-control-zoom a:hover {
-          background: #fff;
-        }
+        .welcome-map-shell .leaflet-control-zoom a:hover { background: #fff; }
 
         .welcome-map-shell .leaflet-control-scale-line {
           border: 2px solid rgba(45, 49, 149, 0.72);
@@ -3144,9 +2147,7 @@ const displayUser = isAdminLogout ? null : user;
           cursor: pointer;
         }
 
-        .welcome-map-locate-control button:hover {
-          background: #fff;
-        }
+        .welcome-map-locate-control button:hover { background: #fff; }
 
         .welcome-map-attraction-marker,
         .welcome-map-accommodation-marker {
@@ -3154,7 +2155,8 @@ const displayUser = isAdminLogout ? null : user;
           border: 0 !important;
         }
 
-        .welcome-map-marker-shell {
+        .welcome-map-marker-shell,
+        .welcome-map-accommodation-pin {
           position: relative;
           width: 44px;
           height: 52px;
@@ -3176,7 +2178,8 @@ const displayUser = isAdminLogout ? null : user;
           box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
         }
 
-        .welcome-map-marker-icon {
+        .welcome-map-marker-icon,
+        .welcome-map-accommodation-icon {
           position: absolute;
           top: 7px;
           left: 10px;
@@ -3188,19 +2191,9 @@ const displayUser = isAdminLogout ? null : user;
           border-radius: 50%;
           background: #fff;
           z-index: 2;
-          font-size: 14px;
-          line-height: 1;
         }
 
-        .welcome-map-accommodation-pin {
-          position: relative;
-          width: 44px;
-          height: 52px;
-          display: flex;
-          align-items: flex-start;
-          justify-content: center;
-          filter: drop-shadow(0 3px 4px rgba(15, 23, 42, 0.30));
-        }
+        .welcome-map-marker-icon { font-size: 14px; line-height: 1; }
 
         .welcome-map-accommodation-pin::before {
           content: "";
@@ -3216,20 +2209,6 @@ const displayUser = isAdminLogout ? null : user;
           box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
         }
 
-        .welcome-map-accommodation-icon {
-          position: absolute;
-          top: 7px;
-          left: 10px;
-          width: 24px;
-          height: 24px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 50%;
-          background: #fff;
-          z-index: 2;
-        }
-
         .welcome-map-label {
           padding: 5px 8px !important;
           border: 0 !important;
@@ -3243,20 +2222,12 @@ const displayUser = isAdminLogout ? null : user;
           text-align: center;
         }
 
-        .welcome-map-label::before {
-          border-top-color: rgba(255, 255, 255, 0.96) !important;
-        }
+        .welcome-map-label::before { border-top-color: rgba(255, 255, 255, 0.96) !important; }
 
         .welcome-map-label-name,
-        .welcome-map-label-sub {
-          display: block;
-          white-space: nowrap;
-        }
+        .welcome-map-label-sub { display: block; white-space: nowrap; }
 
-        .welcome-map-label-name {
-          font-weight: 800;
-          color: #222;
-        }
+        .welcome-map-label-name { font-weight: 800; color: #222; }
 
         .welcome-map-label-sub {
           margin-top: 2px;
@@ -3265,14 +2236,9 @@ const displayUser = isAdminLogout ? null : user;
           font-weight: 600;
         }
 
-        .welcome-map-label.accommodation .welcome-map-label-name {
-          color: #2563EB;
-        }
+        .welcome-map-label.accommodation .welcome-map-label-name { color: #2563EB; }
 
-        .welcome-map-popup {
-          min-width: 170px;
-          font-family: Inter, sans-serif;
-        }
+        .welcome-map-popup { min-width: 170px; font-family: Inter, sans-serif; }
 
         .welcome-map-popup-badge {
           display: inline-flex;
@@ -3308,9 +2274,7 @@ const displayUser = isAdminLogout ? null : user;
           line-height: 1.45;
         }
 
-        .welcome-map-popup-address {
-          margin-top: 5px;
-        }
+        .welcome-map-popup-address { margin-top: 5px; }
 
         .welcome-map-legend {
           position: absolute;
@@ -3329,11 +2293,7 @@ const displayUser = isAdminLogout ? null : user;
           color: #4b4b4b;
         }
 
-        .welcome-map-legend span {
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-        }
+        .welcome-map-legend span { display: inline-flex; align-items: center; gap: 5px; }
 
         .welcome-map-legend-dot {
           width: 8px;
@@ -3342,280 +2302,168 @@ const displayUser = isAdminLogout ? null : user;
           border-radius: 50%;
         }
 
-        .welcome-map-legend-dot.attraction {
-          background: #16845B;
-        }
+        .welcome-map-legend-dot.attraction { background: #16845B; }
+        .welcome-map-legend-dot.accommodation { background: #2563EB; }
 
-        .welcome-map-legend-dot.accommodation {
-          background: #2563EB;
-        }
+        /* ---------- intro + headings ---------- */
 
         .welcome-intro {
-          width:
-            100%;
-          max-width:
-            680px;
-          margin:
-            0 auto 30px;
-          padding:
-            0 12px;
-          text-align:
-            center;
+          width: 100%;
+          max-width: 680px;
+          margin: 0 auto 30px;
+          padding: 0 12px;
+          text-align: center;
         }
 
         .welcome-intro-eyebrow {
-          margin:
-            0;
-          color:
-            #2D3195;
-          font-size:
-            0.62rem;
-          font-weight:
-            700;
-          letter-spacing:
-            0.18em;
-          line-height:
-            1.2;
-          text-transform:
-            uppercase;
+          margin: 0;
+          color: #2D3195;
+          font-size: 0.62rem;
+          font-weight: 700;
+          letter-spacing: 0.18em;
+          line-height: 1.2;
+          text-transform: uppercase;
         }
 
         .welcome-intro-text {
-          margin:
-            10px auto 0;
-          max-width:
-            630px;
-          color:
-            #666666;
-          font-size:
-            0.79rem;
-          font-weight:
-            400;
-          line-height:
-            1.7;
+          margin: 10px auto 0;
+          max-width: 630px;
+          color: #666666;
+          font-size: 0.79rem;
+          font-weight: 400;
+          line-height: 1.7;
         }
 
         .welcome-section-heading {
-          width:
-            100%;
-          display:
-            flex;
-          flex-direction:
-            column;
-          align-items:
-            center;
-          padding-top:
-            18px;
-          margin-bottom:
-            2.6rem;
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding-top: 18px;
+          margin-bottom: 2.6rem;
         }
 
         .welcome-main-heading {
-          width:
-            100%;
-          display:
-            flex;
-          justify-content:
-            center;
-          align-items:
-            center;
-          margin-top:
-            0;
-          margin-bottom:
-            7px;
+          width: 100%;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          margin-top: 0;
+          margin-bottom: 7px;
         }
 
-        .welcome-main-heading > div {
-          width:
-            100%;
-          text-align:
-            center;
+        .welcome-main-heading > div { width: 100%; text-align: center; }
+
+        .welcome-explore-eyebrow { margin-top: 0; margin-bottom: 0; }
+
+        .welcome-attractions-heading,
+        .welcome-accommodations-heading,
+        .welcome-videos-heading {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 2.35rem;
         }
 
-        .welcome-explore-eyebrow {
-          margin-top:
-            0;
-          margin-bottom:
-            0;
+        .welcome-videos-heading { margin-bottom: 2.5rem; }
+
+        .welcome-display-title,
+        .welcome-attractions-title,
+        .welcome-accommodations-title,
+        .welcome-videos-title {
+          margin: 0 0 7px;
+          padding: 0;
+          color: #2D3195 !important;
+          font-size: 1.70rem;
+          line-height: 1;
+          letter-spacing: 0.015em;
+          text-align: center;
         }
 
-        .welcome-bunting {
-          width:
-            min(100%, 940px);
-          height:
-            32px;
-          display:
-            flex;
-          align-items:
-            flex-start;
-          justify-content:
-            center;
-          overflow:
-            hidden;
-          margin:
-            0 auto 26px;
-          padding:
-            0 8px;
-          line-height:
-            0;
-        }
+        .welcome-display-title { margin: 0; }
 
-        .bunting-flag {
-          position:
-            relative;
-          display:
-            block;
-          width:
-            46px;
-          height:
-            32px;
-          flex:
-            0 0 46px;
-          clip-path:
-            polygon(
-              0 0,
-              100% 0,
-              50% 100%
-            );
-          margin-left:
-            -1px;
-        }
-
-        .bunting-red {
-          background:
-            #ED1C24;
-        }
-
-        .bunting-orange {
-          background:
-            #F36C21;
-        }
-
-        .bunting-yellow {
-          background:
-            #F2B705;
-        }
-
-        .bunting-teal {
-          background:
-            #14A6A0;
-        }
-
-        .bunting-flag:not(:first-child) {
-          border-left:
-            2px solid #ffffff;
-        }
+        .welcome-attractions-eyebrow,
+        .welcome-accommodations-eyebrow,
+        .welcome-videos-eyebrow { color: #555555; }
 
         .welcome-section-eyebrow {
-          display:
-            flex;
-          align-items:
-            center;
-          justify-content:
-            center;
-          width:
-            100%;
-          gap:
-            12px;
-          color:
-            #555555;
-          font-size:
-            0.68rem;
-          font-weight:
-            600;
-          letter-spacing:
-            0.14em;
-          text-transform:
-            uppercase;
-          line-height:
-            1.2;
-          text-align:
-            center;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          gap: 12px;
+          color: #555555;
+          font-size: 0.68rem;
+          font-weight: 600;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          line-height: 1.2;
+          text-align: center;
         }
 
         .welcome-heading-line {
-          width:
-            38px;
-          height:
-            1px;
-          background:
-            rgba(
-              45,
-              49,
-              149,
-              0.24
-            );
-          flex-shrink:
-            0;
+          width: 38px;
+          height: 1px;
+          background: rgba(45, 49, 149, 0.24);
+          flex-shrink: 0;
         }
 
-        .welcome-mobile-bunting {
-          display: none;
+        /* ---------- bunting ---------- */
+
+        .welcome-bunting {
+          width: min(100%, 940px);
+          height: 32px;
+          display: flex;
+          align-items: flex-start;
+          justify-content: center;
+          overflow: hidden;
+          margin: 0 auto 26px;
+          padding: 0 8px;
+          line-height: 0;
         }
 
-        .welcome-display-title {
-          margin:
-            0;
-          padding:
-            0;
-          color:
-            #2D3195 !important;
-          font-size:
-            1.70rem;
-          line-height:
-            1;
-          letter-spacing:
-            0.015em;
-          text-align:
-            center;
+        .welcome-mobile-bunting { display: none; }
+
+        .bunting-flag {
+          position: relative;
+          display: block;
+          width: 46px;
+          height: 32px;
+          flex: 0 0 46px;
+          clip-path: polygon(0 0, 100% 0, 50% 100%);
+          margin-left: -1px;
         }
 
-        .welcome-quick-grid {
-          margin-top:
-            0;
-          row-gap:
-            42px;
-        }
+        .bunting-red { background: #ED1C24; }
+        .bunting-orange { background: #F36C21; }
+        .bunting-yellow { background: #F2B705; }
+        .bunting-teal { background: #14A6A0; }
 
-        .welcome-quick-link {
-          color:
-            inherit;
-          text-decoration:
-            none;
-        }
+        .bunting-flag:not(:first-child) { border-left: 2px solid #ffffff; }
 
-        .welcome-quick-link:hover {
-          color:
-            inherit;
-          text-decoration:
-            none;
-        }
+        /* ---------- quick cards ---------- */
+
+        .welcome-quick-grid { margin-top: 0; row-gap: 42px; }
+
+        .welcome-quick-link,
+        .welcome-quick-link:hover { color: inherit; text-decoration: none; }
 
         .welcome-quick-card,
         .quick-card-body,
-        .quick-card-label {
-          font-family:
-            "Inter",
-            sans-serif;
-        }
+        .quick-card-label { font-family: "Inter", sans-serif; }
 
-        .quick-card-label {
-          font-weight:
-            600;
-        }
+        .quick-card-label { font-weight: 600; }
 
         .welcome-quick-card {
           background: transparent !important;
           transition: transform 0.22s ease;
         }
 
-        .welcome-quick-card:hover {
-          transform: translateY(-3px);
-        }
+        .welcome-quick-card:hover { transform: translateY(-3px); }
 
-        .welcome-quick-card .quick-card-body {
-          padding: 0.2rem 0.15rem;
-        }
+        .welcome-quick-card .quick-card-body { padding: 0.2rem 0.15rem; }
 
         .welcome-quick-card .quick-card-icon-wrap {
           width: 54px;
@@ -3640,24 +2488,17 @@ const displayUser = isAdminLogout ? null : user;
           justify-content: center;
         }
 
-        .welcome-quick-card .quick-card-label {
-          font-size: 0.74rem;
-          line-height: 1.25;
-        }
+        .welcome-quick-card .quick-card-label { font-size: 0.74rem; line-height: 1.25; }
 
-        .welcome-view-more-wrap {
-          display: flex;
-          justify-content: center;
-          margin-top: 2rem;
-        }
+        /* ---------- toolbars + view more ---------- */
 
-        .welcome-attractions-toolbar {
+        .welcome-attractions-toolbar,
+        .welcome-accommodations-toolbar {
           display: flex;
           justify-content: flex-end;
           align-items: center;
           width: 100%;
-          margin:
-            -0.25rem 0 1.05rem;
+          margin: -0.25rem 0 1.05rem;
         }
 
         .welcome-view-more-button {
@@ -3686,132 +2527,6 @@ const displayUser = isAdminLogout ? null : user;
           box-shadow: 0 8px 20px rgba(0, 0, 0, 0.09);
         }
 
-        /* =====================================================
-           ATTRACTIONS
-        ===================================================== */
-
-        .welcome-attractions-heading {
-          width:
-            100%;
-          display:
-            flex;
-          flex-direction:
-            column;
-          align-items:
-            center;
-          justify-content:
-            center;
-          margin-bottom:
-            2.35rem;
-        }
-
-        .welcome-attractions-title {
-          margin:
-            0 0 7px;
-          padding:
-            0;
-          color:
-            #2D3195 !important;
-          font-size:
-            1.70rem;
-          line-height:
-            1;
-          letter-spacing:
-            0.015em;
-          text-align:
-            center;
-        }
-
-        .welcome-attractions-eyebrow {
-          color:
-            #555555;
-        }
-
-        .welcome-attractions-carousel {
-          width: 100%;
-          overflow: hidden;
-        }
-
-        .welcome-attractions-swiper {
-          width: 100%;
-          overflow: visible;
-          padding:
-            0 0 6px;
-        }
-
-        .welcome-attraction-slide {
-          height: auto;
-          display: flex;
-          align-items: stretch;
-        }
-
-        .welcome-attraction-card-shell {
-          width: 100%;
-          min-width: 0;
-          display: flex;
-        }
-
-        .welcome-attraction-card-shell > * {
-          width: 100%;
-        }
-
-        /* =====================================================
-           ACCOMMODATIONS
-        ===================================================== */
-
-        .welcome-accommodations-section {
-          width:
-            100%;
-          margin-top:
-            85px;
-        }
-
-        .welcome-accommodations-heading {
-          width:
-            100%;
-          display:
-            flex;
-          flex-direction:
-            column;
-          align-items:
-            center;
-          justify-content:
-            center;
-          margin-bottom:
-            2.35rem;
-        }
-
-        .welcome-accommodations-title {
-          margin:
-            0 0 7px;
-          padding:
-            0;
-          color:
-            #2D3195 !important;
-          font-size:
-            1.70rem;
-          line-height:
-            1;
-          letter-spacing:
-            0.015em;
-          text-align:
-            center;
-        }
-
-        .welcome-accommodations-eyebrow {
-          color:
-            #555555;
-        }
-
-        .welcome-accommodations-toolbar {
-          display: flex;
-          justify-content: flex-end;
-          align-items: center;
-          width: 100%;
-          margin:
-            -0.25rem 0 1.05rem;
-        }
-
         .welcome-view-more-link {
           display: inline-flex;
           align-items: center;
@@ -3824,1351 +2539,524 @@ const displayUser = isAdminLogout ? null : user;
           font-weight: 700;
           text-decoration: none;
           -webkit-tap-highlight-color: transparent;
-          transition:
-            opacity 0.15s ease,
-            transform 0.15s ease;
+          transition: opacity 0.15s ease, transform 0.15s ease;
         }
 
-        .welcome-view-more-link svg {
-          transition: transform 0.2s ease;
+        .welcome-view-more-link svg { transition: transform 0.2s ease; }
+        .welcome-view-more-link:hover { color: #2D3195; text-decoration: none; }
+        .welcome-view-more-link:hover svg { transform: translateX(3px); }
+        .welcome-view-more-link:active { opacity: 0.55; transform: scale(0.95); }
+        .welcome-view-more-link:active svg { transform: translateX(5px); }
+
+        /* ---------- swipe carousels (attractions / restaurants / events) ---------- */
+
+        .welcome-attractions-carousel { width: 100%; overflow: hidden; }
+
+        .welcome-attractions-swiper {
+          width: 100%;
+          overflow: visible;
+          padding: 0 0 6px;
         }
 
-        .welcome-view-more-link:hover {
-          color: #2D3195;
-          text-decoration: none;
+        .welcome-attraction-slide {
+          height: auto;
+          display: flex;
+          align-items: stretch;
+          min-width: 0;
         }
 
-        .welcome-view-more-link:hover svg {
-          transform: translateX(3px);
+        .welcome-attraction-card-shell {
+          width: 100%;
+          min-width: 0;
+          display: flex;
         }
 
-        .welcome-view-more-link:active {
-          opacity: 0.55;
-          transform: scale(0.95);
-        }
+        .welcome-attraction-card-shell > * { width: 100%; }
 
-        .welcome-view-more-link:active svg {
-          transform: translateX(5px);
-        }
+        /* events: circular cards, centered in each slide */
+        .welcome-event-slide { justify-content: center; padding-top: 4px; }
 
-        /* =====================================================
-           FEATURED VIDEOS
-           UI INITIATIVE / SWIPER 3D CAROUSEL
-        ===================================================== */
+        .welcome-events-swiper { padding-bottom: 10px; }
 
-        .welcome-videos-section {
-          width:
-            100%;
-          margin-top:
-            90px;
-        }
+        /* ---------- accommodations / videos spacing ---------- */
 
-        .welcome-videos-heading {
-          width:
-            100%;
-          display:
-            flex;
-          flex-direction:
-            column;
-          align-items:
-            center;
-          justify-content:
-            center;
-          margin-bottom:
-            2.5rem;
-        }
+        .welcome-accommodations-section { width: 100%; margin-top: 85px; }
+        .welcome-videos-section { width: 100%; margin-top: 90px; }
 
-        .welcome-videos-title {
-          margin:
-            0 0 7px;
-          padding:
-            0;
-          color:
-            #2D3195 !important;
-          font-size:
-            1.70rem;
-          line-height:
-            1;
-          letter-spacing:
-            0.015em;
-          text-align:
-            center;
-        }
-
-        .welcome-videos-eyebrow {
-          color:
-            #555555;
-        }
+        /* ---------- featured videos ---------- */
 
         .welcome-video-carousel {
-          position:
-            relative;
-          width:
-            100%;
-          min-height:
-            545px;
-          padding:
-            10px 0 65px;
-          overflow:
-            hidden;
+          position: relative;
+          width: 100%;
+          min-height: 545px;
+          padding: 10px 0 65px;
+          overflow: hidden;
         }
 
         .welcome-featured-swiper {
-          width:
-            100%;
-          height:
-            475px;
-          padding:
-            28px 0 35px;
-          overflow:
-            visible !important;
+          width: 100%;
+          height: 475px;
+          padding: 28px 0 35px;
+          overflow: visible !important;
         }
 
-        .welcome-featured-swiper
-          .swiper-wrapper {
-          align-items:
-            center;
-        }
+        .welcome-featured-swiper .swiper-wrapper { align-items: center; }
 
         .welcome-featured-swiper-slide {
-          width:
-            min(
-              74%,
-              820px
-            ) !important;
-          height:
-            auto;
-          display:
-            flex;
-          align-items:
-            center;
-          justify-content:
-            center;
-          transition:
-            opacity 0.45s ease,
-            filter 0.45s ease;
+          width: min(74%, 820px) !important;
+          height: auto;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: opacity 0.45s ease, filter 0.45s ease;
         }
 
-        .welcome-featured-swiper-slide:not(
-            .swiper-slide-active
-          ) {
-          opacity:
-            0.72;
-          filter:
-            saturate(0.72)
-            brightness(0.72);
+        .welcome-featured-swiper-slide:not(.swiper-slide-active) {
+          opacity: 0.72;
+          filter: saturate(0.72) brightness(0.72);
         }
 
-        .welcome-featured-swiper-slide.swiper-slide-active {
-          opacity:
-            1;
-          filter:
-            none;
-        }
+        .welcome-featured-swiper-slide.swiper-slide-active { opacity: 1; filter: none; }
 
         .welcome-video-cinematic-card {
-          position:
-            relative;
-          width:
-            100%;
-          overflow:
-            hidden;
-          border-radius:
-            24px;
-          background:
-            #10131c;
-          box-shadow:
-            0 25px 65px
-            rgba(
-              0,
-              0,
-              0,
-              0.22
-            );
-          transform:
-            translateZ(0);
+          position: relative;
+          width: 100%;
+          overflow: hidden;
+          border-radius: 24px;
+          background: #10131c;
+          box-shadow: 0 25px 65px rgba(0, 0, 0, 0.22);
+          transform: translateZ(0);
         }
 
-        .welcome-featured-swiper-slide.swiper-slide-active
-          .welcome-video-cinematic-card {
-          box-shadow:
-            0 32px 80px
-            rgba(
-              0,
-              0,
-              0,
-              0.30
-            );
+        .welcome-featured-swiper-slide.swiper-slide-active .welcome-video-cinematic-card {
+          box-shadow: 0 32px 80px rgba(0, 0, 0, 0.30);
         }
 
         .welcome-video-media {
-          position:
-            relative;
-          width:
-            100%;
-          aspect-ratio:
-            16 / 9;
-          overflow:
-            hidden;
-          background:
-            #10131c;
+          position: relative;
+          width: 100%;
+          aspect-ratio: 16 / 9;
+          overflow: hidden;
+          background: #10131c;
         }
 
         .welcome-video-player {
-          width:
-            100%;
-          height:
-            100%;
-          display:
-            block;
-          object-fit:
-            cover;
-          background:
-            #10131c;
+          width: 100%;
+          height: 100%;
+          display: block;
+          object-fit: cover;
+          background: #10131c;
         }
 
         .welcome-video-gradient {
-          position:
-            absolute;
-          inset:
-            0;
-          pointer-events:
-            none;
-          background:
-            linear-gradient(
-              180deg,
-              rgba(
-                0,
-                0,
-                0,
-                0.04
-              ) 20%,
-              rgba(
-                0,
-                0,
-                0,
-                0.12
-              ) 45%,
-              rgba(
-                0,
-                0,
-                0,
-                0.28
-              ) 100%
-            );
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background: linear-gradient(
+            180deg,
+            rgba(0, 0, 0, 0.04) 20%,
+            rgba(0, 0, 0, 0.12) 45%,
+            rgba(0, 0, 0, 0.28) 100%
+          );
         }
 
         .welcome-video-play-badge {
-          position:
-            absolute;
-          top:
-            22px;
-          left:
-            22px;
-          width:
-            48px;
-          height:
-            48px;
-          display:
-            flex;
-          align-items:
-            center;
-          justify-content:
-            center;
-          border:
-            1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.35
-            );
-          border-radius:
-            50%;
-          background:
-            rgba(
-              255,
-              255,
-              255,
-              0.14
-            );
-          color:
-            #ffffff;
-          backdrop-filter:
-            blur(12px);
-          -webkit-backdrop-filter:
-            blur(12px);
-          box-shadow:
-            0 8px 22px
-            rgba(
-              0,
-              0,
-              0,
-              0.20
-            );
-          pointer-events:
-            none;
+          position: absolute;
+          top: 22px;
+          left: 22px;
+          width: 48px;
+          height: 48px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(255, 255, 255, 0.35);
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.14);
+          color: #ffffff;
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          box-shadow: 0 8px 22px rgba(0, 0, 0, 0.20);
+          pointer-events: none;
         }
 
-
-
-
-
         .welcome-video-arrow {
-          position:
-            absolute;
-          z-index:
-            30;
-          top:
-            50%;
-          width:
-            48px;
-          height:
-            48px;
-          display:
-            flex;
-          align-items:
-            center;
-          justify-content:
-            center;
-          padding:
-            0;
-          border:
-            1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.28
-            );
-          border-radius:
-            50%;
-          background:
-            rgba(
-              255,
-              255,
-              255,
-              0.16
-            );
-          color:
-            #ffffff;
-          backdrop-filter:
-            blur(12px);
-          -webkit-backdrop-filter:
-            blur(12px);
-          box-shadow:
-            0 8px 24px
-            rgba(
-              0,
-              0,
-              0,
-              0.16
-            );
-          cursor:
-            pointer;
-          transform:
-            translateY(-50%);
-          transition:
-            background 0.22s ease,
-            color 0.22s ease,
-            transform 0.22s ease,
-            border-color 0.22s ease;
+          position: absolute;
+          z-index: 30;
+          top: 50%;
+          width: 48px;
+          height: 48px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          border: 1px solid rgba(255, 255, 255, 0.28);
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.16);
+          color: #ffffff;
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+          cursor: pointer;
+          transform: translateY(-50%);
+          transition: background 0.22s ease, color 0.22s ease, transform 0.22s ease, border-color 0.22s ease;
         }
 
         .welcome-video-arrow:hover {
-          background:
-            #ffffff;
-          color:
-            ${CALBAYOG_BLUE};
-          border-color:
-            #ffffff;
-          transform:
-            translateY(-50%)
-            scale(
-              1.07
-            );
+          background: #ffffff;
+          color: ${CALBAYOG_BLUE};
+          border-color: #ffffff;
+          transform: translateY(-50%) scale(1.07);
         }
 
-        .welcome-video-arrow.swiper-button-disabled {
-          opacity:
-            0.45;
-          cursor:
-            default;
-        }
+        .welcome-video-arrow.swiper-button-disabled { opacity: 0.45; cursor: default; }
 
-        .welcome-video-prev {
-          left:
-            3%;
-        }
-
-        .welcome-video-next {
-          right:
-            3%;
-        }
+        .welcome-video-prev { left: 3%; }
+        .welcome-video-next { right: 3%; }
 
         .welcome-video-pagination {
-          position:
-            absolute;
-          z-index:
-            30;
-          left:
-            50%;
-          bottom:
-            13px;
-          width:
-            auto !important;
-          min-height:
-            20px;
-          transform:
-            translateX(-50%);
-          display:
-            flex;
-          align-items:
-            center;
-          justify-content:
-            center;
+          position: absolute;
+          z-index: 30;
+          left: 50%;
+          bottom: 13px;
+          width: auto !important;
+          min-height: 20px;
+          transform: translateX(-50%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
-        .welcome-video-pagination
-          .swiper-pagination-bullet {
-          width:
-            8px;
-          height:
-            8px;
-          margin:
-            0 4px !important;
-          opacity:
-            1;
-          border-radius:
-            999px;
-          background:
-            rgba(
-              45,
-              49,
-              149,
-              0.22
-            );
-          transition:
-            width 0.3s ease,
-            background 0.3s ease,
-            transform 0.3s ease;
+        .welcome-video-pagination .swiper-pagination-bullet {
+          width: 8px;
+          height: 8px;
+          margin: 0 4px !important;
+          opacity: 1;
+          border-radius: 999px;
+          background: rgba(45, 49, 149, 0.22);
+          transition: width 0.3s ease, background 0.3s ease, transform 0.3s ease;
         }
 
-        .welcome-video-pagination
-          .swiper-pagination-bullet-active {
-          width:
-            27px;
-          background:
-            ${CALBAYOG_BLUE};
+        .welcome-video-pagination .swiper-pagination-bullet-active {
+          width: 27px;
+          background: ${CALBAYOG_BLUE};
         }
 
         .welcome-video-loading {
-          width:
-            100%;
-          min-height:
-            440px;
-          display:
-            flex;
-          flex-direction:
-            column;
-          align-items:
-            center;
-          justify-content:
-            center;
-          gap:
-            16px;
-          color:
-            #6c757d;
-          font-size:
-            0.82rem;
+          width: 100%;
+          min-height: 440px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+          color: #6c757d;
+          font-size: 0.82rem;
         }
 
         .welcome-video-loading-spinner {
-          width:
-            42px;
-          height:
-            42px;
-          border:
-            3px solid
-            rgba(
-              45,
-              49,
-              149,
-              0.16
-            );
-          border-top-color:
-            ${CALBAYOG_BLUE};
-          border-radius:
-            50%;
-          animation:
-            welcomeVideoSpin
-            0.8s linear
-            infinite;
+          width: 42px;
+          height: 42px;
+          border: 3px solid rgba(45, 49, 149, 0.16);
+          border-top-color: ${CALBAYOG_BLUE};
+          border-radius: 50%;
+          animation: welcomeVideoSpin 0.8s linear infinite;
         }
 
-        @keyframes welcomeVideoSpin {
-          to {
-            transform:
-              rotate(
-                360deg
-              );
-          }
-        }
+        @keyframes welcomeVideoSpin { to { transform: rotate(360deg); } }
 
         .welcome-video-empty {
-          width:
-            100%;
-          min-height:
-            360px;
-          display:
-            flex;
-          flex-direction:
-            column;
-          align-items:
-            center;
-          justify-content:
-            center;
-          padding:
-            40px 20px;
-          border:
-            1px dashed
-            rgba(
-              45,
-              49,
-              149,
-              0.22
-            );
-          border-radius:
-            22px;
-          background:
-            linear-gradient(
-              180deg,
-              rgba(
-                45,
-                49,
-                149,
-                0.025
-              ),
-              rgba(
-                45,
-                49,
-                149,
-                0.055
-              )
-            );
-          text-align:
-            center;
+          width: 100%;
+          min-height: 360px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 40px 20px;
+          border: 1px dashed rgba(45, 49, 149, 0.22);
+          border-radius: 22px;
+          background: linear-gradient(180deg, rgba(45, 49, 149, 0.025), rgba(45, 49, 149, 0.055));
+          text-align: center;
         }
 
         .welcome-video-empty-icon {
-          width:
-            58px;
-          height:
-            58px;
-          display:
-            flex;
-          align-items:
-            center;
-          justify-content:
-            center;
-          margin-bottom:
-            16px;
-          border-radius:
-            50%;
-          background:
-            rgba(
-              45,
-              49,
-              149,
-              0.08
-            );
-          color:
-            ${CALBAYOG_BLUE};
+          width: 58px;
+          height: 58px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 16px;
+          border-radius: 50%;
+          background: rgba(45, 49, 149, 0.08);
+          color: ${CALBAYOG_BLUE};
         }
 
         .welcome-video-empty h3 {
-          margin:
-            0 0 7px;
-          color:
-            #2D3195;
-          font-family:
-            "Barabara",
-            "Arial Black",
-            Arial,
-            sans-serif;
-          font-size:
-            1.4rem;
-          font-weight:
-            400;
+          margin: 0 0 7px;
+          color: #2D3195;
+          font-family: "Barabara", "Arial Black", Arial, sans-serif;
+          font-size: 1.4rem;
+          font-weight: 400;
         }
 
         .welcome-video-empty p {
-          max-width:
-            430px;
-          margin:
-            0;
-          color:
-            #6c757d;
-          font-size:
-            0.76rem;
-          line-height:
-            1.6;
+          max-width: 430px;
+          margin: 0;
+          color: #6c757d;
+          font-size: 0.76rem;
+          line-height: 1.6;
         }
 
         .welcome-video-empty small {
-          margin-top:
-            10px;
-          color:
-            #a05a5a;
-          font-size:
-            0.68rem;
+          margin-top: 10px;
+          color: #a05a5a;
+          font-size: 0.68rem;
         }
 
-        /* =====================================================
-           HERO
-        ===================================================== */
+        /* ---------- hero ---------- */
 
-        .welcome-hero-section {
-          width:
-            100%;
-        }
+        .welcome-hero-section { width: 100%; }
 
         .welcome-hero-slider {
-          position:
-            relative;
-          width:
-            100%;
-          height:
-            390px;
-          overflow:
-            hidden;
-          border-radius:
-            24px;
-          background:
-            #102a23;
-          box-shadow:
-            0 12px 35px
-            rgba(
-              0,
-              0,
-              0,
-              0.10
-            );
-          cursor:
-            grab;
-          user-select:
-            none;
-          touch-action:
-            pan-y;
+          position: relative;
+          width: 100%;
+          height: 390px;
+          overflow: hidden;
+          border-radius: 24px;
+          background: #102a23;
+          box-shadow: 0 12px 35px rgba(0, 0, 0, 0.10);
+          cursor: grab;
+          user-select: none;
+          touch-action: pan-y;
         }
 
-        .welcome-hero-slider:active {
-          cursor:
-            grabbing;
-        }
+        .welcome-hero-slider:active { cursor: grabbing; }
 
         .welcome-hero-image {
-          position:
-            absolute;
-          inset:
-            0;
-          width:
-            100%;
-          height:
-            100%;
-          object-fit:
-            cover;
-          object-position:
-            center;
-          display:
-            block;
-          pointer-events:
-            none;
-          animation:
-            welcomeHeroImageFade
-            0.65s
-            ease;
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: center;
+          display: block;
+          pointer-events: none;
+          animation: welcomeHeroImageFade 0.65s ease;
         }
 
         @keyframes welcomeHeroImageFade {
-          from {
-            opacity:
-              0.45;
-            transform:
-              scale(
-                1.035
-              );
-          }
-
-          to {
-            opacity:
-              1;
-            transform:
-              scale(
-                1
-              );
-          }
+          from { opacity: 0.45; transform: scale(1.035); }
+          to { opacity: 1; transform: scale(1); }
         }
 
         .welcome-hero-overlay {
-          position:
-            absolute;
-          inset:
-            0;
-          pointer-events:
-            none;
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
           background:
-            linear-gradient(
-              90deg,
-              rgba(
-                0,
-                0,
-                0,
-                0.68
-              ) 0%,
-              rgba(
-                0,
-                0,
-                0,
-                0.52
-              ) 25%,
-              rgba(
-                0,
-                0,
-                0,
-                0.25
-              ) 52%,
-              rgba(
-                0,
-                0,
-                0,
-                0.06
-              ) 100%
-            ),
-            linear-gradient(
-              180deg,
-              rgba(
-                0,
-                0,
-                0,
-                0.22
-              ) 0%,
-              rgba(
-                0,
-                0,
-                0,
-                0.02
-              ) 50%,
-              rgba(
-                0,
-                0,
-                0,
-                0.24
-              ) 100%
-            );
+            linear-gradient(90deg, rgba(0,0,0,0.68) 0%, rgba(0,0,0,0.52) 25%, rgba(0,0,0,0.25) 52%, rgba(0,0,0,0.06) 100%),
+            linear-gradient(180deg, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.02) 50%, rgba(0,0,0,0.24) 100%);
         }
 
         .welcome-hero-content {
-          position:
-            absolute;
-          z-index:
-            5;
-          left:
-            7%;
-          top:
-            50%;
-          transform:
-            translateY(-50%);
-          display:
-            flex;
-          flex-direction:
-            column;
-          align-items:
-            flex-start;
-          color:
-            #ffffff;
-          max-width:
-            620px;
+          position: absolute;
+          z-index: 5;
+          left: 7%;
+          top: 50%;
+          transform: translateY(-50%);
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          color: #ffffff;
+          max-width: 620px;
         }
 
         .welcome-hero-title {
-          margin:
-            0 0 20px;
-          padding:
-            0;
-          color:
-            #ffffff;
-          font-size:
-            clamp(
-              2.6rem,
-              4.5vw,
-              4rem
-            );
-          line-height:
-            0.9;
-          letter-spacing:
-            0;
-          text-shadow:
-            0 3px 12px
-            rgba(
-              0,
-              0,
-              0,
-              0.24
-            );
-          white-space:
-            nowrap;
+          margin: 0 0 20px;
+          padding: 0;
+          color: #ffffff;
+          font-size: clamp(2.6rem, 4.5vw, 4rem);
+          line-height: 0.9;
+          letter-spacing: 0;
+          text-shadow: 0 3px 12px rgba(0, 0, 0, 0.24);
+          white-space: nowrap;
         }
 
         .welcome-hero-detail {
-          display:
-            flex;
-          align-items:
-            center;
-          gap:
-            12px;
-          margin-bottom:
-            10px;
-          color:
-            #ffffff;
-          font-size:
-            clamp(
-              0.92rem,
-              1.65vw,
-              1.25rem
-            );
-          font-weight:
-            400;
-          line-height:
-            1.4;
-          text-shadow:
-            0 2px 8px
-            rgba(
-              0,
-              0,
-              0,
-              0.40
-            );
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 10px;
+          color: #ffffff;
+          font-size: clamp(0.92rem, 1.65vw, 1.25rem);
+          font-weight: 400;
+          line-height: 1.4;
+          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.40);
         }
 
-        .welcome-hero-detail:last-child {
-          margin-bottom:
-            0;
-        }
+        .welcome-hero-detail:last-child { margin-bottom: 0; }
 
         .welcome-hero-detail-icon {
-          width:
-            27px;
-          min-width:
-            27px;
-          height:
-            27px;
-          display:
-            inline-flex;
-          align-items:
-            center;
-          justify-content:
-            center;
-          color:
-            #ffffff;
-          flex-shrink:
-            0;
-          line-height:
-            1;
-          filter:
-            drop-shadow(
-              0 2px 5px
-              rgba(
-                0,
-                0,
-                0,
-                0.30
-              )
-            );
+          width: 27px;
+          min-width: 27px;
+          height: 27px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: #ffffff;
+          flex-shrink: 0;
+          line-height: 1;
+          filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.30));
         }
 
-        .welcome-hero-detail-icon svg {
-          display:
-            block;
-          color:
-            #ffffff;
-        }
+        .welcome-hero-detail-icon svg { display: block; color: #ffffff; }
 
         .welcome-hero-arrow {
-          position:
-            absolute;
-          z-index:
-            10;
-          top:
-            50%;
-          transform:
-            translateY(-50%);
-          width:
-            44px;
-          height:
-            44px;
-          display:
-            flex;
-          align-items:
-            center;
-          justify-content:
-            center;
-          padding:
-            0;
-          border:
-            1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.22
-            );
-          border-radius:
-            50%;
-          background:
-            rgba(
-              255,
-              255,
-              255,
-              0.16
-            );
-          color:
-            #ffffff;
-          font-size:
-            32px;
-          font-family:
-            Arial,
-            sans-serif;
-          font-weight:
-            300;
-          line-height:
-            1;
-          backdrop-filter:
-            blur(10px);
-          -webkit-backdrop-filter:
-            blur(10px);
-          box-shadow:
-            0 5px 15px
-            rgba(
-              0,
-              0,
-              0,
-              0.12
-            );
-          cursor:
-            pointer;
-          transition:
-            background 0.2s ease,
-            color 0.2s ease,
-            transform 0.2s ease,
-            border-color 0.2s ease;
+          position: absolute;
+          z-index: 10;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 44px;
+          height: 44px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.16);
+          color: #ffffff;
+          font-size: 32px;
+          font-family: Arial, sans-serif;
+          font-weight: 300;
+          line-height: 1;
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
+          cursor: pointer;
+          transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
         }
 
         .welcome-hero-arrow:hover {
-          background:
-            rgba(
-              255,
-              255,
-              255,
-              0.90
-            );
-          color:
-            #2D3195;
-          border-color:
-            rgba(
-              255,
-              255,
-              255,
-              0.95
-            );
-          transform:
-            translateY(-50%)
-            scale(
-              1.06
-            );
+          background: rgba(255, 255, 255, 0.90);
+          color: #2D3195;
+          border-color: rgba(255, 255, 255, 0.95);
+          transform: translateY(-50%) scale(1.06);
         }
 
-        .welcome-hero-arrow-left {
-          left:
-            16px;
-        }
-
-        .welcome-hero-arrow-right {
-          right:
-            16px;
-        }
+        .welcome-hero-arrow-left { left: 16px; }
+        .welcome-hero-arrow-right { right: 16px; }
 
         .welcome-hero-dots {
-          position:
-            absolute;
-          z-index:
-            10;
-          left:
-            50%;
-          bottom:
-            17px;
-          transform:
-            translateX(-50%);
-          display:
-            flex;
-          align-items:
-            center;
-          gap:
-            8px;
+          position: absolute;
+          z-index: 10;
+          left: 50%;
+          bottom: 17px;
+          transform: translateX(-50%);
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
 
         .welcome-hero-dot {
-          width:
-            8px;
-          height:
-            8px;
-          padding:
-            0;
-          border:
-            0;
-          border-radius:
-            50%;
-          background:
-            rgba(
-              255,
-              255,
-              255,
-              0.68
-            );
-          cursor:
-            pointer;
-          transition:
-            width 0.25s ease,
-            background 0.25s ease,
-            transform 0.25s ease;
+          width: 8px;
+          height: 8px;
+          padding: 0;
+          border: 0;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.68);
+          cursor: pointer;
+          transition: width 0.25s ease, background 0.25s ease, transform 0.25s ease;
         }
 
-        .welcome-hero-dot:hover {
-          transform:
-            scale(
-              1.15
-            );
-        }
+        .welcome-hero-dot:hover { transform: scale(1.15); }
 
         .welcome-hero-dot.active {
-          width:
-            24px;
-          border-radius:
-            999px;
-          background:
-            #2D3195;
-          box-shadow:
-            0 0 8px
-            rgba(
-              45,
-              49,
-              149,
-              0.45
-            );
+          width: 24px;
+          border-radius: 999px;
+          background: #2D3195;
+          box-shadow: 0 0 8px rgba(45, 49, 149, 0.45);
         }
 
         /* =====================================================
            RESPONSIVE
         ===================================================== */
 
-        @media (max-width: 767px) {
-          .welcome-explore-top {
-            grid-template-columns: 1fr;
-            gap: 26px;
-          }
+        /* Large tablets / small laptops */
+        @media (max-width: 991.98px) {
+          .welcome-container { padding-left: 18px; padding-right: 18px; }
+
+          .welcome-hero-slider { height: 370px; border-radius: 22px; }
+          .welcome-hero-content { left: 6%; }
+          .welcome-hero-title { font-size: clamp(2.5rem, 5.5vw, 3.6rem); margin-bottom: 18px; }
+          .welcome-hero-detail { font-size: 1rem; gap: 10px; margin-bottom: 9px; }
+          .welcome-hero-arrow { width: 42px; height: 42px; }
+
+          .welcome-intro { margin-bottom: 28px; }
+          .welcome-intro-text { font-size: 0.76rem; }
+
+          .welcome-bunting { height: 29px; margin-bottom: 23px; }
+          .bunting-flag { width: 40px; height: 29px; flex-basis: 40px; }
+
+          .welcome-section-heading { margin-bottom: 2.4rem; }
+          .welcome-main-heading { margin-bottom: 6px; }
+          .welcome-explore-mobile-bunting { margin-bottom: 14px; }
+          .welcome-quick-grid { row-gap: 38px; }
+
+          .welcome-accommodations-section,
+          .welcome-videos-section { margin-top: 75px; }
+
+          .welcome-video-carousel { min-height: 475px; }
+          .welcome-featured-swiper { height: 410px; }
+          .welcome-featured-swiper-slide { width: 84% !important; }
+        }
+
+        /* Tablets and phones: stack map under heading */
+        @media (max-width: 767.98px) {
+          .welcome-explore-top { grid-template-columns: 1fr; gap: 26px; }
 
           .welcome-map-shell,
-          .welcome-map-loading {
-            height: 360px;
-          }
-        }
+          .welcome-map-loading { height: 360px; }
 
-        @media (max-width: 991.98px) {
-          .welcome-container {
-            padding-left: 18px;
-            padding-right: 18px;
-          }
-          .welcome-hero-slider {
-            height:
-              370px;
-            border-radius:
-              22px;
-          }
+          .welcome-container { padding-left: 15px; padding-right: 15px; }
 
-          .welcome-hero-content {
-            left:
-              6%;
-          }
-
-          .welcome-hero-title {
-            font-size:
-              clamp(
-                2.5rem,
-                5.5vw,
-                3.6rem
-              );
-            margin-bottom:
-              18px;
-          }
-
-          .welcome-hero-detail {
-            font-size:
-              1rem;
-            gap:
-              10px;
-            margin-bottom:
-              9px;
-          }
-
-          .welcome-hero-arrow {
-            width:
-              42px;
-            height:
-              42px;
-          }
-
-          .welcome-intro {
-            margin-bottom:
-              28px;
-          }
-
-          .welcome-intro-text {
-            font-size:
-              0.76rem;
-          }
-
-          .welcome-bunting {
-            height:
-              29px;
-            margin-bottom:
-              23px;
-          }
-
-          .bunting-flag {
-            width:
-              40px;
-            height:
-              29px;
-            flex-basis:
-              40px;
-          }
-
-          .welcome-section-heading {
-            margin-bottom:
-              2.4rem;
-          }
-
-          .welcome-main-heading {
-            margin-bottom:
-              6px;
-          }
-
-          .welcome-explore-mobile-bunting {
-            margin-bottom: 14px;
-          }
-
-          .welcome-quick-grid {
-            row-gap:
-              38px;
-          }
-
-          .welcome-accommodations-section {
-            margin-top:
-              75px;
-          }
-
-          .welcome-videos-section {
-            margin-top:
-              75px;
-          }
-
-          .welcome-video-carousel {
-            min-height:
-              475px;
-          }
-
-          .welcome-featured-swiper {
-            height:
-              410px;
-          }
-
-          .welcome-featured-swiper-slide {
-            width:
-              84% !important;
-          }
-        }
-
-        @media (max-width: 767.98px) {
-          .welcome-container {
-            padding-left: 15px;
-            padding-right: 15px;
-          }
-          .welcome-hero-slider {
-            height:
-              250px;
-            border-radius:
-              20px;
-          }
-
-          .welcome-hero-image {
-            object-position:
-              center center;
-          }
+          .welcome-hero-slider { height: 250px; border-radius: 20px; }
+          .welcome-hero-image { object-position: center center; }
 
           .welcome-hero-overlay {
-            background:
-              linear-gradient(
-                180deg,
-                rgba(
-                  0,
-                  0,
-                  0,
-                  0.32
-                ) 0%,
-                rgba(
-                  0,
-                  0,
-                  0,
-                  0.14
-                ) 28%,
-                rgba(
-                  0,
-                  0,
-                  0,
-                  0.68
-                ) 100%
-              );
+            background: linear-gradient(
+              180deg,
+              rgba(0,0,0,0.32) 0%,
+              rgba(0,0,0,0.14) 28%,
+              rgba(0,0,0,0.68) 100%
+            );
           }
 
           .welcome-hero-content {
-            left:
-              24px;
-            right:
-              24px;
-            top:
-              auto;
-            bottom:
-              38px;
-            transform:
-              none;
-            max-width:
-              none;
+            left: 24px;
+            right: 24px;
+            top: auto;
+            bottom: 38px;
+            transform: none;
+            max-width: none;
           }
 
-          .welcome-hero-title {
-            font-size:
-              2.15rem;
-            margin-bottom:
-              13px;
-          }
+          .welcome-hero-title { font-size: 2.15rem; margin-bottom: 13px; }
+          .welcome-hero-detail { font-size: 0.82rem; gap: 8px; margin-bottom: 6px; }
+          .welcome-hero-detail-icon { width: 24px; min-width: 24px; height: 24px; }
+          .welcome-hero-detail-icon svg { width: 21px; height: 21px; }
 
-          .welcome-hero-detail {
-            font-size:
-              0.82rem;
-            gap:
-              8px;
-            margin-bottom:
-              6px;
-          }
+          .welcome-hero-arrow { width: 38px; height: 38px; font-size: 28px; }
+          .welcome-hero-arrow-left { left: 10px; }
+          .welcome-hero-arrow-right { right: 10px; }
+          .welcome-hero-dots { bottom: 16px; }
 
-          .welcome-hero-detail-icon {
-            width:
-              24px;
-            min-width:
-              24px;
-            height:
-              24px;
-          }
+          .welcome-intro { max-width: 560px; margin-bottom: 27px; padding: 0 8px; }
+          .welcome-intro-eyebrow { font-size: 0.56rem; letter-spacing: 0.16em; }
+          .welcome-intro-text { max-width: 470px; font-size: 0.68rem; line-height: 1.65; margin-top: 9px; }
 
-          .welcome-hero-detail-icon svg {
-            width:
-              21px;
-            height:
-              21px;
-          }
+          .welcome-section-heading { margin-bottom: 2rem; }
 
-          .welcome-hero-arrow {
-            width:
-              38px;
-            height:
-              38px;
-            font-size:
-              28px;
-          }
-
-          .welcome-hero-arrow-left {
-            left:
-              10px;
-          }
-
-          .welcome-hero-arrow-right {
-            right:
-              10px;
-          }
-
-          .welcome-hero-dots {
-            bottom:
-              16px;
-          }
-
-          .welcome-intro {
-            max-width:
-              560px;
-            margin-bottom:
-              27px;
-            padding:
-              0 8px;
-          }
-
-          .welcome-intro-eyebrow {
-            font-size:
-              0.56rem;
-            letter-spacing:
-              0.16em;
-          }
-
-          .welcome-intro-text {
-            max-width:
-              470px;
-            font-size:
-              0.68rem;
-            line-height:
-              1.65;
-            margin-top:
-              9px;
-          }
-
-          .welcome-section-heading {
-            margin-bottom:
-              2rem;
-          }
-
-          .welcome-bunting {
-            display: none;
-          }
-
-          .welcome-explore-mobile-bunting,
-          .welcome-mobile-bunting {
-            width: min(88%, 300px);
-            height: 16px;
-            margin: 0 auto 14px;
-            padding: 0;
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
-            overflow: hidden;
-          }
-
-          .bunting-flag {
-            width:
-              auto;
-            height:
-              16px;
-            flex:
-              1 1 0;
-            min-width:
-              0;
-          }
+          .welcome-bunting { display: none; }
 
           .welcome-mobile-bunting {
             width: min(88%, 300px);
@@ -5181,45 +3069,17 @@ const displayUser = isAdminLogout ? null : user;
             overflow: hidden;
           }
 
-          .welcome-explore-mobile-bunting .bunting-flag,
-          .welcome-mobile-bunting .bunting-flag {
-            width: auto;
-            height: 16px;
-            flex: 1 1 0;
-            min-width: 0;
-          }
+          .bunting-flag { width: auto; height: 16px; flex: 1 1 0; min-width: 0; }
 
-          .welcome-section-eyebrow {
-            gap:
-              9px;
-            font-size:
-              0.58rem;
-            letter-spacing:
-              0.11em;
-          }
-
-          .welcome-heading-line {
-            width:
-              24px;
-          }
+          .welcome-section-eyebrow { gap: 9px; font-size: 0.58rem; letter-spacing: 0.11em; }
+          .welcome-heading-line { width: 24px; }
 
           .welcome-display-title,
           .welcome-attractions-title,
           .welcome-accommodations-title,
-          .welcome-videos-title {
-            font-size:
-              1.45rem;
-          }
+          .welcome-videos-title { font-size: 1.45rem; }
 
-          .welcome-main-heading {
-            margin-bottom:
-              6px;
-          }
-
-          .welcome-quick-grid {
-            row-gap:
-              32px;
-          }
+          .welcome-quick-grid { row-gap: 32px; }
 
           .welcome-quick-card .quick-card-icon-wrap {
             width: 48px;
@@ -5228,448 +3088,115 @@ const displayUser = isAdminLogout ? null : user;
             border-radius: 15px;
           }
 
-          .welcome-quick-card .quick-card-label {
-            font-size: 0.67rem;
-          }
+          .welcome-quick-card .quick-card-label { font-size: 0.67rem; }
 
-          .welcome-view-more-wrap {
-            margin-top: 1.6rem;
-          }
-
-          .welcome-view-more-button {
-            min-height: 40px;
-            padding: 0.58rem 0.9rem;
-            font-size: 0.72rem;
-          }
-
-          .welcome-view-more-link {
-            font-size: 0.72rem;
-          }
+          .welcome-view-more-button { min-height: 40px; padding: 0.58rem 0.9rem; font-size: 0.72rem; }
+          .welcome-view-more-link { font-size: 0.72rem; }
 
           .welcome-explore-section,
           .welcome-discover-section,
-          .welcome-accommodations-section {
-            margin-bottom:
-              86px !important;
-          }
+          .welcome-accommodations-section { margin-bottom: 86px !important; }
 
-          .welcome-attractions-heading {
-            margin-bottom:
-              1.8rem;
-          }
-
-          .welcome-attractions-carousel {
-            margin-top:
-              0;
-          }
-
-          .welcome-attractions-swiper {
-            padding-bottom:
-              4px;
-            touch-action:
-              pan-y;
-          }
-
-          .welcome-attraction-slide {
-            min-width:
-              0;
-          }
+          .welcome-attractions-heading { margin-bottom: 1.8rem; }
+          .welcome-attractions-swiper { padding-bottom: 4px; touch-action: pan-y; }
 
           .welcome-attractions-toolbar,
-          .welcome-accommodations-toolbar {
-            margin:
-              -0.15rem 0 0.9rem;
-          }
+          .welcome-accommodations-toolbar { margin: -0.15rem 0 0.9rem; }
 
-          .welcome-accommodations-section {
-            margin-top:
-              65px;
-          }
-
-          .welcome-videos-title {
-            font-size:
-              1.70rem;
-          }
+          .welcome-accommodations-section { margin-top: 65px; }
 
           .welcome-accommodations-heading,
-          .welcome-videos-heading {
-            margin-bottom:
-              1.8rem;
-          }
+          .welcome-videos-heading { margin-bottom: 1.8rem; }
 
-          .welcome-videos-section {
-            margin-top:
-              65px;
-          }
+          .welcome-videos-section { margin-top: 65px; }
 
-          /* VIDEO CAROUSEL MOBILE */
+          .welcome-video-carousel { min-height: 365px; padding: 5px 0 55px; }
+          .welcome-featured-swiper { height: 320px; padding: 20px 0 25px; }
+          .welcome-featured-swiper-slide { width: 88% !important; }
+          .welcome-video-cinematic-card { border-radius: 19px; }
 
-          .welcome-video-carousel {
-            min-height:
-              365px;
-            padding:
-              5px 0 55px;
-          }
-
-          .welcome-featured-swiper {
-            height:
-              320px;
-            padding:
-              20px 0 25px;
-          }
-
-          .welcome-featured-swiper-slide {
-            width:
-              88% !important;
-          }
-
-          .welcome-video-cinematic-card {
-            border-radius:
-              19px;
-          }
-
-          .welcome-video-play-badge {
-            top:
-              15px;
-            left:
-              15px;
-            width:
-              40px;
-            height:
-              40px;
-          }
-
-          .welcome-video-arrow {
-            width:
-              38px;
-            height:
-              38px;
-          }
-
-          .welcome-video-prev {
-            left:
-              7px;
-          }
-
-          .welcome-video-next {
-            right:
-              7px;
-          }
-
-          .welcome-video-pagination {
-            bottom:
-              10px;
-          }
+          .welcome-video-play-badge { top: 15px; left: 15px; width: 40px; height: 40px; }
+          .welcome-video-arrow { width: 38px; height: 38px; }
+          .welcome-video-prev { left: 7px; }
+          .welcome-video-next { right: 7px; }
+          .welcome-video-pagination { bottom: 10px; }
         }
 
+        /* Phones */
         @media (max-width: 480px) {
-          .welcome-container {
-            padding-left: 12px;
-            padding-right: 12px;
-          }
-          .welcome-hero-slider {
-            height:
-              220px;
-            border-radius:
-              18px;
-          }
+          .welcome-container { padding-left: 12px; padding-right: 12px; }
 
-          .welcome-hero-content {
-            left:
-              18px;
-            right:
-              18px;
-            bottom:
-              31px;
-          }
+          .welcome-map-shell,
+          .welcome-map-loading { height: 330px; border-radius: 20px; }
 
-          .welcome-hero-title {
-            font-size:
-              1.60rem;
-            margin-bottom:
-              9px;
-          }
+          .welcome-hero-slider { height: 220px; border-radius: 18px; }
+          .welcome-hero-content { left: 18px; right: 18px; bottom: 31px; }
+          .welcome-hero-title { font-size: 1.60rem; margin-bottom: 9px; }
+          .welcome-hero-detail { font-size: 0.68rem; gap: 7px; margin-bottom: 5px; }
+          .welcome-hero-detail-icon { width: 21px; min-width: 21px; height: 21px; }
+          .welcome-hero-detail-icon svg { width: 19px; height: 19px; }
 
-          .welcome-hero-detail {
-            font-size:
-              0.68rem;
-            gap:
-              7px;
-            margin-bottom:
-              5px;
-          }
+          .welcome-hero-arrow { width: 34px; height: 34px; font-size: 24px; }
+          .welcome-hero-arrow-left { left: 8px; }
+          .welcome-hero-arrow-right { right: 8px; }
 
-          .welcome-hero-detail-icon {
-            width:
-              21px;
-            min-width:
-              21px;
-            height:
-              21px;
-          }
+          .welcome-intro { margin-bottom: 24px; padding: 0 5px; }
+          .welcome-intro-eyebrow { font-size: 0.51rem; letter-spacing: 0.14em; }
+          .welcome-intro-text { font-size: 0.62rem; line-height: 1.6; margin-top: 8px; }
 
-          .welcome-hero-detail-icon svg {
-            width:
-              19px;
-            height:
-              19px;
-          }
+          .welcome-section-eyebrow { gap: 7px; font-size: 0.52rem; letter-spacing: 0.09em; }
+          .welcome-heading-line { width: 18px; }
 
-          .welcome-hero-arrow {
-            width:
-              34px;
-            height:
-              34px;
-            font-size:
-              24px;
-          }
-
-          .welcome-hero-arrow-left {
-            left:
-              8px;
-          }
-
-          .welcome-hero-arrow-right {
-            right:
-              8px;
-          }
-
-          .welcome-intro {
-            margin-bottom:
-              24px;
-            padding:
-              0 5px;
-          }
-
-          .welcome-intro-eyebrow {
-            font-size:
-              0.51rem;
-            letter-spacing:
-              0.14em;
-          }
-
-          .welcome-intro-text {
-            font-size:
-              0.62rem;
-            line-height:
-              1.6;
-            margin-top:
-              8px;
-          }
-
-          .welcome-bunting {
-            display: none;
-          }
-
-          .bunting-flag {
-            width:
-              auto;
-            height:
-              16px;
-            flex:
-              1 1 0;
-            min-width:
-              0;
-          }
-
-          .welcome-explore-mobile-bunting,
-          .welcome-mobile-bunting {
-            width: min(88%, 300px);
-            height: 16px;
-            margin: 0 auto 14px;
-          }
-
-          .welcome-explore-mobile-bunting .bunting-flag,
-          .welcome-mobile-bunting .bunting-flag {
-            height: 16px;
-          }
-
-          .welcome-section-eyebrow {
-            gap:
-              7px;
-            font-size:
-              0.52rem;
-            letter-spacing:
-              0.09em;
-          }
-
-          .welcome-heading-line {
-            width:
-              18px;
-          }
-
-          .welcome-display-title,
-          .welcome-attractions-title,
-          .welcome-accommodations-title,
-          .welcome-videos-title {
-            font-size:
-              1.45rem;
-          }
-
-          .welcome-main-heading {
-            margin-bottom:
-              5px;
-          }
-
-          .welcome-explore-mobile-bunting {
-            margin-bottom: 12px;
-          }
-
-          .welcome-quick-grid {
-            row-gap:
-              38px;
-          }
+          .welcome-explore-mobile-bunting { margin-bottom: 12px; }
+          .welcome-quick-grid { row-gap: 38px; }
 
           .welcome-explore-section,
           .welcome-discover-section,
-          .welcome-accommodations-section {
-            margin-bottom:
-              78px !important;
-          }
+          .welcome-accommodations-section { margin-bottom: 78px !important; }
 
-          .welcome-attractions-heading {
-            margin-bottom:
-              1.65rem;
-          }
+          .welcome-attractions-heading { margin-bottom: 1.65rem; }
 
-          .welcome-accommodations-section {
-            margin-top:
-              55px;
-          }
-
-          .welcome-videos-title {
-            font-size:
-              1.70rem;
-          }
+          .welcome-accommodations-section,
+          .welcome-videos-section { margin-top: 55px; }
 
           .welcome-accommodations-heading,
-          .welcome-videos-heading {
-            margin-bottom:
-              1.55rem;
-          }
+          .welcome-videos-heading { margin-bottom: 1.55rem; }
 
-          .welcome-videos-section {
-            margin-top:
-              55px;
-          }
-
-          .welcome-video-carousel {
-            min-height:
-              325px;
-          }
-
-          .welcome-featured-swiper {
-            height:
-              285px;
-            padding:
-              12px 0 18px;
-          }
-
-          .welcome-featured-swiper-slide {
-            width:
-              91% !important;
-          }
-
-          .welcome-video-cinematic-card {
-            border-radius:
-              17px;
-          }
-
-          .welcome-video-arrow {
-            width:
-              34px;
-            height:
-              34px;
-          }
-
-          .welcome-video-play-badge {
-            width:
-              36px;
-            height:
-              36px;
-          }
+          .welcome-video-carousel { min-height: 325px; }
+          .welcome-featured-swiper { height: 285px; padding: 12px 0 18px; }
+          .welcome-featured-swiper-slide { width: 91% !important; }
+          .welcome-video-cinematic-card { border-radius: 17px; }
+          .welcome-video-arrow { width: 34px; height: 34px; }
+          .welcome-video-play-badge { width: 36px; height: 36px; }
         }
 
+        /* Very small phones */
         @media (max-width: 380px) {
-          .welcome-intro-eyebrow {
-            font-size:
-              0.48rem;
-          }
+          .welcome-intro-eyebrow { font-size: 0.48rem; }
+          .welcome-intro-text { font-size: 0.59rem; }
 
-          .welcome-quick-card .quick-card-icon-wrap {
-            width: 44px;
-            height: 44px;
-            border-radius: 14px;
-          }
+          .welcome-quick-card .quick-card-icon-wrap { width: 44px; height: 44px; border-radius: 14px; }
+          .welcome-quick-card .quick-card-label { font-size: 0.62rem; }
 
-          .welcome-quick-card .quick-card-label {
-            font-size: 0.62rem;
-          }
+          .welcome-mobile-bunting { width: min(90%, 280px); height: 15px; margin: 0 auto 12px; }
+          .bunting-flag { height: 15px; }
 
-          .welcome-intro-text {
-            font-size:
-              0.59rem;
-          }
-
-          .welcome-bunting {
-            display: none;
-          }
-
-          .bunting-flag {
-            width:
-              auto;
-            height:
-              15px;
-            flex:
-              1 1 0;
-            min-width:
-              0;
-          }
-
-          .welcome-display-title,
-          .welcome-attractions-title,
-          .welcome-videos-title {
-            font-size:
-              1.45rem;
-          }
-
-          .welcome-explore-mobile-bunting,
-          .welcome-mobile-bunting {
-            width: min(90%, 280px);
-            height: 15px;
-            margin: 0 auto 12px;
-          }
-
-          .welcome-explore-mobile-bunting .bunting-flag,
-          .welcome-mobile-bunting .bunting-flag {
-            height: 15px;
-          }
-
-          .welcome-section-eyebrow {
-            font-size:
-              0.49rem;
-            gap:
-              6px;
-          }
-
-          .welcome-attractions-toolbar,
-          .welcome-accommodations-toolbar {
-            margin-bottom:
-              0.8rem;
-          }
-
-          .welcome-heading-line {
-            width:
-              15px;
-          }
+          .welcome-section-eyebrow { font-size: 0.49rem; gap: 6px; }
+          .welcome-heading-line { width: 15px; }
 
           .welcome-display-title,
           .welcome-attractions-title,
           .welcome-accommodations-title,
-          .welcome-videos-title {
-            font-size:
-              1.30rem;
-          }
+          .welcome-videos-title { font-size: 1.30rem; }
+
+          .welcome-attractions-toolbar,
+          .welcome-accommodations-toolbar { margin-bottom: 0.8rem; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .welcome-hero-image,
+          .welcome-map-loading-spinner,
+          .welcome-video-loading-spinner { animation-duration: 0.01ms !important; }
         }
       `}</style>
     </div>
