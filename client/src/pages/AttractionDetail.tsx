@@ -2,6 +2,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -39,6 +40,7 @@ import {
   Leaf,
   ShoppingBag,
   MapPinned,
+  ImagePlus,
 } from "lucide-react";
 
 import {
@@ -84,6 +86,28 @@ const BORDER = "#E8EAF0";
 
 const DEFAULT_LATITUDE = 12.0668;
 const DEFAULT_LONGITUDE = 124.6041;
+
+/* =========================================================
+   MEMORY PHOTO SETTINGS
+========================================================= */
+
+const MEMORY_ALLOWED_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+];
+
+const MEMORY_MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+/* How many photos are uploaded at the same time */
+const MEMORY_UPLOAD_BATCH_SIZE = 3;
+
+interface MemoryPhoto {
+  id: string;
+  key: string;
+  file: File;
+  url: string;
+}
 
 /* =========================================================
    CATEGORY ICONS
@@ -1096,18 +1120,15 @@ const AttractionDetail: React.FC =
       setMemoryCaption,
     ] = useState("");
 
+    /*
+     * Every selected photo is kept here together with its
+     * own preview URL, so photos can be added and removed
+     * one by one before submitting.
+     */
     const [
-      memoryPhoto,
-      setMemoryPhoto,
-    ] =
-      useState<File | null>(
-        null,
-      );
-
-    const [
-      memoryPhotoPreview,
-      setMemoryPhotoPreview,
-    ] = useState("");
+      memoryPhotos,
+      setMemoryPhotos,
+    ] = useState<MemoryPhoto[]>([]);
 
     const [
       memorySubmitting,
@@ -1115,9 +1136,56 @@ const AttractionDetail: React.FC =
     ] = useState(false);
 
     const [
+      memoryProgress,
+      setMemoryProgress,
+    ] = useState(0);
+
+    const [
       memoryError,
       setMemoryError,
     ] = useState("");
+
+    /* Always holds the latest photos so previews can be released */
+    const memoryPhotosRef =
+      useRef<MemoryPhoto[]>([]);
+
+    useEffect(() => {
+      memoryPhotosRef.current =
+        memoryPhotos;
+    }, [memoryPhotos]);
+
+    const revokeMemoryPreviews =
+      useCallback(
+        (photos: MemoryPhoto[]) => {
+          photos.forEach((photo) => {
+            URL.revokeObjectURL(
+              photo.url,
+            );
+          });
+        },
+        [],
+      );
+
+    const clearMemoryPhotos =
+      useCallback(() => {
+        revokeMemoryPreviews(
+          memoryPhotosRef.current,
+        );
+
+        memoryPhotosRef.current =
+          [];
+
+        setMemoryPhotos([]);
+      }, [revokeMemoryPreviews]);
+
+    /* Release preview URLs when leaving the page */
+    useEffect(() => {
+      return () => {
+        revokeMemoryPreviews(
+          memoryPhotosRef.current,
+        );
+      };
+    }, [revokeMemoryPreviews]);
 
     /* =====================================================
        SHARE
@@ -1277,14 +1345,18 @@ const AttractionDetail: React.FC =
     ]);
 
     /* =====================================================
-       RESET IMAGE + NOTICES
+       RESET IMAGE + NOTICES + MEMORY FORM
     ===================================================== */
 
     useEffect(() => {
       setActiveImg(0);
       setMemoryNotice("");
       setShareNotice("");
-    }, [id]);
+      setShowMemoryForm(false);
+      setMemoryCaption("");
+      setMemoryError("");
+      clearMemoryPhotos();
+    }, [id, clearMemoryPhotos]);
 
     /* =====================================================
        DERIVED DATA
@@ -1782,70 +1854,182 @@ const AttractionDetail: React.FC =
         );
       };
 
-    const handleMemoryPhotoChange =
+    /*
+     * Adds every newly chosen photo to the list. Photos that are
+     * not allowed (wrong type or too large) are skipped, the rest
+     * are kept, and the user is told what was skipped.
+     */
+    const handleMemoryPhotosChange =
       (
         event: React.ChangeEvent<HTMLInputElement>,
       ) => {
-        const file =
-          event.target.files?.[0];
+        const selectedFiles =
+          Array.from(
+            event.target.files ||
+              [],
+          );
 
-        if (!file) {
+        // Reset so the same file can be picked again later.
+        event.target.value =
+          "";
+
+        if (
+          selectedFiles.length ===
+          0
+        ) {
           return;
         }
 
         setMemoryError("");
         setMemoryNotice("");
 
-        if (
-          ![
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-          ].includes(
-            file.type,
-          )
-        ) {
-          setMemoryError(
-            "Please upload a JPG, PNG, or WEBP image.",
+        const existingKeys =
+          new Set(
+            memoryPhotosRef.current.map(
+              (photo) =>
+                photo.key,
+            ),
           );
 
-          event.target.value =
-            "";
+        const accepted: MemoryPhoto[] =
+          [];
 
+        let wrongType = 0;
+        let tooLarge = 0;
+
+        selectedFiles.forEach(
+          (file) => {
+            if (
+              !MEMORY_ALLOWED_TYPES.includes(
+                file.type,
+              )
+            ) {
+              wrongType += 1;
+              return;
+            }
+
+            if (
+              file.size >
+              MEMORY_MAX_FILE_SIZE
+            ) {
+              tooLarge += 1;
+              return;
+            }
+
+            const key = `${file.name}-${file.size}-${file.lastModified}`;
+
+            // Ignore the exact same photo picked twice.
+            if (
+              existingKeys.has(
+                key,
+              )
+            ) {
+              return;
+            }
+
+            existingKeys.add(
+              key,
+            );
+
+            accepted.push({
+              id: `${key}-${Math.random()
+                .toString(36)
+                .slice(2, 8)}`,
+              key,
+              file,
+              url: URL.createObjectURL(
+                file,
+              ),
+            });
+          },
+        );
+
+        if (
+          accepted.length >
+          0
+        ) {
+          setMemoryPhotos(
+            (previous) => [
+              ...previous,
+              ...accepted,
+            ],
+          );
+        }
+
+        const problems: string[] =
+          [];
+
+        if (wrongType > 0) {
+          problems.push(
+            `${wrongType} ${
+              wrongType === 1
+                ? "file was"
+                : "files were"
+            } skipped because only JPG, PNG, or WEBP images are allowed.`,
+          );
+        }
+
+        if (tooLarge > 0) {
+          problems.push(
+            `${tooLarge} ${
+              tooLarge === 1
+                ? "photo was"
+                : "photos were"
+            } skipped because each photo must be smaller than 5 MB.`,
+          );
+        }
+
+        if (
+          problems.length >
+          0
+        ) {
+          setMemoryError(
+            problems.join(" "),
+          );
+        }
+      };
+
+    const handleRemoveMemoryPhoto =
+      (photoId: string) => {
+        setMemoryError("");
+
+        setMemoryPhotos(
+          (previous) => {
+            const removed =
+              previous.find(
+                (photo) =>
+                  photo.id ===
+                  photoId,
+              );
+
+            if (removed) {
+              URL.revokeObjectURL(
+                removed.url,
+              );
+            }
+
+            return previous.filter(
+              (photo) =>
+                photo.id !==
+                photoId,
+            );
+          },
+        );
+      };
+
+    const closeMemoryForm =
+      () => {
+        if (
+          memorySubmitting
+        ) {
           return;
         }
 
-        if (
-          file.size >
-          5 * 1024 * 1024
-        ) {
-          setMemoryError(
-            "The image must be smaller than 5 MB.",
-          );
-
-          event.target.value =
-            "";
-
-          return;
-        }
-
-        if (
-          memoryPhotoPreview
-        ) {
-          URL.revokeObjectURL(
-            memoryPhotoPreview,
-          );
-        }
-
-        setMemoryPhoto(
-          file,
+        setShowMemoryForm(
+          false,
         );
 
-        setMemoryPhotoPreview(
-          URL.createObjectURL(
-            file,
-          ),
-        );
+        setMemoryError("");
       };
 
     const handleSubmitMemory =
@@ -1853,6 +2037,10 @@ const AttractionDetail: React.FC =
         event: React.FormEvent<HTMLFormElement>,
       ) => {
         event.preventDefault();
+
+        if (memorySubmitting) {
+          return;
+        }
 
         setMemoryError("");
         setMemoryNotice("");
@@ -1872,6 +2060,9 @@ const AttractionDetail: React.FC =
         const caption =
           memoryCaption.trim();
 
+        const photosToUpload =
+          [...memoryPhotos];
+
         if (!userId) {
           setMemoryError(
             "Please log in before submitting a memory.",
@@ -1882,10 +2073,11 @@ const AttractionDetail: React.FC =
 
         if (
           !attractionId ||
-          !memoryPhoto
+          photosToUpload.length ===
+            0
         ) {
           setMemoryError(
-            "Please select a photo first.",
+            "Please select at least one photo.",
           );
 
           return;
@@ -1910,73 +2102,135 @@ const AttractionDetail: React.FC =
           return;
         }
 
+        /* Paths uploaded so far, so they can be cleaned up on failure */
+        const uploadedPaths: string[] =
+          [];
+
         try {
           setMemorySubmitting(
             true,
           );
 
-          const extension =
-            memoryPhoto.name
-              .split(".")
-              .pop()
-              ?.toLowerCase() ||
-            "jpg";
+          setMemoryProgress(0);
 
-          const fileName = `${Date.now()}-${Math.random()
-            .toString(36)
-            .slice(
-              2,
-            )}.${extension}`;
+          const uploadedUrls: string[] =
+            new Array(
+              photosToUpload.length,
+            );
 
-          const filePath = `${userId}/${attractionId}/${fileName}`;
+          const uploadOne =
+            async (
+              photo: MemoryPhoto,
+              index: number,
+            ) => {
+              const extension =
+                photo.file.name
+                  .split(".")
+                  .pop()
+                  ?.toLowerCase() ||
+                "jpg";
 
-          const {
-            error:
-              uploadError,
-          } =
-            await supabase.storage
-              .from(
-                "memory-images",
-              )
-              .upload(
+              const fileName = `${Date.now()}-${index}-${Math.random()
+                .toString(36)
+                .slice(
+                  2,
+                )}.${extension}`;
+
+              const filePath = `${userId}/${attractionId}/${fileName}`;
+
+              const {
+                error:
+                  uploadError,
+              } =
+                await supabase.storage
+                  .from(
+                    "memory-images",
+                  )
+                  .upload(
+                    filePath,
+                    photo.file,
+                    {
+                      cacheControl:
+                        "3600",
+                      upsert:
+                        false,
+                      contentType:
+                        photo.file
+                          .type,
+                    },
+                  );
+
+              if (
+                uploadError
+              ) {
+                throw uploadError;
+              }
+
+              uploadedPaths.push(
                 filePath,
-                memoryPhoto,
-                {
-                  cacheControl:
-                    "3600",
-                  upsert:
-                    false,
-                  contentType:
-                    memoryPhoto.type,
-                },
               );
 
-          if (
-            uploadError
+              const {
+                data:
+                  publicUrlData,
+              } =
+                supabase.storage
+                  .from(
+                    "memory-images",
+                  )
+                  .getPublicUrl(
+                    filePath,
+                  );
+
+              const imageUrl =
+                publicUrlData
+                  ?.publicUrl ||
+                "";
+
+              if (!imageUrl) {
+                throw new Error(
+                  "The uploaded image URL could not be created.",
+                );
+              }
+
+              uploadedUrls[
+                index
+              ] = imageUrl;
+
+              setMemoryProgress(
+                (previous) =>
+                  previous + 1,
+              );
+            };
+
+          // Upload in small batches so many photos do not
+          // overwhelm the connection.
+          for (
+            let start = 0;
+            start <
+            photosToUpload.length;
+            start +=
+              MEMORY_UPLOAD_BATCH_SIZE
           ) {
-            throw uploadError;
-          }
-
-          const {
-            data:
-              publicUrlData,
-          } =
-            supabase.storage
-              .from(
-                "memory-images",
-              )
-              .getPublicUrl(
-                filePath,
+            const batch =
+              photosToUpload.slice(
+                start,
+                start +
+                  MEMORY_UPLOAD_BATCH_SIZE,
               );
 
-          const imageUrl =
-            publicUrlData
-              ?.publicUrl ||
-            "";
-
-          if (!imageUrl) {
-            throw new Error(
-              "The uploaded image URL could not be created.",
+            await Promise.all(
+              batch.map(
+                (
+                  photo,
+                  offset,
+                ) =>
+                  uploadOne(
+                    photo,
+                    start +
+                      offset,
+                  ),
+              ),
             );
           }
 
@@ -1987,9 +2241,8 @@ const AttractionDetail: React.FC =
 
               caption,
 
-              image_urls: [
-                imageUrl,
-              ],
+              image_urls:
+                uploadedUrls,
             },
           );
 
@@ -1997,21 +2250,7 @@ const AttractionDetail: React.FC =
             "",
           );
 
-          setMemoryPhoto(
-            null,
-          );
-
-          if (
-            memoryPhotoPreview
-          ) {
-            URL.revokeObjectURL(
-              memoryPhotoPreview,
-            );
-          }
-
-          setMemoryPhotoPreview(
-            "",
-          );
+          clearMemoryPhotos();
 
           setShowMemoryForm(
             false,
@@ -2028,6 +2267,28 @@ const AttractionDetail: React.FC =
             error,
           );
 
+          // Remove photos that were already uploaded so a failed
+          // submission does not leave unused files in storage.
+          if (
+            uploadedPaths.length >
+            0
+          ) {
+            try {
+              await supabase.storage
+                .from(
+                  "memory-images",
+                )
+                .remove(
+                  uploadedPaths,
+                );
+            } catch (cleanupError) {
+              console.error(
+                "Failed to clean up uploaded memory images:",
+                cleanupError,
+              );
+            }
+          }
+
           setMemoryError(
             error
               ?.response
@@ -2040,6 +2301,8 @@ const AttractionDetail: React.FC =
           setMemorySubmitting(
             false,
           );
+
+          setMemoryProgress(0);
         }
       };
 
@@ -3511,7 +3774,7 @@ const AttractionDetail: React.FC =
             color: #20232a;
           }
 
-          .detail-memory-form input,
+          .detail-memory-form input[type="file"],
           .detail-memory-form textarea {
             width: 100%;
             border: 1px solid #dfe3ed;
@@ -3528,16 +3791,86 @@ const AttractionDetail: React.FC =
             font-size: 0.62rem;
           }
 
-          .detail-memory-preview {
+          /* Selected photos (multiple) */
+
+          .detail-memory-previews {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+            gap: 8px;
             margin-top: 12px;
           }
 
-          .detail-memory-preview img {
+          .detail-memory-preview-item {
+            position: relative;
+            aspect-ratio: 1 / 1;
+            overflow: hidden;
+            border: 1px solid #e4e7ed;
+            border-radius: 10px;
+            background: #eef1f5;
+          }
+
+          .detail-memory-preview-item img {
             display: block;
             width: 100%;
-            max-height: 260px;
+            height: 100%;
             object-fit: cover;
+          }
+
+          .detail-memory-preview-remove {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border: 0;
+            border-radius: 50%;
+            background: rgba(17, 21, 40, 0.72);
+            color: #ffffff;
+            cursor: pointer;
+            transition: background 0.2s ease;
+          }
+
+          .detail-memory-preview-remove:hover:not(:disabled) {
+            background: #e33f5f;
+          }
+
+          .detail-memory-preview-remove:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+
+          .detail-memory-add-more {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            aspect-ratio: 1 / 1;
+            margin: 0 !important;
+            border: 1px dashed #c9cfdc;
             border-radius: 10px;
+            background: #ffffff;
+            color: ${CALBAYOG_BLUE};
+            font-size: 0.6rem !important;
+            font-weight: 900;
+            text-align: center;
+            cursor: pointer;
+            transition:
+              background 0.2s ease,
+              border-color 0.2s ease;
+          }
+
+          .detail-memory-add-more:hover {
+            border-color: ${CALBAYOG_BLUE};
+            background: ${CALBAYOG_BLUE_SOFT};
+          }
+
+          .detail-memory-add-more input {
+            display: none;
           }
 
           .detail-memory-error {
@@ -3713,6 +4046,10 @@ const AttractionDetail: React.FC =
               width: 100%;
             }
 
+            .detail-memory-previews {
+              grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+            }
+
             .detail-map-modal {
               padding: 10px;
             }
@@ -3784,7 +4121,9 @@ const AttractionDetail: React.FC =
             .detail-thumbnail,
             .detail-media-action,
             .detail-location-map-expand,
-            .detail-memory-button {
+            .detail-memory-button,
+            .detail-memory-preview-remove,
+            .detail-memory-add-more {
               transition: none !important;
             }
 
@@ -4279,39 +4618,29 @@ const AttractionDetail: React.FC =
                       <button
                         type="button"
                         className="detail-memory-close"
-                        onClick={() => {
-                          if (
-                            memorySubmitting
-                          ) {
-                            return;
-                          }
-
-                          setShowMemoryForm(
-                            false,
-                          );
-
-                          setMemoryError(
-                            "",
-                          );
-                        }}
+                        onClick={
+                          closeMemoryForm
+                        }
                         disabled={
                           memorySubmitting
                         }
+                        aria-label="Close memory form"
                       >
                         ×
                       </button>
                     </div>
 
                     <label htmlFor="memory-photo">
-                      Upload Photo
+                      Upload Photos
                     </label>
 
                     <input
                       id="memory-photo"
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
+                      multiple
                       onChange={
-                        handleMemoryPhotoChange
+                        handleMemoryPhotosChange
                       }
                       disabled={
                         memorySubmitting
@@ -4321,17 +4650,78 @@ const AttractionDetail: React.FC =
                     <small>
                       JPG, PNG, or
                       WEBP. Maximum
-                      size: 5 MB.
+                      size: 5 MB per
+                      photo.
                     </small>
 
-                    {memoryPhotoPreview && (
-                      <div className="detail-memory-preview">
-                        <img
-                          src={
-                            memoryPhotoPreview
-                          }
-                          alt="Selected memory preview"
-                        />
+                    {memoryPhotos.length >
+                      0 && (
+                      <div className="detail-memory-previews">
+                        {memoryPhotos.map(
+                          (
+                            photo,
+                            index,
+                          ) => (
+                            <div
+                              className="detail-memory-preview-item"
+                              key={
+                                photo.id
+                              }
+                            >
+                              <img
+                                src={
+                                  photo.url
+                                }
+                                alt={`Selected photo ${
+                                  index +
+                                  1
+                                }`}
+                              />
+
+                              <button
+                                type="button"
+                                className="detail-memory-preview-remove"
+                                onClick={() =>
+                                  handleRemoveMemoryPhoto(
+                                    photo.id,
+                                  )
+                                }
+                                disabled={
+                                  memorySubmitting
+                                }
+                                aria-label={`Remove photo ${
+                                  index +
+                                  1
+                                }`}
+                              >
+                                <X
+                                  size={
+                                    12
+                                  }
+                                />
+                              </button>
+                            </div>
+                          ),
+                        )}
+
+                        {!memorySubmitting && (
+                          <label className="detail-memory-add-more">
+                            <ImagePlus
+                              size={
+                                18
+                              }
+                            />
+                            Add more
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              multiple
+                              onChange={
+                                handleMemoryPhotosChange
+                              }
+                            />
+                          </label>
+                        )}
                       </div>
                     )}
 
@@ -4375,10 +4765,8 @@ const AttractionDetail: React.FC =
                       <button
                         type="button"
                         className="detail-memory-cancel"
-                        onClick={() =>
-                          setShowMemoryForm(
-                            false,
-                          )
+                        onClick={
+                          closeMemoryForm
                         }
                         disabled={
                           memorySubmitting
@@ -4395,7 +4783,15 @@ const AttractionDetail: React.FC =
                         }
                       >
                         {memorySubmitting
-                          ? "Uploading..."
+                          ? memoryPhotos.length >
+                            1
+                            ? `Uploading ${Math.min(
+                                memoryProgress,
+                                memoryPhotos.length,
+                              )}/${
+                                memoryPhotos.length
+                              }...`
+                            : "Uploading..."
                           : "Submit Memory"}
                       </button>
                     </div>
