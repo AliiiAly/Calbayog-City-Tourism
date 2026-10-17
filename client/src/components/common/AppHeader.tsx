@@ -1116,25 +1116,6 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   };
 
 
-  // Do not show a browser-menu alert when the native prompt
-  // is unavailable. An in-app installation guide can be
-  // shown here for platforms such as iOS.
-};
-
-
-    // No browser-provided install prompt is available.
-    // Do not display a blocking alert or falsely claim success.
-    const isIOS =
-      /iPad|iPhone|iPod/i.test(window.navigator.userAgent) ||
-      (window.navigator.platform === "MacIntel" &&
-        window.navigator.maxTouchPoints > 1);
-
-    if (isIOS) {
-      // This will be connected to a non-blocking in-app
-      // installation guide in the next step.
-      setShowInstallHelp(true);
-    }
-  };
 
 
   /* =========================================================
