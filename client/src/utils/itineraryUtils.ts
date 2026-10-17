@@ -59,7 +59,33 @@ const VISIT_BY_CATEGORY: Record<string, number> = {
   Other: 60,
 };
 
+/* ---------- WHAT KIND OF PLACE IS IT? ---------- */
+
+// Restaurants and accommodations live in the same table as attractions.
+// They are recognised by their category / attraction type name.
+export type StopKind = "attraction" | "food" | "stay";
+
+const FOOD_RE =
+  /food|dining|restaurant|cafe|café|eatery|eateries|carinderia|bakery|coffee/;
+const STAY_RE =
+  /accommodation|hotel|resort|\binns?\b|lodge|lodging|homestay|hostel|pension|guest ?house|bnb/;
+
+export const getStopKind = (dest: any): StopKind => {
+  const text = [dest?.category, dest?.attraction_type]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (STAY_RE.test(text)) return "stay";
+  if (FOOD_RE.test(text)) return "food";
+  return "attraction";
+};
+
 export const getVisitMinutes = (dest: Destination) => {
+  const kind = getStopKind(dest);
+  if (kind === "food") return 60; // a meal
+  if (kind === "stay") return 30; // check-in / drop bags
+
   const d: any = dest;
   return (
     VISIT_BY_TYPE[d?.attraction_type] ?? VISIT_BY_CATEGORY[d?.category] ?? 60
@@ -255,4 +281,33 @@ export const splitIntoDays = (
     days.push(ordered.slice(i * perDay, i * perDay + perDay));
   }
   return days;
+};
+
+/* ---------- NEAREST PLACE (for lunch / stay suggestions) ---------- */
+
+export const nearestOf = (
+  anchor: Destination,
+  candidates: Destination[],
+  exclude: Set<string>,
+  maxKm: number,
+): Destination | null => {
+  const a = getCoords(anchor);
+  if (!a) return null;
+
+  let best: Destination | null = null;
+  let bestKm = Infinity;
+
+  for (const candidate of candidates) {
+    if (exclude.has(candidate.id)) continue;
+    const c = getCoords(candidate);
+    if (!c) continue;
+
+    const km = haversineKm(a, c) * ROAD_FACTOR;
+    if (km < bestKm) {
+      bestKm = km;
+      best = candidate;
+    }
+  }
+
+  return best && bestKm <= maxKm ? best : null;
 };
