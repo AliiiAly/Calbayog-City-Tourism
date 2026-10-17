@@ -41,6 +41,7 @@ import autoTable from "jspdf-autotable";
 
 import {
   CalendarDays,
+  BedDouble,
   Car,
   Check,
   CirclePlus,
@@ -55,12 +56,12 @@ import {
   MapPin,
   Pencil,
   Plus,
-  Route,
   Search,
   SlidersHorizontal,
   Sparkles,
   Trash2,
   Users,
+  Utensils,
   WalletCards,
   X,
   Zap,
@@ -77,7 +78,8 @@ import {
   formatDuration,
   getSpeed,
   getTravelLeg,
-  optimizeRoute,
+  getStopKind,
+  nearestOf,
   splitIntoDays,
   timeToMinutes,
 } from "../utils/itineraryUtils";
@@ -123,16 +125,68 @@ const categoryColors: Record<string, string> = {
   "Industrial Tourism": "#536878",
   Shopping: "#B56A00",
   Markets: "#B56A00",
+  "Food and Dining": "#C2410C",
+  Accommodation: "#2563EB",
   Other: "#68736D",
 };
 
+type StopKind = ReturnType<typeof getStopKind>;
+
+const KIND_COLORS: Record<StopKind, string> = {
+  attraction: CALBAYOG_BLUE,
+  food: "#C2410C",
+  stay: "#2563EB",
+};
+
+const KIND_LABELS: Record<StopKind, string> = {
+  attraction: "Attraction",
+  food: "Restaurant",
+  stay: "Stay",
+};
+
+const KIND_TAB_LABELS: Record<StopKind, string> = {
+  attraction: "Attractions",
+  food: "Food & Dining",
+  stay: "Where to Stay",
+};
+
+// Lunch is only suggested if a restaurant is within this many km (estimated road distance).
+const MAX_MEAL_KM = 15;
+const MAX_STAY_KM = 25;
+
 const getDestColor = (dest: Destination) => {
+  const kind = getStopKind(dest);
+  if (kind !== "attraction") return KIND_COLORS[kind];
+
   const d: any = dest;
   return (
     categoryColors[d?.attraction_type] ||
     categoryColors[d?.category] ||
     CALBAYOG_BLUE
   );
+};
+
+const KindIcon: React.FC<{ kind: StopKind; size?: number }> = ({ kind, size = 16 }) =>
+  kind === "food" ? (
+    <Utensils size={size} strokeWidth={1.8} />
+  ) : kind === "stay" ? (
+    <BedDouble size={size} strokeWidth={1.8} />
+  ) : (
+    <MapPin size={size} strokeWidth={1.8} />
+  );
+
+// Where a new stop goes: lunch right after the 2nd stop, everything else at the end.
+const insertStop = (stops: Destination[], dest: Destination) => {
+  const next = [...stops];
+  const kind = getStopKind(dest);
+  const hasFood = stops.some((item) => getStopKind(item) === "food");
+
+  if (kind === "food" && !hasFood && stops.length >= 2) {
+    next.splice(2, 0, dest);
+  } else {
+    next.push(dest);
+  }
+  return next;
 };
 
 const tint = (color: string) =>
@@ -196,12 +250,6 @@ const interestOptions: InterestOption[] = [
     icon: Compass,
     types: ["Caves", "Dive Sites", "Hot Springs"],
     keywords: ["adventure", "hiking", "trek", "climb", "cave", "diving"],
-  },
-  {
-    value: "Food",
-    label: "Food",
-    icon: WalletCards,
-    keywords: ["food", "restaurant", "dining", "eat", "culinary", "delicacy"],
   },
   {
     value: "Shopping",
@@ -401,7 +449,9 @@ const generateCustomizedDays = (
   const wanted = tripDays * perDay;
 
   const scored = destinations
-    .filter((dest) => (dest as any).is_active !== false)
+    .filter(
+      (dest) => (dest as any).is_active !== false && getStopKind(dest) === "attraction",
+    )
     .map((dest) => {
       const match = getInterestMatch(dest, preferences.selectedInterests);
       const bonus =
@@ -438,18 +488,40 @@ const generateCustomizedDays = (
   // Group by location so each day's stops are close together.
   const grouped = splitIntoDays(selected, perDay, tripDays);
 
-  return grouped.map((dayDestinations, index) => ({
-    id: `day-${Date.now()}-${index}`,
-    day: index + 1,
-    date: getDateForDay(preferences.travelDateStart, index + 1),
-    destinations: dayDestinations,
-    notes:
+  // Add one lunch stop per day, at the restaurant nearest to the 2nd stop.
+  const restaurants = destinations.filter(
+    (dest) => (dest as any).is_active !== false && getStopKind(dest) === "food",
+  );
+  const usedRestaurants = new Set<string>();
+
+  return grouped.map((dayDestinations, index) => {
+    const stops = [...dayDestinations];
+    let hasLunch = false;
+
+    if (stops.length >= 2) {
+      const lunch = nearestOf(stops[1], restaurants, usedRestaurants, MAX_MEAL_KM);
+      if (lunch) {
+        stops.splice(2, 0, lunch);
+        usedRestaurants.add(lunch.id);
+        hasLunch = true;
+      }
+    }
+
+    const baseNote =
       preferences.travelPace === "Relaxed"
         ? "A relaxed day with more time to enjoy each attraction."
         : preferences.travelPace === "Packed"
           ? "A fuller sightseeing day. Adjust the order or remove stops if needed."
-          : "A balanced sightseeing day.",
-  }));
+          : "A balanced sightseeing day.";
+
+    return {
+      id: `day-${Date.now()}-${index}`,
+      day: index + 1,
+      date: getDateForDay(preferences.travelDateStart, index + 1),
+      destinations: stops,
+      notes: hasLunch ? `${baseNote} Lunch is suggested near your second stop.` : baseNote,
+    };
+  });
 };
 
 /* =========================================================
@@ -470,6 +542,7 @@ const SortableItem: React.FC<{
 
   const d: any = dest;
   const color = getDestColor(dest);
+  const kind = getStopKind(dest);
   const typeLabel =
     d.attraction_type === "Other"
       ? d.other_attraction_type || "Other"
@@ -512,7 +585,7 @@ const SortableItem: React.FC<{
         <img src={dest.images[0]} alt={dest.name} className="planner-stop-image" />
       ) : (
         <div className="planner-stop-image planner-stop-placeholder">
-          <MapPin size={20} strokeWidth={1.7} />
+          <KindIcon kind={kind} size={20} />
         </div>
       )}
 
@@ -520,7 +593,11 @@ const SortableItem: React.FC<{
         <p className="planner-stop-name">{dest.name}</p>
 
         <div className="planner-stop-meta">
-          <span className="planner-category-tag" style={{ color, background: tint(color) }}>
+          <span
+            className="planner-category-tag"
+            style={{ color, background: tint(color), gap: 3 }}
+          >
+            {kind !== "attraction" && <KindIcon kind={kind} size={10} />}
             {typeLabel}
           </span>
           {arrive && (
@@ -627,6 +704,7 @@ const ItineraryPlanner: React.FC = () => {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [nearestFirst, setNearestFirst] = useState(true);
+  const [pickerKind, setPickerKind] = useState<StopKind>("attraction");
   const [justAdded, setJustAdded] = useState("");
   const [customizerError, setCustomizerError] = useState("");
   const [pageNotice, setPageNotice] = useState("");
@@ -900,12 +978,41 @@ const ItineraryPlanner: React.FC = () => {
      DERIVED DATA
   ===================================================== */
 
+  const availableKinds = useMemo(
+    () =>
+      (["attraction", "food", "stay"] as StopKind[]).filter((kind) =>
+        destinations.some((dest) => getStopKind(dest) === kind),
+      ),
+    [destinations],
+  );
+
+  const foodPlaces = useMemo(
+    () =>
+      destinations.filter(
+        (dest) => (dest as any).is_active !== false && getStopKind(dest) === "food",
+      ),
+    [destinations],
+  );
+
+  const stayPlaces = useMemo(
+    () =>
+      destinations.filter(
+        (dest) => (dest as any).is_active !== false && getStopKind(dest) === "stay",
+      ),
+    [destinations],
+  );
+
   const categories = useMemo(() => {
     const unique = Array.from(
-      new Set(destinations.map((destination) => destination.category).filter(Boolean)),
+      new Set(
+        destinations
+          .filter((destination) => getStopKind(destination) === pickerKind)
+          .map((destination) => destination.category)
+          .filter(Boolean),
+      ),
     );
     return ["All", ...unique];
-  }, [destinations]);
+  }, [destinations, pickerKind]);
 
   const schedules = useMemo(
     () => days.map((day) => buildDaySchedule(day.destinations, dayStartMinutes, speedKmh)),
@@ -929,6 +1036,8 @@ const ItineraryPlanner: React.FC = () => {
     const query = search.trim().toLowerCase();
 
     const list = destinations.filter((dest) => {
+      if (getStopKind(dest) !== pickerKind) return false;
+
       const d: any = dest;
       const matchesSearch =
         !query ||
@@ -949,7 +1058,7 @@ const ItineraryPlanner: React.FC = () => {
       const lb = getTravelLeg(lastStop, b, speedKmh)?.minutes ?? Infinity;
       return la - lb;
     });
-  }, [destinations, search, category, nearestFirst, lastStop, speedKmh]);
+  }, [destinations, search, category, nearestFirst, lastStop, speedKmh, pickerKind]);
 
   /* =====================================================
      DAY ACTIONS
@@ -983,8 +1092,9 @@ const ItineraryPlanner: React.FC = () => {
     );
   };
 
-  const openPicker = (dayId: string) => {
+  const openPicker = (dayId: string, kind: StopKind = "attraction") => {
     setActiveDayId(dayId);
+    setPickerKind(kind);
     setSearch("");
     setCategory("All");
     setNearestFirst(true);
@@ -998,7 +1108,7 @@ const ItineraryPlanner: React.FC = () => {
     setDays((previous) =>
       previous.map((day) =>
         day.id === activeDayId && !day.destinations.some((item) => item.id === dest.id)
-          ? { ...day, destinations: [...day.destinations, dest] }
+          ? { ...day, destinations: insertStop(day.destinations, dest) }
           : day,
       ),
     );
@@ -1035,20 +1145,15 @@ const ItineraryPlanner: React.FC = () => {
     });
   };
 
-  const optimizeDay = (dayId: string) => {
+  // One-tap add of a suggested lunch spot or place to stay.
+  const addSuggested = (dayId: string, dest: Destination) => {
     setDays((previous) =>
       previous.map((day) =>
-        day.id === dayId ? { ...day, destinations: optimizeRoute(day.destinations) } : day,
+        day.id === dayId && !day.destinations.some((item) => item.id === dest.id)
+          ? { ...day, destinations: insertStop(day.destinations, dest) }
+          : day,
       ),
     );
-  };
-
-  const optimizeAll = () => {
-    setDays((previous) =>
-      previous.map((day) => ({ ...day, destinations: optimizeRoute(day.destinations) })),
-    );
-    setPageNotice("Every day was reordered to reduce travel time.");
-    window.setTimeout(() => setPageNotice(""), 3000);
   };
 
   const handleDragEnd = (event: DragEndEvent, dayId: string) => {
@@ -1198,7 +1303,6 @@ const ItineraryPlanner: React.FC = () => {
     setShowCustomizer(true);
   };
 
-
   /* =====================================================
      CLEAR
   ===================================================== */
@@ -1280,7 +1384,7 @@ const ItineraryPlanner: React.FC = () => {
     }
 
     doc.text(
-      `${totalDays} day${totalDays !== 1 ? "s" : ""} • ${totalDests} attraction${
+      `${totalDays} day${totalDays !== 1 ? "s" : ""} • ${totalDests} stop${
         totalDests !== 1 ? "s" : ""
       } • about ${formatDuration(totalTravelMin)} of travel`,
       14,
@@ -1322,13 +1426,17 @@ const ItineraryPlanner: React.FC = () => {
 
       autoTable(doc, {
         startY: y,
-        head: [["#", "Time", "Attraction", "Getting there", "Address"]],
+        head: [["#", "Time", "Place", "Getting there", "Address"]],
         body: schedule.stops.map((stop, index) => {
           const d: any = stop.dest;
           return [
             String(index + 1),
             formatClock(stop.arrive),
-            `${stop.dest.name}${d.entrance_fee ? `\nFee: ${d.entrance_fee}` : ""}`,
+            `${stop.dest.name}${
+              getStopKind(stop.dest) !== "attraction"
+                ? ` (${KIND_LABELS[getStopKind(stop.dest)]})`
+                : ""
+            }${d.entrance_fee ? `\nFee: ${d.entrance_fee}` : ""}`,
             stop.travelFromPrev
               ? `~${formatDuration(stop.travelFromPrev.minutes)} (${stop.travelFromPrev.km} km)`
               : index === 0
@@ -1492,7 +1600,7 @@ const ItineraryPlanner: React.FC = () => {
               <strong>Your itinerary is ready!</strong>
               <span>
                 Stops are grouped by location to keep travel short. Drag to reorder,
-                move a stop to another day, or tap Optimize Route.
+                or move a stop to another day.
               </span>
             </div>
           </div>
@@ -1660,6 +1768,28 @@ const ItineraryPlanner: React.FC = () => {
                   label: `Day ${item.day}${item.date ? ` · ${formatDate(item.date)}` : ""}`,
                 }));
 
+              // Smart suggestions: lunch near the 2nd stop, a place to stay near the last stop.
+              const dayKinds = day.destinations.map((stop) => getStopKind(stop));
+              const lunchAnchor = day.destinations[1] || day.destinations[0];
+              const lunchSuggestion =
+                lunchAnchor && !dayKinds.includes("food")
+                  ? nearestOf(lunchAnchor, foodPlaces, usedDestinationIds, MAX_MEAL_KM)
+                  : null;
+              const stayAnchor = day.destinations[day.destinations.length - 1];
+              const staySuggestion =
+                stayAnchor &&
+                day.destinations.length > 1 &&
+                dayIndex < days.length - 1 &&
+                !dayKinds.includes("stay")
+                  ? nearestOf(stayAnchor, stayPlaces, usedDestinationIds, MAX_STAY_KM)
+                  : null;
+              const lunchKm = lunchSuggestion
+                ? getTravelLeg(lunchAnchor, lunchSuggestion, speedKmh)?.km
+                : undefined;
+              const stayKm = staySuggestion
+                ? getTravelLeg(stayAnchor, staySuggestion, speedKmh)?.km
+                : undefined;
+
               return (
                 <Col xs={12} md={6} lg={4} key={day.id} className="planner-day-col">
                   <Card className="planner-day-card">
@@ -1710,11 +1840,6 @@ const ItineraryPlanner: React.FC = () => {
                               Long day. Consider removing a stop or splitting it.
                             </span>
                           )}
-                          {schedule.missingCoords && (
-                            <span className="planner-warning">
-                              Some stops have no map location, so travel time is unknown.
-                            </span>
-                          )}
                         </div>
                       )}
 
@@ -1730,14 +1855,11 @@ const ItineraryPlanner: React.FC = () => {
                           >
                             {schedule.stops.map((stop, index) => (
                               <React.Fragment key={stop.dest.id}>
-                                {index > 0 && (
+                                {index > 0 && stop.travelFromPrev && (
                                   <div className="planner-travel-leg">
-                                    <Car size={11} strokeWidth={2} />
-                                    {stop.travelFromPrev
-                                      ? `~${formatDuration(stop.travelFromPrev.minutes)} · ${
-                                          stop.travelFromPrev.km
-                                        } km`
-                                      : "Travel time unknown"}
+                                    <Car size={11} strokeWidth={2} />~
+                                    {formatDuration(stop.travelFromPrev.minutes)} ·{" "}
+                                    {stop.travelFromPrev.km} km
                                   </div>
                                 )}
 
@@ -1773,23 +1895,53 @@ const ItineraryPlanner: React.FC = () => {
                         </div>
                       )}
 
+                      {(lunchSuggestion || staySuggestion) && (
+                        <div className="planner-suggest">
+                          {lunchSuggestion && (
+                            <button
+                              type="button"
+                              className="planner-suggest-item planner-suggest-food"
+                              onClick={() => addSuggested(day.id, lunchSuggestion)}
+                            >
+                              <Utensils size={14} strokeWidth={2} />
+                              <span>
+                                <small>Lunch nearby</small>
+                                <strong>{lunchSuggestion.name}</strong>
+                                {lunchKm !== undefined && <em>{lunchKm} km away</em>}
+                              </span>
+                              <Plus size={15} strokeWidth={2} />
+                            </button>
+                          )}
+
+                          {staySuggestion && (
+                            <button
+                              type="button"
+                              className="planner-suggest-item planner-suggest-stay"
+                              onClick={() => addSuggested(day.id, staySuggestion)}
+                            >
+                              <BedDouble size={14} strokeWidth={2} />
+                              <span>
+                                <small>Stay overnight nearby</small>
+                                <strong>{staySuggestion.name}</strong>
+                                {stayKm !== undefined && <em>{stayKm} km away</em>}
+                              </span>
+                              <Plus size={15} strokeWidth={2} />
+                            </button>
+                          )}
+                        </div>
+                      )}
+
                       <Button
                         variant="outline-primary"
                         className="planner-add-attraction"
                         onClick={() => openPicker(day.id)}
                       >
                         <CirclePlus size={15} strokeWidth={1.9} />
-                        Add Attraction
+                        Add Place
                       </Button>
 
                       {day.destinations.length > 0 && (
                         <div className="planner-day-tools">
-                          {day.destinations.length > 1 && (
-                            <button type="button" onClick={() => optimizeDay(day.id)}>
-                              <Route size={13} strokeWidth={2} />
-                              Optimize Route
-                            </button>
-                          )}
                           <button
                             type="button"
                             onClick={() =>
@@ -2168,7 +2320,7 @@ const ItineraryPlanner: React.FC = () => {
             <div className="planner-modal-eyebrow">
               ADD A STOP{activeDay ? ` · DAY ${activeDay.day}` : ""}
             </div>
-            <Modal.Title className="planner-modal-title">Pick an Attraction</Modal.Title>
+            <Modal.Title className="planner-modal-title">Add a Place</Modal.Title>
             <p className="planner-modal-subtitle">
               {lastStop
                 ? `Showing distance from ${lastStop.name}, your last stop that day.`
@@ -2178,19 +2330,42 @@ const ItineraryPlanner: React.FC = () => {
         </Modal.Header>
 
         <Modal.Body className="planner-picker-body">
+          {availableKinds.length > 1 && (
+            <div className="planner-kind-tabs">
+              {availableKinds.map((kind) => (
+                <button
+                  key={kind}
+                  type="button"
+                  className={pickerKind === kind ? "active" : ""}
+                  onClick={() => {
+                    setPickerKind(kind);
+                    setCategory("All");
+                    setSearch("");
+                  }}
+                >
+                  <KindIcon kind={kind} size={14} />
+                  {KIND_TAB_LABELS[kind]}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="planner-picker-toolbar">
             <div className="planner-search-wrapper">
               <Search size={16} strokeWidth={1.8} />
               <Form.Control
                 type="search"
-                placeholder="Search attractions..."
+                placeholder={`Search ${KIND_TAB_LABELS[pickerKind].toLowerCase()}...`}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 className="planner-search-input"
               />
             </div>
 
-            <div className="planner-category-scroll">
+            <div
+              className="planner-category-scroll"
+              style={categories.length <= 2 ? { display: "none" } : undefined}
+            >
               {categories.map((cat) => {
                 const active = category === cat;
                 const color = categoryColors[cat] || CALBAYOG_BLUE;
@@ -2218,7 +2393,7 @@ const ItineraryPlanner: React.FC = () => {
 
           <div className="planner-picker-results">
             <span>
-              <strong>{filteredDestinations.length}</strong> attraction
+              <strong>{filteredDestinations.length}</strong> place
               {filteredDestinations.length !== 1 ? "s" : ""} found
             </span>
 
@@ -2245,7 +2420,7 @@ const ItineraryPlanner: React.FC = () => {
               <div className="planner-picker-empty-icon">
                 <Search size={26} strokeWidth={1.5} />
               </div>
-              <h4>No attractions found</h4>
+              <h4>No places found</h4>
               <p>Try another search term or category.</p>
             </div>
           ) : (
@@ -2280,7 +2455,7 @@ const ItineraryPlanner: React.FC = () => {
                         />
                       ) : (
                         <div className="planner-picker-image planner-picker-placeholder">
-                          <MapPin size={21} strokeWidth={1.6} />
+                          <KindIcon kind={getStopKind(dest)} size={21} />
                         </div>
                       )}
 
@@ -2647,6 +2822,29 @@ const ItineraryPlanner: React.FC = () => {
           font-family: "Nunito", sans-serif; font-size: .62rem; font-weight: 800; transition: color .2s ease, border-color .2s ease, background .2s ease;
         }
         .planner-day-tools button:hover { border-color: ${CALBAYOG_BLUE}; color: ${CALBAYOG_BLUE}; background: ${SOFT_BLUE}; }
+
+        /* SUGGESTIONS + KIND TABS */
+        .planner-suggest { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 8px; }
+        .planner-suggest-item {
+          display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px 10px; text-align: left;
+          border: 1px dashed #d4d9e6; border-radius: 12px; background: #fafbff; cursor: pointer;
+          transition: border-color .2s ease, background .2s ease;
+        }
+        .planner-suggest-item > span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .planner-suggest-item small { font-family: "Nunito", sans-serif; font-size: .56rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #8a928d; }
+        .planner-suggest-item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: "Nunito", sans-serif; font-size: .72rem; font-weight: 800; color: #252b27; }
+        .planner-suggest-item em { font-style: normal; font-family: "Nunito", sans-serif; font-size: .58rem; font-weight: 700; color: #737b76; }
+        .planner-suggest-food { color: #C2410C; }
+        .planner-suggest-food:hover { border-color: #C2410C; background: #fff7f2; }
+        .planner-suggest-stay { color: #2563EB; }
+        .planner-suggest-stay:hover { border-color: #2563EB; background: #f3f7ff; }
+        .planner-kind-tabs { display: flex; gap: 6px; margin-bottom: 12px; padding: 4px; border: 1px solid #edf0ee; border-radius: 999px; background: #fff; }
+        .planner-kind-tabs button {
+          flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 6px 10px;
+          border: none; border-radius: 999px; background: transparent; color: #707974; cursor: pointer;
+          font-family: "Nunito", sans-serif; font-size: .66rem; font-weight: 800; transition: background .2s ease, color .2s ease;
+        }
+        .planner-kind-tabs button.active { background: ${CALBAYOG_BLUE}; color: #fff; }
 
         /* MAP */
         .planner-map-wrap { position: relative; border: 1px solid #edf0ee; border-radius: 14px; overflow: hidden; }
