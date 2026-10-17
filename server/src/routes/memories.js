@@ -490,12 +490,16 @@ router.post("/", protectUser, async (req, res) => {
     // INSERT MEMORY
     // -------------------------------------------------
 
-    const insertPayload = {
-      user_id: userId,
-      attraction_id: attractionId,
-      caption: trimmedCaption,
-      image_urls: imageUrls,
-    };
+    
+const insertPayload = {
+  user_id: userId,
+  item_type: req.body.item_type || "attraction",
+  item_id: req.body.item_id || attractionId,
+  attraction_id: attractionId,
+  caption: trimmedCaption,
+  image_urls: imageUrls,
+};
+
 
     const insertResponse = await axios.post(
       getSupabaseRestUrl("memories"),
