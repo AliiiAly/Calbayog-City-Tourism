@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useHistory } from "react-router-dom";
 
 import { Container, Row, Col, Card } from "react-bootstrap";
 
@@ -781,7 +781,7 @@ const toEventCardItem = (item: any): EventCardItem => ({
 ========================================================= */
 
 const Welcome: React.FC = () => {
-  const navigate = useNavigate();
+  const history = useHistory();
   const { user, isUserAuthenticated } = useAuth();
 
   const isAdminLogout =
@@ -1215,7 +1215,7 @@ const Welcome: React.FC = () => {
   };
 
   const handleEventClick = (event: EventCardItem) => {
-    navigate("/events", { state: { eventId: event.id } });
+    history.push("/events", { eventId: event.id });
   };
 
   /* =========================================================
