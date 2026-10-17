@@ -71,6 +71,8 @@ const STAY_RE =
   /accommodation|hotel|resort|\binns?\b|lodge|lodging|homestay|hostel|pension|guest ?house|bnb/;
 
 export const getStopKind = (dest: any): StopKind => {
+  if (dest?.__kind === "food" || dest?.__kind === "stay") return dest.__kind;
+
   const text = [dest?.category, dest?.attraction_type]
     .filter(Boolean)
     .join(" ")
