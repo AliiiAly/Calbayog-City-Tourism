@@ -4131,23 +4131,6 @@ const AttractionDetail: React.FC =
 
         <Container className="attraction-detail-container">
           {/* =================================================
-                BACK
-            ================================================= */}
-
-          <button
-            type="button"
-            className="detail-back-button"
-            onClick={() =>
-              history.goBack()
-            }
-          >
-            <ArrowLeft
-              size={15}
-            />
-            Back to attractions
-          </button>
-
-          {/* =================================================
                 IMAGE + LOCATION
             ================================================= */}
 
