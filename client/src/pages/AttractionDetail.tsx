@@ -1012,26 +1012,6 @@ const TourismMap: React.FC<TourismMapProps> = ({
   );
 };
 
-const openStreetLevelView = (
-  coordinates: MapCoordinates | null,
-): void => {
-  if (!coordinates) {
-    return;
-  }
-
-  const url = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${coordinates.lat},${coordinates.lng}`;
-
-  const opened = window.open(
-    url,
-    "_blank",
-    "noopener,noreferrer",
-  );
-
-  if (!opened) {
-    window.location.href = url;
-  }
-};
-
 /* =========================================================
    COMPONENT
 ========================================================= */
@@ -2990,31 +2970,6 @@ const AttractionDetail: React.FC =
             gap: 8px;
           }
 
-          .detail-map-street-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            min-height: 36px;
-            padding: 7px 11px;
-            border: 1px solid ${BORDER};
-            border-radius: 999px;
-            background: #ffffff;
-            color: ${CALBAYOG_BLUE};
-            font-size: 0.6rem;
-            font-weight: 900;
-            cursor: pointer;
-          }
-
-          .detail-map-street-button:hover {
-            border-color: ${CALBAYOG_BLUE};
-            background: ${CALBAYOG_BLUE_SOFT};
-          }
-
-          .detail-map-street-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-          }
-
           .detail-location-map-overlay {
             position: absolute;
             inset: 0;
@@ -4309,11 +4264,11 @@ const AttractionDetail: React.FC =
                     }
                   />
 
-                  <span className="detail-favorite-count">
-                    {
-                      favoriteCount
-                    }
-                  </span>
+                  {favoriteCount > 0 && (
+                    <span className="detail-favorite-count">
+                      {favoriteCount}
+                    </span>
+                  )}
                 </button>
               </div>
 
@@ -4367,21 +4322,6 @@ const AttractionDetail: React.FC =
                     />
 
                     <div className="detail-location-map-actions">
-                      <button
-                        type="button"
-                        className="detail-location-map-action street-level"
-                        onClick={() =>
-                          openStreetLevelView(
-                            currentMapCoordinates,
-                          )
-                        }
-                        disabled={!currentMapCoordinates}
-                        aria-label="Open street-level view"
-                      >
-                        <MapPinned size={13} />
-                        Street View
-                      </button>
-
                       <button
                         type="button"
                         className="detail-location-map-action"
@@ -4965,7 +4905,7 @@ const AttractionDetail: React.FC =
                       </h2>
 
                       <p className="detail-map-subtitle">
-                        Drag the map, switch map styles, use your location, or open street-level imagery.
+                        Drag the map, switch map styles, or use your current location.
                       </p>
                     </div>
                   </div>
@@ -4978,20 +4918,6 @@ const AttractionDetail: React.FC =
                     </span>
 
                     <div className="detail-map-header-actions">
-                      <button
-                        type="button"
-                        className="detail-map-street-button"
-                        onClick={() =>
-                          openStreetLevelView(
-                            currentMapCoordinates,
-                          )
-                        }
-                        disabled={!currentMapCoordinates}
-                      >
-                        <MapPinned size={14} />
-                        Street View
-                      </button>
-
                       <button
                         type="button"
                         className="detail-map-modal-close"
