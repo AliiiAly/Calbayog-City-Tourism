@@ -1052,11 +1052,12 @@ const AdminRestaurants: React.FC = () => {
             </Card.Body>
           </Card>
         ) : (
-          <Row className="g-4">
-            {filteredRestaurants.map((restaurant) => (
-              <Col key={restaurant.id} xs={12} sm={6} xl={4}>
+          <Row className="g-3 g-lg-4 admin-restaurants-grid">
+            {filteredRestaurants.map((restaurant, index) => (
+              <Col key={restaurant.id} xs={12} sm={6} lg={4} xl={3}>
                 <Card
-                  className="restaurant-card"
+                  className="restaurant-card admin-attraction-card"
+                  style={{ animationDelay: `${Math.min(index * 55, 440)}ms` }}
                   role="button"
                   tabIndex={0}
                   aria-label={`View details for ${restaurant.name}`}
@@ -1068,12 +1069,12 @@ const AdminRestaurants: React.FC = () => {
                     }
                   }}
                 >
-                  <div className="restaurant-image-shell">
+                  <div className="restaurant-image-shell admin-attraction-image-shell">
                     {restaurant.images?.[0] ? (
                       <img
                         src={restaurant.images[0]}
                         alt={restaurant.name}
-                        className="restaurant-image"
+                        className="restaurant-image admin-attraction-card-image"
                         onError={(event) => {
                           event.currentTarget.style.display = "none";
                         }}
@@ -1123,7 +1124,7 @@ const AdminRestaurants: React.FC = () => {
 
                   <Card.Body>
                     <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
-                      <div className="restaurant-card-name">
+                      <div className="restaurant-card-name admin-attraction-name">
                         {restaurant.name}
                       </div>
                     </div>
@@ -1146,34 +1147,34 @@ const AdminRestaurants: React.FC = () => {
                       )}
                     </div>
 
-                    <p className="restaurant-card-description mb-3">
+                    <p className="restaurant-card-description admin-attraction-description mb-3">
                       {restaurant.short_description ||
                         restaurant.description ||
                         "No description added yet."}
                     </p>
 
                     {restaurant.location_address && (
-                      <div className="restaurant-card-location mb-2">
+                      <div className="restaurant-card-location admin-attraction-location mb-2">
                         <MapPin size={14} style={{ flexShrink: 0 }} />
                         <span>{restaurant.location_address}</span>
                       </div>
                     )}
 
                     {restaurant.opening_hours && (
-                      <div className="restaurant-card-location mb-3">
+                      <div className="restaurant-card-location admin-attraction-location mb-3">
                         <Clock3 size={14} style={{ flexShrink: 0 }} />
                         <span>{restaurant.opening_hours}</span>
                       </div>
                     )}
 
-                    <div className="restaurant-card-actions">
+                    <div className="restaurant-card-actions admin-attraction-card-actions" onClick={(event) => event.stopPropagation()}>
                       <Button
                         variant="outline-primary"
-                        className="flex-grow-1"
+                        className="admin-edit-button"
                         onClick={(event) => { event.stopPropagation(); openEditModal(restaurant); }}
                       >
-                        <Pencil size={14} className="me-1" />
-                        Edit Restaurant
+                        <Pencil size={14} />
+                        Edit
                       </Button>
 
                       <Button
@@ -1181,7 +1182,8 @@ const AdminRestaurants: React.FC = () => {
                         aria-label={`Delete ${restaurant.name}`}
                         onClick={(event) => { event.stopPropagation(); setDeleteTarget(restaurant); }}
                       >
-                        <Trash2 size={15} />
+                        <Trash2 size={14} />
+                        <span className="visually-hidden">Delete</span>
                       </Button>
                     </div>
                   </Card.Body>
