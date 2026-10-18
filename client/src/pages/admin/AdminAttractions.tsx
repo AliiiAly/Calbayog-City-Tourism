@@ -31,7 +31,6 @@ import {
   Mail,
   MapPin,
   MapPinned,
-  Navigation,
   Pencil,
   Phone,
   Plus,
@@ -227,31 +226,6 @@ const ONLINE_CONNECTIVITY_OPTIONS = [
 /* =========================================================
    EMPTY FORM
 ========================================================= */
-
-const buildGoogleMapsDirectionsUrl = (
-  attraction: Partial<Attraction> | null | undefined,
-): string => {
-  if (!attraction) return "";
-
-  const name = String((attraction as any).name || "").trim();
-  const address = String(
-    (attraction as any).location_address || "",
-  ).trim();
-
-  const destination = [
-    name,
-    address,
-    "Calbayog City, Samar, Philippines",
-  ]
-    .filter(Boolean)
-    .join(", ");
-
-  if (!destination) return "";
-
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-    destination,
-  )}`;
-};
 
 const buildStreetViewUrl = (
   attraction: Partial<Attraction> | null | undefined,
@@ -5029,57 +5003,22 @@ const AdminAttractions: React.FC = () => {
                 </p>
               )}
 
-              {(buildGoogleMapsDirectionsUrl(
-                viewItem,
-              ) ||
-                buildStreetViewUrl(viewItem)) && (
+              {buildStreetViewUrl(viewItem) && (
                 <div className="mt-4 d-flex gap-2 flex-wrap">
-                  {buildGoogleMapsDirectionsUrl(
-                    viewItem,
-                  ) && (
-                    <Button
-                      variant="success"
-                      as="a"
-                      href={buildGoogleMapsDirectionsUrl(
-                        viewItem,
-                      )}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        border: "none",
-                        borderRadius: "8px",
-                        fontWeight: 600,
-                      }}
-                    >
-                      <Navigation
-                        size={15}
-                        strokeWidth={2}
-                      />{" "}
-                      Get Directions
-                    </Button>
-                  )}
-
-                  {buildStreetViewUrl(viewItem) && (
-                    <Button
-                      variant="outline-primary"
-                      as="a"
-                      href={buildStreetViewUrl(
-                        viewItem,
-                      )}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        borderRadius: "8px",
-                        fontWeight: 600,
-                      }}
-                    >
-                      <MapPinned
-                        size={15}
-                        strokeWidth={2}
-                      />{" "}
-                      Street View
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline-primary"
+                    as="a"
+                    href={buildStreetViewUrl(viewItem)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      borderRadius: "8px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    <MapPinned size={15} strokeWidth={2} />{" "}
+                    Street View
+                  </Button>
                 </div>
               )}
             </Modal.Body>
