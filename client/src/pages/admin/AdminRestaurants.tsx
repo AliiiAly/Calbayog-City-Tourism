@@ -16,8 +16,10 @@ import {
   Building2,
   Check,
   Clock3,
+  Globe2,
   MapPin,
   Pencil,
+  Phone,
   Plus,
   Search,
   SlidersHorizontal,
@@ -77,6 +79,14 @@ const EMPTY_FORM: RestaurantForm = {
 };
 
 const PAGE_STYLES = `
+@font-face {
+  font-family: "Barabara";
+  src: url("/fonts/BARABARA-final.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 .admin-restaurants-page {
   --restaurant-primary: #2D3195;
   --restaurant-primary-dark: #242879;
@@ -106,8 +116,9 @@ const PAGE_STYLES = `
   color: var(--restaurant-primary);
   font-family: "Barabara", "Poppins", sans-serif;
   font-size: clamp(1.65rem, 2.8vw, 2.4rem);
-  line-height: 1.1;
-  font-weight: 800;
+  line-height: .95;
+  font-weight: 400;
+  letter-spacing: .02em;
 }
 
 .admin-restaurants-page .restaurant-subtitle {
@@ -245,6 +256,7 @@ const PAGE_STYLES = `
 
 .admin-restaurants-page .restaurant-card:hover {
   transform: translateY(-4px);
+  border-color: rgba(45,49,149,.18);
   box-shadow: 0 17px 38px rgba(26,30,53,.12);
 }
 
@@ -608,6 +620,7 @@ const AdminRestaurants: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState<Restaurant | null>(null);
+  const [viewItem, setViewItem] = useState<Restaurant | null>(null);
 
   const loadRestaurants = useCallback(async () => {
     setLoading(true);
@@ -860,8 +873,8 @@ const AdminRestaurants: React.FC = () => {
         {/* PAGE TITLE AND ADD BUTTON */}
         <Row className="align-items-end justify-content-between g-3 mb-4">
           <Col>
-            <div className="restaurant-eyebrow">Tourism Management</div>
-            <h1 className="restaurant-page-title">Restaurant Management</h1>
+            <div className="restaurant-eyebrow">CONTENT MANAGEMENT</div>
+            <h1 className="restaurant-page-title">RESTAURANT MANAGEMENT</h1>
             <p className="restaurant-subtitle mb-0">
               Manage restaurant information, location, images, and visibility
               across Calbayog City Tourism.
@@ -1042,7 +1055,19 @@ const AdminRestaurants: React.FC = () => {
           <Row className="g-4">
             {filteredRestaurants.map((restaurant) => (
               <Col key={restaurant.id} xs={12} sm={6} xl={4}>
-                <Card className="restaurant-card">
+                <Card
+                  className="restaurant-card"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`View details for ${restaurant.name}`}
+                  onClick={() => setViewItem(restaurant)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setViewItem(restaurant);
+                    }
+                  }}
+                >
                   <div className="restaurant-image-shell">
                     {restaurant.images?.[0] ? (
                       <img
@@ -1145,7 +1170,7 @@ const AdminRestaurants: React.FC = () => {
                       <Button
                         variant="outline-primary"
                         className="flex-grow-1"
-                        onClick={() => openEditModal(restaurant)}
+                        onClick={(event) => { event.stopPropagation(); openEditModal(restaurant); }}
                       >
                         <Pencil size={14} className="me-1" />
                         Edit Restaurant
@@ -1154,7 +1179,7 @@ const AdminRestaurants: React.FC = () => {
                       <Button
                         variant="outline-danger"
                         aria-label={`Delete ${restaurant.name}`}
-                        onClick={() => setDeleteTarget(restaurant)}
+                        onClick={(event) => { event.stopPropagation(); setDeleteTarget(restaurant); }}
                       >
                         <Trash2 size={15} />
                       </Button>
@@ -1619,6 +1644,143 @@ const AdminRestaurants: React.FC = () => {
             </Button>
           </Modal.Footer>
         </Form>
+      </Modal>
+
+      {/* RESTAURANT DETAIL VIEW — clicking a card opens this modal */}
+      <Modal
+        show={Boolean(viewItem)}
+        onHide={() => setViewItem(null)}
+        centered
+        size="lg"
+        fullscreen="sm-down"
+        scrollable
+        className={`admin-restaurants-page ${
+          darkMode ? "admin-restaurants-dark" : ""
+        }`}
+      >
+        <Modal.Header closeButton>
+          <Modal.Title className="restaurant-page-title" style={{ fontSize: "1.15rem" }}>
+            {viewItem?.name || "Restaurant Details"}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="restaurant-modal-body">
+          {viewItem && (
+            <>
+              {Array.isArray(viewItem.images) && viewItem.images.length > 0 ? (
+                <div className="mb-4">
+                  <img
+                    src={viewItem.images[0]}
+                    alt={viewItem.name}
+                    style={{
+                      width: "100%",
+                      maxHeight: 340,
+                      objectFit: "cover",
+                      borderRadius: 14,
+                      display: "block",
+                    }}
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                    }}
+                  />
+                  {viewItem.images.length > 1 && (
+                    <div className="d-flex flex-wrap gap-2 mt-3">
+                      {viewItem.images.slice(1).map((image, index) => (
+                        <img
+                          key={`${image}-${index}`}
+                          src={image}
+                          alt={`${viewItem.name} ${index + 2}`}
+                          style={{
+                            width: "92px",
+                            height: "72px",
+                            objectFit: "cover",
+                            borderRadius: 9,
+                            border: "1px solid #E1E4EC",
+                          }}
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="d-flex align-items-center justify-content-center mb-4"
+                  style={{ minHeight: 150, borderRadius: 14, background: "#EEF0FF" }}>
+                  <UtensilsCrossed size={42} color={PRIMARY} />
+                </div>
+              )}
+
+              <div className="d-flex flex-wrap gap-2 mb-3">
+                <Badge className="restaurant-pill" style={{ background: "#EEF0FF", color: PRIMARY }}>
+                  {viewItem.cuisine_type || "Cuisine not specified"}
+                </Badge>
+                {viewItem.price_range && (
+                  <Badge className="restaurant-pill" style={{ background: "#FFF5D9", color: "#806000" }}>
+                    {viewItem.price_range}
+                  </Badge>
+                )}
+                {viewItem.featured && (
+                  <Badge className="restaurant-pill" style={{ background: YELLOW, color: "#4D3500" }}>
+                    Featured
+                  </Badge>
+                )}
+                <Badge className="restaurant-pill" bg={viewItem.is_active !== false ? "success" : "secondary"}>
+                  {viewItem.is_active !== false ? "Active" : "Inactive"}
+                </Badge>
+              </div>
+
+              <h5 className="fw-bold mb-2">{viewItem.name}</h5>
+              <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                {viewItem.description || viewItem.short_description || "No description added yet."}
+              </p>
+
+              <hr />
+              <div className="row g-3">
+                <div className="col-12">
+                  <div className="fw-bold mb-1"><MapPin size={15} className="me-1" />Address</div>
+                  <div>{viewItem.location_address || "Address not specified"}</div>
+                </div>
+                <div className="col-12 col-md-6">
+                  <div className="fw-bold mb-1"><Clock3 size={15} className="me-1" />Opening Hours</div>
+                  <div>{viewItem.opening_hours || "Not specified"}</div>
+                </div>
+                <div className="col-12 col-md-6">
+                  <div className="fw-bold mb-1"><Phone size={15} className="me-1" />Contact Number</div>
+                  <div>{viewItem.contact_phone || "Not specified"}</div>
+                </div>
+                <div className="col-12">
+                  <div className="fw-bold mb-1"><Globe2 size={15} className="me-1" />Website</div>
+                  {viewItem.contact_website ? (
+                    <a href={/^https?:\/\//i.test(viewItem.contact_website) ? viewItem.contact_website : `https://${viewItem.contact_website}`}
+                      target="_blank" rel="noopener noreferrer" style={{ overflowWrap: "anywhere" }}>
+                      {viewItem.contact_website}
+                    </a>
+                  ) : "Not specified"}
+                </div>
+              </div>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="restaurant-modal-footer">
+          <Button type="button" variant="outline-secondary" onClick={() => setViewItem(null)}>
+            Close
+          </Button>
+          {viewItem && (
+            <Button
+              type="button"
+              className="restaurant-save-button"
+              onClick={() => {
+                const restaurant = viewItem;
+                setViewItem(null);
+                openEditModal(restaurant);
+              }}
+            >
+              <Pencil size={14} className="me-2" />
+              Edit Restaurant
+            </Button>
+          )}
+        </Modal.Footer>
       </Modal>
 
       {/* DELETE CONFIRMATION */}
