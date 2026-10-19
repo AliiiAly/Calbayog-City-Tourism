@@ -1150,12 +1150,14 @@ export type MemoryItemType =
 export interface MemoryPlace {
   id: string;
   name: string;
+  image?: string | null;
   subtitle: string;
 }
 
 export interface MemoryItemDetails {
   id?: string;
   name?: string;
+  image?: string | null;
   address?: string | null;
   location_address?: string | null;
   short_description?: string | null;
