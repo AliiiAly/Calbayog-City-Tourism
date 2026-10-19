@@ -237,11 +237,9 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
         setSuccess("Admin login successful!");
 
-        window.setTimeout(() => {
-          onClose();
-          onSuccess?.();
-          history.push("/admin");
-        }, 500);
+        onClose();
+        onSuccess?.();
+        history.push("/admin");
 
         return;
       }
@@ -266,10 +264,8 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
       setSuccess("Login successful!");
 
-      window.setTimeout(() => {
-        onClose();
-        onSuccess?.();
-      }, 500);
+      onClose();
+      onSuccess?.();
     } catch (err: any) {
       console.error("Login error:", err);
       setError(
@@ -774,8 +770,8 @@ const LoginModal: React.FC<LoginModalProps> = ({
           justify-content: center;
           padding: 20px;
           background: rgba(10,16,35,.52);
-          backdrop-filter: blur(14px) saturate(130%);
-          -webkit-backdrop-filter: blur(14px) saturate(130%);
+          backdrop-filter: blur(8px) saturate(115%);
+          -webkit-backdrop-filter: blur(8px) saturate(115%);
           animation: loginBackdropIn .22s ease-out both;
         }
 
@@ -788,6 +784,8 @@ const LoginModal: React.FC<LoginModalProps> = ({
           position: relative;
           width: min(100%, 460px);
           max-height: calc(100vh - 40px);
+          max-height: calc(100dvh - 40px);
+          overscroll-behavior: contain;
           overflow-y: auto;
           border: 1px solid rgba(255,255,255,.62);
           border-radius: 25px;
@@ -1090,14 +1088,30 @@ const LoginModal: React.FC<LoginModalProps> = ({
         }
 
         @media (max-width: 520px) {
-          .login-modal-backdrop { padding: 10px; }
+          .login-modal-backdrop {
+            padding: 10px;
+            padding-top: max(10px, env(safe-area-inset-top));
+            padding-bottom: max(10px, env(safe-area-inset-bottom));
+            backdrop-filter: blur(4px) saturate(110%);
+            -webkit-backdrop-filter: blur(4px) saturate(110%);
+          }
           .login-modal-card {
             width: 100%;
             max-height: calc(100vh - 20px);
+            max-height: calc(100dvh - 20px);
             border-radius: 21px;
           }
           .login-modal-content { padding: 32px 22px; }
           .login-modal-title { font-size: 1.6rem; }
+          .login-input { font-size: 16px; }
+        }
+
+        @media (max-height: 620px) and (min-width: 521px) {
+          .login-modal-backdrop { align-items: flex-start; padding-top: 12px; padding-bottom: 12px; }
+          .login-modal-card { max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); }
+          .login-modal-content { padding-top: 24px; padding-bottom: 24px; }
+          .login-modal-logo { width: 48px; height: 48px; margin-bottom: 10px; }
+          .login-modal-subtitle { margin-bottom: 18px; }
         }
 
         @media (prefers-reduced-motion: reduce) {
