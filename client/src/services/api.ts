@@ -1136,14 +1136,40 @@ export const createNotification = (data: object) =>
 export const deleteNotification = (id: string) =>
   supabaseApi.delete(`/notifications?id=eq.${encodeURIComponent(id)}`);
 
-// =========================================================
-// USER MEMORIES
-// =========================================================
+
+ // =========================================================
+ // USER MEMORIES
+ // =========================================================
+
+export type MemoryItemType =
+  | "attraction"
+  | "accommodation"
+  | "restaurant"
+  | "event";
+
+export interface MemoryPlace {
+  id: string;
+  name: string;
+  subtitle: string;
+}
+
+export interface MemoryItemDetails {
+  id?: string;
+  name?: string;
+  address?: string | null;
+  location_address?: string | null;
+  short_description?: string | null;
+  description?: string | null;
+}
 
 export interface UserMemory {
   id: string;
   user_id: string;
-  attraction_id: string;
+  attraction_id: string | null;
+  item_type?: MemoryItemType;
+  item_id?: string;
+  item?: MemoryItemDetails | null;
+  attraction?: MemoryItemDetails | null;
   caption: string;
   image_urls: string[];
   image_url?: string | null;
@@ -1157,10 +1183,15 @@ export interface UserMemoriesResponse {
 
 export interface CreateMemoryPayload {
   attraction_id?: string | null;
-  item_type?: "attraction" | "accommodation";
+  item_type?: MemoryItemType;
   item_id?: string;
   caption: string;
   image_urls: string[];
+}
+
+export interface UpdateMemoryPayload {
+  caption?: string;
+  image_urls?: string[];
 }
 
 const normalizeMemory = (memory: UserMemory): UserMemory => {
@@ -1172,7 +1203,7 @@ const normalizeMemory = (memory: UserMemory): UserMemory => {
     : [];
 
   const legacyImageUrl =
-    typeof memory.image_url === "string" && memory.image_url.trim().length > 0
+    typeof memory.image_url === "string" && memory.image_url.trim()
       ? memory.image_url.trim()
       : null;
 
@@ -1185,12 +1216,17 @@ const normalizeMemory = (memory: UserMemory): UserMemory => {
 
   return {
     ...memory,
+    item_type: memory.item_type || "attraction",
+    item_id: memory.item_id || memory.attraction_id || "",
+    item: memory.item || memory.attraction || null,
     image_urls: normalizedImageUrls,
-    image_url: memory.image_url ?? null,
+    image_url: legacyImageUrl,
   };
 };
 
-export const getMyMemories = async (): Promise<{ data: UserMemory[] }> => {
+export const getMyMemories = async (): Promise<{
+  data: UserMemory[];
+}> => {
   const response = await userApi.get<UserMemoriesResponse>("/memories");
 
   const memories = Array.isArray(response.data?.memories)
@@ -1203,7 +1239,9 @@ export const getMyMemories = async (): Promise<{ data: UserMemory[] }> => {
 export const getMyAttractionMemories = async (
   attractionId: string,
 ): Promise<{ data: UserMemory[] }> => {
-  if (!attractionId) throw new Error("Attraction ID is required.");
+  if (!attractionId) {
+    throw new Error("Attraction ID is required.");
+  }
 
   const response = await userApi.get<UserMemoriesResponse>(
     `/memories/attraction/${encodeURIComponent(attractionId)}`,
@@ -1216,70 +1254,136 @@ export const getMyAttractionMemories = async (
   return { data: memories.map(normalizeMemory) };
 };
 
+export const getMemoryPlaces = async (
+  itemType: MemoryItemType,
+): Promise<MemoryPlace[]> => {
+  const tableByType: Record<MemoryItemType, string> = {
+    attraction: "attractions",
+    accommodation: "accommodations",
+    restaurant: "restaurants",
+    event: "events",
+  };
+
+  const { data, error } = await supabase
+    .from(tableByType[itemType])
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error(`Failed to load ${itemType} places:`, error);
+    throw error;
+  }
+
+  const records = Array.isArray(data) ? data : [];
+
+  return records
+    .filter((record: any) => record?.id && record?.name)
+    .map((record: any) => ({
+      id: String(record.id),
+      name: String(record.name),
+      subtitle: String(
+        record.address ||
+          record.location_address ||
+          record.venue ||
+          record.short_description ||
+          record.description ||
+          "",
+      ),
+    }));
+};
+
 export const createMyMemory = async (
   payload: CreateMemoryPayload,
 ): Promise<{ data: UserMemory; message?: string }> => {
   const itemType = payload.item_type || "attraction";
   const itemId = payload.item_id || payload.attraction_id || "";
-  if (!itemId) {
-    throw new Error(itemType === "accommodation" ? "Accommodation ID is required." : "Attraction ID is required.");
+
+  if (!itemId.trim()) {
+    throw new Error("Please select a place for this memory.");
   }
 
   if (!payload.caption.trim()) {
     throw new Error("Memory caption is required.");
   }
 
-  if (!Array.isArray(payload.image_urls) || payload.image_urls.length === 0) {
+  if (
+    !Array.isArray(payload.image_urls) ||
+    payload.image_urls.length === 0
+  ) {
     throw new Error("At least one memory image is required.");
   }
 
-  const cleanedImageUrls = payload.image_urls
+  const imageUrls = payload.image_urls
     .filter(
-      (url): url is string => typeof url === "string" && url.trim().length > 0,
+      (url): url is string =>
+        typeof url === "string" && url.trim().length > 0,
     )
     .map((url) => url.trim());
 
-  if (cleanedImageUrls.length === 0) {
+  if (imageUrls.length === 0) {
     throw new Error("At least one valid memory image is required.");
   }
 
   const userToken = getUserToken();
 
-  if (!userToken || !userToken.trim()) {
-    throw new Error(
-      "User authentication is missing. Please log in again before submitting a memory.",
-    );
+  if (!userToken?.trim()) {
+    throw new Error("Please log in again before submitting a memory.");
   }
 
-  const response = await fetch(`${SERVER_BASE_URL}/memories`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${userToken.trim()}`,
-      "X-Client-Type": "user",
-    },
-    body: JSON.stringify({
-      attraction_id: itemType === "attraction" ? itemId : null,
-      item_type: itemType,
-      item_id: itemId,
-      caption: payload.caption.trim(),
-      image_urls: cleanedImageUrls,
-    }),
+  const response = await userApi.post("/memories", {
+    attraction_id: itemType === "attraction" ? itemId : null,
+    item_type: itemType,
+    item_id: itemId,
+    caption: payload.caption.trim(),
+    image_urls: imageUrls,
   });
 
-  const responseData = await response.json();
+  const memory = response.data?.memory || response.data;
 
-  if (!response.ok) {
-    throw new Error(
-      responseData?.message ||
-        responseData?.error ||
-        `Memory submission failed with status ${response.status}.`,
-    );
+  if (!memory?.id) {
+    throw new Error("The server did not return the created memory.");
   }
 
   return {
-    data: normalizeMemory(responseData.memory),
-    message: responseData.message,
+    data: normalizeMemory(memory),
+    message: response.data?.message,
+  };
+};
+
+export const updateMyMemory = async (
+  memoryId: string,
+  payload: UpdateMemoryPayload,
+): Promise<{ data: UserMemory; message?: string }> => {
+  if (!memoryId) {
+    throw new Error("Memory ID is required.");
+  }
+
+  if (payload.caption !== undefined && !payload.caption.trim()) {
+    throw new Error("Memory caption is required.");
+  }
+
+  if (
+    payload.image_urls !== undefined &&
+    (!Array.isArray(payload.image_urls) || payload.image_urls.length === 0)
+  ) {
+    throw new Error("At least one memory image is required.");
+  }
+
+  const response = await userApi.put(
+    `/memories/${encodeURIComponent(memoryId)}`,
+    {
+      ...payload,
+      ...(payload.caption !== undefined
+        ? { caption: payload.caption.trim() }
+        : {}),
+    },
+  );
+
+  const memory = response.data?.memory || response.data;
+
+  return {
+    data: memory?.id ? normalizeMemory(memory) : (memory as UserMemory),
+    message: response.data?.message,
   };
 };
 
@@ -1287,7 +1391,9 @@ export const uploadMemoryPhotos = async (
   files: File[],
   attractionId: string,
 ): Promise<{ data: { urls: string[] } }> => {
-  if (!attractionId) throw new Error("Attraction ID is required.");
+  if (!attractionId) {
+    throw new Error("Attraction ID is required.");
+  }
 
   if (!Array.isArray(files) || files.length === 0) {
     throw new Error("At least one image is required.");
@@ -1298,7 +1404,6 @@ export const uploadMemoryPhotos = async (
   }
 
   const formData = new FormData();
-
   formData.append("attraction_id", attractionId);
 
   files.forEach((file) => {
@@ -1312,7 +1417,8 @@ export const uploadMemoryPhotos = async (
 
   const urls = Array.isArray(response.data?.urls)
     ? response.data.urls.filter(
-        (url): url is string => typeof url === "string" && url.trim().length > 0,
+        (url): url is string =>
+          typeof url === "string" && url.trim().length > 0,
       )
     : [];
 
@@ -1328,7 +1434,9 @@ export const uploadMemoryPhotos = async (
 export const deleteMyMemory = async (
   memoryId: string,
 ): Promise<{ message?: string }> => {
-  if (!memoryId) throw new Error("Memory ID is required.");
+  if (!memoryId) {
+    throw new Error("Memory ID is required.");
+  }
 
   const response = await userApi.delete(
     `/memories/${encodeURIComponent(memoryId)}`,
@@ -1336,6 +1444,7 @@ export const deleteMyMemory = async (
 
   return { message: response.data?.message };
 };
+
 
 // =========================================================
 // FEATURED VIDEOS
