@@ -1,10 +1,11 @@
-
 import React, {
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+
+import { useHistory } from "react-router-dom";
 
 import {
   Container,
@@ -18,7 +19,6 @@ import {
   Utensils,
   MapPin,
   Globe2,
-  Search,
   SlidersHorizontal,
 } from "lucide-react";
 
@@ -35,6 +35,12 @@ import RestaurantCard from "../components/restaurants/RestaurantCard";
 
 const CALBAYOG_BLUE = "#2D3195";
 
+/*
+ * Keeps the restaurant listing's scroll position when the
+ * component unmounts and the user returns from RestaurantDetail.
+ */
+let savedRestaurantsScrollY = 0;
+
 const normalizeText = (value: unknown): string =>
   String(value ?? "")
     .toLowerCase()
@@ -45,15 +51,20 @@ const getRestaurantId = (restaurant: Restaurant): string =>
   String(restaurant.id ?? "").trim();
 
 const Restaurants: React.FC = () => {
+  const history = useHistory();
   const { setFavoriteCount } = useFavorites();
 
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
   const [activeCuisine, setActiveCuisine] = useState("All");
   const [featuredOnly, setFeaturedOnly] = useState(false);
 
   const fetchLock = useRef(false);
+  const hasRestoredScroll = useRef(false);
+
+  /* =========================================================
+     FETCH RESTAURANTS
+  ========================================================= */
 
   useEffect(() => {
     let cancelled = false;
@@ -66,6 +77,7 @@ const Restaurants: React.FC = () => {
 
       try {
         const response = await getRestaurants();
+
         const data = Array.isArray(response?.data)
           ? response.data
           : [];
@@ -81,15 +93,24 @@ const Restaurants: React.FC = () => {
           setFavoriteCount(
             "restaurant",
             id,
-            Math.max(0, Number(restaurant.favorites ?? 0) || 0),
+            Math.max(
+              0,
+              Number(restaurant.favorites ?? 0) || 0,
+            ),
           );
         });
       } catch (error) {
         console.error("Failed to fetch restaurants:", error);
-        if (!cancelled) setRestaurants([]);
+
+        if (!cancelled) {
+          setRestaurants([]);
+        }
       } finally {
         fetchLock.current = false;
-        if (!cancelled) setLoading(false);
+
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
@@ -100,6 +121,79 @@ const Restaurants: React.FC = () => {
     };
   }, [setFavoriteCount]);
 
+  /* =========================================================
+     PRESERVE SCROLL POSITION
+
+     Save the current scroll position as the user scrolls.
+     When returning with Back/POP navigation, restore it after
+     the restaurant cards finish loading and render.
+  ========================================================= */
+
+  useEffect(() => {
+    const saveScrollPosition = () => {
+      savedRestaurantsScrollY =
+        window.scrollY || window.pageYOffset || 0;
+    };
+
+    window.addEventListener(
+      "scroll",
+      saveScrollPosition,
+      { passive: true },
+    );
+
+    saveScrollPosition();
+
+    return () => {
+      saveScrollPosition();
+
+      window.removeEventListener(
+        "scroll",
+        saveScrollPosition,
+      );
+    };
+  }, []);
+
+  useEffect(() => {
+    if (
+      loading ||
+      hasRestoredScroll.current ||
+      history.action !== "POP" ||
+      savedRestaurantsScrollY <= 0
+    ) {
+      return;
+    }
+
+    hasRestoredScroll.current = true;
+
+    const savedPosition = savedRestaurantsScrollY;
+
+    let secondFrame = 0;
+
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        window.scrollTo({
+          top: savedPosition,
+          left: 0,
+          behavior: "auto",
+        });
+
+        savedRestaurantsScrollY = 0;
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+
+      if (secondFrame) {
+        window.cancelAnimationFrame(secondFrame);
+      }
+    };
+  }, [loading, history.action]);
+
+  /* =========================================================
+     CUISINE FILTER OPTIONS
+  ========================================================= */
+
   const cuisines = useMemo(() => {
     const values = restaurants
       .map((restaurant) => restaurant.cuisine_type?.trim())
@@ -108,9 +202,14 @@ const Restaurants: React.FC = () => {
     return ["All", ...Array.from(new Set(values)).sort()];
   }, [restaurants]);
 
-  const filteredRestaurants = useMemo(() => {
-    const term = normalizeText(searchTerm);
+  /* =========================================================
+     FILTER RESTAURANTS
 
+     Search has been removed. Cuisine and Featured filters
+     remain functional.
+  ========================================================= */
+
+  const filteredRestaurants = useMemo(() => {
     return restaurants.filter((restaurant) => {
       const matchesCuisine =
         activeCuisine === "All" ||
@@ -120,35 +219,31 @@ const Restaurants: React.FC = () => {
       const matchesFeatured =
         !featuredOnly || restaurant.featured === true;
 
-      const searchableText = [
-        restaurant.name,
-        restaurant.description,
-        restaurant.short_description,
-        restaurant.location_address,
-        restaurant.cuisine_type,
-        restaurant.price_range,
-      ]
-        .map(normalizeText)
-        .join(" ");
-
-      const matchesSearch =
-        !term || searchableText.includes(term);
-
-      return matchesCuisine && matchesFeatured && matchesSearch;
+      return matchesCuisine && matchesFeatured;
     });
-  }, [restaurants, searchTerm, activeCuisine, featuredOnly]);
+  }, [restaurants, activeCuisine, featuredOnly]);
+
+  /* =========================================================
+     CLEAR FILTERS
+  ========================================================= */
 
   const clearFilters = () => {
-    setSearchTerm("");
     setActiveCuisine("All");
     setFeaturedOnly(false);
   };
+
+  /* =========================================================
+     RENDER
+  ========================================================= */
 
   return (
     <div className="page-enter restaurants-page">
       <section className="restaurants-header">
         <div className="restaurants-header-inner">
-          <h1 className="restaurants-title">RESTAURANTS</h1>
+          <h1 className="restaurants-title">
+            RESTAURANTS
+          </h1>
+
           <p className="restaurants-subtitle">
             Discover places to eat in Calbayog City, explore local
             flavors, and find a restaurant for your next meal.
@@ -157,37 +252,25 @@ const Restaurants: React.FC = () => {
       </section>
 
       <Container className="restaurants-container">
-        <div className="restaurant-search-row">
-          <div className="restaurant-search">
-            <Search size={18} />
-            <input
-              type="search"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search restaurants, cuisine, or location..."
-              aria-label="Search restaurants"
-            />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => setSearchTerm("")}
-                aria-label="Clear search"
-              >
-                ×
-              </button>
-            )}
-          </div>
+        {/* FEATURED FILTER — SEARCH BAR REMOVED */}
 
+        <div className="restaurant-filter-row">
           <button
             type="button"
-            className={`featured-filter ${featuredOnly ? "featured-filter-active" : ""}`}
-            onClick={() => setFeaturedOnly((previous) => !previous)}
+            className={`featured-filter ${
+              featuredOnly ? "featured-filter-active" : ""
+            }`}
+            onClick={() =>
+              setFeaturedOnly((previous) => !previous)
+            }
             aria-pressed={featuredOnly}
           >
             <SlidersHorizontal size={16} />
             Featured
           </button>
         </div>
+
+        {/* CUISINE FILTERS */}
 
         <div className="restaurant-cuisine-label">
           EXPLORE BY CUISINE
@@ -211,6 +294,8 @@ const Restaurants: React.FC = () => {
           ))}
         </div>
 
+        {/* RESULTS BAR */}
+
         {!loading && (
           <div className="restaurant-results-bar">
             <div className="restaurant-results-icon">
@@ -219,13 +304,14 @@ const Restaurants: React.FC = () => {
 
             <div className="restaurant-results-copy">
               <span>Showing</span>
+
               <strong>
                 {filteredRestaurants.length} restaurant
                 {filteredRestaurants.length !== 1 ? "s" : ""}
               </strong>
             </div>
 
-            {(searchTerm || activeCuisine !== "All" || featuredOnly) && (
+            {(activeCuisine !== "All" || featuredOnly) && (
               <Button
                 variant="outline-secondary"
                 size="sm"
@@ -238,23 +324,34 @@ const Restaurants: React.FC = () => {
           </div>
         )}
 
+        {/* LOADING STATE */}
+
         {loading ? (
           <div className="restaurants-loading">
             <Spinner animation="border" />
+
             <h3>Discovering restaurants...</h3>
+
             <p>Please wait a moment.</p>
           </div>
         ) : filteredRestaurants.length === 0 ? (
+          /* EMPTY STATE */
+
           <div className="restaurant-empty-state">
             <div className="restaurant-empty-icon">
               <MapPin size={30} />
             </div>
 
-            <h3>No restaurants found</h3>
+            <h3>
+              {restaurants.length === 0
+                ? "No restaurants available"
+                : "No restaurants found"}
+            </h3>
+
             <p>
               {restaurants.length === 0
                 ? "Restaurant listings will appear here when available."
-                : "Try another search or clear your filters to see more restaurants."}
+                : "Try selecting another cuisine or clearing your filters to see more restaurants."}
             </p>
 
             <Button
@@ -265,6 +362,8 @@ const Restaurants: React.FC = () => {
             </Button>
           </div>
         ) : (
+          /* RESTAURANT GRID */
+
           <Row className="restaurants-grid">
             {filteredRestaurants.map((restaurant) => {
               const id = getRestaurantId(restaurant);
@@ -288,6 +387,8 @@ const Restaurants: React.FC = () => {
           </Row>
         )}
       </Container>
+
+      {/* PAGE STYLES */}
 
       <style>{`
         .restaurants-page {
@@ -329,47 +430,14 @@ const Restaurants: React.FC = () => {
           padding: 0 0 60px;
         }
 
-        .restaurant-search-row {
+        /* FEATURED FILTER */
+
+        .restaurant-filter-row {
           display: flex;
           align-items: center;
+          justify-content: flex-end;
           gap: 10px;
           margin: 8px 0 24px;
-        }
-
-        .restaurant-search {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          flex: 1;
-          min-width: 0;
-          padding: 0 14px;
-          border: 1px solid #e5e9e6;
-          border-radius: 12px;
-          background: #fff;
-          color: #858d88;
-        }
-
-        .restaurant-search input {
-          width: 100%;
-          min-width: 0;
-          height: 44px;
-          border: 0;
-          outline: none;
-          background: transparent;
-          color: #252b27;
-          font: 500 .78rem "Nunito", sans-serif;
-        }
-
-        .restaurant-search input:focus-visible {
-          outline: none;
-        }
-
-        .restaurant-search button {
-          border: 0;
-          background: transparent;
-          color: #737b76;
-          font-size: 1.4rem;
-          cursor: pointer;
         }
 
         .featured-filter {
@@ -386,6 +454,10 @@ const Restaurants: React.FC = () => {
           font: 800 .73rem "Nunito", sans-serif;
           white-space: nowrap;
           cursor: pointer;
+          transition:
+            background .2s ease,
+            color .2s ease,
+            border-color .2s ease;
         }
 
         .featured-filter-active {
@@ -393,6 +465,8 @@ const Restaurants: React.FC = () => {
           background: #eef0ff;
           color: ${CALBAYOG_BLUE};
         }
+
+        /* CUISINE FILTERS */
 
         .restaurant-cuisine-label {
           margin-bottom: 10px;
@@ -430,7 +504,9 @@ const Restaurants: React.FC = () => {
           font: 800 .72rem "Nunito", sans-serif;
           white-space: nowrap;
           cursor: pointer;
-          transition: background .2s ease, color .2s ease;
+          transition:
+            background .2s ease,
+            color .2s ease;
         }
 
         .restaurant-cuisine-pill:hover,
@@ -439,6 +515,8 @@ const Restaurants: React.FC = () => {
           background: #eef0ff;
           color: ${CALBAYOG_BLUE};
         }
+
+        /* RESULTS BAR */
 
         .restaurant-results-bar {
           display: flex;
@@ -456,6 +534,7 @@ const Restaurants: React.FC = () => {
           justify-content: center;
           width: 36px;
           height: 36px;
+          flex: 0 0 36px;
           border-radius: 10px;
           background: #eef0ff;
           color: ${CALBAYOG_BLUE};
@@ -484,6 +563,8 @@ const Restaurants: React.FC = () => {
           font: 800 .68rem "Nunito", sans-serif !important;
         }
 
+        /* RESTAURANT GRID */
+
         .restaurants-grid {
           row-gap: 46px !important;
           margin-right: -12px;
@@ -495,6 +576,8 @@ const Restaurants: React.FC = () => {
           padding-right: 12px;
           padding-left: 12px;
         }
+
+        /* LOADING STATE */
 
         .restaurants-loading {
           display: flex;
@@ -517,6 +600,8 @@ const Restaurants: React.FC = () => {
           color: #89918c;
           font: .74rem "Nunito", sans-serif;
         }
+
+        /* EMPTY STATE */
 
         .restaurant-empty-state {
           padding: 65px 20px;
@@ -556,6 +641,15 @@ const Restaurants: React.FC = () => {
           font: 800 .73rem "Nunito", sans-serif;
         }
 
+        /* RESPONSIVE: TABLET AND MOBILE */
+
+        @media (max-width: 991.98px) {
+          .restaurants-container {
+            padding-right: 20px;
+            padding-left: 20px;
+          }
+        }
+
         @media (max-width: 767.98px) {
           .restaurants-header {
             padding: 25px 17px 16px;
@@ -574,26 +668,50 @@ const Restaurants: React.FC = () => {
             padding-left: 17px;
           }
 
-          .restaurant-search-row {
-            align-items: stretch;
-          }
-
-          .restaurant-search {
-            gap: 7px;
-            padding: 0 10px;
-          }
-
-          .restaurant-search input {
-            font-size: .72rem;
+          .restaurant-filter-row {
+            margin-top: 8px;
+            margin-bottom: 20px;
           }
 
           .featured-filter {
-            padding: 0 10px;
-            font-size: .68rem;
+            min-height: 42px;
+            padding: 0 12px;
+            font-size: .7rem;
+          }
+
+          .restaurant-cuisine-pills {
+            gap: 7px;
+          }
+
+          .restaurant-cuisine-pill {
+            padding-right: 12px;
+            padding-left: 12px;
+          }
+
+          .restaurant-results-bar {
+            gap: 9px;
           }
 
           .restaurants-grid {
             row-gap: 36px !important;
+          }
+        }
+
+        @media (max-width: 479.98px) {
+          .restaurants-title {
+            font-size: 1.75rem;
+          }
+
+          .restaurants-subtitle {
+            font-size: .76rem;
+          }
+
+          .restaurant-results-bar {
+            flex-wrap: wrap;
+          }
+
+          .restaurant-clear-button {
+            margin-left: auto;
           }
         }
       `}</style>
