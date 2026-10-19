@@ -685,7 +685,7 @@ const AccommodationDetail: React.FC =
       setMemoryError("");
       setMemoryNotice("");
       const userId = String((auth as any)?.user?.id || "").trim();
-      const accommodationId = cleanString((accommodation as any)?.id ?? (accommodation as any)?._id ?? id);
+      const accommodationId = cleanString(id);
       const caption = memoryCaption.trim();
       if (!userId) { setMemoryError("Please log in before submitting a memory."); return; }
       if (!accommodationId || memoryPhotos.length === 0) { setMemoryError("Please select at least one photo to share."); return; }
@@ -693,8 +693,8 @@ const AccommodationDetail: React.FC =
       const uploadedPaths: string[] = [];
       try {
         setMemorySubmitting(true);
-        const imageUrls: string[] = [];
-        for (const [index, file] of memoryPhotos.entries()) {
+        const imageUrls: string[] = new Array(memoryPhotos.length);
+        const uploadOne = async (file: File, index: number) => {
           const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
           const uploadedPath = `${userId}/${accommodationId}/${Date.now()}-${index}-${Math.random().toString(36).slice(2)}.${extension}`;
           const { error: uploadError } = await supabase.storage.from("memory-images").upload(uploadedPath, file, { cacheControl: "3600", upsert: false, contentType: file.type });
@@ -703,7 +703,11 @@ const AccommodationDetail: React.FC =
           const { data } = supabase.storage.from("memory-images").getPublicUrl(uploadedPath);
           const imageUrl = data?.publicUrl || "";
           if (!imageUrl) throw new Error("Could not create a public image URL.");
-          imageUrls.push(imageUrl);
+          imageUrls[index] = imageUrl;
+        };
+        // Upload in small parallel batches to improve speed without overwhelming the connection.
+        for (let start = 0; start < memoryPhotos.length; start += 3) {
+          await Promise.all(memoryPhotos.slice(start, start + 3).map((file, offset) => uploadOne(file, start + offset)));
         }
         await createMyMemory({ attraction_id: accommodationId, item_type: "accommodation", item_id: accommodationId, caption, image_urls: imageUrls } as any);
         setShowMemoryForm(false);
@@ -2634,15 +2638,15 @@ const AccommodationDetail: React.FC =
           .detail-memory-form input[type=file],.detail-memory-form textarea { display:block; width:100%; padding:13px; border:1px solid ${BORDER}; border-radius:10px; background:#fff; color:${TEXT}; font:inherit; font-size:.8rem; }
           .detail-memory-form textarea { min-height:120px; resize:vertical; }
           .detail-memory-previews { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:12px; margin-top:16px; }
-          .detail-memory-preview-item { position:relative; min-width:0; }
-          .detail-memory-preview { display:block; width:100%; height:140px; object-fit:cover; margin:0; border-radius:10px; border:1px solid ${BORDER}; }
+          .detail-memory-preview-item { position:relative; min-width:0; align-self:start; }
+          .detail-memory-preview { display:block; width:100%; height:auto; max-height:280px; object-fit:contain; object-position:center; background:#f7f8fb; margin:0; border-radius:10px; border:1px solid ${BORDER}; }
           .detail-memory-remove-photo { position:absolute; top:6px; right:6px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border:0; border-radius:50%; background:rgba(32,35,42,.82); color:#fff; font-size:18px; cursor:pointer; }
           .detail-memory-form small { display:block; margin-top:6px; color:${MUTED}; font-size:.65rem; }
-          .detail-memory-preview { display:block; width:min(100%,280px); max-height:220px; object-fit:cover; margin-top:12px; border-radius:10px; }
+          
           .detail-memory-error { margin:10px 0; color:#b42318; font-size:.72rem; font-weight:700; }
           .detail-memory-notice { margin-top:10px; color:#16794b; font-size:.72rem; font-weight:800; }
           .detail-memory-cancel { min-height:38px; padding:8px 12px; border:1px solid ${BORDER}; border-radius:10px; background:#fff; color:${TEXT}; font-size:.7rem; font-weight:800; cursor:pointer; }
-          @media(max-width:575px) { .detail-memory-content { align-items:stretch; flex-direction:column; } .detail-memory-button { width:100%; } .detail-memory-form { padding:16px; } .detail-memory-previews { grid-template-columns:repeat(2,minmax(0,1fr)); } .detail-memory-preview { height:120px; } }
+          @media(max-width:575px) { .detail-memory-content { align-items:stretch; flex-direction:column; } .detail-memory-button { width:100%; } .detail-memory-form { padding:16px; } .detail-memory-previews { grid-template-columns:repeat(2,minmax(0,1fr)); }  }
 
         `}</style>
 
