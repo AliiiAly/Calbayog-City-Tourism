@@ -9,6 +9,7 @@ export default defineConfig({
 
     VitePWA({
       registerType: "autoUpdate",
+
       devOptions: {
         enabled: true,
         type: "module",
@@ -28,10 +29,12 @@ export default defineConfig({
         short_name: "Calbayog Tourism",
         description:
           "Explore Calbayog City, discover beautiful destinations, plan your trip, and experience the culture and attractions of Samar.",
+
         lang: "en",
         dir: "ltr",
         theme_color: "#263A9F",
         background_color: "#263A9F",
+
         display: "standalone",
         display_override: ["standalone"],
         orientation: "portrait-primary",
@@ -39,6 +42,12 @@ export default defineConfig({
         scope: "/",
 
         icons: [
+          {
+            src: "/app-icon.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any",
+          },
           {
             src: "/logo2.png",
             sizes: "512x512",
@@ -61,8 +70,6 @@ export default defineConfig({
 
         runtimeCaching: [
           {
-            // Public tourism API responses.
-            // Private/user-specific API data is intentionally excluded.
             urlPattern: ({ url }) =>
               /^\/api\/(destinations|events|accommodations|guides)(\/|$)/.test(
                 url.pathname,
@@ -73,10 +80,12 @@ export default defineConfig({
             options: {
               cacheName: "calbayog-public-api",
               networkTimeoutSeconds: 3,
+
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 24 * 60 * 60,
               },
+
               cacheableResponse: {
                 statuses: [0, 200],
               },
@@ -84,7 +93,6 @@ export default defineConfig({
           },
 
           {
-            // Public tourism API when deployed on Render.
             urlPattern: ({ url }) =>
               url.origin ===
                 "https://calbayog-city-tourism.onrender.com" &&
@@ -97,10 +105,12 @@ export default defineConfig({
             options: {
               cacheName: "calbayog-render-public-api",
               networkTimeoutSeconds: 3,
+
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 24 * 60 * 60,
               },
+
               cacheableResponse: {
                 statuses: [0, 200],
               },
@@ -108,8 +118,6 @@ export default defineConfig({
           },
 
           {
-            // Cache public images so previously viewed photos
-            // may remain available without a connection.
             urlPattern: ({ request, url }) =>
               request.destination === "image" &&
               (url.origin === self.location.origin ||
@@ -119,10 +127,12 @@ export default defineConfig({
 
             options: {
               cacheName: "calbayog-public-images",
+
               expiration: {
                 maxEntries: 250,
                 maxAgeSeconds: 7 * 24 * 60 * 60,
               },
+
               cacheableResponse: {
                 statuses: [0, 200],
               },
@@ -130,18 +140,18 @@ export default defineConfig({
           },
 
           {
-            // OpenStreetMap tiles: only previously cached tiles
-            // can be shown offline.
             urlPattern: /^https:\/\/tile\.openstreetmap\.org\/.*/,
 
             handler: "CacheFirst",
 
             options: {
               cacheName: "calbayog-map-tiles",
+
               expiration: {
                 maxEntries: 200,
                 maxAgeSeconds: 7 * 24 * 60 * 60,
               },
+
               cacheableResponse: {
                 statuses: [0, 200],
               },
