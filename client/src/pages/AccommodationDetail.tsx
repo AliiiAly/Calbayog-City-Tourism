@@ -2623,7 +2623,8 @@ const AccommodationDetail: React.FC =
               animation: none !important;
             }
           }
-          .detail-memory-section { margin-top: 22px; padding: 16px; border: 1px solid rgba(45,49,149,.14); border-radius: 16px; background: linear-gradient(135deg,#fafaff 0%,#f4f5ff 100%); }
+          .detail-memory-row { margin-top: 22px; }
+          .detail-memory-section { width: 100%; margin-top: 0; padding: 16px; border: 1px solid rgba(45,49,149,.14); border-radius: 16px; background: linear-gradient(135deg,#fafaff 0%,#f4f5ff 100%); }
           .detail-memory-content { display:flex; align-items:center; justify-content:space-between; gap:14px; }
           .detail-memory-copy { display:flex; align-items:flex-start; gap:10px; min-width:0; }
           .detail-memory-icon { width:36px; height:36px; flex:0 0 36px; display:flex; align-items:center; justify-content:center; border-radius:11px; background:${CALBAYOG_BLUE}; color:#fff; }
@@ -3171,7 +3172,9 @@ const AccommodationDetail: React.FC =
             </Col>
           </Row>
 
-          {/* ADD MEMORIES */}
+          {/* ADD MEMORIES: align with the main photo/gallery column */}
+          <Row className="detail-memory-row g-4">
+            <Col lg={8}>
           <section className="detail-memory-section" aria-label="Add accommodation memory">
             <div className="detail-memory-content">
               <div className="detail-memory-copy">
@@ -3194,6 +3197,8 @@ const AccommodationDetail: React.FC =
             </form>}
             {memoryNotice && <p className="detail-memory-notice" role="status">{memoryNotice}</p>}
           </section>
+            </Col>
+          </Row>
         </Container>
 
         {/* ENLARGED MAP */}
