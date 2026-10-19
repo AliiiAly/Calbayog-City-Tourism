@@ -1534,7 +1534,7 @@ const Welcome: React.FC = () => {
     setLoadingRestaurants(true);
 
     try {
-      const response: any = await getRestaurants({ show_on_welcome: true });
+      const response: any = await getRestaurants();
 
       let data = Array.isArray(response?.data) ? response.data : [];
 
@@ -2056,44 +2056,32 @@ const Welcome: React.FC = () => {
             <div className="welcome-attractions-carousel">
               <Swiper
                 modules={[A11y]}
-                slidesPerView={1.12}
-                spaceBetween={16}
+                slidesPerView={1.25}
+                spaceBetween={20}
                 centeredSlides={false}
                 grabCursor
                 watchOverflow
                 resistanceRatio={0.85}
                 touchRatio={1}
                 breakpoints={{
-                  576: { slidesPerView: 2.1, spaceBetween: 18 },
-                  768: { slidesPerView: 2.35, spaceBetween: 20 },
-                  992: { slidesPerView: 3.1, spaceBetween: 22 },
-                  1200: { slidesPerView: 4, spaceBetween: 24 },
+                  400: { slidesPerView: 1.6, spaceBetween: 22 },
+                  576: { slidesPerView: 2.2, spaceBetween: 24 },
+                  768: { slidesPerView: 2.8, spaceBetween: 26 },
+                  992: { slidesPerView: 3.4, spaceBetween: 28 },
+                  1200: { slidesPerView: 4, spaceBetween: 30 },
                 }}
                 className="welcome-attractions-swiper"
               >
-                {welcomeDestinations.map((attraction) => {
-                  const attractionId = String(
-                    (attraction as any)?.id ?? "",
-                  ).trim();
-
-                  return (
-                    <SwiperSlide
-                      key={attractionId || attraction.name}
-                      className="welcome-attraction-slide"
-                    >
-                      <div className="welcome-attraction-card-shell">
-                        <AttractionCard
-                          attraction={attraction}
-                          imageIndex={
-                            attractionId ? imageIndexes[attractionId] || 0 : 0
-                          }
-                          showFavoriteCount={true}
-                          showFeatured={true}
-                        />
-                      </div>
-                    </SwiperSlide>
-                  );
-                })}
+                {welcomeDestinations.map((attraction) => (
+                  <SwiperSlide
+                    key={attraction.id}
+                    className="welcome-attraction-slide"
+                  >
+                    <div className="welcome-attraction-card-shell">
+                      <AttractionCard attraction={attraction} />
+                    </div>
+                  </SwiperSlide>
+                ))}
               </Swiper>
             </div>
           </section>
@@ -3216,10 +3204,63 @@ const Welcome: React.FC = () => {
 
         .welcome-attraction-card-shell > * { width: 100%; }
 
-        /* events: circular cards, centered in each slide */
-        .welcome-event-slide { justify-content: center; padding-top: 4px; }
+        /* ---------- Welcome events carousel spacing ---------- */
 
-        .welcome-events-swiper { padding-bottom: 10px; }
+.welcome-events-carousel {
+  width: 100%;
+  overflow: hidden;
+  padding: 6px 0 12px;
+}
+
+.welcome-events-swiper {
+  width: 100%;
+  padding: 12px 0 24px;
+  overflow: visible;
+}
+
+.welcome-events-swiper .welcome-event-slide {
+  height: auto;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 8px 4px 12px;
+  box-sizing: border-box;
+}
+
+.welcome-events-swiper .welcome-attraction-card-shell {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.welcome-events-swiper .welcome-attraction-card-shell > * {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Preserve the single favorite button rendered by EventCard itself. */
+.welcome-events-swiper .shared-event-image-wrap {
+  overflow: visible;
+}
+
+@media (max-width: 575.98px) {
+  .welcome-events-carousel {
+    padding-top: 4px;
+  }
+
+  .welcome-events-swiper {
+    padding-top: 10px;
+    padding-bottom: 20px;
+  }
+
+  .welcome-events-swiper .welcome-event-slide {
+    padding-left: 3px;
+    padding-right: 3px;
+  }
+}
 
         /* ---------- accommodations / videos spacing ---------- */
 
