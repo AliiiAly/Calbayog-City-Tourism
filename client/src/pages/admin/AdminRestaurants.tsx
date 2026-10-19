@@ -600,6 +600,30 @@ const PAGE_STYLES = `
     flex: 1 1 auto;
   }
 }
+  /* AdminAttractions visual alignment */
+  .admin-restaurants-page .restaurant-eyebrow { font-family: "Nunito", sans-serif; }
+  .admin-restaurants-page .restaurant-page-title { font-family: "Barabara", sans-serif; font-size: clamp(1.65rem, 2.8vw, 2.4rem); line-height: .95; letter-spacing: .02em; }
+  .admin-restaurants-page .restaurant-subtitle { font-size: .78rem; font-weight: 600; line-height: 1.55; }
+  .admin-restaurants-page .restaurant-add-button { min-height: 46px; padding: 11px 19px; border-radius: 13px; background: #2D3195; font-family: "Nunito", sans-serif; font-size: .76rem; font-weight: 900; transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
+  .admin-restaurants-page .restaurant-stat-card { min-height: 116px; padding: 18px; border-radius: 18px; }
+  .admin-restaurants-page .restaurant-toolbar { border-radius: 19px; box-shadow: 0 10px 30px rgba(26,30,53,.055); }
+  .admin-restaurants-page .restaurant-toolbar .card-body { padding: 20px; }
+  .admin-restaurants-page .restaurant-section-heading { font-family: "Poppins", sans-serif; font-size: .84rem; margin-bottom: 14px; }
+  .admin-restaurants-page .form-control, .admin-restaurants-page .form-select { font-family: "Nunito", sans-serif; min-height: 42px; border-radius: 11px; }
+  .admin-restaurants-page .restaurant-card { min-height: 100%; border-radius: 19px; border: 1px solid #E8EAF1; background: #fff; box-shadow: 0 7px 24px rgba(26,30,53,.065); animation: adminAttractionCardIn .55s ease both; transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease, border-color .25s ease; }
+  .admin-restaurants-page .restaurant-card:hover { transform: translateY(-5px); border-color: rgba(45,49,149,.18); box-shadow: 0 18px 40px rgba(26,30,53,.12); }
+  .admin-restaurants-page .restaurant-image-shell { height: 196px; border-radius: 19px 19px 0 0; background: #EEF0FF; }
+  .admin-restaurants-page .restaurant-card .card-body { min-height: 176px; padding: 16px; }
+  .admin-restaurants-page .restaurant-card-name { font-family: "Poppins", sans-serif; font-size: .92rem; font-weight: 800; }
+  .admin-restaurants-page .restaurant-card-description { min-height: 54px; margin: 6px 0 10px; font-family: "Nunito", sans-serif; }
+  .admin-restaurants-page .restaurant-pill { border-radius: 999px; padding: 5px 9px; font-family: "Nunito", sans-serif; font-size: .58rem; font-weight: 900; }
+  .admin-restaurants-page .restaurant-card-actions { padding-top: 12px; border-top: 1px solid #EEF0F4; }
+  .admin-restaurants-page .restaurant-card-actions .btn { min-height: 36px; border-radius: 10px; font-size: .67rem; font-weight: 900; }
+  .admin-restaurants-dark .restaurant-stat-card, .admin-restaurants-dark .restaurant-toolbar, .admin-restaurants-dark .restaurant-card { background: #191C2B; border-color: #2B3042; color: #F1F3F8; }
+  .admin-restaurants-dark .restaurant-card-description, .admin-restaurants-dark .restaurant-card-location, .admin-restaurants-dark .restaurant-stat-label, .admin-restaurants-dark .restaurant-stat-caption { color: #A8AFBF; }
+  @keyframes adminAttractionCardIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+
 `;
 
 const AdminRestaurants: React.FC = () => {
