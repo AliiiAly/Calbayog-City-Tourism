@@ -666,10 +666,16 @@ export interface Restaurant {
 }
 
 
+
 export const getRestaurants = async (params?: {
   search?: string;
   cuisine_type?: string;
   featured?: boolean;
+  /**
+   * Kept for compatibility with existing callers.
+   * The restaurants table may not contain this column,
+   * so it must not be used as a Supabase query filter.
+   */
   show_on_welcome?: boolean;
 }) => {
   let query = supabase
@@ -678,9 +684,8 @@ export const getRestaurants = async (params?: {
     .eq("is_active", true)
     .order("created_at", { ascending: false });
 
-  if (params?.show_on_welcome !== undefined) {
-    query = query.eq("show_on_welcome", params.show_on_welcome);
-  }
+  // Do not filter by show_on_welcome because that column is
+  // not part of the confirmed restaurants schema.
 
   if (params?.search?.trim()) {
     const term = params.search.trim();
@@ -709,6 +714,7 @@ export const getRestaurants = async (params?: {
     data: Array.isArray(data) ? (data as Restaurant[]) : [],
   };
 };
+
 
 export const getRestaurant = async (id: string) => {
   if (!id) {
