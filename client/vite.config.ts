@@ -12,7 +12,12 @@ export default defineConfig({
         type: "module",
       },
       // Keep the existing branding asset: logo2.png.
-      includeAssets: ["favicon.ico", "apple-touch-icon.png", "logo2.png"],
+      includeAssets: [
+  "favicon.ico",
+  "apple-touch-icon.png",
+  "LOGO 192X192.png",
+  "LOGO 512X512.png",
+],
       manifest: {
         id: "/",
         name: "Calbayog City Tourism",
