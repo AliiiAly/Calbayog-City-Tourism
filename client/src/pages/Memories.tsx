@@ -9,7 +9,6 @@ import React, {
 
 import {
   Alert,
-  Badge,
   Button,
   Card,
   Col,
@@ -844,9 +843,6 @@ const Memories: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <Badge className="memories-results-badge">
-                MY COLLECTION
-              </Badge>
             </div>
           )}
 
@@ -901,7 +897,28 @@ const Memories: React.FC = () => {
                     key={memory.id}
                     className="memory-col"
                   >
-                    <Card className="memory-card h-100">
+                    <Card
+                      className="memory-card h-100"
+                      role="button"
+                      tabIndex={deletingMemoryId === memory.id ? -1 : 0}
+                      aria-label={`View memory for ${placeName}`}
+                      aria-haspopup="dialog"
+                      onClick={() => {
+                        if (deletingMemoryId !== memory.id) {
+                          openViewMemoryModal(memory);
+                        }
+                      }}
+                      onKeyDown={(event) => {
+                        if (
+                          deletingMemoryId !== memory.id &&
+                          (event.key === "Enter" || event.key === " ") &&
+                          event.target === event.currentTarget
+                        ) {
+                          event.preventDefault();
+                          openViewMemoryModal(memory);
+                        }
+                      }}
+                    >
                       {firstImage ? (
                         <div className="memory-image-wrapper">
                           <img
@@ -960,7 +977,10 @@ const Memories: React.FC = () => {
                               variant="outline-primary"
                               size="sm"
                               className="memory-view-button"
-                              onClick={() => openViewMemoryModal(memory)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openViewMemoryModal(memory);
+                              }}
                               disabled={deletingMemoryId === memory.id}
                             >
                               <Eye size={13} strokeWidth={1.9} />
@@ -971,7 +991,10 @@ const Memories: React.FC = () => {
                               variant="outline-primary"
                               size="sm"
                               className="memory-edit-button"
-                              onClick={() => openEditMemoryModal(memory)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openEditMemoryModal(memory);
+                              }}
                               disabled={deletingMemoryId === memory.id}
                             >
                               <Pencil size={13} strokeWidth={1.9} />
@@ -982,7 +1005,10 @@ const Memories: React.FC = () => {
                               variant="outline-danger"
                               size="sm"
                               className="memory-delete-button"
-                              onClick={() => handleOpenDeleteModal(memory)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleOpenDeleteModal(memory);
+                              }}
                               disabled={deletingMemoryId === memory.id}
                             >
                               <Trash2 size={13} strokeWidth={1.9} />
@@ -1724,23 +1750,35 @@ const Memories: React.FC = () => {
         .memory-card {
           width: 100%;
           overflow: hidden;
-          border: 1px solid #e9edea;
-          border-radius: 17px;
+          border: 1px solid #e5e7f5;
+          border-radius: 20px;
           background: #fff;
-          box-shadow: 0 7px 22px rgba(30,45,35,.045);
-          transition: transform .22s ease, box-shadow .22s ease;
+          box-shadow: 0 8px 24px rgba(31, 36, 93, .07);
+          cursor: pointer;
+          outline: none;
+          transition: transform .24s ease, box-shadow .24s ease, border-color .24s ease;
         }
 
         .memory-card:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 13px 30px rgba(30,45,35,.09);
+          transform: translateY(-5px);
+          border-color: #c9ccef;
+          box-shadow: 0 18px 38px rgba(31, 36, 93, .14);
+        }
+
+        .memory-card:focus-visible {
+          border-color: ${CALBAYOG_BLUE};
+          box-shadow: 0 0 0 3px rgba(45, 49, 149, .2), 0 12px 28px rgba(31, 36, 93, .1);
+        }
+
+        .memory-card:active {
+          transform: translateY(-1px);
         }
 
         .memory-image-wrapper {
           position: relative;
-          height: 220px;
+          height: 238px;
           overflow: hidden;
-          background: #eef1f4;
+          background: linear-gradient(135deg, #eef0ff, #f7f8fb);
         }
 
         .memory-image {
@@ -1748,6 +1786,11 @@ const Memories: React.FC = () => {
           height: 100%;
           display: block;
           object-fit: cover;
+          transition: transform .45s ease;
+        }
+
+        .memory-card:hover .memory-image {
+          transform: scale(1.045);
         }
 
         .memory-image-overlay {
@@ -1810,7 +1853,7 @@ const Memories: React.FC = () => {
         .memory-card-body {
           display: flex;
           flex-direction: column;
-          padding: 18px !important;
+          padding: 20px !important;
         }
 
         .memory-date {
@@ -1852,9 +1895,9 @@ const Memories: React.FC = () => {
           overflow: hidden;
           min-height: 67px;
           margin: 0 0 18px;
-          color: #7a837d;
+          color: #69736e;
           font-family: "Nunito", sans-serif;
-          font-size: .76rem;
+          font-size: .79rem;
           font-weight: 500;
           line-height: 1.65;
           overflow-wrap: anywhere;
@@ -2478,7 +2521,15 @@ const Memories: React.FC = () => {
 
           .memory-image-wrapper,
           .memory-image-placeholder {
-            height: 215px;
+            height: clamp(205px, 54vw, 270px);
+          }
+
+          .memory-card-body {
+            padding: 17px !important;
+          }
+
+          .memory-card:hover {
+            transform: none;
           }
 
           .memory-photo-grid {
@@ -2514,7 +2565,20 @@ const Memories: React.FC = () => {
           }
 
           .memory-card-actions {
-            align-self: flex-end;
+            align-self: stretch;
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+
+          .memory-card-actions .btn {
+            min-width: 0;
+            padding: 7px 5px !important;
+            font-size: .68rem !important;
+          }
+
+          .memory-card-type {
+            font-size: .7rem;
           }
 
           .memory-view-gallery {
