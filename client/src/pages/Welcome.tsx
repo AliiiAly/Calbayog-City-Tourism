@@ -77,13 +77,13 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 /* =========================================================
-   BRAND COLOR
+    BRAND COLOR
 ========================================================= */
 
 const CALBAYOG_BLUE = "#2D3195";
 
 /* =========================================================
-   SMALL SHARED PIECES
+    SMALL SHARED PIECES
 ========================================================= */
 
 const BUNTING_COLORS = ["red", "orange", "yellow", "teal"];
@@ -123,7 +123,7 @@ const SectionHeading: React.FC<{
 );
 
 /* =========================================================
-   QUICK ACCESS CARDS
+    QUICK ACCESS CARDS
 ========================================================= */
 
 const quickCards: Array<{
@@ -201,7 +201,7 @@ const quickCards: Array<{
 ];
 
 /* =========================================================
-   HERO SLIDES
+    HERO SLIDES
 ========================================================= */
 
 const heroSlides = [
@@ -212,7 +212,7 @@ const heroSlides = [
 ];
 
 /* =========================================================
-   WEATHER
+    WEATHER
 ========================================================= */
 
 type WeatherState = {
@@ -251,8 +251,8 @@ const getWeatherDescription = (weatherCode: number | null): string => {
 };
 
 /* =========================================================
-   WELCOME PAGE MAP
-   Uses the exact saved location_lat / location_lng values.
+    WELCOME PAGE MAP
+    Uses the exact saved location_lat / location_lng values.
 ========================================================= */
 
 const DEFAULT_CALBAYOG_CENTER: [number, number] = [12.0667, 124.6];
@@ -268,7 +268,6 @@ interface WelcomeMapCoordinates {
   lng: number;
 }
 
-/* Details shown in the pin modal (all optional except id / name / coordinates) */
 interface WelcomeMapPlaceDetails {
   id: string;
   name: string;
@@ -664,7 +663,6 @@ const WelcomeMapFitPlaces: React.FC<{
   return null;
 };
 
-/* Moves the map so the tapped pin stays visible next to the details card */
 const WelcomeMapFocus: React.FC<{ place: SelectedMapPlace | null }> = ({
   place,
 }) => {
@@ -680,10 +678,8 @@ const WelcomeMapFocus: React.FC<{ place: SelectedMapPlace | null }> = ({
     let point = map.project(target, zoom);
 
     if (window.innerWidth < 768) {
-      // bottom sheet on phones: lift the pin into the visible upper area
       point = point.add([0, size.y * 0.2]);
     } else {
-      // side card on larger screens: keep the pin to the right of the card
       point = point.subtract([170, 0]);
     }
 
@@ -701,7 +697,6 @@ const WelcomeMapClickAway: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   return null;
 };
 
-/* Swipeable photos inside the pin card */
 const WelcomeMapPlaceImages: React.FC<{
   images: string[];
   name: string;
@@ -795,7 +790,6 @@ const WelcomeMap: React.FC<{
 
   const closeCard = useCallback(() => setSelected(null), []);
 
-  // Close the card with the Escape key
   useEffect(() => {
     if (!selected) return;
 
@@ -964,7 +958,6 @@ const WelcomeMap: React.FC<{
         ))}
       </MapContainer>
 
-      {/* PIN DETAILS — appears when a pin is tapped */}
       {selected && selectedMeta && SelectedIcon && (
         <aside
           className="welcome-map-place-card"
@@ -1082,7 +1075,7 @@ const WelcomeMap: React.FC<{
 };
 
 /* =========================================================
-   HELPERS FOR RESTAURANTS + EVENTS
+    HELPERS FOR RESTAURANTS + EVENTS
 ========================================================= */
 
 const WELCOME_CAROUSEL_LIMIT = 8;
@@ -1112,7 +1105,6 @@ const toRestaurantCardItem = (item: any): RestaurantCardItem => ({
   images: toImageList(item?.images),
 });
 
-/* Keeps the EventCard exactly as-is, including its own favorite heart */
 const toEventCardItem = (item: any): EventCardItem => ({
   ...item,
   id: String(item?.id ?? item?._id ?? "").trim(),
@@ -1125,7 +1117,6 @@ const toEventCardItem = (item: any): EventCardItem => ({
   favorites: item?.favorites ?? item?.favorite_count,
 });
 
-/* Shared pin details for the map card */
 const getWelcomePlaceDetails = (item: any) => ({
   images: toImageList(item?.images),
   description: getWelcomeFirstValue(item, ["short_description", "description"]),
@@ -1140,17 +1131,8 @@ const getWelcomePlaceDetails = (item: any) => ({
   website: getWelcomeFirstValue(item, ["website", "contact_website"]),
 });
 
-/* A poster frame so featured videos are not a black box before playing */
-const getFeaturedVideoPoster = (video: any): string | undefined =>
-  video?.thumbnail_url ||
-  video?.poster_url ||
-  video?.thumbnail ||
-  video?.poster ||
-  video?.image_url ||
-  undefined;
-
 /* =========================================================
-   WELCOME COMPONENT
+    WELCOME COMPONENT
 ========================================================= */
 
 const Welcome: React.FC = () => {
@@ -1165,67 +1147,23 @@ const Welcome: React.FC = () => {
   // Plan Trip and My Memories are protected user features.
   const handleProtectedQuickCardClick = (
     event: React.MouseEvent<HTMLAnchorElement>,
-    destination: string,
+    to: string
   ) => {
-    const requiresLogin =
-      destination === "/itinerary" || destination === "/memories";
-
-    if (!requiresLogin || displayUser) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-    window.dispatchEvent(new Event("open-login-modal"));
+    if (!isUserAuthenticated) {
+      event.preventDefault();
+      history.push(`/login?redirect=${encodeURIComponent(to)}`);
+    }
   };
 
-  const { setFavoriteCount } = useFavorites();
-
-  /* ---------- welcome data ---------- */
-
-  const [welcomeDestinations, setWelcomeDestinations] = useState<Destination[]>([]);
-  const [welcomeAccommodations, setWelcomeAccommodations] = useState<Accommodation[]>([]);
-  const [welcomeRestaurants, setWelcomeRestaurants] = useState<RestaurantCardItem[]>([]);
-  const [welcomeEvents, setWelcomeEvents] = useState<EventCardItem[]>([]);
-
-  const [loadingDestinations, setLoadingDestinations] = useState(true);
-  const [loadingAccommodations, setLoadingAccommodations] = useState(true);
-  const [loadingRestaurants, setLoadingRestaurants] = useState(true);
-  const [loadingEvents, setLoadingEvents] = useState(true);
-
-  const [mapAttractions, setMapAttractions] = useState<WelcomeMapAttraction[]>([]);
-  const [mapAccommodations, setMapAccommodations] = useState<WelcomeMapAccommodation[]>([]);
-  const [mapRestaurants, setMapRestaurants] = useState<WelcomeMapRestaurant[]>([]);
-  const [loadingMap, setLoadingMap] = useState(true);
-
-  /* ---------- image rotation ---------- */
-
-  const [imageIndexes, setImageIndexes] = useState<Record<string, number>>({});
-  const [restaurantImageIndexes, setRestaurantImageIndexes] = useState<
-    Record<string, number>
-  >({});
-
-  /* ---------- hero ---------- */
-
-  const [activeSlide, setActiveSlide] = useState(0);
-
-  const touchStartX = useRef<number | null>(null);
-  const touchEndX = useRef<number | null>(null);
-  const mouseStartX = useRef<number | null>(null);
-  const isDragging = useRef(false);
-
-  /* ---------- featured videos ---------- */
-
+  // Data States
+  const [attractions, setAttractions] = useState<Destination[]>([]);
+  const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
+  const [restaurants, setRestaurants] = useState<RestaurantCardItem[]>([]);
+  const [events, setEvents] = useState<EventCardItem[]>([]);
   const [featuredVideos, setFeaturedVideos] = useState<FeaturedVideo[]>([]);
-  const [loadingFeaturedVideos, setLoadingFeaturedVideos] = useState(true);
-  const [featuredVideosError, setFeaturedVideosError] = useState(false);
-  const [activeVideo, setActiveVideo] = useState(0);
-  const [videoSwiper, setVideoSwiper] = useState<SwiperInstance | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
-
-  /* ---------- date + weather ---------- */
-
-  const [currentDate, setCurrentDate] = useState("");
-
+  // Weather State
   const [weather, setWeather] = useState<WeatherState>({
     temperature: null,
     weatherCode: null,
@@ -1234,2673 +1172,301 @@ const Welcome: React.FC = () => {
     error: false,
   });
 
-  /* ---------- greeting ---------- */
-
-  const firstName = displayUser?.name
-    ? displayUser.name.trim().split(/\s+/)[0]
-    : "";
-
-  const welcomeGreeting = firstName
-    ? `MABUHAY, ${firstName.toUpperCase()}!`
-    : "MABUHAY!";
-
-  /* =========================================================
-     CURRENT DATE
-  ========================================================= */
-
+  // Fetch Weather from Open-Meteo API
   useEffect(() => {
-    const updateDate = () => {
-      setCurrentDate(
-        new Intl.DateTimeFormat("en-PH", {
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-          timeZone: "Asia/Manila",
-        }).format(new Date()),
-      );
-    };
-
-    updateDate();
-
-    const interval = window.setInterval(updateDate, 60 * 1000);
-
-    return () => window.clearInterval(interval);
-  }, []);
-
-  /* =========================================================
-     CALBAYOG WEATHER
-  ========================================================= */
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const loadWeather = async () => {
+    const fetchWeather = async () => {
       try {
-        setWeather((previous) => ({ ...previous, loading: true, error: false }));
-
-        const geocodingResponse = await fetch(
-          "https://geocoding-api.open-meteo.com/v1/search?name=Calbayog&count=10&language=en&format=json",
-          { signal: controller.signal },
+        const res = await fetch(
+          "https://api.open-meteo.com/v1/forecast?latitude=12.0667&longitude=124.6&current_weather=true"
         );
-
-        if (!geocodingResponse.ok) {
-          throw new Error("Unable to find Calbayog location.");
+        const data = await res.json();
+        if (data.current_weather) {
+          setWeather({
+            temperature: Math.round(data.current_weather.temperature),
+            weatherCode: data.current_weather.weathercode,
+            isDay: Boolean(data.current_weather.is_day),
+            loading: false,
+            error: false,
+          });
         }
-
-        const geocodingData = await geocodingResponse.json();
-
-        const results = Array.isArray(geocodingData?.results)
-          ? geocodingData.results
-          : [];
-
-        const calbayogLocation =
-          results.find(
-            (location: any) =>
-              location?.country_code === "PH" &&
-              String(location?.name || "").toLowerCase() === "calbayog",
-          ) || results.find((location: any) => location?.country_code === "PH");
-
-        if (!calbayogLocation?.latitude || !calbayogLocation?.longitude) {
-          throw new Error("Calbayog location was not found.");
-        }
-
-        const weatherResponse = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(
-            calbayogLocation.latitude,
-          )}&longitude=${encodeURIComponent(
-            calbayogLocation.longitude,
-          )}&current=temperature_2m,weather_code,is_day&timezone=Asia%2FManila`,
-          { signal: controller.signal },
-        );
-
-        if (!weatherResponse.ok) {
-          throw new Error("Unable to load current weather.");
-        }
-
-        const weatherData = await weatherResponse.json();
-        const current = weatherData?.current;
-
-        if (!current) {
-          throw new Error("Current weather data is unavailable.");
-        }
-
-        setWeather({
-          temperature:
-            typeof current.temperature_2m === "number"
-              ? current.temperature_2m
-              : null,
-          weatherCode:
-            typeof current.weather_code === "number"
-              ? current.weather_code
-              : null,
-          isDay: Number(current.is_day) === 1,
-          loading: false,
-          error: false,
-        });
-      } catch (error: any) {
-        if (error?.name === "AbortError") return;
-
-        console.error("Failed to load Calbayog weather:", error);
-
-        setWeather({
-          temperature: null,
-          weatherCode: null,
-          isDay: true,
-          loading: false,
-          error: true,
-        });
+      } catch (err) {
+        setWeather((prev) => ({ ...prev, loading: false, error: true }));
       }
     };
 
-    void loadWeather();
+    fetchWeather();
+  }, []);
 
-    const weatherInterval = window.setInterval(loadWeather, 15 * 60 * 1000);
+  // Fetch Page Content
+  useEffect(() => {
+    let mounted = true;
 
+    const loadData = async () => {
+      try {
+        const [
+          attractionsData,
+          accommodationsData,
+          restaurantsData,
+          eventsData,
+          videosData,
+        ] = await Promise.all([
+          getAttractions(),
+          getAccommodations(),
+          getRestaurants(),
+          getEvents(),
+          getFeaturedVideos(),
+        ]);
+
+        if (mounted) {
+          setAttractions(attractionsData || []);
+          setAccommodations(accommodationsData || []);
+          setRestaurants((restaurantsData || []).map(toRestaurantCardItem));
+          setEvents((eventsData || []).map(toEventCardItem));
+          setFeaturedVideos(videosData || []);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    loadData();
     return () => {
-      controller.abort();
-      window.clearInterval(weatherInterval);
+      mounted = false;
     };
   }, []);
 
-  /* =========================================================
-     HERO
-  ========================================================= */
-
-  useEffect(() => {
-    heroSlides.forEach((slide) => {
-      const image = new Image();
-      image.src = slide.image;
-    });
-  }, []);
-
-  const nextSlide = () =>
-    setActiveSlide((current) => (current + 1) % heroSlides.length);
-
-  const previousSlide = () =>
-    setActiveSlide((current) =>
-      current === 0 ? heroSlides.length - 1 : current - 1,
-    );
-
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      setActiveSlide((current) => (current + 1) % heroSlides.length);
-    }, 6000);
-
-    return () => window.clearInterval(interval);
-  }, []);
-
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchEndX.current = null;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    touchEndX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = () => {
-    if (touchStartX.current === null || touchEndX.current === null) return;
-
-    const distance = touchStartX.current - touchEndX.current;
-
-    if (Math.abs(distance) >= 50) {
-      if (distance > 0) nextSlide();
-      else previousSlide();
-    }
-
-    touchStartX.current = null;
-    touchEndX.current = null;
-  };
-
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    mouseStartX.current = e.clientX;
-    isDragging.current = true;
-  };
-
-  const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (mouseStartX.current === null || !isDragging.current) return;
-
-    const distance = mouseStartX.current - e.clientX;
-
-    if (Math.abs(distance) >= 50) {
-      if (distance > 0) nextSlide();
-      else previousSlide();
-    }
-
-    mouseStartX.current = null;
-    isDragging.current = false;
-  };
-
-  const handleMouseLeave = () => {
-    mouseStartX.current = null;
-    isDragging.current = false;
-  };
-
-  /* =========================================================
-     VIDEOS
-  ========================================================= */
-
-  const pauseAllFeaturedVideos = () => {
-    Object.values(videoRefs.current).forEach((video) => {
-      if (video) video.pause();
-    });
-  };
-
-  const loadFeaturedVideos = async () => {
-    setLoadingFeaturedVideos(true);
-    setFeaturedVideosError(false);
-
-    try {
-      const response = await getFeaturedVideos();
-
-      const data = Array.isArray(response?.data)
-        ? response.data.filter((video) =>
-            Boolean(video?.id && video?.video_url),
-          )
-        : [];
-
-      setFeaturedVideos(data);
-      setActiveVideo(0);
-    } catch (error) {
-      console.error("Failed to load Featured Videos:", error);
-      setFeaturedVideos([]);
-      setFeaturedVideosError(true);
-    } finally {
-      setLoadingFeaturedVideos(false);
-    }
-  };
-
-  /* =========================================================
-     ATTRACTIONS
-  ========================================================= */
-
-  const loadWelcomeDestinations = async () => {
-    setLoadingDestinations(true);
-
-    try {
-      const response = await getAttractions({ show_on_welcome: true });
-
-      const data = Array.isArray(response?.data) ? response.data : [];
-      const selected = data.slice(0, 4);
-
-      setWelcomeDestinations(selected);
-
-      selected.forEach((attraction: Destination) => {
-        const attractionId = String((attraction as any)?.id ?? "").trim();
-
-        if (!attractionId) return;
-
-        const count = Math.max(
-          0,
-          Number((attraction as any)?.favorites ?? 0) || 0,
-        );
-
-        setFavoriteCount("attraction", attractionId, count);
-      });
-
-      setImageIndexes({});
-    } catch (error) {
-      console.error("Failed to load Welcome Page attractions:", error);
-      setWelcomeDestinations([]);
-    } finally {
-      setLoadingDestinations(false);
-    }
-  };
-
-  /* =========================================================
-     ACCOMMODATIONS
-  ========================================================= */
-
-  const loadWelcomeAccommodations = async () => {
-    setLoadingAccommodations(true);
-
-    try {
-      const response = await getAccommodations({ show_on_welcome: true });
-
-      const data = Array.isArray(response?.data) ? response.data : [];
-
-      setWelcomeAccommodations(data.slice(0, 4));
-    } catch (error) {
-      console.error("Failed to load Welcome Page accommodations:", error);
-      setWelcomeAccommodations([]);
-    } finally {
-      setLoadingAccommodations(false);
-    }
-  };
-
-  /* =========================================================
-     RESTAURANTS
-  ========================================================= */
-
-  const loadWelcomeRestaurants = async () => {
-    setLoadingRestaurants(true);
-
-    try {
-      const response: any = await (getRestaurants as any)();
-
-      const all = Array.isArray(response?.data) ? response.data : [];
-
-      // The restaurant admin form has no "show on welcome" switch, so show
-      // the active restaurants (featured ones first).
-      const data = all
-        .filter((restaurant: any) => restaurant?.is_active !== false)
-        .sort(
-          (a: any, b: any) =>
-            Number(Boolean(b?.featured)) - Number(Boolean(a?.featured)),
-        );
-
-      const selected: RestaurantCardItem[] = data
-        .map(toRestaurantCardItem)
-        .filter((restaurant: RestaurantCardItem) => Boolean(restaurant.id))
-        .slice(0, WELCOME_CAROUSEL_LIMIT);
-
-      setWelcomeRestaurants(selected);
-
-      selected.forEach((restaurant) => {
-        const count = Math.max(0, Number(restaurant.favorites ?? 0) || 0);
-
-        setFavoriteCount("restaurant", restaurant.id, count);
-      });
-
-      setRestaurantImageIndexes({});
-    } catch (error) {
-      console.error("Failed to load Welcome Page restaurants:", error);
-      setWelcomeRestaurants([]);
-    } finally {
-      setLoadingRestaurants(false);
-    }
-  };
-
-  /* =========================================================
-     EVENTS
-  ========================================================= */
-
-  const loadWelcomeEvents = async () => {
-    setLoadingEvents(true);
-
-    try {
-      const response: any = await getEvents({ show_on_welcome: true });
-
-      const data = Array.isArray(response?.data) ? response.data : [];
-
-      const selected: EventCardItem[] = data
-        .map(toEventCardItem)
-        .filter((event: EventCardItem) => Boolean(event.id))
-        .slice(0, WELCOME_CAROUSEL_LIMIT);
-
-      setWelcomeEvents(selected);
-
-      // Same as attractions: seed the heart counters from the saved counts.
-      selected.forEach((event) => {
-        const count = Math.max(0, Number(event.favorites ?? 0) || 0);
-
-        setFavoriteCount("event", String(event.id), count);
-      });
-    } catch (error) {
-      console.error("Failed to load Welcome Page events:", error);
-      setWelcomeEvents([]);
-    } finally {
-      setLoadingEvents(false);
-    }
-  };
-
-  const handleEventClick = (event: EventCardItem) => {
-    // highlightId is what the Events page reads to open the event modal.
-    history.push("/events", { highlightId: event.id, eventId: event.id });
-  };
-
-  /* =========================================================
-     MAP PINS
-  ========================================================= */
-
-  const loadWelcomeMapPlaces = async () => {
-    setLoadingMap(true);
-
-    try {
-      const [attractionsResponse, accommodationsResponse, restaurantsResponse] =
-        await Promise.all([
-          getAttractions(),
-          getAccommodations(),
-          // restaurants must never break the rest of the map
-          ((getRestaurants as any)() as Promise<any>).catch((error: unknown) => {
-            console.error("Failed to load restaurant map pins:", error);
-            return { data: [] };
-          }),
-        ]);
-
-      const attractionData = Array.isArray(attractionsResponse?.data)
-        ? attractionsResponse.data
-        : [];
-
-      const accommodationData = Array.isArray(accommodationsResponse?.data)
-        ? accommodationsResponse.data
-        : [];
-
-      const restaurantData = Array.isArray(restaurantsResponse?.data)
-        ? restaurantsResponse.data
-        : [];
-
-      const nextAttractions = attractionData
-        .map((item: any) => {
-          const coordinates = getWelcomeCoordinates(item);
-          const id = String(item?.id ?? "").trim();
-
-          if (!coordinates || !id) return null;
-
-          return {
-            id,
-            name: String(item?.name ?? "Unnamed attraction").trim(),
-            category:
-              getWelcomeFirstValue(item, ["category", "destination_category"]) ||
-              "Other",
-            subcategory: getWelcomeAttractionSubcategory(item),
-            markerType: getWelcomeAttractionSubcategory(item),
-            address: getWelcomeFirstValue(item, [
-              "location_address",
-              "address",
-            ]),
-            coordinates,
-            ...getWelcomePlaceDetails(item),
-          };
-        })
-        .filter(Boolean) as WelcomeMapAttraction[];
-
-      const nextAccommodations = accommodationData
-        .map((item: any) => {
-          const coordinates = getWelcomeCoordinates(item);
-          const id = String(item?.id ?? "").trim();
-
-          if (!coordinates || !id) return null;
-
-          return {
-            id,
-            name: String(item?.name ?? "Unnamed accommodation").trim(),
-            type: getWelcomeFirstValue(item, [
-              "type",
-              "accommodation_type",
-              "category",
-            ]),
-            address: getWelcomeFirstValue(item, [
-              "address",
-              "location_address",
-            ]),
-            coordinates,
-            ...getWelcomePlaceDetails(item),
-          };
-        })
-        .filter(Boolean) as WelcomeMapAccommodation[];
-
-      const nextRestaurants = restaurantData
-        .filter((item: any) => item?.is_active !== false)
-        .map((item: any) => {
-          const coordinates = getWelcomeCoordinates(item);
-          const id = String(item?.id ?? "").trim();
-
-          if (!coordinates || !id) return null;
-
-          return {
-            id,
-            name: String(item?.name ?? "Unnamed restaurant").trim(),
-            cuisine: getWelcomeFirstValue(item, ["cuisine_type", "cuisine"]),
-            address: getWelcomeFirstValue(item, [
-              "location_address",
-              "address",
-            ]),
-            coordinates,
-            ...getWelcomePlaceDetails(item),
-          };
-        })
-        .filter(Boolean) as WelcomeMapRestaurant[];
-
-      setMapAttractions(nextAttractions);
-      setMapAccommodations(nextAccommodations);
-      setMapRestaurants(nextRestaurants);
-    } catch (error) {
-      console.error("Failed to load Welcome Page map pins:", error);
-      setMapAttractions([]);
-      setMapAccommodations([]);
-      setMapRestaurants([]);
-    } finally {
-      setLoadingMap(false);
-    }
-  };
-
-  /* =========================================================
-     INITIAL LOAD
-  ========================================================= */
-
-  useEffect(() => {
-    void loadWelcomeDestinations();
-    void loadWelcomeAccommodations();
-    void loadWelcomeRestaurants();
-    void loadWelcomeEvents();
-    void loadWelcomeMapPlaces();
-    void loadFeaturedVideos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  /* =========================================================
-     AUTO ROTATE CARD IMAGES
-  ========================================================= */
-
-  useEffect(() => {
-    if (welcomeDestinations.length === 0) return;
-
-    const interval = window.setInterval(() => {
-      setImageIndexes((previous) => {
-        const next = { ...previous };
-
-        welcomeDestinations.forEach((destination) => {
-          const images = Array.isArray(destination.images)
-            ? destination.images.filter(Boolean)
-            : [];
-
-          const id = String((destination as any)?.id ?? "").trim();
-
-          if (id && images.length > 1) {
-            next[id] = ((previous[id] || 0) + 1) % images.length;
-          }
-        });
-
-        return next;
-      });
-    }, 5500);
-
-    return () => window.clearInterval(interval);
-  }, [welcomeDestinations]);
-
-  useEffect(() => {
-    if (welcomeRestaurants.length === 0) return;
-
-    const interval = window.setInterval(() => {
-      setRestaurantImageIndexes((previous) => {
-        const next = { ...previous };
-
-        welcomeRestaurants.forEach((restaurant) => {
-          const images = restaurant.images || [];
-
-          if (restaurant.id && images.length > 1) {
-            next[restaurant.id] =
-              ((previous[restaurant.id] || 0) + 1) % images.length;
-          }
-        });
-
-        return next;
-      });
-    }, 5500);
-
-    return () => window.clearInterval(interval);
-  }, [welcomeRestaurants]);
-
-  /* =========================================================
-     FEATURED VIDEO INDEX
-  ========================================================= */
-
-  useEffect(() => {
-    if (featuredVideos.length === 0) {
-      setActiveVideo(0);
-      return;
-    }
-
-    if (activeVideo >= featuredVideos.length) {
-      setActiveVideo(0);
-    }
-  }, [featuredVideos.length, activeVideo]);
-
-  useEffect(() => {
-    Object.values(videoRefs.current).forEach((videoElement) => {
-      if (videoElement) videoElement.pause();
-    });
-  }, [activeVideo]);
-
-  /* =========================================================
-     DERIVED VALUES
-  ========================================================= */
-
-  const weatherDescription = getWeatherDescription(weather.weatherCode);
-
-  const weatherText = weather.loading
-    ? "Loading weather..."
-    : weather.error
-      ? "Weather unavailable"
-      : weather.temperature !== null
-        ? `${weather.temperature.toFixed(1)}°C`
-        : weatherDescription;
-
-  /* =========================================================
-     RENDER
-  ========================================================= */
+  // Process map data with valid coordinates
+  const mapAttractions = useMemo<WelcomeMapAttraction[]>(() => {
+    return attractions
+      .map((item: any) => {
+        const coords = getWelcomeCoordinates(item);
+        if (!coords) return null;
+        return {
+          id: String(item.id || item._id),
+          name: item.title || item.name || "Attraction",
+          address: item.address || item.location_name || "",
+          coordinates: coords,
+          category: item.category || "Nature",
+          subcategory: getWelcomeAttractionSubcategory(item),
+          markerType: item.attraction_type || item.category || "Nature",
+          ...getWelcomePlaceDetails(item),
+        };
+      })
+      .filter((item): item is WelcomeMapAttraction => item !== null);
+  }, [attractions]);
+
+  const mapAccommodations = useMemo<WelcomeMapAccommodation[]>(() => {
+    return accommodations
+      .map((item: any) => {
+        const coords = getWelcomeCoordinates(item);
+        if (!coords) return null;
+        return {
+          id: String(item.id || item._id),
+          name: item.title || item.name || "Stay",
+          address: item.address || "",
+          coordinates: coords,
+          type: item.type || item.accommodation_type || "Hotel",
+          ...getWelcomePlaceDetails(item),
+        };
+      })
+      .filter((item): item is WelcomeMapAccommodation => item !== null);
+  }, [accommodations]);
+
+  const mapRestaurants = useMemo<WelcomeMapRestaurant[]>(() => {
+    return restaurants
+      .map((item: any) => {
+        const coords = getWelcomeCoordinates(item);
+        if (!coords) return null;
+        return {
+          id: String(item.id || item._id),
+          name: item.name || "Restaurant",
+          address: item.address || "",
+          coordinates: coords,
+          cuisine: item.cuisine || item.cuisine_type || "Local Dining",
+          ...getWelcomePlaceDetails(item),
+        };
+      })
+      .filter((item): item is WelcomeMapRestaurant => item !== null);
+  }, [restaurants]);
 
   return (
-    <div className="page-enter welcome-page">
-      <Container className="welcome-container py-4 py-md-5">
-        {/* =====================================================
-            HERO
-        ===================================================== */}
+    <div className="welcome-page-container">
+      {/* Hero Carousel Section */}
+      <section className="welcome-hero-section position-relative">
+        <Swiper
+          modules={[Navigation, Pagination, A11y]}
+          spaceBetween={0}
+          slidesPerView={1}
+          navigation
+          pagination={{ clickable: true }}
+          loop
+          className="welcome-hero-swiper"
+        >
+          {heroSlides.map((slide) => (
+            <SwiperSlide key={slide.id}>
+              <div
+                className="welcome-hero-slide"
+                style={{ backgroundImage: `url(${slide.image})` }}
+              >
+                <div className="welcome-hero-overlay" />
+              </div>
+            </SwiperSlide>
+          ))}
+        </Swiper>
 
-        <section className="welcome-hero-section mb-5">
-          <div
-            className="welcome-hero-slider"
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onMouseDown={handleMouseDown}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseLeave}
-          >
-            {/* every slide stays mounted and cross-fades, so changes are smooth */}
-            {heroSlides.map((slide, index) => (
-              <img
-                key={slide.id}
-                src={slide.image}
-                alt={slide.alt}
-                className={`welcome-hero-image ${
-                  index === activeSlide ? "is-active" : ""
-                }`}
-                draggable={false}
-                decoding="async"
-                aria-hidden={index !== activeSlide}
-              />
-            ))}
-
-            <div className="welcome-hero-overlay" />
-
-            <div className="welcome-hero-content">
-              <h1 className="welcome-hero-title barabara-display">
-                {welcomeGreeting}
+        <div className="welcome-hero-content-overlay">
+          <Container>
+            <div className="text-white text-center text-md-start">
+              <span className="welcome-badge mb-2 d-inline-flex align-items-center gap-2">
+                <CloudSun size={18} />
+                {!weather.loading && !weather.error && weather.temperature !== null
+                  ? `${weather.temperature}°C • ${getWeatherDescription(weather.weatherCode)}`
+                  : "Calbayog City, Samar"}
+              </span>
+              <h1 className="display-4 barabara-display fw-bold mb-3">
+                {displayUser
+                  ? `Maupay nga Pag-abot, ${displayUser.first_name || displayUser.name}!`
+                  : "Explore the City of Waterfalls"}
               </h1>
-
-              <div className="welcome-hero-detail">
-                <span className="welcome-hero-detail-icon">
-                  <MapPin size={23} strokeWidth={2.1} aria-hidden="true" />
-                </span>
-                <span>Calbayog City, Philippines</span>
-              </div>
-
-              <div className="welcome-hero-detail">
-                <span className="welcome-hero-detail-icon">
-                  <CalendarDays size={23} strokeWidth={2.1} aria-hidden="true" />
-                </span>
-                <span>{currentDate || "Loading date..."}</span>
-              </div>
-
-              <div className="welcome-hero-detail" aria-live="polite">
-                <span className="welcome-hero-detail-icon">
-                  <CloudSun size={25} strokeWidth={2.1} aria-hidden="true" />
-                </span>
-                <span>{weatherText}</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="welcome-hero-arrow welcome-hero-arrow-left"
-              onClick={(e) => {
-                e.stopPropagation();
-                previousSlide();
-              }}
-              aria-label="Previous hero image"
-            >
-              ‹
-            </button>
-
-            <button
-              type="button"
-              className="welcome-hero-arrow welcome-hero-arrow-right"
-              onClick={(e) => {
-                e.stopPropagation();
-                nextSlide();
-              }}
-              aria-label="Next hero image"
-            >
-              ›
-            </button>
-
-            <div className="welcome-hero-dots">
-              {heroSlides.map((slide, index) => (
-                <button
-                  type="button"
-                  key={slide.id}
-                  className={`welcome-hero-dot ${
-                    activeSlide === index ? "active" : ""
-                  }`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveSlide(index);
-                  }}
-                  aria-label={`Show hero image ${index + 1}`}
-                  aria-current={activeSlide === index ? "true" : undefined}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* =====================================================
-            EXPLORE CALBAYOG
-        ===================================================== */}
-
-        <section className="welcome-explore-section mb-5">
-          <div className="welcome-explore-top">
-            <div className="welcome-section-heading">
-              <div className="welcome-intro">
-                <div className="welcome-intro-eyebrow">WELCOME TO CALBAYOG</div>
-
-                <p className="welcome-intro-text">
-                  Explore breathtaking waterfalls, peaceful coastlines, rich
-                  heritage, and local experiences waiting to be discovered.
-                </p>
-              </div>
-
-              <Bunting className="welcome-bunting" count={20} />
-
-              <Bunting
-                className="welcome-mobile-bunting welcome-explore-mobile-bunting"
-                count={12}
-              />
-
-              <div className="section-header welcome-main-heading">
-                <div>
-                  <h2 className="section-title welcome-display-title barabara-display">
-                    EXPLORE CALBAYOG
-                  </h2>
-                </div>
-              </div>
-
-              <div className="welcome-section-eyebrow welcome-explore-eyebrow">
-                <span className="welcome-heading-line" />
-                <span>Find a place worth slowing down for</span>
-                <span className="welcome-heading-line" />
-              </div>
-            </div>
-
-            <div className="welcome-explore-map-column">
-              {loadingMap ? (
-                <div className="welcome-map-loading" aria-live="polite">
-                  <div className="welcome-map-loading-spinner" />
-                  <span>Loading Calbayog map...</span>
-                </div>
-              ) : (
-                <WelcomeMap
-                  attractions={mapAttractions}
-                  accommodations={mapAccommodations}
-                  restaurants={mapRestaurants}
-                />
-              )}
-            </div>
-          </div>
-
-          <Row className="g-3 g-md-4 welcome-quick-grid justify-content-center">
-            {quickCards
-              .filter(
-                (card) => card.to !== "/memories" || isUserAuthenticated,
-              )
-              .map((card) => {
-                const QuickIcon = card.icon;
-
-                return (
-                  <Col xs={6} sm={4} md={3} lg key={card.to}>
-                    <Link
-                      to={card.to}
-                      className="welcome-quick-link"
-                      onClick={(event) =>
-                        handleProtectedQuickCardClick(event, card.to)
-                      }
-                    >
-                      <div
-                        className="welcome-quick-card"
-                        style={
-                          {
-                            "--qc-from": card.from,
-                            "--qc-to": card.toColor,
-                            "--qc-glow": card.glow,
-                          } as React.CSSProperties
-                        }
-                      >
-                        <span className="welcome-quick-tile">
-                          <QuickIcon
-                            size={24}
-                            strokeWidth={1.8}
-                            aria-hidden="true"
-                          />
-                        </span>
-
-                        <span className="welcome-quick-text">
-                          <span className="quick-card-label">{card.label}</span>
-                          <span className="welcome-quick-hint">{card.hint}</span>
-                        </span>
-                      </div>
-                    </Link>
-                  </Col>
-                );
-              })}
-          </Row>
-        </section>
-
-        {/* =====================================================
-            ATTRACTIONS
-        ===================================================== */}
-
-        {!loadingDestinations && welcomeDestinations.length > 0 && (
-          <section className="welcome-discover-section mb-5">
-            <SectionHeading
-              headingClass="welcome-attractions-heading"
-              titleClass="welcome-attractions-title"
-              eyebrowClass="welcome-attractions-eyebrow"
-              title="ATTRACTIONS"
-              subtitle="Places worth discovering in Calbayog"
-            />
-
-            <div className="welcome-attractions-toolbar">
-              <Link to="/attractions" className="welcome-view-more-link">
-                View more attractions
-                <ChevronRight size={17} strokeWidth={2} aria-hidden="true" />
-              </Link>
-            </div>
-
-            <div className="welcome-attractions-carousel">
-              <Swiper
-                modules={[A11y]}
-                slidesPerView={1.25}
-                spaceBetween={20}
-                centeredSlides={false}
-                grabCursor
-                watchOverflow
-                resistanceRatio={0.85}
-                touchRatio={1}
-                breakpoints={{
-                  400: { slidesPerView: 1.6, spaceBetween: 22 },
-                  576: { slidesPerView: 2.2, spaceBetween: 24 },
-                  768: { slidesPerView: 2.8, spaceBetween: 26 },
-                  992: { slidesPerView: 3.4, spaceBetween: 28 },
-                  1200: { slidesPerView: 4, spaceBetween: 30 },
-                }}
-                className="welcome-attractions-swiper"
-              >
-                {welcomeDestinations.map((attraction) => (
-                  <SwiperSlide
-                    key={attraction.id}
-                    className="welcome-attraction-slide"
-                  >
-                    <div className="welcome-attraction-card-shell">
-                      <AttractionCard attraction={attraction} />
-                    </div>
-                  </SwiperSlide>
-                ))}
-              </Swiper>
-            </div>
-          </section>
-        )}
-
-        {/* =====================================================
-            ACCOMMODATIONS
-        ===================================================== */}
-
-        {!loadingAccommodations && welcomeAccommodations.length > 0 && (
-          <section className="welcome-accommodations-section mb-5">
-            <SectionHeading
-              headingClass="welcome-accommodations-heading"
-              titleClass="welcome-accommodations-title"
-              eyebrowClass="welcome-accommodations-eyebrow"
-              title="ACCOMMODATIONS"
-              subtitle="Places to stay in Calbayog"
-            />
-
-            <div className="welcome-accommodations-toolbar">
-              <Link to="/accommodations" className="welcome-view-more-link">
-                View more accommodations
-                <ChevronRight size={17} strokeWidth={2} aria-hidden="true" />
-              </Link>
-            </div>
-
-            <Row className="g-3 g-md-4">
-              {welcomeAccommodations.map((accommodation) => {
-                const accommodationData = accommodation as any;
-
-                const images: string[] = toImageList(accommodationData.images);
-
-                const priceMin = accommodationData.price_min;
-                const priceMax = accommodationData.price_max;
-
-                const hasPriceMin =
-                  priceMin !== null && priceMin !== undefined && priceMin !== "";
-                const hasPriceMax =
-                  priceMax !== null && priceMax !== undefined && priceMax !== "";
-
-                let priceText = "";
-
-                if (hasPriceMin && hasPriceMax) {
-                  priceText = `₱${Number(priceMin).toLocaleString()} – ₱${Number(
-                    priceMax,
-                  ).toLocaleString()}`;
-                } else if (hasPriceMin) {
-                  priceText = `From ₱${Number(priceMin).toLocaleString()}`;
-                } else if (hasPriceMax) {
-                  priceText = `Up to ₱${Number(priceMax).toLocaleString()}`;
-                }
-
-                const cardItem: AccommodationCardItem = {
-                  id: String(accommodationData.id ?? ""),
-                  name: accommodationData.name,
-                  owner: accommodationData.owner ?? null,
-                  manager: accommodationData.manager ?? null,
-                  address:
-                    accommodationData.address ||
-                    accommodationData.location_address ||
-                    null,
-                  contact_number: accommodationData.contact_number ?? null,
-                  website: accommodationData.website ?? null,
-                  images,
-                  description: accommodationData.description ?? null,
-                  price_range: accommodationData.price_range || priceText || null,
-                  featured: Boolean(accommodationData.featured),
-                };
-
-                return (
-                  <Col xs={12} sm={6} lg={3} key={accommodation.id}>
-                    <AccommodationCard accommodation={cardItem} />
-                  </Col>
-                );
-              })}
-            </Row>
-          </section>
-        )}
-
-        {/* =====================================================
-            RESTAURANTS (swipe left / right)
-        ===================================================== */}
-
-        {!loadingRestaurants && welcomeRestaurants.length > 0 && (
-          <section className="welcome-discover-section welcome-restaurants-section mb-5">
-            <SectionHeading
-              headingClass="welcome-attractions-heading"
-              titleClass="welcome-attractions-title"
-              eyebrowClass="welcome-attractions-eyebrow"
-              title="RESTAURANTS"
-              subtitle="Taste the flavors of Calbayog"
-            />
-
-            <div className="welcome-attractions-toolbar">
-              <Link to="/restaurants" className="welcome-view-more-link">
-                View more restaurants
-                <ChevronRight size={17} strokeWidth={2} aria-hidden="true" />
-              </Link>
-            </div>
-
-            <div className="welcome-attractions-carousel">
-              <Swiper
-                modules={[A11y]}
-                slidesPerView={1.12}
-                spaceBetween={16}
-                centeredSlides={false}
-                grabCursor
-                watchOverflow
-                resistanceRatio={0.85}
-                touchRatio={1}
-                breakpoints={{
-                  576: { slidesPerView: 2.1, spaceBetween: 18 },
-                  768: { slidesPerView: 2.35, spaceBetween: 20 },
-                  992: { slidesPerView: 3.1, spaceBetween: 22 },
-                  1200: { slidesPerView: 4, spaceBetween: 24 },
-                }}
-                className="welcome-attractions-swiper"
-              >
-                {welcomeRestaurants.map((restaurant) => (
-                  <SwiperSlide
-                    key={restaurant.id}
-                    className="welcome-attraction-slide"
-                  >
-                    <div className="welcome-attraction-card-shell">
-                      <RestaurantCard
-                        restaurant={restaurant}
-                        imageIndex={restaurantImageIndexes[restaurant.id] || 0}
-                        showFeatured={true}
-                      />
-                    </div>
-                  </SwiperSlide>
-                ))}
-              </Swiper>
-            </div>
-          </section>
-        )}
-
-        {/* =====================================================
-            EVENTS (swipe left / right) — EventCard with its own heart
-        ===================================================== */}
-
-        {!loadingEvents && welcomeEvents.length > 0 && (
-          <section className="welcome-discover-section welcome-events-section mb-5">
-            <SectionHeading
-              headingClass="welcome-attractions-heading"
-              titleClass="welcome-attractions-title"
-              eyebrowClass="welcome-attractions-eyebrow"
-              title="EVENTS"
-              subtitle="Celebrations and happenings in Calbayog"
-            />
-
-            <div className="welcome-attractions-toolbar">
-              <Link to="/events" className="welcome-view-more-link">
-                View more events
-                <ChevronRight size={17} strokeWidth={2} aria-hidden="true" />
-              </Link>
-            </div>
-
-            <div className="welcome-events-carousel">
-              <Swiper
-                modules={[A11y]}
-                slidesPerView={1.6}
-                spaceBetween={6}
-                centeredSlides={false}
-                grabCursor
-                watchOverflow
-                resistanceRatio={0.85}
-                touchRatio={1}
-                touchStartPreventDefault={false}
-                breakpoints={{
-                  400: { slidesPerView: 1.8, spaceBetween: 8 },
-                  576: { slidesPerView: 2.4, spaceBetween: 10 },
-                  768: { slidesPerView: 3.2, spaceBetween: 12 },
-                  992: { slidesPerView: 3.8, spaceBetween: 14 },
-                  1200: { slidesPerView: 4.3, spaceBetween: 16 },
-                }}
-                className="welcome-events-swiper"
-              >
-                {welcomeEvents.map((event) => (
-                  <SwiperSlide key={event.id} className="welcome-event-slide">
-                    <div className="welcome-event-card-shell">
-                      <EventCard
-                        event={event}
-                        showFeatured={true}
-                        onClick={handleEventClick}
-                      />
-                    </div>
-                  </SwiperSlide>
-                ))}
-              </Swiper>
-            </div>
-          </section>
-        )}
-
-        {/* =====================================================
-            FEATURED VIDEOS
-        ===================================================== */}
-
-        <section className="welcome-videos-section mb-5">
-          <SectionHeading
-            headingClass="welcome-videos-heading"
-            titleClass="welcome-videos-title"
-            eyebrowClass="welcome-videos-eyebrow"
-            title="FEATURED VIDEOS"
-            subtitle="Experience Calbayog through video"
-          />
-
-          {loadingFeaturedVideos ? (
-            <div className="welcome-video-loading" aria-live="polite">
-              <div className="welcome-video-loading-spinner" />
-              <span>Loading featured videos...</span>
-            </div>
-          ) : featuredVideos.length === 0 ? (
-            <div className="welcome-video-empty" aria-live="polite">
-              <div className="welcome-video-empty-icon">
-                <Play size={25} strokeWidth={1.8} />
-              </div>
-
-              <h3>No featured videos yet</h3>
-
-              <p>
-                Featured videos uploaded from the admin dashboard will appear
-                here.
+              <p className="lead max-w-2xl">
+                Discover nature, culture, rich flavors, and unforgettable experiences in Calbayog City.
               </p>
-
-              {featuredVideosError && (
-                <small>Unable to load featured videos right now.</small>
-              )}
             </div>
-          ) : (
-            <div className="welcome-video-carousel">
-              <Swiper
-                modules={[EffectCoverflow, Navigation, Pagination, A11y]}
-                effect="coverflow"
-                centeredSlides
-                grabCursor
-                loop={featuredVideos.length > 2}
-                slidesPerView="auto"
-                speed={700}
-                watchSlidesProgress
-                observer
-                observeParents
-                onSwiper={(swiper) => {
-                  setVideoSwiper(swiper);
-                  setActiveVideo(swiper.realIndex);
-                }}
-                onSlideChange={(swiper) => {
-                  pauseAllFeaturedVideos();
-                  setActiveVideo(swiper.realIndex);
-                }}
-                coverflowEffect={{
-                  rotate: 0,
-                  stretch: 0,
-                  depth: 260,
-                  modifier: 1.25,
-                  scale: 0.84,
-                  slideShadows: false,
-                }}
-                navigation={{
-                  prevEl: ".welcome-video-prev",
-                  nextEl: ".welcome-video-next",
-                }}
-                pagination={{
-                  el: ".welcome-video-pagination",
-                  clickable: true,
-                  dynamicBullets: true,
-                }}
-                className="welcome-featured-swiper"
-              >
-                {featuredVideos.map((video, index) => (
-                  <SwiperSlide
-                    key={video.id}
-                    className="welcome-featured-swiper-slide"
+          </Container>
+        </div>
+      </section>
+
+      {/* Quick Navigation Cards */}
+      <section className="welcome-quick-cards-section py-5 bg-light">
+        <Container>
+          <Row className="g-3 justify-content-center">
+            {quickCards.map((card) => {
+              const isProtected = card.to === "/itinerary" || card.to === "/memories";
+              const CardIcon = card.icon;
+
+              return (
+                <Col key={card.label} xs={6} sm={4} md={3} lg={12 / 7}>
+                  <Link
+                    to={card.to}
+                    onClick={(e) =>
+                      isProtected ? handleProtectedQuickCardClick(e, card.to) : undefined
+                    }
+                    className="quick-card-item d-flex flex-column align-items-center text-center p-3 rounded-3 text-decoration-none"
+                    style={
+                      {
+                        "--card-from": card.from,
+                        "--card-to": card.toColor,
+                        "--card-glow": card.glow,
+                      } as React.CSSProperties
+                    }
                   >
-                    <div className="welcome-video-cinematic-card">
-                      <div className="welcome-video-media">
-                        <video
-                          ref={(element) => {
-                            videoRefs.current[String(video.id)] = element;
-                          }}
-                          className="welcome-video-player"
-                          controls={activeVideo === index}
-                          playsInline
-                          preload="metadata"
-                          poster={getFeaturedVideoPoster(video)}
-                          onPlay={(event) => {
-                            Object.entries(videoRefs.current).forEach(
-                              ([videoId, videoElement]) => {
-                                if (
-                                  videoElement &&
-                                  videoElement !== event.currentTarget &&
-                                  videoId !== String(video.id)
-                                ) {
-                                  videoElement.pause();
-                                }
-                              },
-                            );
-                          }}
-                          onEnded={() => {
-                            if (videoSwiper && featuredVideos.length > 1) {
-                              videoSwiper.slideNext();
-                            }
-                          }}
-                        >
-                          {/* #t=0.1 makes the browser show the first frame instead of black */}
-                          <source
-                            src={`${video.video_url}#t=0.1`}
-                            type="video/mp4"
-                          />
-                          Your browser does not support the video element.
-                        </video>
-
-                        <div className="welcome-video-gradient" />
-
-                        <div className="welcome-video-play-badge">
-                          <Play size={20} fill="currentColor" strokeWidth={2} />
-                        </div>
-                      </div>
+                    <div className="quick-card-icon-wrapper mb-2">
+                      <CardIcon size={24} className="text-white" />
                     </div>
-                  </SwiperSlide>
-                ))}
-              </Swiper>
+                    <span className="fw-bold text-dark quick-card-label">{card.label}</span>
+                    <small className="text-muted quick-card-hint">{card.hint}</small>
+                  </Link>
+                </Col>
+              );
+            })}
+          </Row>
+        </Container>
+      </section>
 
-              {featuredVideos.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    className="welcome-video-arrow welcome-video-prev"
-                    aria-label="Previous featured video"
-                  >
-                    <ChevronLeft size={25} strokeWidth={2} />
-                  </button>
+      {/* Interactive Map Section */}
+      <section className="welcome-map-section py-5">
+        <Container>
+          <SectionHeading
+            headingClass="text-center mb-4"
+            titleClass="text-primary"
+            eyebrowClass="justify-content-center"
+            title="Explore Destination Map"
+            subtitle="Find attractions, hotels, and dining around Calbayog"
+          />
+          <WelcomeMap
+            attractions={mapAttractions}
+            accommodations={mapAccommodations}
+            restaurants={mapRestaurants}
+          />
+        </Container>
+      </section>
 
-                  <button
-                    type="button"
-                    className="welcome-video-arrow welcome-video-next"
-                    aria-label="Next featured video"
-                  >
-                    <ChevronRight size={25} strokeWidth={2} />
-                  </button>
-
-                  <div className="welcome-video-pagination" />
-                </>
-              )}
+      {/* Featured Attractions Carousel */}
+      {attractions.length > 0 && (
+        <section className="welcome-attractions-section py-5 bg-light">
+          <Container>
+            <SectionHeading
+              headingClass="text-center mb-4"
+              titleClass="text-primary"
+              eyebrowClass="justify-content-center"
+              title="Top Attractions"
+              subtitle="Must-visit destinations in the City of Waterfalls"
+            />
+            <Row className="g-4">
+              {attractions.slice(0, 6).map((attraction) => (
+                <Col key={attraction.id} xs={12} sm={6} md={4}>
+                  <AttractionCard destination={attraction} />
+                </Col>
+              ))}
+            </Row>
+            <div className="text-center mt-4">
+              <Link to="/attractions" className="btn btn-outline-primary rounded-pill px-4">
+                View All Attractions <ChevronRight size={16} />
+              </Link>
             </div>
-          )}
+          </Container>
         </section>
-      </Container>
-
-      {/* =======================================================
-          WELCOME PAGE STYLES
-      ======================================================= */}
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-        @font-face {
-          font-family: "Barabara";
-          src: url("/fonts/BARABARA-final.otf") format("opentype");
-          font-weight: 400;
-          font-style: normal;
-          font-display: swap;
-        }
-
-        .welcome-page,
-        .welcome-page * { font-family: "Inter", sans-serif; }
-
-        .welcome-container { width: 100%; max-width: 1240px; }
-
-        .barabara-display {
-          font-family: "Barabara", "Arial Black", Arial, sans-serif !important;
-          font-style: normal;
-          font-weight: 400;
-        }
-
-        /* ---------- section spacing ---------- */
-
-        .welcome-explore-section,
-        .welcome-discover-section,
-        .welcome-accommodations-section { margin-bottom: 96px !important; }
-
-        .welcome-videos-section { margin-bottom: 70px !important; }
-
-        /* ---------- explore + map ---------- */
-
-        .welcome-explore-top {
-          width: 100%;
-          display: grid;
-          grid-template-columns: minmax(280px, 0.78fr) minmax(0, 1.22fr);
-          gap: 34px;
-          align-items: center;
-          margin-bottom: 2.6rem;
-        }
-
-        .welcome-explore-top .welcome-section-heading { margin-bottom: 0; padding-top: 0; }
-        .welcome-explore-top .welcome-intro { max-width: 680px; margin-bottom: 30px; }
-        .welcome-explore-map-column { width: 100%; min-width: 0; }
-
-        .welcome-map-shell {
-          position: relative;
-          width: 100%;
-          height: 430px;
-          overflow: hidden;
-          border: 1px solid rgba(45, 49, 149, 0.12);
-          border-radius: 24px;
-          background: #eef2f7;
-          box-shadow: 0 18px 45px rgba(27, 35, 74, 0.12);
-        }
-
-        .welcome-map { width: 100%; height: 100%; z-index: 1; }
-
-        .welcome-map-loading {
-          width: 100%;
-          height: 430px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 12px;
-          border: 1px solid rgba(45, 49, 149, 0.12);
-          border-radius: 24px;
-          background: linear-gradient(135deg, #f4f6fb, #edf0f8);
-          color: #555;
-          font-size: 0.78rem;
-          font-weight: 600;
-        }
-
-        .welcome-map-loading-spinner {
-          width: 30px;
-          height: 30px;
-          border: 3px solid rgba(45, 49, 149, 0.16);
-          border-top-color: #2D3195;
-          border-radius: 50%;
-          animation: welcome-map-spin 0.85s linear infinite;
-        }
-
-        @keyframes welcome-map-spin { to { transform: rotate(360deg); } }
-
-        .welcome-map-shell .leaflet-control-layers {
-          border: 0;
-          border-radius: 12px;
-          box-shadow: 0 7px 22px rgba(15, 23, 42, 0.18);
-          overflow: hidden;
-          font-family: Inter, sans-serif;
-          font-size: 0.72rem;
-        }
-
-        .welcome-map-shell .leaflet-control-layers-toggle { width: 38px; height: 38px; }
-
-        .welcome-map-shell .leaflet-control-zoom {
-          border: 0;
-          border-radius: 11px;
-          overflow: hidden;
-          box-shadow: 0 7px 22px rgba(15, 23, 42, 0.18);
-        }
-
-        .welcome-map-shell .leaflet-control-zoom a {
-          width: 34px;
-          height: 34px;
-          line-height: 34px;
-          border: 0;
-          color: #2D3195;
-          background: rgba(255, 255, 255, 0.96);
-        }
-
-        .welcome-map-shell .leaflet-control-zoom a:hover { background: #fff; }
-
-        .welcome-map-shell .leaflet-control-scale-line {
-          border: 2px solid rgba(45, 49, 149, 0.72);
-          border-top: 0;
-          background: rgba(255, 255, 255, 0.82);
-          color: #303030;
-          font-size: 0.62rem;
-        }
-
-        .welcome-map-locate-control {
-          margin-top: 10px !important;
-          border: 0 !important;
-          border-radius: 10px;
-          overflow: hidden;
-          box-shadow: 0 7px 22px rgba(15, 23, 42, 0.18);
-        }
-
-        .welcome-map-locate-control button {
-          width: 34px;
-          height: 34px;
-          border: 0;
-          background: rgba(255, 255, 255, 0.96);
-          color: #2D3195;
-          font-size: 20px;
-          line-height: 1;
-          cursor: pointer;
-        }
-
-        .welcome-map-locate-control button:hover { background: #fff; }
-
-        .welcome-map-attraction-marker,
-        .welcome-map-accommodation-marker,
-        .welcome-map-restaurant-marker {
-          background: transparent !important;
-          border: 0 !important;
-        }
-
-        .welcome-map-marker-shell,
-        .welcome-map-accommodation-pin,
-        .welcome-map-restaurant-pin {
-          position: relative;
-          width: 44px;
-          height: 52px;
-          display: flex;
-          align-items: flex-start;
-          justify-content: center;
-          filter: drop-shadow(0 3px 4px rgba(15, 23, 42, 0.30));
-        }
-
-        .welcome-map-marker-pin {
-          position: absolute;
-          top: 0;
-          left: 3px;
-          width: 38px;
-          height: 38px;
-          border: 3px solid #fff;
-          border-radius: 50% 50% 50% 0;
-          transform: rotate(-45deg);
-          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
-        }
-
-        .welcome-map-marker-icon,
-        .welcome-map-accommodation-icon {
-          position: absolute;
-          top: 7px;
-          left: 10px;
-          width: 24px;
-          height: 24px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 50%;
-          background: #fff;
-          z-index: 2;
-        }
-
-        .welcome-map-marker-icon { font-size: 14px; line-height: 1; }
-
-        .welcome-map-accommodation-pin::before,
-        .welcome-map-restaurant-pin::before {
-          content: "";
-          position: absolute;
-          top: 0;
-          left: 3px;
-          width: 38px;
-          height: 38px;
-          border-radius: 50% 50% 50% 0;
-          transform: rotate(-45deg);
-          border: 3px solid #fff;
-          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
-        }
-
-        .welcome-map-accommodation-pin::before { background: #2563EB; }
-        .welcome-map-restaurant-pin::before { background: #C2410C; }
-
-        .welcome-map-label {
-          padding: 5px 8px !important;
-          border: 0 !important;
-          border-radius: 8px !important;
-          background: rgba(255, 255, 255, 0.96) !important;
-          color: #202020 !important;
-          box-shadow: 0 3px 12px rgba(15, 23, 42, 0.18) !important;
-          font-family: Inter, sans-serif !important;
-          font-size: 0.60rem !important;
-          line-height: 1.2 !important;
-          text-align: center;
-        }
-
-        .welcome-map-label::before { border-top-color: rgba(255, 255, 255, 0.96) !important; }
-
-        .welcome-map-label-name,
-        .welcome-map-label-sub { display: block; white-space: nowrap; }
-
-        .welcome-map-label-name { font-weight: 800; color: #222; }
-
-        .welcome-map-label-sub {
-          margin-top: 2px;
-          color: #666;
-          font-size: 0.54rem;
-          font-weight: 600;
-        }
-
-        .welcome-map-label.accommodation .welcome-map-label-name { color: #2563EB; }
-        .welcome-map-label.restaurant .welcome-map-label-name { color: #C2410C; }
-
-        .welcome-map-legend {
-          position: absolute;
-          left: 12px;
-          bottom: 12px;
-          z-index: 500;
-          display: flex;
-          flex-wrap: wrap;
-          gap: 6px 10px;
-          padding: 7px 9px;
-          border-radius: 10px;
-          background: rgba(255, 255, 255, 0.93);
-          box-shadow: 0 5px 18px rgba(15, 23, 42, 0.14);
-          font-size: 0.62rem;
-          font-weight: 700;
-          color: #4b4b4b;
-        }
-
-        .welcome-map-legend span { display: inline-flex; align-items: center; gap: 5px; }
-
-        .welcome-map-legend-dot {
-          width: 8px;
-          height: 8px;
-          display: inline-block;
-          border-radius: 50%;
-        }
-
-        .welcome-map-legend-dot.attraction { background: #16845B; }
-        .welcome-map-legend-dot.accommodation { background: #2563EB; }
-        .welcome-map-legend-dot.restaurant { background: #C2410C; }
-
-        .welcome-map-shell.has-card .welcome-map-legend { display: none; }
-
-        /* ---------- map pin details card ---------- */
-
-        .welcome-map-place-card {
-          position: absolute;
-          z-index: 1100;
-          top: 12px;
-          left: 58px;
-          width: min(330px, calc(100% - 150px));
-          max-height: calc(100% - 24px);
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-          border-radius: 18px;
-          background: #ffffff;
-          box-shadow: 0 18px 44px rgba(15, 23, 42, 0.28);
-          animation: welcome-map-card-in 0.28s ease both;
-        }
-
-        @keyframes welcome-map-card-in {
-          from { opacity: 0; transform: translateY(8px) scale(0.98); }
-          to { opacity: 1; transform: none; }
-        }
-
-        @keyframes welcome-map-sheet-in {
-          from { opacity: 0.6; transform: translateY(100%); }
-          to { opacity: 1; transform: none; }
-        }
-
-        .welcome-map-place-close {
-          position: absolute;
-          z-index: 3;
-          top: 10px;
-          right: 10px;
-          width: 30px;
-          height: 30px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 0;
-          border: 0;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.96);
-          color: #333;
-          box-shadow: 0 3px 10px rgba(15, 23, 42, 0.22);
-          cursor: pointer;
-          transition: transform 0.2s ease, background 0.2s ease;
-        }
-
-        .welcome-map-place-close:hover { background: #fff; transform: scale(1.06); }
-
-        .welcome-map-card-media {
-          position: relative;
-          flex: 0 0 auto;
-          height: 170px;
-          background: #eef0ff;
-        }
-
-        .welcome-map-card-track {
-          display: flex;
-          height: 100%;
-          overflow-x: auto;
-          scroll-snap-type: x mandatory;
-          scrollbar-width: none;
-          -webkit-overflow-scrolling: touch;
-        }
-
-        .welcome-map-card-track::-webkit-scrollbar { display: none; }
-
-        .welcome-map-card-slide {
-          flex: 0 0 100%;
-          height: 100%;
-          scroll-snap-align: center;
-        }
-
-        .welcome-map-card-slide img {
-          width: 100%;
-          height: 100%;
-          display: block;
-          object-fit: cover;
-        }
-
-        .welcome-map-card-placeholder {
-          width: 100%;
-          height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #ffffff;
-          background: linear-gradient(135deg, var(--kind-color, #2D3195), #1d2061);
-        }
-
-        .welcome-map-card-counter {
-          position: absolute;
-          left: 10px;
-          bottom: 10px;
-          padding: 3px 9px;
-          border-radius: 999px;
-          background: rgba(15, 17, 28, 0.6);
-          color: #ffffff;
-          font-size: 0.6rem;
-          font-weight: 700;
-          backdrop-filter: blur(6px);
-          -webkit-backdrop-filter: blur(6px);
-        }
-
-        .welcome-map-place-body {
-          padding: 14px 16px 16px;
-          overflow-y: auto;
-          overscroll-behavior: contain;
-        }
-
-        .welcome-map-place-badges {
-          display: flex;
-          flex-wrap: wrap;
-          align-items: center;
-          gap: 6px;
-          margin-bottom: 8px;
-        }
-
-        .welcome-map-place-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          padding: 4px 8px;
-          border-radius: 999px;
-          font-size: 0.58rem;
-          font-weight: 800;
-          letter-spacing: 0.04em;
-          text-transform: uppercase;
-        }
-
-        .welcome-map-place-chip {
-          padding: 4px 8px;
-          border-radius: 999px;
-          background: #f3f4f8;
-          color: #656a78;
-          font-size: 0.6rem;
-          font-weight: 700;
-        }
-
-        .welcome-map-place-title {
-          margin: 0 0 6px;
-          color: #1b1d24;
-          font-size: 1rem;
-          font-weight: 800;
-          line-height: 1.3;
-          overflow-wrap: anywhere;
-        }
-
-        .welcome-map-place-desc {
-          display: -webkit-box;
-          -webkit-line-clamp: 3;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-          margin: 0 0 10px;
-          color: #6b7080;
-          font-size: 0.7rem;
-          line-height: 1.6;
-        }
-
-        .welcome-map-place-info {
-          display: flex;
-          flex-direction: column;
-          gap: 9px;
-          margin: 0 0 14px;
-          padding: 12px 0 0;
-          border-top: 1px solid #eef0f4;
-          list-style: none;
-        }
-
-        .welcome-map-place-info li {
-          display: flex;
-          align-items: flex-start;
-          gap: 9px;
-          color: #3c4150;
-          font-size: 0.7rem;
-          line-height: 1.5;
-          overflow-wrap: anywhere;
-        }
-
-        .welcome-map-place-info li svg {
-          flex: 0 0 auto;
-          margin-top: 2px;
-          color: var(--kind-color, #2D3195);
-        }
-
-        .welcome-map-place-info a {
-          color: #2D3195;
-          font-weight: 700;
-          text-decoration: none;
-        }
-
-        .welcome-map-place-info a:hover { text-decoration: underline; }
-
-        .welcome-map-place-cta {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 4px;
-          width: 100%;
-          min-height: 40px;
-          border-radius: 12px;
-          background: #2D3195;
-          color: #ffffff;
-          font-size: 0.72rem;
-          font-weight: 700;
-          text-decoration: none;
-          transition: background 0.2s ease, transform 0.2s ease;
-        }
-
-        .welcome-map-place-cta:hover {
-          background: #242879;
-          color: #ffffff;
-          text-decoration: none;
-          transform: translateY(-1px);
-        }
-
-        /* ---------- intro + headings ---------- */
-
-        .welcome-intro {
-          width: 100%;
-          max-width: 680px;
-          margin: 0 auto 30px;
-          padding: 0 12px;
-          text-align: center;
-        }
-
-        .welcome-intro-eyebrow {
-          margin: 0;
-          color: #2D3195;
-          font-size: 0.62rem;
-          font-weight: 700;
-          letter-spacing: 0.18em;
-          line-height: 1.2;
-          text-transform: uppercase;
-        }
-
-        .welcome-intro-text {
-          margin: 10px auto 0;
-          max-width: 630px;
-          color: #666666;
-          font-size: 0.79rem;
-          font-weight: 400;
-          line-height: 1.7;
-        }
-
-        .welcome-section-heading {
-          width: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          padding-top: 18px;
-          margin-bottom: 2.6rem;
-        }
-
-        .welcome-main-heading {
-          width: 100%;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          margin-top: 0;
-          margin-bottom: 7px;
-        }
-
-        .welcome-main-heading > div { width: 100%; text-align: center; }
-
-        .welcome-explore-eyebrow { margin-top: 0; margin-bottom: 0; }
-
-        .welcome-attractions-heading,
-        .welcome-accommodations-heading,
-        .welcome-videos-heading {
-          width: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          margin-bottom: 2.35rem;
-        }
-
-        .welcome-videos-heading { margin-bottom: 2.5rem; }
-
-        .welcome-display-title,
-        .welcome-attractions-title,
-        .welcome-accommodations-title,
-        .welcome-videos-title {
-          margin: 0 0 7px;
-          padding: 0;
-          color: #2D3195 !important;
-          font-size: 1.70rem;
-          line-height: 1;
-          letter-spacing: 0.015em;
-          text-align: center;
-        }
-
-        .welcome-display-title { margin: 0; }
-
-        .welcome-attractions-eyebrow,
-        .welcome-accommodations-eyebrow,
-        .welcome-videos-eyebrow { color: #555555; }
-
-        .welcome-section-eyebrow {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 100%;
-          gap: 12px;
-          color: #555555;
-          font-size: 0.68rem;
-          font-weight: 600;
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-          line-height: 1.2;
-          text-align: center;
-        }
-
-        .welcome-heading-line {
-          width: 38px;
-          height: 1px;
-          background: rgba(45, 49, 149, 0.24);
-          flex-shrink: 0;
-        }
-
-        /* ---------- bunting ---------- */
-
-        .welcome-bunting {
-          width: min(100%, 940px);
-          height: 32px;
-          display: flex;
-          align-items: flex-start;
-          justify-content: center;
-          overflow: hidden;
-          margin: 0 auto 26px;
-          padding: 0 8px;
-          line-height: 0;
-        }
-
-        .welcome-mobile-bunting { display: none; }
-
-        .bunting-flag {
-          position: relative;
-          display: block;
-          width: 46px;
-          height: 32px;
-          flex: 0 0 46px;
-          clip-path: polygon(0 0, 100% 0, 50% 100%);
-          margin-left: -1px;
-        }
-
-        .bunting-red { background: #ED1C24; }
-        .bunting-orange { background: #F36C21; }
-        .bunting-yellow { background: #F2B705; }
-        .bunting-teal { background: #14A6A0; }
-
-        .bunting-flag:not(:first-child) { border-left: 2px solid #ffffff; }
-
-        /* ---------- quick cards ---------- */
-
-        .welcome-quick-grid { margin-top: 0; }
-
-        .welcome-quick-link,
-        .welcome-quick-link:hover {
-          display: block;
-          height: 100%;
-          color: inherit;
-          text-decoration: none;
-        }
-
-        .welcome-quick-card {
-          --qc-from: #2D3195;
-          --qc-to: #5F65D6;
-          --qc-glow: rgba(45, 49, 149, 0.26);
-
-          position: relative;
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 11px;
-          padding: 21px 12px 17px;
-          overflow: hidden;
-          text-align: center;
-          border: 1px solid #edeff6;
-          border-radius: 20px;
-          background: #ffffff;
-          box-shadow: 0 4px 16px rgba(27, 35, 74, 0.05);
-          transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
-        }
-
-        .welcome-quick-card::before {
-          content: "";
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 3px;
-          background: linear-gradient(90deg, var(--qc-from), var(--qc-to));
-        }
-
-        .welcome-quick-link:hover .welcome-quick-card {
-          transform: translateY(-4px);
-          border-color: transparent;
-          box-shadow: 0 14px 30px var(--qc-glow);
-        }
-
-        .welcome-quick-tile {
-          width: 54px;
-          height: 54px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 17px;
-          color: #ffffff;
-          background: linear-gradient(135deg, var(--qc-from), var(--qc-to));
-          box-shadow: 0 8px 18px var(--qc-glow);
-          transition: transform 0.25s ease;
-        }
-
-        .welcome-quick-link:hover .welcome-quick-tile { transform: scale(1.07) rotate(-3deg); }
-
-        .welcome-quick-text {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-          min-width: 0;
-        }
-
-        .quick-card-label {
-          color: #1f2433;
-          font-size: 0.8rem;
-          font-weight: 700;
-          line-height: 1.25;
-        }
-
-        .welcome-quick-hint {
-          color: #7b8191;
-          font-size: 0.64rem;
-          font-weight: 500;
-          line-height: 1.35;
-        }
-
-        /* ---------- toolbars + view more ---------- */
-
-        .welcome-attractions-toolbar,
-        .welcome-accommodations-toolbar {
-          display: flex;
-          justify-content: flex-end;
-          align-items: center;
-          width: 100%;
-          margin: -0.25rem 0 1.05rem;
-        }
-
-        .welcome-view-more-link {
-          display: inline-flex;
-          align-items: center;
-          gap: 3px;
-          padding: 0;
-          border: 0;
-          background: transparent;
-          color: #2D3195;
-          font-size: 0.78rem;
-          font-weight: 700;
-          text-decoration: none;
-          -webkit-tap-highlight-color: transparent;
-          transition: opacity 0.15s ease, transform 0.15s ease;
-        }
-
-        .welcome-view-more-link svg { transition: transform 0.2s ease; }
-        .welcome-view-more-link:hover { color: #2D3195; text-decoration: none; }
-        .welcome-view-more-link:hover svg { transform: translateX(3px); }
-        .welcome-view-more-link:active { opacity: 0.55; transform: scale(0.95); }
-        .welcome-view-more-link:active svg { transform: translateX(5px); }
-
-        /* ---------- swipe carousels (attractions / restaurants) ---------- */
-
-        .welcome-attractions-carousel { width: 100%; overflow: hidden; }
-
-        .welcome-attractions-swiper {
-          width: 100%;
-          overflow: visible;
-          padding: 0 0 6px;
-        }
-
-        .welcome-attraction-slide {
-          height: auto;
-          display: flex;
-          align-items: stretch;
-          min-width: 0;
-        }
-
-        .welcome-attraction-card-shell {
-          width: 100%;
-          min-width: 0;
-          display: flex;
-        }
-
-        .welcome-attraction-card-shell > * { width: 100%; }
-
-        /* ---------- events carousel (circle cards + heart) ---------- */
-
-        .welcome-events-carousel {
-          width: 100%;
-          overflow: hidden;
-          /* room so the hearts, shadows and hover never get clipped */
-          padding: 10px 0 14px;
-        }
-
-        .welcome-events-swiper {
-          width: 100%;
-          overflow: visible;
-          padding: 4px 0 10px;
-          touch-action: pan-y;
-        }
-
-        .welcome-event-slide {
-          height: auto;
-          min-width: 0;
-          display: flex;
-          align-items: stretch;
-          justify-content: center;
-          padding: 6px 4px 8px;
-          box-sizing: border-box;
-        }
-
-        .welcome-event-card-shell {
-          width: 100%;
-          min-width: 0;
-          display: flex;
-          justify-content: center;
-          align-items: stretch;
-        }
-
-        .welcome-event-card-shell > * { width: 100%; min-width: 0; }
-
-        /* the heart sits on the circle's edge, so never clip it */
-        .welcome-events-swiper .shared-event-image-wrap { overflow: visible; }
-
-        /* ---------- accommodations / videos spacing ---------- */
-
-        .welcome-accommodations-section { width: 100%; margin-top: 85px; }
-        .welcome-videos-section { width: 100%; margin-top: 90px; }
-
-        /* ---------- featured videos ---------- */
-
-        .welcome-video-carousel {
-          position: relative;
-          width: 100%;
-          min-height: 545px;
-          padding: 10px 0 65px;
-          overflow: hidden;
-        }
-
-        .welcome-featured-swiper {
-          width: 100%;
-          height: 475px;
-          padding: 28px 0 35px;
-          overflow: visible !important;
-        }
-
-        .welcome-featured-swiper .swiper-wrapper { align-items: center; }
-
-        .welcome-featured-swiper-slide {
-          width: min(74%, 820px) !important;
-          height: auto;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: opacity 0.45s ease, filter 0.45s ease;
-        }
-
-        .welcome-featured-swiper-slide:not(.swiper-slide-active) {
-          opacity: 0.72;
-          filter: saturate(0.72) brightness(0.72);
-        }
-
-        .welcome-featured-swiper-slide.swiper-slide-active { opacity: 1; filter: none; }
-
-        .welcome-video-cinematic-card {
-          position: relative;
-          width: 100%;
-          overflow: hidden;
-          border-radius: 24px;
-          background: #10131c;
-          box-shadow: 0 25px 65px rgba(0, 0, 0, 0.22);
-          transform: translateZ(0);
-        }
-
-        .welcome-featured-swiper-slide.swiper-slide-active .welcome-video-cinematic-card {
-          box-shadow: 0 32px 80px rgba(0, 0, 0, 0.30);
-        }
-
-        .welcome-video-media {
-          position: relative;
-          width: 100%;
-          aspect-ratio: 16 / 9;
-          overflow: hidden;
-          background: linear-gradient(135deg, #1b2036, #10131c);
-        }
-
-        .welcome-video-player {
-          width: 100%;
-          height: 100%;
-          display: block;
-          object-fit: cover;
-          background: #10131c;
-        }
-
-        .welcome-video-gradient {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          background: linear-gradient(
-            180deg,
-            rgba(0, 0, 0, 0.04) 20%,
-            rgba(0, 0, 0, 0.12) 45%,
-            rgba(0, 0, 0, 0.28) 100%
-          );
-        }
-
-        .welcome-video-play-badge {
-          position: absolute;
-          top: 22px;
-          left: 22px;
-          width: 48px;
-          height: 48px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 1px solid rgba(255, 255, 255, 0.35);
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.14);
-          color: #ffffff;
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          box-shadow: 0 8px 22px rgba(0, 0, 0, 0.20);
-          pointer-events: none;
-        }
-
-        .welcome-video-arrow {
-          position: absolute;
-          z-index: 30;
-          top: 50%;
-          width: 48px;
-          height: 48px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 0;
-          border: 1px solid rgba(255, 255, 255, 0.28);
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.16);
-          color: #ffffff;
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
-          cursor: pointer;
-          transform: translateY(-50%);
-          transition: background 0.22s ease, color 0.22s ease, transform 0.22s ease, border-color 0.22s ease;
-        }
-
-        .welcome-video-arrow:hover {
-          background: #ffffff;
-          color: ${CALBAYOG_BLUE};
-          border-color: #ffffff;
-          transform: translateY(-50%) scale(1.07);
-        }
-
-        .welcome-video-arrow.swiper-button-disabled { opacity: 0.45; cursor: default; }
-
-        .welcome-video-prev { left: 3%; }
-        .welcome-video-next { right: 3%; }
-
-        .welcome-video-pagination {
-          position: absolute;
-          z-index: 30;
-          left: 50%;
-          bottom: 13px;
-          width: auto !important;
-          min-height: 20px;
-          transform: translateX(-50%);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .welcome-video-pagination .swiper-pagination-bullet {
-          width: 8px;
-          height: 8px;
-          margin: 0 4px !important;
-          opacity: 1;
-          border-radius: 999px;
-          background: rgba(45, 49, 149, 0.22);
-          transition: width 0.3s ease, background 0.3s ease, transform 0.3s ease;
-        }
-
-        .welcome-video-pagination .swiper-pagination-bullet-active {
-          width: 27px;
-          background: ${CALBAYOG_BLUE};
-        }
-
-        .welcome-video-loading {
-          width: 100%;
-          min-height: 440px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 16px;
-          color: #6c757d;
-          font-size: 0.82rem;
-        }
-
-        .welcome-video-loading-spinner {
-          width: 42px;
-          height: 42px;
-          border: 3px solid rgba(45, 49, 149, 0.16);
-          border-top-color: ${CALBAYOG_BLUE};
-          border-radius: 50%;
-          animation: welcomeVideoSpin 0.8s linear infinite;
-        }
-
-        @keyframes welcomeVideoSpin { to { transform: rotate(360deg); } }
-
-        .welcome-video-empty {
-          width: 100%;
-          min-height: 360px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 40px 20px;
-          border: 1px dashed rgba(45, 49, 149, 0.22);
-          border-radius: 22px;
-          background: linear-gradient(180deg, rgba(45, 49, 149, 0.025), rgba(45, 49, 149, 0.055));
-          text-align: center;
-        }
-
-        .welcome-video-empty-icon {
-          width: 58px;
-          height: 58px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin-bottom: 16px;
-          border-radius: 50%;
-          background: rgba(45, 49, 149, 0.08);
-          color: ${CALBAYOG_BLUE};
-        }
-
-        .welcome-video-empty h3 {
-          margin: 0 0 7px;
-          color: #2D3195;
-          font-family: "Barabara", "Arial Black", Arial, sans-serif;
-          font-size: 1.4rem;
-          font-weight: 400;
-        }
-
-        .welcome-video-empty p {
-          max-width: 430px;
-          margin: 0;
-          color: #6c757d;
-          font-size: 0.76rem;
-          line-height: 1.6;
-        }
-
-        .welcome-video-empty small {
-          margin-top: 10px;
-          color: #a05a5a;
-          font-size: 0.68rem;
-        }
-
-        /* ---------- hero ---------- */
-
-        .welcome-hero-section { width: 100%; }
-
-        .welcome-hero-slider {
-          position: relative;
-          width: 100%;
-          height: 390px;
-          overflow: hidden;
-          border-radius: 24px;
-          background: #102a23;
-          box-shadow: 0 12px 35px rgba(0, 0, 0, 0.10);
-          cursor: grab;
-          user-select: none;
-          touch-action: pan-y;
-        }
-
-        .welcome-hero-slider:active { cursor: grabbing; }
-
-        /* all slides are stacked; the active one fades in with a slow, gentle zoom */
-        .welcome-hero-image {
-          position: absolute;
-          inset: 0;
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          object-position: center;
-          display: block;
-          pointer-events: none;
-          opacity: 0;
-          transform: scale(1.07);
-          transition:
-            opacity 1.1s ease-in-out,
-            transform 0s linear 1.1s;
-          will-change: opacity, transform;
-          backface-visibility: hidden;
-        }
-
-        .welcome-hero-image.is-active {
-          z-index: 1;
-          opacity: 1;
-          transform: scale(1);
-          transition:
-            opacity 1.1s ease-in-out,
-            transform 7s ease-out;
-        }
-
-        .welcome-hero-overlay {
-          position: absolute;
-          inset: 0;
-          z-index: 2;
-          pointer-events: none;
-          background:
-            linear-gradient(90deg, rgba(0,0,0,0.68) 0%, rgba(0,0,0,0.52) 25%, rgba(0,0,0,0.25) 52%, rgba(0,0,0,0.06) 100%),
-            linear-gradient(180deg, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.02) 50%, rgba(0,0,0,0.24) 100%);
-        }
-
-        .welcome-hero-content {
-          position: absolute;
-          z-index: 5;
-          left: 7%;
-          top: 50%;
-          transform: translateY(-50%);
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          color: #ffffff;
-          max-width: 620px;
-        }
-
-        .welcome-hero-title {
-          margin: 0 0 20px;
-          padding: 0;
-          color: #ffffff;
-          font-size: clamp(2.6rem, 4.5vw, 4rem);
-          line-height: 0.9;
-          letter-spacing: 0;
-          text-shadow: 0 3px 12px rgba(0, 0, 0, 0.24);
-          white-space: nowrap;
-        }
-
-        .welcome-hero-detail {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          margin-bottom: 10px;
-          color: #ffffff;
-          font-size: clamp(0.92rem, 1.65vw, 1.25rem);
-          font-weight: 400;
-          line-height: 1.4;
-          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.40);
-        }
-
-        .welcome-hero-detail:last-child { margin-bottom: 0; }
-
-        .welcome-hero-detail-icon {
-          width: 27px;
-          min-width: 27px;
-          height: 27px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          color: #ffffff;
-          flex-shrink: 0;
-          line-height: 1;
-          filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.30));
-        }
-
-        .welcome-hero-detail-icon svg { display: block; color: #ffffff; }
-
-        .welcome-hero-arrow {
-          position: absolute;
-          z-index: 10;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 44px;
-          height: 44px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 0;
-          border: 1px solid rgba(255, 255, 255, 0.22);
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.16);
-          color: #ffffff;
-          font-size: 32px;
-          font-family: Arial, sans-serif;
-          font-weight: 300;
-          line-height: 1;
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
-          cursor: pointer;
-          transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
-        }
-
-        .welcome-hero-arrow:hover {
-          background: rgba(255, 255, 255, 0.90);
-          color: #2D3195;
-          border-color: rgba(255, 255, 255, 0.95);
-          transform: translateY(-50%) scale(1.06);
-        }
-
-        .welcome-hero-arrow-left { left: 16px; }
-        .welcome-hero-arrow-right { right: 16px; }
-
-        .welcome-hero-dots {
-          position: absolute;
-          z-index: 10;
-          left: 50%;
-          bottom: 17px;
-          transform: translateX(-50%);
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .welcome-hero-dot {
-          width: 8px;
-          height: 8px;
-          padding: 0;
-          border: 0;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.68);
-          cursor: pointer;
-          transition: width 0.25s ease, background 0.25s ease, transform 0.25s ease;
-        }
-
-        .welcome-hero-dot:hover { transform: scale(1.15); }
-
-        .welcome-hero-dot.active {
-          width: 24px;
-          border-radius: 999px;
-          background: #2D3195;
-          box-shadow: 0 0 8px rgba(45, 49, 149, 0.45);
-        }
-
-        /* =====================================================
-           RESPONSIVE
-        ===================================================== */
-
-        /* Large tablets / small laptops */
-        @media (max-width: 991.98px) {
-          .welcome-container { padding-left: 18px; padding-right: 18px; }
-
-          .welcome-hero-slider { height: 370px; border-radius: 22px; }
-          .welcome-hero-content { left: 6%; }
-          .welcome-hero-title { font-size: clamp(2.5rem, 5.5vw, 3.6rem); margin-bottom: 18px; }
-          .welcome-hero-detail { font-size: 1rem; gap: 10px; margin-bottom: 9px; }
-          .welcome-hero-arrow { width: 42px; height: 42px; }
-
-          .welcome-intro { margin-bottom: 28px; }
-          .welcome-intro-text { font-size: 0.76rem; }
-
-          .welcome-bunting { height: 29px; margin-bottom: 23px; }
-          .bunting-flag { width: 40px; height: 29px; flex-basis: 40px; }
-
-          .welcome-section-heading { margin-bottom: 2.4rem; }
-          .welcome-main-heading { margin-bottom: 6px; }
-          .welcome-explore-mobile-bunting { margin-bottom: 14px; }
-
-          .welcome-accommodations-section,
-          .welcome-videos-section { margin-top: 75px; }
-
-          .welcome-video-carousel { min-height: 475px; }
-          .welcome-featured-swiper { height: 410px; }
-          .welcome-featured-swiper-slide { width: 84% !important; }
-        }
-
-        /* Tablets and phones: stack map under heading */
-        @media (max-width: 767.98px) {
-          .welcome-explore-top { grid-template-columns: 1fr; gap: 26px; }
-
-          .welcome-map-shell,
-          .welcome-map-loading { height: 360px; }
-
-          /* pin details become a bottom sheet */
-          .welcome-map-place-card {
-            top: auto;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            width: 100%;
-            max-height: 64%;
-            border-radius: 20px 20px 0 0;
-            animation-name: welcome-map-sheet-in;
-          }
-
-          .welcome-map-card-media { height: 140px; }
-          .welcome-map-place-body { padding: 12px 15px 15px; }
-          .welcome-map-place-title { font-size: 0.94rem; }
-
-          .welcome-container { padding-left: 15px; padding-right: 15px; }
-
-          .welcome-hero-slider { height: 250px; border-radius: 20px; }
-          .welcome-hero-image { object-position: center center; }
-
-          .welcome-hero-overlay {
-            background: linear-gradient(
-              180deg,
-              rgba(0,0,0,0.32) 0%,
-              rgba(0,0,0,0.14) 28%,
-              rgba(0,0,0,0.68) 100%
-            );
-          }
-
-          .welcome-hero-content {
-            left: 24px;
-            right: 24px;
-            top: auto;
-            bottom: 38px;
-            transform: none;
-            max-width: none;
-          }
-
-          .welcome-hero-title { font-size: 2.15rem; margin-bottom: 13px; }
-          .welcome-hero-detail { font-size: 0.82rem; gap: 8px; margin-bottom: 6px; }
-          .welcome-hero-detail-icon { width: 24px; min-width: 24px; height: 24px; }
-          .welcome-hero-detail-icon svg { width: 21px; height: 21px; }
-
-          .welcome-hero-arrow { width: 38px; height: 38px; font-size: 28px; }
-          .welcome-hero-arrow-left { left: 10px; }
-          .welcome-hero-arrow-right { right: 10px; }
-          .welcome-hero-dots { bottom: 16px; }
-
-          .welcome-intro { max-width: 560px; margin-bottom: 27px; padding: 0 8px; }
-          .welcome-intro-eyebrow { font-size: 0.56rem; letter-spacing: 0.16em; }
-          .welcome-intro-text { max-width: 470px; font-size: 0.68rem; line-height: 1.65; margin-top: 9px; }
-
-          .welcome-section-heading { margin-bottom: 2rem; }
-
-          .welcome-bunting { display: none; }
-
-          .welcome-mobile-bunting {
-            width: min(88%, 300px);
-            height: 16px;
-            margin: 0 auto 14px;
-            padding: 0;
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
-            overflow: hidden;
-          }
-
-          .bunting-flag { width: auto; height: 16px; flex: 1 1 0; min-width: 0; }
-
-          .welcome-section-eyebrow { gap: 9px; font-size: 0.58rem; letter-spacing: 0.11em; }
-          .welcome-heading-line { width: 24px; }
-
-          .welcome-display-title,
-          .welcome-attractions-title,
-          .welcome-accommodations-title,
-          .welcome-videos-title { font-size: 1.45rem; }
-
-          .welcome-quick-card { padding: 17px 10px 14px; gap: 9px; border-radius: 18px; }
-          .welcome-quick-tile { width: 47px; height: 47px; border-radius: 15px; }
-          .welcome-quick-tile svg { width: 22px; height: 22px; }
-          .quick-card-label { font-size: 0.74rem; }
-          .welcome-quick-hint { font-size: 0.6rem; }
-
-          .welcome-view-more-link { font-size: 0.72rem; }
-
-          .welcome-explore-section,
-          .welcome-discover-section,
-          .welcome-accommodations-section { margin-bottom: 86px !important; }
-
-          .welcome-attractions-heading { margin-bottom: 1.8rem; }
-          .welcome-attractions-swiper { padding-bottom: 4px; touch-action: pan-y; }
-
-          .welcome-attractions-toolbar,
-          .welcome-accommodations-toolbar { margin: -0.15rem 0 0.9rem; }
-
-          .welcome-accommodations-section { margin-top: 65px; }
-
-          .welcome-accommodations-heading,
-          .welcome-videos-heading { margin-bottom: 1.8rem; }
-
-          .welcome-videos-section { margin-top: 65px; }
-
-          .welcome-video-carousel { min-height: 365px; padding: 5px 0 55px; }
-          .welcome-featured-swiper { height: 320px; padding: 20px 0 25px; }
-          .welcome-featured-swiper-slide { width: 88% !important; }
-          .welcome-video-cinematic-card { border-radius: 19px; }
-
-          .welcome-video-play-badge { top: 15px; left: 15px; width: 40px; height: 40px; }
-          .welcome-video-arrow { width: 38px; height: 38px; }
-          .welcome-video-prev { left: 7px; }
-          .welcome-video-next { right: 7px; }
-          .welcome-video-pagination { bottom: 10px; }
-        }
-
-        /* Phones */
-        @media (max-width: 575.98px) {
-          .welcome-events-carousel { padding-top: 4px; padding-bottom: 10px; }
-          .welcome-event-slide { padding-left: 3px; padding-right: 3px; }
-        }
-
-        @media (max-width: 480px) {
-          .welcome-container { padding-left: 12px; padding-right: 12px; }
-
-          .welcome-map-shell,
-          .welcome-map-loading { height: 330px; border-radius: 20px; }
-
-          .welcome-map-card-media { height: 124px; }
-
-          .welcome-hero-slider { height: 220px; border-radius: 18px; }
-          .welcome-hero-content { left: 18px; right: 18px; bottom: 31px; }
-          .welcome-hero-title { font-size: 1.60rem; margin-bottom: 9px; }
-          .welcome-hero-detail { font-size: 0.68rem; gap: 7px; margin-bottom: 5px; }
-          .welcome-hero-detail-icon { width: 21px; min-width: 21px; height: 21px; }
-          .welcome-hero-detail-icon svg { width: 19px; height: 19px; }
-
-          .welcome-hero-arrow { width: 34px; height: 34px; font-size: 24px; }
-          .welcome-hero-arrow-left { left: 8px; }
-          .welcome-hero-arrow-right { right: 8px; }
-
-          .welcome-intro { margin-bottom: 24px; padding: 0 5px; }
-          .welcome-intro-eyebrow { font-size: 0.51rem; letter-spacing: 0.14em; }
-          .welcome-intro-text { font-size: 0.62rem; line-height: 1.6; margin-top: 8px; }
-
-          .welcome-section-eyebrow { gap: 7px; font-size: 0.52rem; letter-spacing: 0.09em; }
-          .welcome-heading-line { width: 18px; }
-
-          .welcome-explore-mobile-bunting { margin-bottom: 12px; }
-
-          .welcome-explore-section,
-          .welcome-discover-section,
-          .welcome-accommodations-section { margin-bottom: 78px !important; }
-
-          .welcome-attractions-heading { margin-bottom: 1.65rem; }
-
-          .welcome-accommodations-section,
-          .welcome-videos-section { margin-top: 55px; }
-
-          .welcome-accommodations-heading,
-          .welcome-videos-heading { margin-bottom: 1.55rem; }
-
-          .welcome-video-carousel { min-height: 325px; }
-          .welcome-featured-swiper { height: 285px; padding: 12px 0 18px; }
-          .welcome-featured-swiper-slide { width: 91% !important; }
-          .welcome-video-cinematic-card { border-radius: 17px; }
-          .welcome-video-arrow { width: 34px; height: 34px; }
-          .welcome-video-play-badge { width: 36px; height: 36px; }
-        }
-
-        /* Very small phones */
-        @media (max-width: 380px) {
-          .welcome-intro-eyebrow { font-size: 0.48rem; }
-          .welcome-intro-text { font-size: 0.59rem; }
-
-          .welcome-quick-card { padding: 15px 8px 12px; }
-          .welcome-quick-tile { width: 42px; height: 42px; border-radius: 13px; }
-          .welcome-quick-tile svg { width: 20px; height: 20px; }
-          .quick-card-label { font-size: 0.68rem; }
-          .welcome-quick-hint { font-size: 0.56rem; }
-
-          .welcome-mobile-bunting { width: min(90%, 280px); height: 15px; margin: 0 auto 12px; }
-          .bunting-flag { height: 15px; }
-
-          .welcome-section-eyebrow { font-size: 0.49rem; gap: 6px; }
-          .welcome-heading-line { width: 15px; }
-
-          .welcome-display-title,
-          .welcome-attractions-title,
-          .welcome-accommodations-title,
-          .welcome-videos-title { font-size: 1.30rem; }
-
-          .welcome-attractions-toolbar,
-          .welcome-accommodations-toolbar { margin-bottom: 0.8rem; }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .welcome-hero-image,
-          .welcome-hero-image.is-active { transition: opacity 0.01ms linear !important; transform: none !important; }
-
-          .welcome-map-place-card { animation: none !important; }
-
-          .welcome-map-loading-spinner,
-          .welcome-video-loading-spinner { animation-duration: 0.01ms !important; }
-        }
-      `}</style>
+      )}
+
+      {/* Featured Stays */}
+      {accommodations.length > 0 && (
+        <section className="welcome-accommodations-section py-5">
+          <Container>
+            <SectionHeading
+              headingClass="text-center mb-4"
+              titleClass="text-primary"
+              eyebrowClass="justify-content-center"
+              title="Where to Stay"
+              subtitle="Comfortable hotels, resorts, and lodges for your stay"
+            />
+            <Row className="g-4">
+              {accommodations.slice(0, 3).map((accommodation) => (
+                <Col key={accommodation.id} xs={12} md={4}>
+                  <AccommodationCard accommodation={accommodation} />
+                </Col>
+              ))}
+            </Row>
+            <div className="text-center mt-4">
+              <Link to="/accommodations" className="btn btn-outline-primary rounded-pill px-4">
+                Explore All Stays <ChevronRight size={16} />
+              </Link>
+            </div>
+          </Container>
+        </section>
+      )}
+
+      {/* Upcoming Events */}
+      {events.length > 0 && (
+        <section className="welcome-events-section py-5 bg-light">
+          <Container>
+            <SectionHeading
+              headingClass="text-center mb-4"
+              titleClass="text-primary"
+              eyebrowClass="justify-content-center"
+              title="Upcoming Events"
+              subtitle="Festivals, celebrations, and community happenings"
+            />
+            <Row className="g-4">
+              {events.slice(0, 3).map((event) => (
+                <Col key={event.id} xs={12} md={4}>
+                  <EventCard event={event} />
+                </Col>
+              ))}
+            </Row>
+          </Container>
+        </section>
+      )}
     </div>
   );
 };
