@@ -15,6 +15,7 @@ type IconName =
   | "map"
   | "car"
   | "hotel"
+  | "restaurant"
   | "guide"
   | "event"
   | "calendar"
@@ -101,6 +102,19 @@ const SidebarIcon: React.FC<SidebarIconProps> = ({
           <path d="M14 8h3" />
           <path d="M7 16h3" />
           <path d="M14 16h3" />
+        </svg>
+      );
+
+    case "restaurant":
+      return (
+        <svg {...commonProps}>
+          {/* Fork */}
+          <path d="M6 3v6" />
+          <path d="M3.5 3v3a2.5 2.5 0 0 0 5 0V3" />
+          <path d="M6 9v12" />
+          {/* Knife */}
+          <path d="M16 3c2 2.2 3 5 3 8h-3V3Z" />
+          <path d="M16 11v10" />
         </svg>
       );
 
@@ -289,7 +303,7 @@ const userSections: SidebarSection[] = [
       },
       {
       to: "/restaurants",
-      icon: "hotel",
+      icon: "restaurant",
       label: "Restaurants",
       description: "Discover places to eat",
     },
@@ -360,7 +374,7 @@ const adminSections: SidebarSection[] = [
       
 {
   to: "/admin/restaurants",
-  icon: "hotel",
+  icon: "restaurant",
   label: "Restaurants",
   description: "Manage restaurants and dining",
 },
