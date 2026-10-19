@@ -5,6 +5,8 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import {
   Container,
   Row,
@@ -47,7 +49,6 @@ import {
   CirclePlus,
   Clock,
   Compass,
-  Download,
   FileDown,
   GripVertical,
   Heart,
@@ -86,6 +87,14 @@ import {
   splitIntoDays,
   timeToMinutes,
 } from "../utils/itineraryUtils";
+import {
+  LatLng,
+  RoadLeg,
+  fetchRoadDistances,
+  fetchRoadLeg,
+  getStopPoint,
+  legKey,
+} from "../utils/roadRouting";
 
 /* =========================================================
    BRAND
@@ -194,6 +203,8 @@ const insertStop = (stops: Destination[], dest: Destination) => {
 
 const tint = (color: string) =>
   color === CALBAYOG_BLUE ? SOFT_BLUE : `${color}14`;
+
+const round1 = (value: number) => Math.round(value * 10) / 10;
 
 /* =========================================================
    INTEREST OPTIONS
@@ -415,8 +426,8 @@ const normalizeAccommodation = (row: any): Destination =>
     description: row?.description || "",
     short_description: row?.description || "",
     location_address: row?.address || "",
-    location_lat: toNumber(row?.latitude),
-    location_lng: toNumber(row?.longitude),
+    location_lat: toNumber(row?.latitude ?? row?.location_lat),
+    location_lng: toNumber(row?.longitude ?? row?.location_lng),
     images: toImageList(row?.images),
     entrance_fee: row?.price_range || "",
     contact_number: row?.contact_number || "",
@@ -493,6 +504,75 @@ const getInterestMatch = (dest: Destination, selectedInterests: string[]) => {
 const isLowCost = (dest: Destination) => {
   const fee = normalize((dest as any).entrance_fee);
   return !fee || fee.includes("free") || fee.includes("not stated");
+};
+
+/* =========================================================
+   ROAD-BASED SCHEDULE
+   The base schedule comes from the shared utilities. When real road
+   distances are known, the travel legs, arrival times, end time and
+   totals are recalculated from them so every number on the page
+   (cards, map, PDF) agrees.
+========================================================= */
+
+const applyRoadLegs = (
+  schedule: any,
+  legs: Record<string, RoadLeg>,
+  speedKmh: number,
+) => {
+  const list: any[] = schedule?.stops;
+
+  if (!Array.isArray(list) || list.length < 2) return schedule;
+
+  // How long is spent at each stop (arrival gaps minus the original travel time).
+  const dwell = list.map((stop, index) =>
+    index < list.length - 1
+      ? Math.max(
+          0,
+          list[index + 1].arrive -
+            stop.arrive -
+            (list[index + 1].travelFromPrev?.minutes || 0),
+        )
+      : Math.max(0, (schedule.endTime ?? stop.arrive) - stop.arrive),
+  );
+
+  let arrive = list[0].arrive;
+  let totalMin = 0;
+  let totalKm = 0;
+
+  const stops = list.map((stop, index) => {
+    if (index === 0) {
+      return { ...stop, arrive };
+    }
+
+    const a = getStopPoint(list[index - 1].dest);
+    const b = getStopPoint(stop.dest);
+    const leg = a && b ? legs[legKey(a, b)] : undefined;
+
+    let travel = stop.travelFromPrev;
+
+    if (leg) {
+      travel = {
+        ...(stop.travelFromPrev || {}),
+        km: round1(leg.km),
+        minutes: Math.max(1, Math.round((leg.km / speedKmh) * 60)),
+      };
+    }
+
+    arrive = arrive + dwell[index - 1] + (travel?.minutes || 0);
+
+    totalMin += travel?.minutes || 0;
+    totalKm += travel?.km || 0;
+
+    return { ...stop, arrive, travelFromPrev: travel };
+  });
+
+  return {
+    ...schedule,
+    stops,
+    endTime: arrive + dwell[list.length - 1],
+    totalTravelMin: totalMin,
+    totalKm: round1(totalKm),
+  };
 };
 
 /* =========================================================
@@ -712,6 +792,9 @@ const ItineraryPlanner: React.FC = () => {
   const { user, userToken, loading: authLoading } = useAuth();
   const isLoggedIn = Boolean(user && userToken);
 
+  const history = useHistory();
+  const location = useLocation<{ plannerMapDayId?: string } | undefined>();
+
   const [itineraryId, setItineraryId] = useState<string | null>(null);
   const [itineraryLoading, setItineraryLoading] = useState(true);
 
@@ -763,12 +846,7 @@ const ItineraryPlanner: React.FC = () => {
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [activeDayId, setActiveDayId] = useState<string | null>(null);
   const [openMapDayId, setOpenMapDayId] = useState<string | null>(null);
-  // Large (full-screen) map. The map only mounts after the modal finishes
-  // opening so Leaflet measures the real size and fills the screen correctly.
-  const [expandedMapDayId, setExpandedMapDayId] = useState<string | null>(null);
-  const [expandedMapReady, setExpandedMapReady] = useState(false);
   const [generated, setGenerated] = useState(false);
-  const [customizationSaved, setCustomizationSaved] = useState(false);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [nearestFirst, setNearestFirst] = useState(true);
@@ -777,6 +855,17 @@ const ItineraryPlanner: React.FC = () => {
   const [customizerError, setCustomizerError] = useState("");
   const [pageNotice, setPageNotice] = useState("");
   const [syncState, setSyncState] = useState<SyncState>("idle");
+
+  // Real road distances between stops, keyed by the two pin locations.
+  const [roadLegs, setRoadLegs] = useState<Record<string, RoadLeg>>({});
+  // Road distances from the last stop to every place in the picker.
+  const [pickerRoadKm, setPickerRoadKm] = useState<Record<string, number>>({});
+
+  /*
+   * The large map lives in the browser history (location.state), so the
+   * back button / back gesture closes the map instead of leaving the planner.
+   */
+  const expandedMapDayId = location.state?.plannerMapDayId ?? null;
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -1066,7 +1155,7 @@ const ItineraryPlanner: React.FC = () => {
     };
   }, []);
 
-  // Keep stops up to date with the latest attraction data (new photos, fixed pins).
+  // Keep stops up to date with the latest database data (new photos, fixed pins).
   useEffect(() => {
     if (destinations.length === 0 || itineraryLoading) return;
 
@@ -1130,9 +1219,106 @@ const ItineraryPlanner: React.FC = () => {
     return ["All", ...unique];
   }, [destinations, pickerKind]);
 
+  const usedDestinationIds = useMemo(
+    () => new Set(days.flatMap((day) => day.destinations.map((dest) => dest.id))),
+    [days],
+  );
+
+  /* ---------- smart suggestions (lunch near the 2nd stop, a stay near the last) ---------- */
+
+  const suggestions = useMemo(
+    () =>
+      days.map((day, dayIndex) => {
+        const dayKinds = day.destinations.map((stop) => getStopKind(stop));
+        const lunchAnchor = day.destinations[1] || day.destinations[0];
+        const lunch =
+          lunchAnchor && !dayKinds.includes("food")
+            ? nearestOf(lunchAnchor, foodPlaces, usedDestinationIds, MAX_MEAL_KM)
+            : null;
+        const stayAnchor = day.destinations[day.destinations.length - 1];
+        const stay =
+          stayAnchor &&
+          day.destinations.length > 1 &&
+          dayIndex < days.length - 1 &&
+          !dayKinds.includes("stay")
+            ? nearestOf(stayAnchor, stayPlaces, usedDestinationIds, MAX_STAY_KM)
+            : null;
+
+        return { lunchAnchor, lunch, stayAnchor, stay };
+      }),
+    [days, foodPlaces, stayPlaces, usedDestinationIds],
+  );
+
+  /* ---------- real road distances between stops ---------- */
+
+  useEffect(() => {
+    const pairs = new Map<string, [LatLng, LatLng]>();
+
+    const add = (from?: Destination | null, to?: Destination | null) => {
+      const a = getStopPoint(from);
+      const b = getStopPoint(to);
+      if (a && b) pairs.set(legKey(a, b), [a, b]);
+    };
+
+    days.forEach((day) => {
+      for (let index = 0; index < day.destinations.length - 1; index += 1) {
+        add(day.destinations[index], day.destinations[index + 1]);
+      }
+    });
+
+    suggestions.forEach((item) => {
+      if (item.lunch) add(item.lunchAnchor, item.lunch);
+      if (item.stay) add(item.stayAnchor, item.stay);
+    });
+
+    const missing = Array.from(pairs.entries()).filter(([key]) => !roadLegs[key]);
+
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+
+    missing.forEach(([key, [a, b]]) => {
+      void fetchRoadLeg(a, b).then((leg) => {
+        if (cancelled) return;
+        setRoadLegs((previous) => (previous[key] ? previous : { ...previous, [key]: leg }));
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+    // roadLegs is intentionally not a dependency: it only ever grows from this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [days, suggestions]);
+
+  const legsFor = (stops: Destination[]): Array<RoadLeg | null> =>
+    stops.slice(1).map((stop, index) => {
+      const a = getStopPoint(stops[index]);
+      const b = getStopPoint(stop);
+      return a && b ? roadLegs[legKey(a, b)] ?? null : null;
+    });
+
+  // Road distance if known, otherwise the shared estimate.
+  const distanceKm = (from: Destination, to: Destination): number | undefined => {
+    const a = getStopPoint(from);
+    const b = getStopPoint(to);
+    const leg = a && b ? roadLegs[legKey(a, b)] : undefined;
+
+    if (leg) return round1(leg.km);
+
+    return getTravelLeg(from, to, speedKmh)?.km;
+  };
+
   const schedules = useMemo(
-    () => days.map((day) => buildDaySchedule(day.destinations, dayStartMinutes, speedKmh)),
-    [days, dayStartMinutes, speedKmh],
+    () =>
+      days.map((day) =>
+        applyRoadLegs(
+          buildDaySchedule(day.destinations, dayStartMinutes, speedKmh),
+          roadLegs,
+          speedKmh,
+        ),
+      ),
+    [days, dayStartMinutes, speedKmh, roadLegs],
   );
 
   const totalDests = days.reduce((sum, day) => sum + day.destinations.length, 0);
@@ -1140,15 +1326,53 @@ const ItineraryPlanner: React.FC = () => {
   const totalTravelMin = schedules.reduce((sum, s) => sum + s.totalTravelMin, 0);
   const tripDays = getTripDays(preferences.travelDateStart, preferences.travelDateEnd);
 
-  const usedDestinationIds = useMemo(
-    () => new Set(days.flatMap((day) => day.destinations.map((dest) => dest.id))),
-    [days],
-  );
-
   const activeDay = days.find((day) => day.id === activeDayId) || null;
   const lastStop = activeDay?.destinations[activeDay.destinations.length - 1] || null;
 
   const expandedMapDay = days.find((day) => day.id === expandedMapDayId) || null;
+  const expandedMapIndex = expandedMapDay ? days.indexOf(expandedMapDay) : -1;
+  const expandedSchedule = expandedMapIndex >= 0 ? schedules[expandedMapIndex] : null;
+
+  /* ---------- road distances for the picker ---------- */
+
+  useEffect(() => {
+    setPickerRoadKm({});
+
+    if (!showPicker || !lastStop) return;
+
+    const origin = getStopPoint(lastStop);
+
+    if (!origin) return;
+
+    const targets = destinations
+      .filter((dest) => getStopKind(dest) === pickerKind && dest.id !== lastStop.id)
+      .map((dest) => ({ dest, point: getStopPoint(dest) }))
+      .filter((item): item is { dest: Destination; point: LatLng } => Boolean(item.point));
+
+    if (targets.length === 0) return;
+
+    let cancelled = false;
+
+    void fetchRoadDistances(
+      origin,
+      targets.map((item) => item.point),
+    ).then((list) => {
+      if (cancelled) return;
+
+      const next: Record<string, number> = {};
+
+      list.forEach((km, index) => {
+        if (km !== null) next[targets[index].dest.id] = km;
+      });
+
+      setPickerRoadKm(next);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showPicker, pickerKind, lastStop?.id, destinations]);
 
   const filteredDestinations = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -1170,27 +1394,47 @@ const ItineraryPlanner: React.FC = () => {
 
     if (!nearestFirst || !lastStop) return list;
 
-    // Nearest to the last stop of the day first; unknown distances go last.
-    return [...list].sort((a, b) => {
-      const la = getTravelLeg(lastStop, a, speedKmh)?.minutes ?? Infinity;
-      const lb = getTravelLeg(lastStop, b, speedKmh)?.minutes ?? Infinity;
-      return la - lb;
-    });
-  }, [destinations, search, category, nearestFirst, lastStop, speedKmh, pickerKind]);
+    // Nearest to the last stop of the day first (by road when known); unknown distances go last.
+    const km = (dest: Destination) =>
+      pickerRoadKm[dest.id] ?? getTravelLeg(lastStop, dest, speedKmh)?.km ?? Infinity;
+
+    return [...list].sort((a, b) => km(a) - km(b));
+  }, [destinations, search, category, nearestFirst, lastStop, speedKmh, pickerKind, pickerRoadKm]);
 
   /* =====================================================
-     LARGE MAP
+     LARGE MAP (history based, so "back" closes it)
   ===================================================== */
 
   const openExpandedMap = (dayId: string) => {
-    setExpandedMapReady(false);
-    setExpandedMapDayId(dayId);
+    history.push({
+      pathname: location.pathname,
+      search: location.search,
+      state: { ...(location.state || {}), plannerMapDayId: dayId },
+    });
   };
 
-  const closeExpandedMap = () => {
-    setExpandedMapDayId(null);
-    setExpandedMapReady(false);
-  };
+  const closeExpandedMap = useCallback(() => {
+    if (!location.state?.plannerMapDayId) return;
+    history.goBack();
+  }, [history, location.state]);
+
+  // Esc closes the large map and the page behind it does not scroll.
+  useEffect(() => {
+    if (!expandedMapDay) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeExpandedMap();
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [expandedMapDay, closeExpandedMap]);
 
   /* =====================================================
      DAY ACTIONS
@@ -1343,22 +1587,6 @@ const ItineraryPlanner: React.FC = () => {
     }
     if (!p.groupSize || p.groupSize < 1) return "Please enter at least 1 traveler.";
     return "";
-  };
-
-  const savePreferences = async () => {
-    const validationError = validatePreferences(preferences);
-    if (validationError) {
-      setCustomizerError(validationError);
-      return;
-    }
-
-    // Preferences are always kept on this device; sync them to the account if logged in.
-    if (isLoggedIn && days.length > 0) {
-      await syncToServer(days, preferences);
-    }
-
-    setCustomizationSaved(true);
-    window.setTimeout(() => setCustomizationSaved(false), 2000);
   };
 
   /* =====================================================
@@ -1563,7 +1791,7 @@ const ItineraryPlanner: React.FC = () => {
       autoTable(doc, {
         startY: y,
         head: [["#", "Time", "Place", "Getting there", "Address"]],
-        body: schedule.stops.map((stop, index) => {
+        body: schedule.stops.map((stop: any, index: number) => {
           const d: any = stop.dest;
           return [
             String(index + 1),
@@ -1593,7 +1821,7 @@ const ItineraryPlanner: React.FC = () => {
     doc.setFont("helvetica", "italic");
     doc.setFontSize(8);
     doc.text(
-      "Travel times and visit lengths are estimates. Check opening hours before you go.",
+      "Distances follow road routes. Travel times and visit lengths are estimates. Check opening hours before you go.",
       14,
       Math.min(y, 285),
     );
@@ -1602,7 +1830,7 @@ const ItineraryPlanner: React.FC = () => {
   };
 
   /* =====================================================
-     SELECTED PACE (kept for future use in UI)
+     SYNC LABEL
   ===================================================== */
 
   const syncLabel =
@@ -1904,27 +2132,17 @@ const ItineraryPlanner: React.FC = () => {
                   label: `Day ${item.day}${item.date ? ` · ${formatDate(item.date)}` : ""}`,
                 }));
 
-              // Smart suggestions: lunch near the 2nd stop, a place to stay near the last stop.
-              const dayKinds = day.destinations.map((stop) => getStopKind(stop));
-              const lunchAnchor = day.destinations[1] || day.destinations[0];
-              const lunchSuggestion =
-                lunchAnchor && !dayKinds.includes("food")
-                  ? nearestOf(lunchAnchor, foodPlaces, usedDestinationIds, MAX_MEAL_KM)
-                  : null;
-              const stayAnchor = day.destinations[day.destinations.length - 1];
-              const staySuggestion =
-                stayAnchor &&
-                day.destinations.length > 1 &&
-                dayIndex < days.length - 1 &&
-                !dayKinds.includes("stay")
-                  ? nearestOf(stayAnchor, stayPlaces, usedDestinationIds, MAX_STAY_KM)
-                  : null;
-              const lunchKm = lunchSuggestion
-                ? getTravelLeg(lunchAnchor, lunchSuggestion, speedKmh)?.km
-                : undefined;
-              const stayKm = staySuggestion
-                ? getTravelLeg(stayAnchor, staySuggestion, speedKmh)?.km
-                : undefined;
+              const { lunchAnchor, lunch: lunchSuggestion, stayAnchor, stay: staySuggestion } =
+                suggestions[dayIndex];
+
+              const lunchKm =
+                lunchSuggestion && lunchAnchor
+                  ? distanceKm(lunchAnchor, lunchSuggestion)
+                  : undefined;
+              const stayKm =
+                staySuggestion && stayAnchor
+                  ? distanceKm(stayAnchor, staySuggestion)
+                  : undefined;
 
               return (
                 <Col xs={12} md={6} lg={4} key={day.id} className="planner-day-col">
@@ -1989,7 +2207,7 @@ const ItineraryPlanner: React.FC = () => {
                             items={day.destinations.map((destination) => destination.id)}
                             strategy={verticalListSortingStrategy}
                           >
-                            {schedule.stops.map((stop, index) => (
+                            {schedule.stops.map((stop: any, index: number) => (
                               <React.Fragment key={stop.dest.id}>
                                 {index > 0 && stop.travelFromPrev && (
                                   <div className="planner-travel-leg">
@@ -2101,7 +2319,10 @@ const ItineraryPlanner: React.FC = () => {
 
                       {openMapDayId === day.id && (
                         <div className="mt-2 planner-inline-map">
-                          <DayRouteMap destinations={day.destinations} />
+                          <DayRouteMap
+                            destinations={day.destinations}
+                            legs={legsFor(day.destinations)}
+                          />
 
                           <button
                             type="button"
@@ -2132,9 +2353,10 @@ const ItineraryPlanner: React.FC = () => {
             <div>
               <strong>Planning tips</strong>
               <span>
-                Drag the handle to reorder stops. Travel times are estimates based on
-                distance and the transport you choose, so allow extra time on rainy
-                days or rough roads. {!isLoggedIn && "Log in to save this plan to your account."}
+                Drag the handle to reorder stops. Distances follow real roads and travel
+                times are estimates based on the transport you choose, so allow extra
+                time on rainy days or rough roads.{" "}
+                {!isLoggedIn && "Log in to save this plan to your account."}
               </span>
             </div>
           </div>
@@ -2142,37 +2364,70 @@ const ItineraryPlanner: React.FC = () => {
       </Container>
 
       {/* =====================================================
-          LARGE MAP (full screen)
+          LARGE MAP (full size, closes with back / Esc)
       ===================================================== */}
 
-      <Modal
-        show={Boolean(expandedMapDay)}
-        onHide={closeExpandedMap}
-        onEntered={() => setExpandedMapReady(true)}
-        fullscreen
-        className="planner-modal planner-map-modal"
-      >
-        <Modal.Header closeButton className="planner-modal-header">
-          <div>
-            <div className="planner-modal-eyebrow">ROUTE MAP</div>
-            <Modal.Title className="planner-modal-title">
-              {expandedMapDay ? `Day ${expandedMapDay.day}` : "Route"}
-              {expandedMapDay?.date ? ` · ${formatDate(expandedMapDay.date)}` : ""}
-            </Modal.Title>
-            <p className="planner-modal-subtitle">
-              Drag to move, pinch or scroll to zoom, and tap a pin for details.
-            </p>
-          </div>
-        </Modal.Header>
+      {expandedMapDay &&
+        createPortal(
+          <div
+            className="planner-bigmap"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Route map for day ${expandedMapDay.day}`}
+            onClick={closeExpandedMap}
+          >
+            <div className="planner-bigmap-card" onClick={(event) => event.stopPropagation()}>
+              <div className="planner-bigmap-header">
+                <div className="planner-bigmap-heading">
+                  <div className="planner-modal-eyebrow">ROUTE MAP</div>
+                  <h2 className="planner-bigmap-title">
+                    Day {expandedMapDay.day}
+                    {expandedMapDay.date ? ` · ${formatDate(expandedMapDay.date)}` : ""}
+                  </h2>
+                  <p className="planner-modal-subtitle">
+                    Drag to move, scroll or pinch to zoom the map, and tap a pin for details.
+                  </p>
 
-        <Modal.Body className="planner-map-large-body">
-          {expandedMapDay && expandedMapReady ? (
-            <DayRouteMap destinations={expandedMapDay.destinations} />
-          ) : (
-            <div className="planner-map-large-loading">Loading map…</div>
-          )}
-        </Modal.Body>
-      </Modal>
+                  {expandedSchedule && (
+                    <div className="planner-bigmap-stats">
+                      <span>
+                        <MapPin size={12} strokeWidth={2} />
+                        {expandedMapDay.destinations.length} stop
+                        {expandedMapDay.destinations.length !== 1 ? "s" : ""}
+                      </span>
+                      <span>
+                        <Car size={12} strokeWidth={2} />
+                        {expandedSchedule.totalKm} km by road
+                      </span>
+                      <span>
+                        <Clock size={12} strokeWidth={2} />~
+                        {formatDuration(expandedSchedule.totalTravelMin)} travel
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className="planner-bigmap-close"
+                  onClick={closeExpandedMap}
+                  aria-label="Close map"
+                >
+                  <X size={17} />
+                </button>
+              </div>
+
+              <div className="planner-bigmap-body">
+                <DayRouteMap
+                  destinations={expandedMapDay.destinations}
+                  legs={legsFor(expandedMapDay.destinations)}
+                  large
+                />
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
 
       {/* =====================================================
           CUSTOMIZER MODAL
@@ -2463,24 +2718,6 @@ const ItineraryPlanner: React.FC = () => {
           </Button>
 
           <Button
-            variant="outline-primary"
-            onClick={savePreferences}
-            className="planner-modal-save"
-          >
-            {customizationSaved ? (
-              <>
-                <Check size={15} />
-                Saved
-              </>
-            ) : (
-              <>
-                <Download size={15} />
-                Save Preferences
-              </>
-            )}
-          </Button>
-
-          <Button
             onClick={() => generateItinerary()}
             disabled={destinations.length === 0}
             className="planner-modal-generate"
@@ -2511,7 +2748,7 @@ const ItineraryPlanner: React.FC = () => {
             <Modal.Title className="planner-modal-title">Add a Place</Modal.Title>
             <p className="planner-modal-subtitle">
               {lastStop
-                ? `Showing distance from ${lastStop.name}, your last stop that day.`
+                ? `Showing road distance from ${lastStop.name}, your last stop that day.`
                 : "Choose a place to add to your itinerary."}
             </p>
           </div>
@@ -2617,7 +2854,18 @@ const ItineraryPlanner: React.FC = () => {
                 const d: any = dest;
                 const alreadyUsed = usedDestinationIds.has(dest.id);
                 const color = getDestColor(dest);
-                const leg = lastStop ? getTravelLeg(lastStop, dest, speedKmh) : null;
+
+                const roadKm = pickerRoadKm[dest.id];
+                const estimatedLeg = lastStop ? getTravelLeg(lastStop, dest, speedKmh) : null;
+
+                const leg =
+                  roadKm !== undefined
+                    ? {
+                        km: round1(roadKm),
+                        minutes: Math.max(1, Math.round((roadKm / speedKmh) * 60)),
+                      }
+                    : estimatedLeg;
+
                 const typeLabel =
                   d.attraction_type === "Other"
                     ? d.other_attraction_type || "Other"
@@ -3014,7 +3262,7 @@ const ItineraryPlanner: React.FC = () => {
         /* INLINE MAP + EXPAND BUTTON */
         .planner-inline-map { position: relative; }
         .planner-map-expand-fab {
-          position: absolute; z-index: 1000; left: 10px; bottom: 10px; width: 34px; height: 34px;
+          position: absolute; z-index: 1000; left: 10px; bottom: 44px; width: 34px; height: 34px;
           display: flex; align-items: center; justify-content: center; padding: 0;
           border: 1px solid rgba(45,49,149,.18); border-radius: 10px; background: rgba(255,255,255,.96);
           color: ${CALBAYOG_BLUE}; cursor: pointer; box-shadow: 0 5px 16px rgba(15,23,42,.18);
@@ -3022,22 +3270,37 @@ const ItineraryPlanner: React.FC = () => {
         }
         .planner-map-expand-fab:hover { background: ${SOFT_BLUE}; transform: scale(1.05); }
 
-        /* LARGE MAP MODAL */
-        .planner-map-modal .modal-content { border-radius: 0 !important; }
-        .planner-map-large-body {
-          position: relative; padding: 0 !important; background: #eef2f7 !important;
-          overflow: hidden !important;
+        /* LARGE MAP (full size) */
+        .planner-bigmap {
+          position: fixed; inset: 0; z-index: 2100; display: flex; align-items: center; justify-content: center;
+          padding: 20px; background: rgba(17,21,40,.62); backdrop-filter: blur(3px);
+          font-family: "Nunito", "Poppins", "Segoe UI", sans-serif;
+          overscroll-behavior: contain; animation: plannerBigMapFade .18s ease;
         }
-        .planner-map-large-body > div:not(.planner-map-large-loading) {
-          width: 100% !important; height: 100% !important; margin: 0 !important; border-radius: 0 !important;
+        .planner-bigmap-card {
+          width: 100%; max-width: 1500px; height: calc(100vh - 40px); height: calc(100dvh - 40px);
+          display: flex; flex-direction: column; padding: 16px; border-radius: 20px; background: #fff;
+          box-shadow: 0 24px 60px rgba(10,14,35,.35);
         }
-        .planner-map-large-body .leaflet-container {
-          width: 100% !important; height: 100% !important; min-height: calc(100vh - 92px); border-radius: 0 !important;
+        .planner-bigmap-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+        .planner-bigmap-heading { min-width: 0; }
+        .planner-bigmap-title { margin: 0; font-family: "Poppins", sans-serif; font-size: 1.08rem; font-weight: 700; color: #242a26; }
+        .planner-bigmap-stats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+        .planner-bigmap-stats span {
+          display: inline-flex; align-items: center; gap: 5px; min-height: 27px; padding: 5px 10px; border-radius: 999px;
+          background: ${SOFT_BLUE}; color: ${CALBAYOG_BLUE}; font-size: .62rem; font-weight: 800;
         }
-        .planner-map-large-loading {
-          height: 100%; min-height: 240px; display: flex; align-items: center; justify-content: center;
-          font-family: "Nunito", sans-serif; font-size: .75rem; font-weight: 700; color: #737b76;
+        .planner-bigmap-close {
+          width: 38px; height: 38px; min-width: 38px; display: flex; align-items: center; justify-content: center;
+          border: 1px solid #e8eaf0; border-radius: 50%; background: #fff; color: #5f6772; cursor: pointer;
+          transition: background .2s ease, color .2s ease;
         }
+        .planner-bigmap-close:hover { background: ${CALBAYOG_BLUE}; border-color: ${CALBAYOG_BLUE}; color: #fff; }
+        .planner-bigmap-body {
+          position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; border: 1px solid #e4e7ed;
+          border-radius: 15px; background: #eef1f5;
+        }
+        @keyframes plannerBigMapFade { from { opacity: 0; } to { opacity: 1; } }
 
         /* SUGGESTIONS + KIND TABS */
         .planner-suggest { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 8px; }
@@ -3062,16 +3325,6 @@ const ItineraryPlanner: React.FC = () => {
         }
         .planner-kind-tabs button.active { background: ${CALBAYOG_BLUE}; color: #fff; }
 
-        /* MAP */
-        .planner-map-wrap { position: relative; border: 1px solid #edf0ee; border-radius: 14px; overflow: hidden; }
-        .planner-map-layers { position: absolute; z-index: 1000; top: 8px; right: 8px; display: flex; gap: 4px; }
-        .planner-map-layers button {
-          padding: 4px 8px; border: 1px solid #dfe3e1; border-radius: 8px; background: rgba(255,255,255,.95);
-          font-family: "Nunito", sans-serif; font-size: .58rem; font-weight: 800; color: #626b65; cursor: pointer;
-        }
-        .planner-map-layers button.active { border-color: ${CALBAYOG_BLUE}; color: ${CALBAYOG_BLUE}; background: ${SOFT_BLUE}; }
-        .planner-map-note { padding: 6px 10px; background: #fafbfb; font-family: "Nunito", sans-serif; font-size: .58rem; color: #8a928d; }
-
         /* TIP */
         .planner-tip {
           display: flex; align-items: flex-start; gap: 9px; margin-top: 22px; padding: 11px 13px;
@@ -3094,12 +3347,10 @@ const ItineraryPlanner: React.FC = () => {
         .planner-modal-body { padding: 16px !important; background: #fafbfb !important; }
         .planner-picker-body { max-height: 68vh; padding: 16px !important; background: #fafbfb !important; }
         .planner-modal-footer { gap: 7px !important; padding: 12px 16px !important; border-top: 1px solid #edf0ee !important; background: #fff !important; }
-        .planner-modal-cancel, .planner-modal-save, .planner-modal-generate, .planner-delete-confirm {
+        .planner-modal-cancel, .planner-modal-generate, .planner-delete-confirm {
           display: inline-flex !important; align-items: center; justify-content: center; gap: 6px; border-radius: 999px !important;
           padding: 8px 13px !important; font-family: "Nunito", sans-serif; font-size: .67rem !important; font-weight: 800 !important;
         }
-        .planner-modal-save { border-color: #dfe3e1 !important; color: ${CALBAYOG_BLUE} !important; }
-        .planner-modal-save:hover { background: ${SOFT_BLUE} !important; border-color: ${CALBAYOG_BLUE} !important; }
         .planner-modal-generate { border: none !important; background: ${CALBAYOG_BLUE} !important; }
         .planner-modal-generate:hover { background: #252982 !important; }
         .planner-delete-confirm { border: none !important; }
@@ -3260,8 +3511,14 @@ const ItineraryPlanner: React.FC = () => {
           .planner-stop-image { width: 44px; height: 44px; }
           .planner-stop-number { width: 25px; height: 25px; }
           .planner-modal-footer { flex-wrap: wrap; }
-          .planner-modal-cancel, .planner-modal-save, .planner-modal-generate { flex: 1 1 auto; }
-          .planner-map-large-body .leaflet-container { min-height: calc(100vh - 84px); }
+          .planner-modal-cancel, .planner-modal-generate { flex: 1 1 auto; }
+
+          .planner-bigmap { padding: 0; }
+          .planner-bigmap-card {
+            max-width: none; height: 100vh; height: 100dvh; padding: 12px; border-radius: 0;
+          }
+          .planner-bigmap-title { font-size: .98rem; }
+          .planner-bigmap-body { border-radius: 12px; }
         }
 
         @media (max-width: 479.98px) {
@@ -3282,6 +3539,10 @@ const ItineraryPlanner: React.FC = () => {
           .customizer-section { padding: 12px; }
           .planner-option-card { min-height: 67px; }
           .planner-travel-leg { margin-left: 30px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .planner-bigmap { animation: none !important; }
         }
       `}</style>
     </div>
