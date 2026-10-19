@@ -695,7 +695,7 @@ const RestaurantDetail: React.FC = () => {
 
   return (
     <div className="restaurant-detail-page page-enter">
-      <style>{styles}
+      <style>{`${styles}
 .detail-memory-section { margin: 18px 0; padding: 16px; border: 1px solid rgba(45,49,149,.14); border-radius: 16px; background: linear-gradient(135deg,#fafaff 0%,#f4f5ff 100%); }
 .detail-memory-content { display:flex; align-items:center; justify-content:space-between; gap:14px; }
 .detail-memory-copy { display:flex; align-items:flex-start; gap:10px; min-width:0; }
@@ -724,7 +724,7 @@ const RestaurantDetail: React.FC = () => {
 .detail-memory-cancel { min-height:38px; padding:8px 12px; border:1px solid ${BORDER}; border-radius:10px; background:#fff; color:${TEXT}; font-size:.7rem; font-weight:800; cursor:pointer; }
 @media(max-width:575px) { .detail-memory-content { align-items:stretch; flex-direction:column; } .detail-memory-button { width:100%; } .detail-memory-form { padding:12px; } }
 
-</style>
+`} </style>
 
       <Container className="restaurant-detail-container">
         <button
