@@ -19,7 +19,6 @@ import {
   Utensils,
   MapPin,
   Globe2,
-  SlidersHorizontal,
 } from "lucide-react";
 
 import {
@@ -57,7 +56,6 @@ const Restaurants: React.FC = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCuisine, setActiveCuisine] = useState("All");
-  const [featuredOnly, setFeaturedOnly] = useState(false);
 
   const fetchLock = useRef(false);
   const hasRestoredScroll = useRef(false);
@@ -216,12 +214,9 @@ const Restaurants: React.FC = () => {
         normalizeText(restaurant.cuisine_type) ===
           normalizeText(activeCuisine);
 
-      const matchesFeatured =
-        !featuredOnly || restaurant.featured === true;
-
-      return matchesCuisine && matchesFeatured;
+      return matchesCuisine;
     });
-  }, [restaurants, activeCuisine, featuredOnly]);
+  }, [restaurants, activeCuisine]);
 
   /* =========================================================
      CLEAR FILTERS
@@ -229,7 +224,6 @@ const Restaurants: React.FC = () => {
 
   const clearFilters = () => {
     setActiveCuisine("All");
-    setFeaturedOnly(false);
   };
 
   /* =========================================================
@@ -252,24 +246,6 @@ const Restaurants: React.FC = () => {
       </section>
 
       <Container className="restaurants-container">
-        {/* FEATURED FILTER — SEARCH BAR REMOVED */}
-
-        <div className="restaurant-filter-row">
-          <button
-            type="button"
-            className={`featured-filter ${
-              featuredOnly ? "featured-filter-active" : ""
-            }`}
-            onClick={() =>
-              setFeaturedOnly((previous) => !previous)
-            }
-            aria-pressed={featuredOnly}
-          >
-            <SlidersHorizontal size={16} />
-            Featured
-          </button>
-        </div>
-
         {/* CUISINE FILTERS */}
 
         <div className="restaurant-cuisine-label">
@@ -311,7 +287,7 @@ const Restaurants: React.FC = () => {
               </strong>
             </div>
 
-            {(activeCuisine !== "All" || featuredOnly) && (
+            {(activeCuisine !== "All") && (
               <Button
                 variant="outline-secondary"
                 size="sm"
@@ -428,42 +404,6 @@ const Restaurants: React.FC = () => {
         .restaurants-container {
           max-width: 1240px;
           padding: 0 0 60px;
-        }
-
-        /* FEATURED FILTER */
-
-        .restaurant-filter-row {
-          display: flex;
-          align-items: center;
-          justify-content: flex-end;
-          gap: 10px;
-          margin: 8px 0 24px;
-        }
-
-        .featured-filter {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 7px;
-          min-height: 44px;
-          padding: 0 14px;
-          border: 1px solid #e5e9e6;
-          border-radius: 12px;
-          background: #fff;
-          color: #68716c;
-          font: 800 .73rem "Nunito", sans-serif;
-          white-space: nowrap;
-          cursor: pointer;
-          transition:
-            background .2s ease,
-            color .2s ease,
-            border-color .2s ease;
-        }
-
-        .featured-filter-active {
-          border-color: ${CALBAYOG_BLUE};
-          background: #eef0ff;
-          color: ${CALBAYOG_BLUE};
         }
 
         /* CUISINE FILTERS */
@@ -666,17 +606,6 @@ const Restaurants: React.FC = () => {
           .restaurants-container {
             padding-right: 17px;
             padding-left: 17px;
-          }
-
-          .restaurant-filter-row {
-            margin-top: 8px;
-            margin-bottom: 20px;
-          }
-
-          .featured-filter {
-            min-height: 42px;
-            padding: 0 12px;
-            font-size: .7rem;
           }
 
           .restaurant-cuisine-pills {
