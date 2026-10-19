@@ -32,13 +32,19 @@ export default defineConfig({
         // For best Chromium installability, also provide a real 192x192
         // resized copy of logo2.png and list that file as a 192x192 icon.
         icons: [
-          {
-            src: "/logo2.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "any",
-          },
-        ],
+  {
+    src: "/logo2-192.png",
+    sizes: "192x192",
+    type: "image/png",
+    purpose: "any",
+  },
+  {
+    src: "/logo2.png",
+    sizes: "512x512",
+    type: "image/png",
+    purpose: "any",
+  },
+],
         categories: ["travel", "lifestyle"],
       },
       workbox: {
