@@ -1204,11 +1204,11 @@ const Welcome: React.FC = () => {
     const loadData = async () => {
       try {
         const [
-          attractionsData,
-          accommodationsData,
-          restaurantsData,
-          eventsData,
-          videosData,
+          attractionsRes,
+          accommodationsRes,
+          restaurantsRes,
+          eventsRes,
+          videosRes,
         ] = await Promise.all([
           getAttractions(),
           getAccommodations(),
@@ -1218,11 +1218,27 @@ const Welcome: React.FC = () => {
         ]);
 
         if (mounted) {
-          setAttractions(attractionsData || []);
-          setAccommodations(accommodationsData || []);
-          setRestaurants((restaurantsData || []).map(toRestaurantCardItem));
-          setEvents((eventsData || []).map(toEventCardItem));
-          setFeaturedVideos(videosData || []);
+          const rawAttr = Array.isArray(attractionsRes)
+            ? attractionsRes
+            : (attractionsRes as any)?.data || [];
+          const rawAccom = Array.isArray(accommodationsRes)
+            ? accommodationsRes
+            : (accommodationsRes as any)?.data || [];
+          const rawRests = Array.isArray(restaurantsRes)
+            ? restaurantsRes
+            : (restaurantsRes as any)?.data || [];
+          const rawEvents = Array.isArray(eventsRes)
+            ? eventsRes
+            : (eventsRes as any)?.data || [];
+          const rawVideos = Array.isArray(videosRes)
+            ? videosRes
+            : (videosRes as any)?.data || [];
+
+          setAttractions(rawAttr);
+          setAccommodations(rawAccom);
+          setRestaurants(rawRests.map(toRestaurantCardItem));
+          setEvents(rawEvents.map(toEventCardItem));
+          setFeaturedVideos(rawVideos);
           setLoading(false);
         }
       } catch (err) {
@@ -1326,7 +1342,7 @@ const Welcome: React.FC = () => {
               </span>
               <h1 className="display-4 barabara-display fw-bold mb-3">
                 {displayUser
-                  ? `Maupay nga Pag-abot, ${displayUser.first_name || displayUser.name}!`
+                  ? `Maupay nga Pag-abot, ${(displayUser as any).first_name || displayUser.name || "Friend"}!`
                   : "Explore the City of Waterfalls"}
               </h1>
               <p className="lead max-w-2xl">
@@ -1406,7 +1422,7 @@ const Welcome: React.FC = () => {
             <Row className="g-4">
               {attractions.slice(0, 6).map((attraction) => (
                 <Col key={attraction.id} xs={12} sm={6} md={4}>
-                  <AttractionCard destination={attraction} />
+                  <AttractionCard attraction={attraction} />
                 </Col>
               ))}
             </Row>
