@@ -1,17 +1,5 @@
-import { Destination } from "../types";
-import { getCoords } from "./itineraryUtils";
 
-/* =========================================================
-   ROAD ROUTING
-   Real driving distances and road geometry (not straight lines).
-
-   Uses an OSRM routing server. The public demo server is used by
-   default. For production, host your own and set VITE_OSRM_URL.
-========================================================= */
-
-const OSRM_URL: string = (
-  (import.meta as any).env?.VITE_OSRM_URL || "https://router.project-osrm.org"
-).replace(/\/$/, "");
+import type { Destination } from "../types";
 
 export interface LatLng {
   lat: number;
@@ -19,285 +7,246 @@ export interface LatLng {
 }
 
 export interface RoadLeg {
-  /** distance in kilometers */
   km: number;
-  /** driving time in minutes (OSRM estimate) */
-  durationMin: number;
-  /** road geometry as [lat, lng] pairs */
-  geometry: [number, number][];
-  /** true when the routing server was unreachable and the value is estimated */
   estimated: boolean;
+  geometry: [number, number][];
 }
 
-/* =========================================================
-   POINTS
-   Reads the exact pin saved in the database for a place.
-========================================================= */
+const OSRM_BASE_URL = "https://router.project-osrm.org";
 
-export const getStopPoint = (dest: Destination | null | undefined): LatLng | null => {
-  if (!dest) return null;
+const isValidCoordinate = (lat: number, lng: number): boolean =>
+  Number.isFinite(lat) &&
+  Number.isFinite(lng) &&
+  lat >= -90 &&
+  lat <= 90 &&
+  lng >= -180 &&
+  lng <= 180;
 
-  const d: any = dest;
-
-  const lat = Number(d?.location_lat ?? d?.latitude ?? d?.lat);
-  const lng = Number(d?.location_lng ?? d?.longitude ?? d?.lng);
-
-  if (
-    Number.isFinite(lat) &&
-    Number.isFinite(lng) &&
-    !(lat === 0 && lng === 0) &&
-    Math.abs(lat) <= 90 &&
-    Math.abs(lng) <= 180
-  ) {
-    return { lat, lng };
+const toCoordinate = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") {
+    return null;
   }
 
-  const c: any = getCoords(dest);
-
-  if (!c) return null;
-
-  if (Array.isArray(c)) {
-    const a = Number(c[0]);
-    const b = Number(c[1]);
-    return Number.isFinite(a) && Number.isFinite(b) ? { lat: a, lng: b } : null;
-  }
-
-  const a = Number(c.lat ?? c.latitude);
-  const b = Number(c.lng ?? c.lon ?? c.longitude);
-
-  return Number.isFinite(a) && Number.isFinite(b) ? { lat: a, lng: b } : null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 };
 
-const round5 = (value: number) => value.toFixed(5);
+/**
+ * Extracts a saved map pin from a destination.
+ * Returns null if its coordinates are missing or invalid.
+ */
+export const getStopPoint = (
+  destination?: Destination | null,
+): LatLng | null => {
+  if (!destination) return null;
 
-export const legKey = (a: LatLng, b: LatLng) =>
-  `${round5(a.lat)},${round5(a.lng)}>${round5(b.lat)},${round5(b.lng)}`;
-
-export const haversineKm = (a: LatLng, b: LatLng) => {
-  const toRad = (value: number) => (value * Math.PI) / 180;
-  const earth = 6371;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 2 * earth * Math.asin(Math.min(1, Math.sqrt(h)));
-};
-
-/* =========================================================
-   REQUEST QUEUE (be gentle with the routing server)
-========================================================= */
-
-const MAX_PARALLEL = 3;
-let active = 0;
-const queue: Array<() => void> = [];
-
-const enqueue = <T>(task: () => Promise<T>): Promise<T> =>
-  new Promise<T>((resolve, reject) => {
-    const start = () => {
-      active += 1;
-      task()
-        .then(resolve, reject)
-        .finally(() => {
-          active -= 1;
-          const next = queue.shift();
-          if (next) next();
-        });
-    };
-
-    if (active < MAX_PARALLEL) start();
-    else queue.push(start);
-  });
-
-const fetchJson = async (url: string, timeoutMs = 9000) => {
-  const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) throw new Error(`Routing failed (${response.status})`);
-    return await response.json();
-  } finally {
-    window.clearTimeout(timer);
-  }
-};
-
-/* =========================================================
-   LEG CACHE (memory + this device)
-========================================================= */
-
-const STORAGE_PREFIX = "calbayog_road_leg:";
-const ESTIMATE_RETRY_MS = 2 * 60 * 1000;
-
-interface CacheEntry {
-  leg: RoadLeg;
-  at: number;
-}
-
-const memory = new Map<string, CacheEntry>();
-const inflight = new Map<string, Promise<RoadLeg>>();
-
-const readStored = (key: string): RoadLeg | null => {
-  try {
-    const raw = localStorage.getItem(STORAGE_PREFIX + key);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (
-      parsed &&
-      typeof parsed.km === "number" &&
-      Array.isArray(parsed.geometry) &&
-      parsed.geometry.length > 1
-    ) {
-      return { ...parsed, estimated: false } as RoadLeg;
-    }
-  } catch {
-    /* ignore */
-  }
-  return null;
-};
-
-const writeStored = (key: string, leg: RoadLeg) => {
-  try {
-    const raw = JSON.stringify(leg);
-    if (raw.length < 60000) localStorage.setItem(STORAGE_PREFIX + key, raw);
-  } catch {
-    /* storage full or unavailable */
-  }
-};
-
-const estimateLeg = (a: LatLng, b: LatLng): RoadLeg => {
-  const km = Math.round(haversineKm(a, b) * 1.35 * 100) / 100;
-
-  return {
-    km,
-    durationMin: Math.round((km / 30) * 60),
-    geometry: [
-      [a.lat, a.lng],
-      [b.lat, b.lng],
-    ],
-    estimated: true,
+  const place = destination as Destination & {
+    latitude?: number | string | null;
+    longitude?: number | string | null;
+    lat?: number | string | null;
+    lng?: number | string | null;
+    location?: {
+      lat?: number | string | null;
+      lng?: number | string | null;
+      latitude?: number | string | null;
+      longitude?: number | string | null;
+    } | null;
   };
-};
 
-export const getCachedLeg = (a: LatLng, b: LatLng): RoadLeg | null => {
-  const entry = memory.get(legKey(a, b));
-  return entry ? entry.leg : null;
-};
+  const lat =
+    toCoordinate(place.location_lat) ??
+    toCoordinate(place.latitude) ??
+    toCoordinate(place.lat) ??
+    toCoordinate(place.location?.lat) ??
+    toCoordinate(place.location?.latitude);
 
-export const fetchRoadLeg = (a: LatLng, b: LatLng): Promise<RoadLeg> => {
-  const key = legKey(a, b);
+  const lng =
+    toCoordinate(place.location_lng) ??
+    toCoordinate(place.longitude) ??
+    toCoordinate(place.lng) ??
+    toCoordinate(place.location?.lng) ??
+    toCoordinate(place.location?.longitude);
 
-  const cached = memory.get(key);
-
-  if (cached && (!cached.leg.estimated || Date.now() - cached.at < ESTIMATE_RETRY_MS)) {
-    return Promise.resolve(cached.leg);
+  if (lat === null || lng === null || !isValidCoordinate(lat, lng)) {
+    return null;
   }
 
-  const stored = readStored(key);
+  return { lat, lng };
+};
 
-  if (stored) {
-    memory.set(key, { leg: stored, at: Date.now() });
-    return Promise.resolve(stored);
-  }
+/**
+ * Creates a stable, direction-independent key for a pair of map pins.
+ */
+export const legKey = (a: LatLng, b: LatLng): string => {
+  const pointKey = (point: LatLng) =>
+    `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`;
 
-  const pending = inflight.get(key);
-  if (pending) return pending;
+  const first = pointKey(a);
+  const second = pointKey(b);
 
-  const promise = enqueue(async () => {
-    try {
-      const data = await fetchJson(
-        `${OSRM_URL}/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson`,
-      );
+  return first < second
+    ? `${first}|${second}`
+    : `${second}|${first}`;
+};
 
-      const route = data?.routes?.[0];
+const haversineKm = (a: LatLng, b: LatLng): number => {
+  const earthRadiusKm = 6371;
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
 
-      if (data?.code !== "Ok" || !route) {
-        throw new Error("No route found");
-      }
+  const latitudeDifference = toRadians(b.lat - a.lat);
+  const longitudeDifference = toRadians(b.lng - a.lng);
 
-      const geometry: [number, number][] = Array.isArray(route.geometry?.coordinates)
-        ? route.geometry.coordinates.map(
-            (pair: number[]) => [pair[1], pair[0]] as [number, number],
-          )
-        : [];
+  const value =
+    Math.sin(latitudeDifference / 2) ** 2 +
+    Math.cos(toRadians(a.lat)) *
+      Math.cos(toRadians(b.lat)) *
+      Math.sin(longitudeDifference / 2) ** 2;
 
-      const leg: RoadLeg = {
-        km: Math.round((route.distance / 1000) * 100) / 100,
-        durationMin: Math.round(route.duration / 60),
-        geometry:
-          geometry.length > 1
-            ? geometry
-            : [
-                [a.lat, a.lng],
-                [b.lat, b.lng],
-              ],
-        estimated: false,
-      };
+  return (
+    2 *
+    earthRadiusKm *
+    Math.asin(Math.sqrt(Math.min(1, Math.max(0, value))))
+  );
+};
 
-      memory.set(key, { leg, at: Date.now() });
-      writeStored(key, leg);
+/**
+ * Approximate fallback used when road routing is unavailable.
+ * This is explicitly marked as estimated, not a confirmed road distance.
+ */
+const createEstimatedLeg = (a: LatLng, b: LatLng): RoadLeg => ({
+  km: Math.round(haversineKm(a, b) * 1.3 * 10) / 10,
+  estimated: true,
+  geometry: [
+    [a.lat, a.lng],
+    [b.lat, b.lng],
+  ],
+});
 
-      return leg;
-    } catch (error) {
-      console.error("Road route unavailable, using an estimate:", error);
+interface OsrmRouteResponse {
+  code?: string;
+  routes?: Array<{
+    distance?: number;
+    geometry?: {
+      coordinates?: number[][];
+    };
+  }>;
+}
 
-      const leg = estimateLeg(a, b);
-      memory.set(key, { leg, at: Date.now() });
-      return leg;
+/**
+ * Fetches a driving route between two saved map pins.
+ * OSRM coordinates arrive as [longitude, latitude] and are converted
+ * to [latitude, longitude] for the map component.
+ */
+export const fetchRoadLeg = async (
+  a: LatLng,
+  b: LatLng,
+): Promise<RoadLeg> => {
+  const fallback = createEstimatedLeg(a, b);
+
+  try {
+    const url =
+      `${OSRM_BASE_URL}/route/v1/driving/` +
+      `${a.lng},${a.lat};${b.lng},${b.lat}` +
+      "?overview=full&geometries=geojson";
+
+    const response = await fetch(url);
+
+    if (!response.ok) return fallback;
+
+    const data = (await response.json()) as OsrmRouteResponse;
+    const route = data.routes?.[0];
+
+    if (
+      data.code !== "Ok" ||
+      !route ||
+      typeof route.distance !== "number" ||
+      !Number.isFinite(route.distance) ||
+      route.distance < 0
+    ) {
+      return fallback;
     }
-  }).finally(() => {
-    inflight.delete(key);
-  });
 
-  inflight.set(key, promise);
+    const coordinates = route.geometry?.coordinates ?? [];
 
-  return promise;
+    const geometry: [number, number][] = coordinates
+      .filter(
+        (coordinate): coordinate is [number, number] =>
+          Array.isArray(coordinate) &&
+          coordinate.length >= 2 &&
+          Number.isFinite(coordinate[0]) &&
+          Number.isFinite(coordinate[1]),
+      )
+      .map(([lng, lat]) => [lat, lng]);
+
+    return {
+      km: Math.round((route.distance / 1000) * 10) / 10,
+      estimated: false,
+      geometry:
+        geometry.length >= 2
+          ? geometry
+          : fallback.geometry,
+    };
+  } catch (error) {
+    console.warn("Road routing unavailable; using estimated distance.", error);
+    return fallback;
+  }
 };
 
-/* =========================================================
-   ROAD DISTANCES FROM ONE PLACE TO MANY (for the picker)
-   Returns kilometers, or null when a place is not reachable.
-========================================================= */
+interface OsrmTableResponse {
+  code?: string;
+  distances?: Array<Array<number | null>>;
+}
 
-const TABLE_CHUNK = 60;
-
+/**
+ * Fetches driving distances from one origin to multiple destinations.
+ * The returned array preserves the same order as the supplied points.
+ * Null means no road distance was returned for that destination.
+ */
 export const fetchRoadDistances = async (
   origin: LatLng,
   targets: LatLng[],
 ): Promise<Array<number | null>> => {
-  const result: Array<number | null> = new Array(targets.length).fill(null);
+  if (targets.length === 0) return [];
 
-  for (let start = 0; start < targets.length; start += TABLE_CHUNK) {
-    const chunk = targets.slice(start, start + TABLE_CHUNK);
+  const fallback = targets.map(() => null);
 
-    const coordinates = [origin, ...chunk]
+  try {
+    const coordinates = [origin, ...targets]
       .map((point) => `${point.lng},${point.lat}`)
       .join(";");
 
-    try {
-      const data = await enqueue(() =>
-        fetchJson(
-          `${OSRM_URL}/table/v1/driving/${coordinates}?sources=0&annotations=distance`,
-          12000,
-        ),
-      );
+    const destinationIndexes = targets
+      .map((_, index) => index + 1)
+      .join(";");
 
-      const row: Array<number | null> | undefined = data?.distances?.[0];
+    const url =
+      `${OSRM_BASE_URL}/table/v1/driving/${coordinates}` +
+      `?sources=0&destinations=${destinationIndexes}&annotations=distance`;
 
-      if (data?.code === "Ok" && Array.isArray(row)) {
-        chunk.forEach((_, index) => {
-          const meters = row[index + 1];
+    const response = await fetch(url);
 
-          result[start + index] =
-            typeof meters === "number" && Number.isFinite(meters)
-              ? Math.round((meters / 1000) * 100) / 100
-              : null;
-        });
+    if (!response.ok) return fallback;
+
+    const data = (await response.json()) as OsrmTableResponse;
+    const distances = data.distances?.[0];
+
+    if (data.code !== "Ok" || !distances) return fallback;
+
+    return targets.map((_, index) => {
+      const meters = distances[index];
+
+      if (
+        typeof meters !== "number" ||
+        !Number.isFinite(meters) ||
+        meters < 0
+      ) {
+        return null;
       }
-    } catch (error) {
-      console.error("Road distances unavailable:", error);
-    }
-  }
 
-  return result;
+      return Math.round((meters / 1000) * 10) / 10;
+    });
+  } catch (error) {
+    console.warn("Unable to fetch road distances.", error);
+    return fallback;
+  }
 };
