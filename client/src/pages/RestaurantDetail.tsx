@@ -5,7 +5,7 @@ import React, {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { useHistory, useParams } from "react-router-dom";
+import { useHistory, useLocation, useParams } from "react-router-dom";
 import { Col, Container, Row, Spinner } from "react-bootstrap";
 import {
   ArrowLeft,
@@ -372,6 +372,32 @@ const InfoItem: React.FC<InfoItemProps> = ({
 const RestaurantDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const history = useHistory();
+  const location = useLocation<{ from?: string }>();
+
+  const handleSmartBack = useCallback(() => {
+    const from = location.state?.from;
+
+    // Prefer the exact in-app page that opened this detail page.
+    if (
+      typeof from === "string" &&
+      from.startsWith("/") &&
+      !from.startsWith("/restaurants/") &&
+      !from.startsWith("/restaurant/")
+    ) {
+      history.push(from);
+      return;
+    }
+
+    // If no source was passed, return to the previous browser-history entry.
+    if (window.history.length > 1) {
+      history.goBack();
+      return;
+    }
+
+    // Safe fallback for a direct visit with no usable history.
+    history.push("/restaurants");
+  }, [history, location.state]);
+
   const { isFavorite, getFavoriteCount, setFavoriteCount, toggleFavorite } =
     useFavorites();
 
@@ -582,7 +608,7 @@ const RestaurantDetail: React.FC = () => {
           <button
             type="button"
             className="detail-primary-button"
-            onClick={() => history.push("/restaurants")}
+            onClick={handleSmartBack}
           >
             <ArrowLeft size={16} />
             Back to restaurants
@@ -604,10 +630,10 @@ const RestaurantDetail: React.FC = () => {
         <button
           type="button"
           className="detail-back-button"
-          onClick={() => history.push("/restaurants")}
+          onClick={handleSmartBack}
         >
           <ArrowLeft size={16} />
-          Back to restaurants
+          Go back
         </button>
 
         {/* IMAGE + LOCATION */}
