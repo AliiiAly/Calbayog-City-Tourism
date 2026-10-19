@@ -1256,6 +1256,104 @@ export const getMyAttractionMemories = async (
   return { data: memories.map(normalizeMemory) };
 };
 
+// Read an image value from the different formats used by the place tables.
+// Image columns may contain a URL, a JSON-encoded value, an array of URLs,
+// or an object returned by an upload/gallery component.
+const firstImage = (value: any, depth = 0): string | null => {
+  if (depth > 5 || value == null) return null;
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    // Some rows store an array/object as a JSON string.
+    if (
+      (trimmed.startsWith("[") && trimmed.endsWith("]")) ||
+      (trimmed.startsWith("{") && trimmed.endsWith("}"))
+    ) {
+      try {
+        return firstImage(JSON.parse(trimmed), depth + 1);
+      } catch {
+        // If it is not valid JSON, continue treating it as a URL/path.
+      }
+    }
+
+    return trimmed;
+  }
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const image = firstImage(entry, depth + 1);
+      if (image) return image;
+    }
+    return null;
+  }
+
+  if (typeof value === "object") {
+    const imageKeys = [
+      "url",
+      "image_url",
+      "imageUrl",
+      "src",
+      "path",
+      "publicUrl",
+      "public_url",
+      "original",
+      "thumbnail",
+      "image",
+      "photo_url",
+      "photoUrl",
+    ];
+
+    for (const key of imageKeys) {
+      if (value[key] != null) {
+        const image = firstImage(value[key], depth + 1);
+        if (image) return image;
+      }
+    }
+  }
+
+  return null;
+};
+
+const getPlaceImage = (record: any): string | null => {
+  if (!record || typeof record !== "object") return null;
+
+  const imageFields = [
+    "images",
+    "image_urls",
+    "imageUrls",
+    "image_url",
+    "imageUrl",
+    "image",
+    "main_image",
+    "mainImage",
+    "featured_image",
+    "featuredImage",
+    "thumbnail",
+    "cover_image",
+    "coverImage",
+    "cover",
+    "photo",
+    "photos",
+    "photo_url",
+    "photoUrl",
+    "picture",
+    "banner",
+    "gallery",
+    "gallery_images",
+    "galleryImages",
+    "image_path",
+  ];
+
+  for (const field of imageFields) {
+    const image = firstImage(record[field]);
+    if (image) return image;
+  }
+
+  return null;
+};
+
 export const getMemoryPlaces = async (
   itemType: MemoryItemType,
 ): Promise<MemoryPlace[]> => {
@@ -1283,6 +1381,7 @@ export const getMemoryPlaces = async (
     .map((record: any) => ({
       id: String(record.id),
       name: String(record.name),
+      image: getPlaceImage(record),
       subtitle: String(
         record.address ||
           record.location_address ||
