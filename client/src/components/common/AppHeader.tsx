@@ -894,6 +894,7 @@ const AppHeaderStyles: React.FC = () => (
     html.dark-mode .install-help-close { border-color: rgba(255,255,255,.12); }
     .install-help-steps { margin: 16px 0; padding-left: 22px; font-size: .86rem; line-height: 1.6; }
     .install-help-steps li { padding-left: 3px; margin: 7px 0; }
+    .install-help-dialog p { line-height: 1.55; }
     .install-help-note {
       margin-top: 14px; padding: 11px 12px; border: 1px solid var(--calbayog-yellow-border);
       border-radius: 12px; background: var(--calbayog-yellow-soft); font-size: .78rem; line-height: 1.5;
@@ -1010,6 +1011,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
     useState<BeforeInstallPromptEvent | null>(null);
 
   const [isStandalone, setIsStandalone] = useState(false);
+  const [showInstallHelp, setShowInstallHelp] = useState(false);
 
   const isLoggedInHeader = isAdmin ? true : isUserAuthenticated;
 
@@ -1108,19 +1110,47 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   }, []);
 
   const handleInstallApp = async () => {
-    if (isStandalone || !deferredInstallPrompt) return;
+    if (isStandalone) return;
 
-    const installEvent = deferredInstallPrompt;
-    setDeferredInstallPrompt(null);
+    // Chromium-based browsers provide this event when the site meets their
+    // installability requirements. It must be triggered by this button click.
+    if (deferredInstallPrompt) {
+      const installEvent = deferredInstallPrompt;
 
-    try {
-      await installEvent.prompt();
-      await installEvent.userChoice;
-    } catch (error) {
-      // Browsers control whether a native installation prompt can be shown.
-      console.error("PWA installation prompt unavailable:", error);
+      try {
+        await installEvent.prompt();
+        const choice = await installEvent.userChoice;
+
+        setDeferredInstallPrompt(null);
+
+        if (choice.outcome === "accepted") {
+          setShowInstallHelp(false);
+        }
+      } catch (error) {
+        console.error("PWA installation prompt unavailable:", error);
+        setDeferredInstallPrompt(null);
+        setShowInstallHelp(true);
+      }
+
+      return;
     }
+
+    // iOS Safari and browsers that do not expose beforeinstallprompt cannot
+    // open a native install prompt from JavaScript. Show platform-specific help.
+    setShowInstallHelp(true);
   };
+
+  const installPlatform = (() => {
+    const ua = window.navigator.userAgent || "";
+    const isIOS =
+      /iPad|iPhone|iPod/.test(ua) ||
+      (window.navigator.platform === "MacIntel" &&
+        window.navigator.maxTouchPoints > 1);
+
+    if (isIOS) return "ios";
+    if (/Android/i.test(ua)) return "android";
+    return "other";
+  })();
 
   /* =========================================================
      PROFILE OUTSIDE CLICK
@@ -1437,6 +1467,101 @@ const AppHeader: React.FC<AppHeaderProps> = ({
           </div>
         </Container>
       </header>
+
+      {/* INSTALL HELP: used when the browser cannot open a native prompt */}
+      {showInstallHelp && !isStandalone && (
+        <div
+          className="install-help-backdrop"
+          role="presentation"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowInstallHelp(false);
+            }
+          }}
+        >
+          <section
+            className="install-help-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="install-help-title"
+          >
+            <div className="install-help-top">
+              <div className="install-help-icon">
+                <HeaderIcon name="download" size={24} strokeWidth={1.9} />
+              </div>
+              <div>
+                <h2 id="install-help-title" className="install-help-title">
+                  Install Calbayog City Tourism
+                </h2>
+                <p className="install-help-subtitle">
+                  Add the tourism app to your home screen for quicker access.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="install-help-close"
+                onClick={() => setShowInstallHelp(false)}
+                aria-label="Close install instructions"
+              >
+                <HeaderIcon name="close" size={18} />
+              </button>
+            </div>
+
+            {installPlatform === "ios" ? (
+              <>
+                <p>
+                  On iPhone or iPad, open this website in <strong>Safari</strong>
+                  {" "}and follow these steps:
+                </p>
+                <ol className="install-help-steps">
+                  <li>Tap Safari’s <strong>Share</strong> button.</li>
+                  <li>Scroll the share menu and choose <strong>Add to Home Screen</strong>.</li>
+                  <li>Tap <strong>Add</strong> to finish.</li>
+                </ol>
+              </>
+            ) : installPlatform === "android" ? (
+              <>
+                <p>
+                  If the install prompt did not open, make sure you are using
+                  Chrome and try these steps:
+                </p>
+                <ol className="install-help-steps">
+                  <li>Open this site directly in <strong>Chrome</strong>, not inside another app.</li>
+                  <li>Open Chrome’s menu (⋮) and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>, if shown.</li>
+                  <li>Confirm the installation.</li>
+                </ol>
+              </>
+            ) : (
+              <>
+                <p>
+                  Your browser does not currently offer a one-tap installation
+                  prompt. Try opening this site in a browser that supports
+                  installing web apps.
+                </p>
+                <ol className="install-help-steps">
+                  <li>Open your browser’s menu.</li>
+                  <li>Look for <strong>Install app</strong> or <strong>Add to Home Screen</strong>.</li>
+                  <li>Follow the browser’s confirmation steps.</li>
+                </ol>
+              </>
+            )}
+
+            <div className="install-help-note">
+              If the install option is missing, the site may need a valid web app
+              manifest and an active service worker, or your browser may not
+              support installation from this page.
+            </div>
+
+            <button
+              type="button"
+              className="install-help-done"
+              onClick={() => setShowInstallHelp(false)}
+            >
+              Got it
+            </button>
+          </section>
+        </div>
+      )}
 
       {/* LOGIN MODAL */}
       <LoginModal
