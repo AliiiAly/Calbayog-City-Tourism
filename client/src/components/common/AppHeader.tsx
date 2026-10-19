@@ -455,7 +455,6 @@ const AppHeaderStyles: React.FC = () => (
       display: none;
       min-height: 42px;
       padding: 0 13px;
-      display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 7px;
@@ -804,8 +803,19 @@ const AppHeaderStyles: React.FC = () => (
     @media (max-width: 767.98px) {
       .sticky-search-header { padding: 4px 0; }
       .app-header-container.container { padding-left: 11px; padding-right: 11px; }
-      .app-header-inner { padding: 5px 0; gap: 6px; }
-      .header-brand-mark { width: 43px; height: 43px; }
+      .app-header-inner { flex-wrap: nowrap; min-height: 0; padding: 5px 0; gap: 6px; }
+      /* Mobile: remove the logo and place the search field beside the menu. */
+      .header-brand { display: none !important; }
+      .header-search-container {
+        order: 0;
+        flex: 1 1 0;
+        min-width: 0;
+        width: auto;
+        margin: 0;
+        max-width: none;
+      }
+      .header-actions { flex-shrink: 0; gap: 4px; }
+      .header-extra-actions { display: none; }
       .header-icon-btn { width: 40px; height: 40px; min-width: 40px; border-radius: 12px; }
 
       .header-login-btn,
@@ -819,7 +829,7 @@ const AppHeaderStyles: React.FC = () => (
       }
 
       .header-install-btn {
-        display: inline-flex;
+        display: inline-flex !important;
         width: auto;
         min-width: 40px;
         height: 40px;
