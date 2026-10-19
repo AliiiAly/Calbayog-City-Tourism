@@ -452,6 +452,7 @@ const AppHeaderStyles: React.FC = () => (
     .header-signup-btn:active { transform: scale(.96); }
 
     .header-install-btn {
+      display: none;
       min-height: 42px;
       padding: 0 13px;
       display: inline-flex;
@@ -818,6 +819,7 @@ const AppHeaderStyles: React.FC = () => (
       }
 
       .header-install-btn {
+        display: inline-flex;
         width: auto;
         min-width: 40px;
         height: 40px;
@@ -1007,8 +1009,6 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   const [deferredInstallPrompt, setDeferredInstallPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
 
-  const [isIOSDevice, setIsIOSDevice] = useState(false);
-  const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
 
   const isLoggedInHeader = isAdmin ? true : isUserAuthenticated;
@@ -1074,17 +1074,11 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       window.matchMedia?.("(display-mode: standalone)").matches ||
       (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
 
-    const detectIOS = () =>
-      /iPad|iPhone|iPod/i.test(window.navigator.userAgent) ||
-      (window.navigator.platform === "MacIntel" && window.navigator.maxTouchPoints > 1);
-
     const updateInstallState = () => {
       const installed = isAppStandalone();
       setIsStandalone(installed);
-      setIsIOSDevice(detectIOS());
       if (installed) {
         setDeferredInstallPrompt(null);
-        setShowInstallHelp(false);
       }
     };
 
@@ -1098,7 +1092,6 @@ const AppHeader: React.FC<AppHeaderProps> = ({
 
     const handleAppInstalled = () => {
       setDeferredInstallPrompt(null);
-      setShowInstallHelp(false);
       setIsStandalone(true);
     };
 
@@ -1115,25 +1108,18 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   }, []);
 
   const handleInstallApp = async () => {
-    if (isStandalone) return;
+    if (isStandalone || !deferredInstallPrompt) return;
 
-    if (deferredInstallPrompt) {
-      const installEvent = deferredInstallPrompt;
-      setDeferredInstallPrompt(null);
+    const installEvent = deferredInstallPrompt;
+    setDeferredInstallPrompt(null);
 
-      try {
-        await installEvent.prompt();
-        const choice = await installEvent.userChoice;
-        if (choice.outcome === "accepted") setShowInstallHelp(false);
-      } catch (error) {
-        console.error("PWA installation failed:", error);
-        setShowInstallHelp(true);
-      }
-      return;
+    try {
+      await installEvent.prompt();
+      await installEvent.userChoice;
+    } catch (error) {
+      // Browsers control whether a native installation prompt can be shown.
+      console.error("PWA installation prompt unavailable:", error);
     }
-
-    // iOS and some browsers do not expose the native install prompt API.
-    setShowInstallHelp(true);
   };
 
   /* =========================================================
@@ -1328,7 +1314,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                 <div className="header-extra-actions">{extraActions}</div>
               )}
 
-              {/* INSTALL APP: shown until the site is running as an installed PWA */}
+              {/* Mobile only: browsers may show their native PWA installation prompt. */}
               {!isStandalone && (
                 <button
                   type="button"
@@ -1451,92 +1437,6 @@ const AppHeader: React.FC<AppHeaderProps> = ({
           </div>
         </Container>
       </header>
-
-      {/* INSTALL HELP: fallback for browsers without a native install prompt */}
-      {showInstallHelp && !isStandalone && (
-        <div
-          className="install-help-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setShowInstallHelp(false);
-          }}
-        >
-          <section
-            className="install-help-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="install-help-title"
-            aria-describedby="install-help-description"
-          >
-            <div className="install-help-top">
-              <div className="install-help-icon">
-                <HeaderIcon name="download" size={23} strokeWidth={1.9} />
-              </div>
-              <div>
-                <h2 id="install-help-title" className="install-help-title">
-                  Install Calbayog City Tourism
-                </h2>
-                <p id="install-help-description" className="install-help-subtitle">
-                  Add the website to your Home Screen for an app-like experience.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="install-help-close"
-                onClick={() => setShowInstallHelp(false)}
-                aria-label="Close installation instructions"
-              >
-                <HeaderIcon name="close" size={18} />
-              </button>
-            </div>
-
-            {isIOSDevice ? (
-              <>
-                <p style={{ fontSize: ".86rem", lineHeight: 1.55, margin: 0 }}>
-                  On iPhone or iPad, Apple requires installation through Safari's
-                  Share menu. A website cannot open the native install prompt directly on iOS.
-                </p>
-                <ol className="install-help-steps">
-                  <li>Open this website in <strong>Safari</strong>, not inside another app.</li>
-                  <li>Tap Safari's <strong>Share</strong> icon.</li>
-                  <li>Choose <strong>Add to Home Screen</strong>. If you do not see it, scroll the options.</li>
-                  <li>Tap <strong>Add</strong> to finish.</li>
-                </ol>
-              </>
-            ) : deferredInstallPrompt ? (
-              <p style={{ fontSize: ".86rem", lineHeight: 1.55, margin: 0 }}>
-                Your browser can install the app. Close these instructions and tap
-                <strong> Install App</strong> in the header to open the native installation prompt.
-              </p>
-            ) : (
-              <>
-                <p style={{ fontSize: ".86rem", lineHeight: 1.55, margin: 0 }}>
-                  This browser has not provided a one-tap installation prompt. The
-                  native install button is available only when the browser supports it
-                  and the website meets its PWA requirements.
-                </p>
-                <ol className="install-help-steps">
-                  <li>Open the deployed website in a supported browser such as <strong>Chrome</strong>.</li>
-                  <li>If the browser offers <strong>Install app</strong> or <strong>Add to Home screen</strong>, choose it.</li>
-                  <li>If no install option appears, the PWA manifest, service worker, or browser support may need checking.</li>
-                </ol>
-              </>
-            )}
-
-            <div className="install-help-note">
-              The website does not need an app-store download. Installation uses the
-              website's PWA configuration to add an app-like shortcut to your device.
-            </div>
-            <button
-              type="button"
-              className="install-help-done"
-              onClick={() => setShowInstallHelp(false)}
-            >
-              Got it
-            </button>
-          </section>
-        </div>
-      )}
 
       {/* LOGIN MODAL */}
       <LoginModal
