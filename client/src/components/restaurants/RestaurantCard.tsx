@@ -1,14 +1,6 @@
-
 import React from "react";
 import { Link } from "react-router-dom";
-import {
-  ArrowUpRight,
-  Clock,
-  Globe2,
-  Heart,
-  MapPin,
-  Utensils,
-} from "lucide-react";
+import { ArrowUpRight, Globe2, Heart, MapPin, Utensils } from "lucide-react";
 import { useFavorites } from "../../context/FavoritesContext";
 
 const CALBAYOG_BLUE = "#2D3195";
@@ -51,10 +43,7 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
   const restaurantId = String(restaurant?.id ?? "").trim();
   const { isFavorite, getFavoriteCount, toggleFavorite } = useFavorites();
 
-  const liked = restaurantId
-    ? isFavorite("restaurant", restaurantId)
-    : false;
-
+  const liked = restaurantId ? isFavorite("restaurant", restaurantId) : false;
   const favoriteCount = restaurantId
     ? getFavoriteCount("restaurant", restaurantId)
     : 0;
@@ -68,7 +57,6 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
 
   const safeImageIndex =
     images.length > 0 ? Math.abs(imageIndex) % images.length : 0;
-
   const currentImage = images[safeImageIndex] || "";
   const description =
     restaurant.short_description || restaurant.description || "";
@@ -76,7 +64,6 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
   const website = restaurant.contact_website || "";
   const cuisine = restaurant.cuisine_type || "";
   const priceRange = restaurant.price_range || "";
-  const openingHours = restaurant.opening_hours || "";
 
   const detailPath = restaurantId
     ? `/restaurants/${encodeURIComponent(restaurantId)}`
@@ -87,10 +74,7 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
   ) => {
     event.preventDefault();
     event.stopPropagation();
-
-    if (restaurantId) {
-      void toggleFavorite("restaurant", restaurantId);
-    }
+    if (restaurantId) void toggleFavorite("restaurant", restaurantId);
   };
 
   return (
@@ -112,6 +96,7 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
                 alt={restaurant.name}
                 className="shared-restaurant-image"
                 loading="lazy"
+                decoding="async"
               />
             ) : (
               <div className="shared-restaurant-image-placeholder">
@@ -133,7 +118,10 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
             )}
 
             {images.length > 1 && (
-              <div className="shared-restaurant-image-dots">
+              <div
+                className="shared-restaurant-image-dots"
+                aria-hidden="true"
+              >
                 {images.slice(0, 6).map((_, index) => (
                   <span
                     key={index}
@@ -163,14 +151,12 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
               >
                 <span className="favorite-heart-glow" />
                 <span className="favorite-heart-ripple" />
-
                 <Heart
                   className="favorite-heart-icon"
                   size={22}
                   strokeWidth={liked ? 2.25 : 1.9}
                   fill={liked ? "currentColor" : "none"}
                 />
-
                 {liked && (
                   <>
                     <span className="favorite-particle particle-1" />
@@ -185,21 +171,18 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
 
               {favoriteCount > 0 && (
                 <span
-  className="shared-restaurant-favorite-count"
-  aria-label={`${favoriteCount} users favorited ${restaurant.name}`}
->
-  {favoriteCount}
-</span>
+                  className="shared-restaurant-favorite-count"
+                  aria-label={`${favoriteCount} users favorited ${restaurant.name}`}
+                >
+                  {favoriteCount}
+                </span>
               )}
             </div>
           )}
         </div>
 
         <div className="shared-restaurant-card-body">
-          <Link
-            to={detailPath}
-            className="shared-restaurant-content-link"
-          >
+          <Link to={detailPath} className="shared-restaurant-content-link">
             <h3 className="shared-restaurant-name">
               {restaurant.name || "Unnamed Restaurant"}
             </h3>
@@ -223,13 +206,6 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
                 {description.slice(0, 170)}
                 {description.length > 170 ? "..." : ""}
               </p>
-            )}
-
-            {openingHours && (
-              <div className="shared-restaurant-hours">
-                <Clock size={14} />
-                <span>{openingHours}</span>
-              </div>
             )}
           </Link>
 
@@ -262,18 +238,26 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
 
       <style>{`
         .shared-restaurant-card {
+          display: flex;
+          flex-direction: column;
           width: 100%;
           height: 100%;
+          min-width: 0;
+          min-height: 0;
+          color: #171b18;
           background: transparent;
+          isolation: isolate;
         }
 
         .shared-restaurant-image-wrap {
           position: relative;
+          flex: 0 0 auto;
           width: 100%;
           aspect-ratio: 4 / 5;
           overflow: hidden;
           border-radius: 18px;
           background: #eef2ef;
+          transform: translateZ(0);
           transition: box-shadow 0.28s ease;
         }
 
@@ -286,6 +270,7 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
           inset: 0;
           display: block;
           overflow: hidden;
+          color: inherit;
           text-decoration: none;
         }
 
@@ -295,7 +280,7 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
           height: 100%;
           object-fit: cover;
           object-position: center;
-          transition: transform 0.65s cubic-bezier(0.2, 0.65, 0.3, 1);
+          transition: transform 0.55s cubic-bezier(0.2, 0.65, 0.3, 1);
         }
 
         .shared-restaurant-card:hover .shared-restaurant-image {
@@ -310,40 +295,41 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
           gap: 10px;
           width: 100%;
           height: 100%;
+          padding: 16px;
           background: linear-gradient(135deg, #eef0ff, #f8faf9);
           color: ${CALBAYOG_BLUE};
           font-size: 0.75rem;
           font-weight: 700;
+          text-align: center;
         }
 
         .shared-restaurant-price-badge,
         .shared-restaurant-featured-badge {
           position: absolute;
           left: 12px;
-          padding: 7px 10px;
-          border-radius: 999px;
-          font-size: 0.65rem;
-          font-weight: 800;
           z-index: 3;
+          max-width: calc(100% - 76px);
+          padding: 7px 10px;
+          overflow: hidden;
+          border-radius: 999px;
+          font-size: 0.68rem;
+          line-height: 1.2;
+          font-weight: 800;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .shared-restaurant-price-badge {
           top: 12px;
-          max-width: calc(100% - 80px);
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          background: rgba(255, 255, 255, 0.94);
+          background: rgba(255, 255, 255, 0.95);
           color: #242925;
         }
 
         .shared-restaurant-featured-badge {
           top: 48px;
-          background: rgba(255, 249, 232, 0.96);
+          background: rgba(255, 249, 232, 0.97);
           color: #9b6400;
         }
-
-        /* FAVORITE CONTROL — MATCHES ATTRACTION CARD */
 
         .shared-restaurant-favorite-control {
           position: absolute;
@@ -359,212 +345,149 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
 
         .shared-restaurant-favorite-button {
           position: relative;
-          width: 44px;
-          height: 44px;
           display: flex;
           align-items: center;
           justify-content: center;
+          flex: 0 0 auto;
+          width: 44px;
+          height: 44px;
           padding: 0;
-          border: none !important;
-          outline: none !important;
+          border: 0 !important;
+          border-radius: 50%;
+          outline: none;
           background: transparent !important;
           color: rgba(255, 255, 255, 0.98);
           cursor: pointer;
           pointer-events: auto;
+          touch-action: manipulation;
           -webkit-tap-highlight-color: transparent;
-          transition:
-            transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
-            color 0.2s ease,
-            filter 0.2s ease;
+          transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.2s ease;
         }
 
-        .shared-restaurant-favorite-button:hover {
-          transform: scale(1.09);
+        .shared-restaurant-favorite-button:focus-visible {
+          outline: 2px solid #fff !important;
+          outline-offset: 2px;
         }
 
-        .shared-restaurant-favorite-button:active {
-          transform: scale(0.87);
-        }
+        .shared-restaurant-favorite-button:hover { transform: scale(1.08); }
+        .shared-restaurant-favorite-button:active { transform: scale(0.9); }
 
         .shared-restaurant-favorite-button.active {
           color: #ff4f6d;
-          animation: favoriteButtonPop 0.48s cubic-bezier(0.22, 1.4, 0.36, 1);
+          animation: restaurantFavoriteButtonPop 0.48s cubic-bezier(0.22, 1.4, 0.36, 1);
         }
 
         .favorite-heart-icon {
           position: relative;
           z-index: 4;
           transform-origin: center;
-          filter: none;
-          transition:
-            transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
-            color 0.22s ease;
+          transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         .shared-restaurant-favorite-button.active .favorite-heart-icon {
-          animation: favoriteHeartPop 0.52s cubic-bezier(0.34, 1.56, 0.64, 1);
+          animation: restaurantFavoriteHeartPop 0.52s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         .favorite-heart-glow {
           position: absolute;
+          z-index: 1;
           width: 29px;
           height: 29px;
           border-radius: 50%;
-          background: radial-gradient(
-            circle,
-            rgba(255, 79, 109, 0.48) 0%,
-            rgba(255, 79, 109, 0.19) 32%,
-            transparent 72%
-          );
+          background: radial-gradient(circle, rgba(255, 79, 109, 0.4), rgba(255, 79, 109, 0.16) 38%, transparent 72%);
           opacity: 0;
           transform: scale(0.55);
-          filter: blur(7px);
-          z-index: 1;
+          filter: blur(6px);
           pointer-events: none;
         }
 
         .shared-restaurant-favorite-button.active .favorite-heart-glow {
-          animation: favoriteGlow 0.7s ease-out;
+          animation: restaurantFavoriteGlow 0.7s ease-out;
         }
 
         .favorite-heart-ripple {
           position: absolute;
+          z-index: 0;
           width: 20px;
           height: 20px;
-          border-radius: 50%;
           border: 1px solid rgba(255, 255, 255, 0.48);
+          border-radius: 50%;
           opacity: 0;
           transform: scale(0.35);
           pointer-events: none;
-          z-index: 0;
         }
 
         .shared-restaurant-favorite-button.active .favorite-heart-ripple {
-          animation: favoriteRipple 0.62s ease-out;
+          animation: restaurantFavoriteRipple 0.62s ease-out;
         }
 
         .favorite-particle {
           position: absolute;
+          z-index: 2;
           width: 4px;
           height: 4px;
           border-radius: 50%;
           background: #ff5b73;
           opacity: 0;
-          z-index: 2;
           pointer-events: none;
         }
 
+        .particle-1 { top: 5px; left: 50%; --particle-x: 0px; --particle-y: -20px; animation-delay: 0s !important; }
+        .particle-2 { top: 12px; right: 4px; width: 3px; height: 3px; --particle-x: 13px; --particle-y: -13px; animation-delay: 0.03s !important; }
+        .particle-3 { right: 8px; bottom: 7px; --particle-x: 14px; --particle-y: 8px; animation-delay: 0.06s !important; }
+        .particle-4 { left: 7px; bottom: 7px; width: 3px; height: 3px; --particle-x: -14px; --particle-y: 8px; animation-delay: 0.09s !important; }
+        .particle-5 { top: 11px; left: 4px; --particle-x: -13px; --particle-y: -13px; animation-delay: 0.12s !important; }
+        .particle-6 { top: 3px; right: 11px; width: 3px; height: 3px; --particle-x: 8px; --particle-y: -18px; animation-delay: 0.15s !important; }
+
         .shared-restaurant-favorite-button.active .favorite-particle {
-          animation: favoriteParticle 0.62s ease-out forwards;
-        }
-
-        .particle-1 {
-          top: 5px;
-          left: 50%;
-          --particle-x: 0px;
-          --particle-y: -20px;
-          animation-delay: 0s !important;
-        }
-
-        .particle-2 {
-          top: 12px;
-          right: 4px;
-          width: 3px;
-          height: 3px;
-          --particle-x: 13px;
-          --particle-y: -13px;
-          animation-delay: 0.03s !important;
-        }
-
-        .particle-3 {
-          right: 8px;
-          bottom: 7px;
-          --particle-x: 14px;
-          --particle-y: 8px;
-          animation-delay: 0.06s !important;
-        }
-
-        .particle-4 {
-          left: 7px;
-          bottom: 7px;
-          width: 3px;
-          height: 3px;
-          --particle-x: -14px;
-          --particle-y: 8px;
-          animation-delay: 0.09s !important;
-        }
-
-        .particle-5 {
-          top: 11px;
-          left: 4px;
-          --particle-x: -13px;
-          --particle-y: -13px;
-          animation-delay: 0.12s !important;
-        }
-
-        .particle-6 {
-          top: 3px;
-          right: 11px;
-          width: 3px;
-          height: 3px;
-          --particle-x: 8px;
-          --particle-y: -18px;
-          animation-delay: 0.15s !important;
+          animation: restaurantFavoriteParticle 0.62s ease-out forwards;
         }
 
         .shared-restaurant-favorite-count {
-          min-width: 22px;
-          min-height: 18px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
+          min-width: 22px;
+          min-height: 18px;
           padding: 2px 5px;
-          color: rgba(255, 255, 255, 0.96);
-          font-size: 0.62rem;
+          color: #fff;
+          font-size: 0.65rem;
           line-height: 1;
           font-weight: 800;
           text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
           pointer-events: none;
-          animation: favoriteCountAppear 0.24s ease-out;
+          animation: restaurantFavoriteCountAppear 0.24s ease-out;
         }
 
-        @keyframes favoriteButtonPop {
+        @keyframes restaurantFavoriteButtonPop {
           0% { transform: scale(0.78); }
           35% { transform: scale(1.16); }
           58% { transform: scale(0.96); }
           78% { transform: scale(1.08); }
           100% { transform: scale(1); }
         }
-
-        @keyframes favoriteHeartPop {
+        @keyframes restaurantFavoriteHeartPop {
           0% { transform: scale(0.55) rotate(-8deg); }
           28% { transform: scale(1.28) rotate(5deg); }
           48% { transform: scale(0.90) rotate(-2deg); }
           72% { transform: scale(1.12) rotate(1deg); }
           100% { transform: scale(1) rotate(0); }
         }
-
-        @keyframes favoriteGlow {
+        @keyframes restaurantFavoriteGlow {
           0% { opacity: 0; transform: scale(0.45); }
           35% { opacity: 1; transform: scale(1.6); }
           100% { opacity: 0; transform: scale(2.25); }
         }
-
-        @keyframes favoriteRipple {
+        @keyframes restaurantFavoriteRipple {
           0% { opacity: 0.65; transform: scale(0.4); }
           100% { opacity: 0; transform: scale(2.5); }
         }
-
-        @keyframes favoriteParticle {
+        @keyframes restaurantFavoriteParticle {
           0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
           25% { opacity: 1; }
-          100% {
-            opacity: 0;
-            transform: translate(var(--particle-x), var(--particle-y)) scale(0);
-          }
+          100% { opacity: 0; transform: translate(var(--particle-x), var(--particle-y)) scale(0); }
         }
-
-        @keyframes favoriteCountAppear {
+        @keyframes restaurantFavoriteCountAppear {
           from { opacity: 0; transform: translateY(-4px) scale(0.8); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
@@ -573,14 +496,14 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
           position: absolute;
           bottom: 11px;
           left: 50%;
-          transform: translateX(-50%);
+          z-index: 4;
           display: flex;
           align-items: center;
           gap: 5px;
           padding: 5px 8px;
           border-radius: 999px;
-          background: rgba(0, 0, 0, 0.2);
-          z-index: 4;
+          background: rgba(0, 0, 0, 0.25);
+          transform: translateX(-50%);
         }
 
         .shared-restaurant-image-dot {
@@ -590,19 +513,20 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
           background: rgba(255, 255, 255, 0.65);
         }
 
-        .shared-restaurant-image-dot.active {
-          background: #fff;
-        }
+        .shared-restaurant-image-dot.active { background: #fff; }
 
         .shared-restaurant-card-body {
           display: flex;
+          flex: 1 1 auto;
           flex-direction: column;
-          min-height: 170px;
+          min-width: 0;
+          min-height: 0;
           padding: 13px 2px 0;
         }
 
         .shared-restaurant-content-link {
           display: block;
+          min-width: 0;
           color: inherit;
           text-decoration: none;
         }
@@ -610,59 +534,67 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
         .shared-restaurant-name {
           margin: 0;
           color: #171b18;
-          font-size: 0.91rem;
+          font-size: clamp(0.88rem, 0.9vw, 0.98rem);
           line-height: 1.35;
-          font-weight: 700;
+          font-weight: 750;
+          overflow-wrap: anywhere;
         }
 
         .shared-restaurant-cuisine,
-        .shared-restaurant-location,
-        .shared-restaurant-hours {
+        .shared-restaurant-location {
           display: flex;
           align-items: flex-start;
-          gap: 5px;
-          margin-top: 6px;
+          gap: 6px;
+          min-width: 0;
+          margin-top: 7px;
           color: #747d77;
-          font-size: 0.68rem;
+          font-size: clamp(0.68rem, 0.72vw, 0.75rem);
           line-height: 1.45;
           font-weight: 600;
         }
 
-        .shared-restaurant-cuisine {
-          color: ${CALBAYOG_BLUE};
-        }
+        .shared-restaurant-cuisine { color: ${CALBAYOG_BLUE}; }
 
         .shared-restaurant-cuisine svg,
-        .shared-restaurant-location svg,
-        .shared-restaurant-hours svg {
+        .shared-restaurant-location svg {
           flex: 0 0 auto;
           margin-top: 1px;
         }
 
+        .shared-restaurant-cuisine span,
+        .shared-restaurant-location span {
+          min-width: 0;
+          overflow-wrap: anywhere;
+        }
+
         .shared-restaurant-description {
-          margin: 7px 0 0;
+          display: -webkit-box;
+          margin: 8px 0 0;
+          overflow: hidden;
           color: #707973;
-          font-size: 0.7rem;
+          font-size: clamp(0.7rem, 0.74vw, 0.77rem);
           line-height: 1.5;
           font-weight: 500;
-          display: -webkit-box;
+          overflow-wrap: anywhere;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
-          overflow: hidden;
         }
 
         .shared-restaurant-bottom-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
+          flex-wrap: wrap;
           gap: 8px;
+          min-width: 0;
           margin-top: auto;
-          padding-top: 10px;
+          padding: 11px 0 2px;
           border-top: 1px solid #f0f2f0;
         }
 
         .shared-restaurant-actions {
           display: flex;
+          flex: 1 1 auto;
           flex-wrap: wrap;
           align-items: center;
           gap: 8px;
@@ -673,15 +605,17 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
         .shared-restaurant-view-details-link {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          font-size: 0.61rem;
+          justify-content: center;
+          gap: 5px;
+          min-height: 30px;
+          font-size: 0.68rem;
+          line-height: 1.2;
           font-weight: 800;
           text-decoration: none;
+          overflow-wrap: anywhere;
         }
 
-        .shared-restaurant-action-link {
-          color: #727b76;
-        }
+        .shared-restaurant-action-link { color: #727b76; }
 
         .shared-restaurant-action-link:hover,
         .shared-restaurant-view-details-link:hover {
@@ -693,37 +627,65 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
           white-space: nowrap;
         }
 
-        @media (max-width: 767.98px) {
-          .shared-restaurant-image-wrap {
-            border-radius: 17px;
-          }
+        .shared-restaurant-card-compact .shared-restaurant-image-wrap {
+          aspect-ratio: 5 / 4;
+        }
 
-          .shared-restaurant-favorite-button {
-            width: 40px;
-            height: 40px;
-          }
+        .shared-restaurant-card-compact .shared-restaurant-card-body {
+          padding-top: 10px;
+        }
+
+        @media (min-width: 1200px) {
+          .shared-restaurant-image-wrap { border-radius: 20px; }
+        }
+
+        @media (max-width: 767.98px) {
+          .shared-restaurant-image-wrap { border-radius: 16px; }
+          .shared-restaurant-favorite-control { top: 8px; right: 8px; }
+          .shared-restaurant-favorite-button { width: 42px; height: 42px; }
+          .shared-restaurant-card-body { padding-top: 11px; }
         }
 
         @media (max-width: 479.98px) {
-          .shared-restaurant-favorite-control {
-            top: 9px;
-            right: 9px;
+          .shared-restaurant-image-wrap { border-radius: 14px; }
+
+          .shared-restaurant-price-badge,
+          .shared-restaurant-featured-badge {
+            left: 8px;
+            padding: 6px 8px;
+            font-size: 0.62rem;
           }
 
-          .shared-restaurant-favorite-button {
-            width: 39px;
-            height: 39px;
-          }
+          .shared-restaurant-price-badge { top: 8px; }
+          .shared-restaurant-featured-badge { top: 40px; }
+          .shared-restaurant-favorite-control { top: 5px; right: 5px; }
+          .shared-restaurant-favorite-button { width: 40px; height: 40px; }
+          .shared-restaurant-name { font-size: 0.9rem; }
+          .shared-restaurant-bottom-row { gap: 5px; }
 
-          .shared-restaurant-favorite-count {
-            font-size: 0.59rem;
+          .shared-restaurant-action-link,
+          .shared-restaurant-view-details-link { font-size: 0.65rem; }
+        }
+
+        @media (max-width: 359.98px) {
+          .shared-restaurant-image-wrap { aspect-ratio: 1 / 1; }
+          .shared-restaurant-bottom-row {
+            align-items: flex-start;
+            flex-direction: column;
           }
+          .shared-restaurant-view-details-link { align-self: flex-start; }
+        }
+
+        @media (hover: none) {
+          .shared-restaurant-card:hover .shared-restaurant-image { transform: none; }
+          .shared-restaurant-card:hover .shared-restaurant-image-wrap { box-shadow: none; }
         }
 
         @media (prefers-reduced-motion: reduce) {
           .shared-restaurant-favorite-button,
           .favorite-heart-icon,
-          .shared-restaurant-favorite-count {
+          .shared-restaurant-favorite-count,
+          .shared-restaurant-image {
             animation-duration: 0.01ms !important;
             transition-duration: 0.01ms !important;
           }
