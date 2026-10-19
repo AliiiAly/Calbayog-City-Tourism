@@ -711,8 +711,8 @@ const RestaurantDetail: React.FC = () => {
 .detail-memory-form input[type=file],.detail-memory-form textarea { display:block; width:100%; padding:10px; border:1px solid ${BORDER}; border-radius:9px; background:#fff; color:${TEXT}; font:inherit; font-size:.75rem; }
 .detail-memory-form small { display:block; margin-top:6px; color:${MUTED}; font-size:.65rem; }
 .detail-memory-previews { display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:9px; margin-top:12px; }
-.detail-memory-preview-item { position:relative; aspect-ratio:1; min-width:0; }
-.detail-memory-preview-item img { width:100%; height:100%; object-fit:cover; border-radius:10px; }
+.detail-memory-preview-item { position:relative; min-width:0; align-self:start; }
+.detail-memory-preview-item img { display:block; width:100%; height:auto; max-height:280px; object-fit:contain; object-position:center; background:#f7f8fb; border:1px solid ${BORDER}; border-radius:10px; }
 .detail-memory-preview-remove { position:absolute; top:4px; right:4px; width:24px; height:24px; border:0; border-radius:50%; background:#20232acc; color:#fff; cursor:pointer; }
 .detail-memory-add-more { display:flex!important; align-items:center; justify-content:center; flex-direction:column; gap:5px; min-height:88px; border:1px dashed ${BORDER}; border-radius:10px; cursor:pointer; }
 .detail-memory-add-more input { display:none!important; }
@@ -906,17 +906,6 @@ const RestaurantDetail: React.FC = () => {
               </h1>
             </div>
 
-            <section className="detail-memory-section" aria-label="Add restaurant memory">
-              <div className="detail-memory-content"><div className="detail-memory-copy"><div className="detail-memory-icon"><Camera size={18} /></div><div><p className="detail-memory-title">Add Memories</p><p className="detail-memory-subtitle">Share your photos and memorable moments from this restaurant.</p></div></div><button type="button" className="detail-memory-button" onClick={handleAddMemories}><Camera size={14} /> Add Memory</button></div>
-              {showMemoryForm && <form className="detail-memory-form" onSubmit={handleSubmitMemory}><div className="detail-memory-form-header"><h3>Share Your Memory</h3><button type="button" className="detail-memory-close" onClick={closeMemoryForm} disabled={memorySubmitting} aria-label="Close memory form">×</button></div>
-                <label htmlFor="restaurant-memory-photo">Upload photos</label><input id="restaurant-memory-photo" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleMemoryPhotosChange} disabled={memorySubmitting || memoryPhotos.length >= MEMORY_MAX_PHOTOS} /><small>JPG, PNG, or WEBP. Up to 8 photos, 15 MB each. Large photos are optimized before upload.</small>
-                {memoryPhotos.length > 0 && <div className="detail-memory-previews">{memoryPhotos.map((photo, index) => <div className="detail-memory-preview-item" key={photo.id}><img src={photo.url} alt={`Selected photo ${index + 1}`} /><button type="button" className="detail-memory-preview-remove" onClick={() => handleRemoveMemoryPhoto(photo.id)} disabled={memorySubmitting} aria-label={`Remove photo ${index + 1}`}>×</button></div>)}{!memorySubmitting && memoryPhotos.length < MEMORY_MAX_PHOTOS && <label className="detail-memory-add-more">＋ Add more<input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleMemoryPhotosChange} /></label>}</div>}
-                {memorySubmitting && <div className="detail-memory-progress" role="status">Uploading {memoryProgress}/{memoryPhotos.length} photos…<div><span style={{ width: `${memoryPhotos.length ? (memoryProgress / memoryPhotos.length) * 100 : 0}%` }} /></div></div>}
-                <label htmlFor="restaurant-memory-caption">Caption</label><textarea id="restaurant-memory-caption" rows={3} maxLength={500} value={memoryCaption} onChange={(event) => setMemoryCaption(event.target.value)} placeholder="Share a little about your experience..." disabled={memorySubmitting} /><small>{memoryCaption.length}/500 characters</small>
-                {memoryError && <p className="detail-memory-error" role="alert">{memoryError}</p>}<div className="detail-memory-form-actions"><button type="button" className="detail-memory-cancel" onClick={closeMemoryForm} disabled={memorySubmitting}>Cancel</button><button type="submit" className="detail-memory-submit" disabled={memorySubmitting}>{memorySubmitting ? `Uploading ${memoryProgress}/${memoryPhotos.length}…` : "Submit Memory"}</button></div>
-              </form>}{memoryNotice && <p className="detail-memory-notice" role="status">{memoryNotice}</p>}
-            </section>
-
             <section className="detail-section">
               <h2 className="detail-section-heading">
                 <Globe2 size={18} />
@@ -928,6 +917,8 @@ const RestaurantDetail: React.FC = () => {
                   "More information about this restaurant will be added soon."}
               </p>
             </section>
+
+
           </Col>
 
           <Col lg={4}>
@@ -992,6 +983,17 @@ const RestaurantDetail: React.FC = () => {
             </div>
           </Col>
         </Row>
+
+        <section className="detail-memory-section" aria-label="Add restaurant memory">
+              <div className="detail-memory-content"><div className="detail-memory-copy"><div className="detail-memory-icon"><Camera size={18} /></div><div><p className="detail-memory-title">Add Memories</p><p className="detail-memory-subtitle">Share your photos and memorable moments from this restaurant.</p></div></div><button type="button" className="detail-memory-button" onClick={handleAddMemories}><Camera size={14} /> Add Memory</button></div>
+              {showMemoryForm && <form className="detail-memory-form" onSubmit={handleSubmitMemory}><div className="detail-memory-form-header"><h3>Share Your Memory</h3><button type="button" className="detail-memory-close" onClick={closeMemoryForm} disabled={memorySubmitting} aria-label="Close memory form">×</button></div>
+                <label htmlFor="restaurant-memory-photo">Upload photos</label><input id="restaurant-memory-photo" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleMemoryPhotosChange} disabled={memorySubmitting || memoryPhotos.length >= MEMORY_MAX_PHOTOS} /><small>JPG, PNG, or WEBP. Up to 8 photos, 15 MB each. Large photos are optimized before upload.</small>
+                {memoryPhotos.length > 0 && <div className="detail-memory-previews">{memoryPhotos.map((photo, index) => <div className="detail-memory-preview-item" key={photo.id}><img src={photo.url} alt={`Selected photo ${index + 1}`} /><button type="button" className="detail-memory-preview-remove" onClick={() => handleRemoveMemoryPhoto(photo.id)} disabled={memorySubmitting} aria-label={`Remove photo ${index + 1}`}>×</button></div>)}{!memorySubmitting && memoryPhotos.length < MEMORY_MAX_PHOTOS && <label className="detail-memory-add-more">＋ Add more<input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleMemoryPhotosChange} /></label>}</div>}
+                {memorySubmitting && <div className="detail-memory-progress" role="status">Uploading {memoryProgress}/{memoryPhotos.length} photos…<div><span style={{ width: `${memoryPhotos.length ? (memoryProgress / memoryPhotos.length) * 100 : 0}%` }} /></div></div>}
+                <label htmlFor="restaurant-memory-caption">Caption</label><textarea id="restaurant-memory-caption" rows={3} maxLength={500} value={memoryCaption} onChange={(event) => setMemoryCaption(event.target.value)} placeholder="Share a little about your experience..." disabled={memorySubmitting} /><small>{memoryCaption.length}/500 characters</small>
+                {memoryError && <p className="detail-memory-error" role="alert">{memoryError}</p>}<div className="detail-memory-form-actions"><button type="button" className="detail-memory-cancel" onClick={closeMemoryForm} disabled={memorySubmitting}>Cancel</button><button type="submit" className="detail-memory-submit" disabled={memorySubmitting}>{memorySubmitting ? `Uploading ${memoryProgress}/${memoryPhotos.length}…` : "Submit Memory"}</button></div>
+              </form>}{memoryNotice && <p className="detail-memory-notice" role="status">{memoryNotice}</p>}
+        </section>
       </Container>
 
       {/* ENLARGED MAP */}
