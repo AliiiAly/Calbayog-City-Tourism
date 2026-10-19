@@ -6,6 +6,7 @@ import React, {
 } from "react";
 
 import {
+  useHistory,
   useLocation,
 } from "react-router-dom";
 
@@ -215,6 +216,7 @@ const unsubscribeAll = () => {
 ========================================================= */
 
 const Attractions: React.FC = () => {
+  const history = useHistory();
   const location = useLocation();
 
   /* =========================================================
@@ -437,6 +439,166 @@ const Attractions: React.FC = () => {
       unsubscribeAll();
     };
   }, []);
+
+  /* =========================================================
+     PRESERVE SCROLL POSITION
+     FIX: RESTORE WHEN RETURNING FROM ATTRACTION DETAIL
+
+     Saves the current scroll position for this specific
+     browser-history entry.
+
+     When the user returns from an attraction detail page,
+     the saved position is restored after the attractions
+     have loaded and the page has rendered.
+
+     Uses window.scrollY so it works on desktop and mobile.
+  ========================================================= */
+
+  const scrollStorageKey =
+    `attractions-scroll-${location.key || "default"}`;
+
+  /* =========================================================
+     SAVE SCROLL POSITION
+  ========================================================= */
+
+  useEffect(() => {
+    const saveScrollPosition = () => {
+      try {
+        window.sessionStorage.setItem(
+          scrollStorageKey,
+          String(
+            window.scrollY ||
+              window.pageYOffset ||
+              0,
+          ),
+        );
+      } catch (error) {
+        // Keep the page usable if session storage is unavailable.
+      }
+    };
+
+    window.addEventListener(
+      "scroll",
+      saveScrollPosition,
+      { passive: true },
+    );
+
+    window.addEventListener(
+      "pagehide",
+      saveScrollPosition,
+    );
+
+    return () => {
+      // Save the final position before leaving the listing.
+      saveScrollPosition();
+
+      window.removeEventListener(
+        "scroll",
+        saveScrollPosition,
+      );
+
+      window.removeEventListener(
+        "pagehide",
+        saveScrollPosition,
+      );
+    };
+  }, [
+    scrollStorageKey,
+  ]);
+
+  /* =========================================================
+     RESTORE SCROLL POSITION
+  ========================================================= */
+
+  useEffect(() => {
+    /*
+     * Only restore for a POP navigation, such as returning
+     * from an attraction detail page using Back.
+     *
+     * Do not force an old scroll position when the user
+     * navigates to Attractions through a new history entry.
+     */
+    if (
+      history.action !== "POP" ||
+      loading
+    ) {
+      return;
+    }
+
+    let savedPosition: number | null = null;
+
+    try {
+      const storedPosition =
+        window.sessionStorage.getItem(
+          scrollStorageKey,
+        );
+
+      if (
+        storedPosition !== null
+      ) {
+        const parsedPosition =
+          Number(storedPosition);
+
+        if (
+          Number.isFinite(parsedPosition) &&
+          parsedPosition >= 0
+        ) {
+          savedPosition =
+            parsedPosition;
+        }
+      }
+    } catch (error) {
+      // If storage is unavailable, leave the browser's
+      // normal scrolling behavior unchanged.
+    }
+
+    if (
+      savedPosition === null
+    ) {
+      return;
+    }
+
+    const positionToRestore =
+      savedPosition;
+
+    let secondFrame = 0;
+
+    /*
+     * Wait two animation frames so React has time to render
+     * the loaded listing before scrolling to the saved spot.
+     */
+    const firstFrame =
+      window.requestAnimationFrame(
+        () => {
+          secondFrame =
+            window.requestAnimationFrame(
+              () => {
+                window.scrollTo({
+                  top: positionToRestore,
+                  left: 0,
+                  behavior: "auto",
+                });
+              },
+            );
+        },
+      );
+
+    return () => {
+      window.cancelAnimationFrame(
+        firstFrame,
+      );
+
+      if (secondFrame) {
+        window.cancelAnimationFrame(
+          secondFrame,
+        );
+      }
+    };
+  }, [
+    history.action,
+    loading,
+    scrollStorageKey,
+  ]);
 
   /* =========================================================
      AUTO IMAGE ROTATION
@@ -1181,13 +1343,12 @@ const Attractions: React.FC = () => {
 
         /* =====================================================
            CATEGORY ROW
-           
-           FIX:
+
            Added top breathing room so touched/hovered pills
            never get clipped at the top.
-           
-           Also removed the upward movement that was causing
-           the clipping on touch devices.
+
+           Removed upward movement that was causing clipping
+           on touch devices.
         ===================================================== */
 
         .category-pills {
@@ -1261,10 +1422,7 @@ const Attractions: React.FC = () => {
           border-color: var(--pill-color);
           background: var(--pill-background);
 
-          /* IMPORTANT:
-             No translateY here, so touch/hover
-             cannot push the pill into the top edge.
-          */
+          /* No translateY, preventing clipping on touch devices. */
           transform: none;
         }
 
