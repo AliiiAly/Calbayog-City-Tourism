@@ -109,12 +109,14 @@ const ADMIN_FEATURED_VIDEOS_STYLES = `
 
   .admin-featured-videos-title {
     margin: 0 !important;
-    color: var(--admin-primary) !important;
-    font-family: "Barabara", sans-serif !important;
-    font-size: clamp(1.65rem, 2.8vw, 2.4rem) !important;
-    font-weight: 400 !important;
-    line-height: 0.95 !important;
-    letter-spacing: 0.02em;
+  color: var(--admin-primary) !important;
+  font-family: "Barabara", sans-serif !important;
+  font-size: clamp(1.65rem, 2.8vw, 2.4rem) !important;
+  font-weight: 400 !important;
+  font-style: normal !important;
+  line-height: 1.1 !important;
+  letter-spacing: 0.02em !important;
+  text-transform: uppercase !important;
   }
 
   .admin-featured-videos-subtitle {
