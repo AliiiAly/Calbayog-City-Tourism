@@ -1,5 +1,6 @@
 import React from "react";
 import { Card } from "react-bootstrap";
+import { useFavorites } from "../context/FavoritesContext";
 import {
   ArrowUpRight,
   CalendarDays,
@@ -38,39 +39,19 @@ interface EventCardProps {
   onClick?: (event: EventCardItem) => void;
 }
 
-const getEventId = (
-  event: EventCardItem,
-): string => {
-  return String(
-    event?.id ??
-      event?._id ??
-      "",
-  ).trim();
+const getEventId = (event: EventCardItem): string => {
+  return String(event?.id ?? event?._id ?? "").trim();
 };
 
-const getStartDate = (
-  event: EventCardItem,
-): string => {
-  return (
-    event.startDate ||
-    event.start_date ||
-    ""
-  );
+const getStartDate = (event: EventCardItem): string => {
+  return event.startDate || event.start_date || "";
 };
 
-const getEndDate = (
-  event: EventCardItem,
-): string => {
-  return (
-    event.endDate ||
-    event.end_date ||
-    ""
-  );
+const getEndDate = (event: EventCardItem): string => {
+  return event.endDate || event.end_date || "";
 };
 
-const formatDate = (
-  value: string,
-): string => {
+const formatDate = (value: string): string => {
   if (!value) {
     return "";
   }
@@ -81,26 +62,16 @@ const formatDate = (
     return value;
   }
 
-  return date.toLocaleDateString(
-    "en-US",
-    {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    },
-  );
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 };
 
-const formatDateRange = (
-  event: EventCardItem,
-): string => {
-  const start = formatDate(
-    getStartDate(event),
-  );
-
-  const end = formatDate(
-    getEndDate(event),
-  );
+const formatDateRange = (event: EventCardItem): string => {
+  const start = formatDate(getStartDate(event));
+  const end = formatDate(getEndDate(event));
 
   if (!start) {
     return "";
@@ -113,14 +84,8 @@ const formatDateRange = (
   return `${start} – ${end}`;
 };
 
-const getCategoryBackground = (
-  category?: string,
-): string => {
-  switch (
-    String(category || "")
-      .toLowerCase()
-      .trim()
-  ) {
+const getCategoryBackground = (category?: string): string => {
+  switch (String(category || "").toLowerCase().trim()) {
     case "festival":
       return "#fff5df";
 
@@ -147,9 +112,7 @@ const getCategoryBackground = (
   }
 };
 
-const EventCard: React.FC<
-  EventCardProps
-> = ({
+const EventCard: React.FC<EventCardProps> = ({
   event,
   compact = false,
   showFeatured = true,
@@ -157,33 +120,30 @@ const EventCard: React.FC<
 }) => {
   const eventId = getEventId(event);
 
-  const [liked, setLiked] =
-    React.useState(false);
+  // Use the existing shared favorites system.
+  const {
+    isFavorite,
+    toggleFavorite,
+    isFavoritePending,
+  } = useFavorites();
 
-  const category =
-    event.category || "Event";
+  // The heart now reflects the saved favorite state instead
+  // of using a separate local liked state.
+  const liked = eventId ? isFavorite("event", eventId) : false;
 
-  const image =
-    event.image || "";
+  const favoritePending = eventId
+    ? isFavoritePending("event", eventId)
+    : false;
 
-  const description =
-    event.description || "";
+  const category = event.category || "Event";
+  const image = event.image || "";
+  const description = event.description || "";
+  const venue = event.venue || "";
+  const dateRange = formatDateRange(event);
 
-  const venue =
-    event.venue || "";
+  const isFree = event.isFree ?? event.is_free ?? false;
 
-  const dateRange =
-    formatDateRange(event);
-
-  const isFree =
-    event.isFree ??
-    event.is_free ??
-    false;
-
-  const ticketPrice =
-    event.ticketPrice ??
-    event.ticket_price ??
-    "";
+  const ticketPrice = event.ticketPrice ?? event.ticket_price ?? "";
 
   const detailAction = () => {
     if (onClick) {
@@ -191,19 +151,28 @@ const EventCard: React.FC<
     }
   };
 
+  // Persist the favorite through FavoritesContext.
+  const handleFavoriteClick = async (
+    clickEvent: React.MouseEvent<HTMLButtonElement>,
+  ) => {
+    clickEvent.preventDefault();
+    clickEvent.stopPropagation();
+
+    if (!eventId || favoritePending) {
+      return;
+    }
+
+    await toggleFavorite("event", eventId);
+  };
+
   return (
     <>
       <Card
         className={`shared-event-card ${
-          compact
-            ? "shared-event-card-compact"
-            : ""
+          compact ? "shared-event-card-compact" : ""
         }`}
       >
-        {/* =====================================================
-            IMAGE
-        ===================================================== */}
-
+        {/* IMAGE */}
         <div className="shared-event-image-wrap">
           <button
             type="button"
@@ -240,7 +209,6 @@ const EventCard: React.FC<
             )}
 
             {/* CATEGORY */}
-
             {category && (
               <div className="shared-event-category-badge">
                 {category}
@@ -248,17 +216,14 @@ const EventCard: React.FC<
             )}
 
             {/* FEATURED */}
-
-            {showFeatured &&
-              event.featured && (
-                <div className="shared-event-featured-badge">
-                  <span>Featured</span>
-                </div>
-              )}
+            {showFeatured && event.featured && (
+              <div className="shared-event-featured-badge">
+                <span>Featured</span>
+              </div>
+            )}
           </button>
 
           {/* FAVORITE */}
-
           {eventId && (
             <div className="shared-event-favorite-control">
               <button
@@ -266,27 +231,24 @@ const EventCard: React.FC<
                 className={`shared-event-favorite-button ${
                   liked ? "active" : ""
                 }`}
-                onClick={(clickEvent) => {
-                  clickEvent.preventDefault();
-                  clickEvent.stopPropagation();
-
-                  setLiked(
-                    (previous) =>
-                      !previous,
-                  );
-                }}
+                onClick={handleFavoriteClick}
+                disabled={favoritePending}
                 aria-label={
                   liked
                     ? `Remove ${
-                        event.title ||
-                        "event"
+                        event.title || "event"
                       } from favorites`
                     : `Add ${
-                        event.title ||
-                        "event"
+                        event.title || "event"
                       } to favorites`
                 }
                 aria-pressed={liked}
+                aria-busy={favoritePending}
+                title={
+                  liked
+                    ? "Remove from favorites"
+                    : "Add to favorites"
+                }
               >
                 <span className="event-heart-glow" />
                 <span className="event-heart-ripple" />
@@ -294,14 +256,8 @@ const EventCard: React.FC<
                 <Heart
                   className="event-heart-icon"
                   size={22}
-                  strokeWidth={
-                    liked ? 2.25 : 1.9
-                  }
-                  fill={
-                    liked
-                      ? "currentColor"
-                      : "none"
-                  }
+                  strokeWidth={liked ? 2.25 : 1.9}
+                  fill={liked ? "currentColor" : "none"}
                 />
 
                 {liked && (
@@ -319,10 +275,7 @@ const EventCard: React.FC<
           )}
         </div>
 
-        {/* =====================================================
-            CARD BODY
-        ===================================================== */}
-
+        {/* CARD BODY */}
         <Card.Body className="shared-event-card-body">
           <button
             type="button"
@@ -330,75 +283,48 @@ const EventCard: React.FC<
             onClick={detailAction}
           >
             {/* TITLE */}
-
             <div className="shared-event-title-row">
               <Card.Title className="shared-event-name">
-                {event.title ||
-                  "Untitled Event"}
+                {event.title || "Untitled Event"}
               </Card.Title>
             </div>
 
             {/* DATE */}
-
             {dateRange && (
               <div className="shared-event-meta-item">
-                <CalendarDays
-                  size={15}
-                  strokeWidth={1.8}
-                />
-
+                <CalendarDays size={15} strokeWidth={1.8} />
                 <span>{dateRange}</span>
               </div>
             )}
 
             {/* VENUE */}
-
             {venue && (
               <div className="shared-event-meta-item">
-                <MapPin
-                  size={15}
-                  strokeWidth={1.8}
-                />
-
+                <MapPin size={15} strokeWidth={1.8} />
                 <span>{venue}</span>
               </div>
             )}
 
             {/* DESCRIPTION */}
-
             {description && (
               <p className="shared-event-description">
-                {description.slice(
-                  0,
-                  170,
-                )}
-
-                {description.length > 170
-                  ? "..."
-                  : ""}
+                {description.slice(0, 170)}
+                {description.length > 170 ? "..." : ""}
               </p>
             )}
 
             {/* ORGANIZER */}
-
             {event.organizer && (
               <div className="shared-event-organizer">
-                Organized by{" "}
-                {event.organizer}
+                Organized by {event.organizer}
               </div>
             )}
           </button>
 
-          {/* =================================================
-              BOTTOM ROW
-          ================================================= */}
-
+          {/* BOTTOM ROW */}
           <div className="shared-event-bottom-row">
             <div className="shared-event-ticket">
-              <Ticket
-                size={15}
-                strokeWidth={1.8}
-              />
+              <Ticket size={15} strokeWidth={1.8} />
 
               <span>
                 {isFree
@@ -415,11 +341,7 @@ const EventCard: React.FC<
               onClick={detailAction}
             >
               View details
-
-              <ArrowUpRight
-                size={15}
-                strokeWidth={1.9}
-              />
+              <ArrowUpRight size={15} strokeWidth={1.9} />
             </button>
           </div>
         </Card.Body>
@@ -436,9 +358,7 @@ const EventCard: React.FC<
           overflow: visible;
         }
 
-        /* CIRCLE IMAGE: wrap is a centered square that is not clipped,
-           so the favorite heart can sit on the circle's edge. The
-           image button below does the circular clipping. */
+        /* CIRCLE IMAGE */
         .shared-event-image-wrap {
           position: relative;
           width: min(100%, 230px);
@@ -462,15 +382,11 @@ const EventCard: React.FC<
           overflow: hidden;
           cursor: pointer;
           text-align: left;
-          transition:
-            box-shadow 0.28s ease;
+          transition: box-shadow 0.28s ease;
         }
 
-        .shared-event-card:hover
-          .shared-event-image-button {
-          box-shadow:
-            0 12px 32px
-            rgba(20, 30, 24, 0.16);
+        .shared-event-card:hover .shared-event-image-button {
+          box-shadow: 0 12px 32px rgba(20, 30, 24, 0.16);
         }
 
         .shared-event-image {
@@ -479,18 +395,10 @@ const EventCard: React.FC<
           display: block;
           object-fit: cover;
           object-position: center;
-          transition:
-            transform 0.65s
-            cubic-bezier(
-              0.2,
-              0.65,
-              0.3,
-              1
-            );
+          transition: transform 0.65s cubic-bezier(0.2, 0.65, 0.3, 1);
         }
 
-        .shared-event-card:hover
-          .shared-event-image {
+        .shared-event-card:hover .shared-event-image {
           transform: scale(1.035);
         }
 
@@ -510,11 +418,7 @@ const EventCard: React.FC<
           max-width: 140px;
           max-height: 120px;
           object-fit: contain;
-          filter:
-            drop-shadow(
-              0 8px 14px
-              rgba(20, 30, 24, 0.12)
-            );
+          filter: drop-shadow(0 8px 14px rgba(20, 30, 24, 0.12));
         }
 
         .shared-event-placeholder-text {
@@ -523,7 +427,7 @@ const EventCard: React.FC<
           font-weight: 800;
         }
 
-        /* Badges are centered so the circle does not clip them */
+        /* CATEGORY BADGE */
         .shared-event-category-badge {
           position: absolute;
           bottom: 11%;
@@ -532,17 +436,9 @@ const EventCard: React.FC<
           max-width: 70%;
           padding: 6px 10px;
           border-radius: 999px;
-          background:
-            rgba(
-              255,
-              255,
-              255,
-              0.93
-            );
+          background: rgba(255, 255, 255, 0.93);
           color: #242925;
-          box-shadow:
-            0 3px 12px
-            rgba(0, 0, 0, 0.09);
+          box-shadow: 0 3px 12px rgba(0, 0, 0, 0.09);
           backdrop-filter: blur(10px);
           font-size: 0.61rem;
           font-weight: 800;
@@ -552,6 +448,7 @@ const EventCard: React.FC<
           z-index: 3;
         }
 
+        /* FEATURED BADGE */
         .shared-event-featured-badge {
           position: absolute;
           top: 10%;
@@ -561,17 +458,9 @@ const EventCard: React.FC<
           align-items: center;
           padding: 6px 9px;
           border-radius: 999px;
-          background:
-            rgba(
-              255,
-              249,
-              232,
-              0.95
-            );
+          background: rgba(255, 249, 232, 0.95);
           color: #9b6400;
-          box-shadow:
-            0 3px 12px
-            rgba(0, 0, 0, 0.08);
+          box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
           backdrop-filter: blur(10px);
           font-size: 0.6rem;
           font-weight: 800;
@@ -579,7 +468,7 @@ const EventCard: React.FC<
           z-index: 3;
         }
 
-        /* Heart sits on the circle's top-right edge */
+        /* FAVORITE HEART */
         .shared-event-favorite-control {
           position: absolute;
           top: 4%;
@@ -599,78 +488,40 @@ const EventCard: React.FC<
           padding: 0;
           border: none;
           border-radius: 50%;
-          background:
-            rgba(
-              20,
-              30,
-              24,
-              0.32
-            );
+          background: rgba(20, 30, 24, 0.32);
           backdrop-filter: blur(6px);
-          color:
-            rgba(
-              255,
-              255,
-              255,
-              0.98
-            );
+          color: rgba(255, 255, 255, 0.98);
           cursor: pointer;
           pointer-events: auto;
-          transition:
-            transform 0.18s
-            cubic-bezier(
-              0.2,
-              0.8,
-              0.2,
-              1
-            );
+          transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
-        .shared-event-favorite-button:hover {
+        .shared-event-favorite-button:disabled {
+          cursor: wait;
+          opacity: 0.8;
+        }
+
+        .shared-event-favorite-button:hover:not(:disabled) {
           transform: scale(1.09);
         }
 
-        .shared-event-favorite-button:active {
+        .shared-event-favorite-button:active:not(:disabled) {
           transform: scale(0.87);
         }
 
         .shared-event-favorite-button.active {
           color: #ff4f6d;
-          animation:
-            eventButtonPop
-            0.48s
-            cubic-bezier(
-              0.22,
-              1.4,
-              0.36,
-              1
-            );
+          animation: eventButtonPop 0.48s cubic-bezier(0.22, 1.4, 0.36, 1);
         }
 
         .event-heart-icon {
           position: relative;
           z-index: 4;
-          transition:
-            transform 0.22s
-            cubic-bezier(
-              0.34,
-              1.56,
-              0.64,
-              1
-            );
+          transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
-        .shared-event-favorite-button.active
-          .event-heart-icon {
-          animation:
-            eventHeartPop
-            0.52s
-            cubic-bezier(
-              0.34,
-              1.56,
-              0.64,
-              1
-            );
+        .shared-event-favorite-button.active .event-heart-icon {
+          animation: eventHeartPop 0.52s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         .event-heart-glow {
@@ -678,35 +529,20 @@ const EventCard: React.FC<
           width: 29px;
           height: 29px;
           border-radius: 50%;
-          background:
-            radial-gradient(
-              circle,
-              rgba(
-                255,
-                79,
-                109,
-                0.48
-              ) 0%,
-              rgba(
-                255,
-                79,
-                109,
-                0.19
-              ) 32%,
-              transparent 72%
-            );
+          background: radial-gradient(
+            circle,
+            rgba(255, 79, 109, 0.48) 0%,
+            rgba(255, 79, 109, 0.19) 32%,
+            transparent 72%
+          );
           opacity: 0;
           transform: scale(0.55);
           filter: blur(7px);
           z-index: 1;
         }
 
-        .shared-event-favorite-button.active
-          .event-heart-glow {
-          animation:
-            eventGlow
-            0.7s
-            ease-out;
+        .shared-event-favorite-button.active .event-heart-glow {
+          animation: eventGlow 0.7s ease-out;
         }
 
         .event-heart-ripple {
@@ -714,24 +550,13 @@ const EventCard: React.FC<
           width: 20px;
           height: 20px;
           border-radius: 50%;
-          border:
-            1px solid
-            rgba(
-              255,
-              255,
-              255,
-              0.48
-            );
+          border: 1px solid rgba(255, 255, 255, 0.48);
           opacity: 0;
           transform: scale(0.35);
         }
 
-        .shared-event-favorite-button.active
-          .event-heart-ripple {
-          animation:
-            eventRipple
-            0.62s
-            ease-out;
+        .shared-event-favorite-button.active .event-heart-ripple {
+          animation: eventRipple 0.62s ease-out;
         }
 
         .event-particle {
@@ -744,13 +569,38 @@ const EventCard: React.FC<
           z-index: 2;
         }
 
-        .shared-event-favorite-button.active
-          .event-particle {
-          animation:
-            eventParticle
-            0.62s
-            ease-out
-            forwards;
+        .shared-event-favorite-button.active .event-particle {
+          animation: eventParticle 0.62s ease-out forwards;
+        }
+
+        .event-particle.particle-1 {
+          --particle-x: -13px;
+          --particle-y: -12px;
+        }
+
+        .event-particle.particle-2 {
+          --particle-x: 13px;
+          --particle-y: -13px;
+        }
+
+        .event-particle.particle-3 {
+          --particle-x: -17px;
+          --particle-y: 1px;
+        }
+
+        .event-particle.particle-4 {
+          --particle-x: 17px;
+          --particle-y: 1px;
+        }
+
+        .event-particle.particle-5 {
+          --particle-x: -10px;
+          --particle-y: 14px;
+        }
+
+        .event-particle.particle-6 {
+          --particle-x: 11px;
+          --particle-y: 14px;
         }
 
         @keyframes eventButtonPop {
@@ -763,29 +613,19 @@ const EventCard: React.FC<
 
         @keyframes eventHeartPop {
           0% {
-            transform:
-              scale(0.55)
-              rotate(-8deg);
+            transform: scale(0.55) rotate(-8deg);
           }
           28% {
-            transform:
-              scale(1.28)
-              rotate(5deg);
+            transform: scale(1.28) rotate(5deg);
           }
           48% {
-            transform:
-              scale(0.90)
-              rotate(-2deg);
+            transform: scale(0.90) rotate(-2deg);
           }
           72% {
-            transform:
-              scale(1.12)
-              rotate(1deg);
+            transform: scale(1.12) rotate(1deg);
           }
           100% {
-            transform:
-              scale(1)
-              rotate(0);
+            transform: scale(1) rotate(0);
           }
         }
 
@@ -818,27 +658,20 @@ const EventCard: React.FC<
         @keyframes eventParticle {
           0% {
             opacity: 0;
-            transform:
-              translate(0, 0)
-              scale(0.4);
+            transform: translate(0, 0) scale(0.4);
           }
           25% {
             opacity: 1;
           }
           100% {
             opacity: 0;
-            transform:
-              translate(
-                var(--particle-x),
-                var(--particle-y)
-              )
-              scale(0);
+            transform: translate(var(--particle-x), var(--particle-y)) scale(0);
           }
         }
 
+        /* CARD BODY */
         .shared-event-card-body {
-          padding:
-            13px 2px 0 !important;
+          padding: 13px 2px 0 !important;
         }
 
         .shared-event-content-button {
