@@ -8,7 +8,7 @@ import React, {
 
 import { Link, useHistory } from "react-router-dom";
 
-import { Container, Row, Col, Card } from "react-bootstrap";
+import { Container, Row, Col } from "react-bootstrap";
 
 import {
   getAccommodations,
@@ -38,13 +38,19 @@ import {
   Hotel,
   CalendarDays,
   Compass,
-  NotebookPen,
+  MapPinned,
   Images,
   MapPin,
   CloudSun,
   ChevronLeft,
   ChevronRight,
   Play,
+  UtensilsCrossed,
+  Clock3,
+  Phone,
+  Tag,
+  Globe2,
+  X,
 } from "lucide-react";
 
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -59,12 +65,12 @@ import "swiper/css/pagination";
 import {
   MapContainer,
   Marker,
-  Popup,
   TileLayer,
   Tooltip,
   LayersControl,
   LayerGroup,
   useMap,
+  useMapEvents,
 } from "react-leaflet";
 
 import L from "leaflet";
@@ -121,53 +127,76 @@ const SectionHeading: React.FC<{
 ========================================================= */
 
 const quickCards: Array<{
-  icon: React.ReactNode;
+  icon: React.ElementType;
   label: string;
+  hint: string;
   to: string;
-  color: string;
-  bg: string;
+  from: string;
+  toColor: string;
+  glow: string;
 }> = [
   {
-    icon: <Mountain size={23} strokeWidth={2.15} aria-hidden="true" />,
+    icon: Mountain,
     label: "Attractions",
+    hint: "Places to see",
     to: "/attractions",
-    color: "#0077B6",
-    bg: "#e0f2ff",
+    from: "#0077B6",
+    toColor: "#27B3D6",
+    glow: "rgba(0, 119, 182, 0.26)",
   },
   {
-    icon: <Hotel size={23} strokeWidth={2.15} aria-hidden="true" />,
+    icon: Hotel,
     label: "Stays",
+    hint: "Where to rest",
     to: "/accommodations",
-    color: "#F4A226",
-    bg: "#fff8e6",
+    from: "#F4A226",
+    toColor: "#F8CB63",
+    glow: "rgba(244, 162, 38, 0.30)",
   },
   {
-    icon: <CalendarDays size={23} strokeWidth={2.15} aria-hidden="true" />,
+    icon: UtensilsCrossed,
+    label: "Dining",
+    hint: "Taste Calbayog",
+    to: "/restaurants",
+    from: "#E8590C",
+    toColor: "#F5A05C",
+    glow: "rgba(232, 89, 12, 0.27)",
+  },
+  {
+    icon: CalendarDays,
     label: "Events",
+    hint: "What's happening",
     to: "/events",
-    color: "#e63946",
-    bg: "#ffe8ea",
+    from: "#E63946",
+    toColor: "#F37580",
+    glow: "rgba(230, 57, 70, 0.26)",
   },
   {
-    icon: <Compass size={22} strokeWidth={2.2} aria-hidden="true" />,
+    icon: Compass,
     label: "Guides",
+    hint: "Local experts",
     to: "/guides",
-    color: "#2d6a4f",
-    bg: "#e8f5ee",
+    from: "#2D6A4F",
+    toColor: "#52A07F",
+    glow: "rgba(45, 106, 79, 0.26)",
   },
   {
-    icon: <NotebookPen size={22} strokeWidth={2.2} aria-hidden="true" />,
+    icon: MapPinned,
     label: "Plan Trip",
+    hint: "Build your day",
     to: "/itinerary",
-    color: "#6d4c41",
-    bg: "#f0ebe6",
+    from: "#2D3195",
+    toColor: "#5F65D6",
+    glow: "rgba(45, 49, 149, 0.28)",
   },
   {
-    icon: <Images size={23} strokeWidth={2.15} aria-hidden="true" />,
+    icon: Images,
     label: "My Memories",
+    hint: "Your keepsakes",
     to: "/memories",
-    color: "#C45A8D",
-    bg: "#fcecf4",
+    from: "#C45A8D",
+    toColor: "#E68BB7",
+    glow: "rgba(196, 90, 141, 0.27)",
   },
 ];
 
@@ -239,23 +268,73 @@ interface WelcomeMapCoordinates {
   lng: number;
 }
 
-interface WelcomeMapAttraction {
+/* Details shown in the pin modal (all optional except id / name / coordinates) */
+interface WelcomeMapPlaceDetails {
   id: string;
   name: string;
+  address: string;
+  coordinates: WelcomeMapCoordinates;
+  images: string[];
+  description: string;
+  phone: string;
+  hours: string;
+  price: string;
+  website: string;
+}
+
+interface WelcomeMapAttraction extends WelcomeMapPlaceDetails {
   category: string;
   subcategory: string;
   markerType: string;
-  address: string;
-  coordinates: WelcomeMapCoordinates;
 }
 
-interface WelcomeMapAccommodation {
-  id: string;
-  name: string;
+interface WelcomeMapAccommodation extends WelcomeMapPlaceDetails {
   type: string;
-  address: string;
-  coordinates: WelcomeMapCoordinates;
 }
+
+interface WelcomeMapRestaurant extends WelcomeMapPlaceDetails {
+  cuisine: string;
+}
+
+type WelcomeMapPlaceKind = "attraction" | "accommodation" | "restaurant";
+
+interface SelectedMapPlace extends WelcomeMapPlaceDetails {
+  kind: WelcomeMapPlaceKind;
+  subtitle: string;
+}
+
+const WELCOME_KIND_META: Record<
+  WelcomeMapPlaceKind,
+  {
+    label: string;
+    color: string;
+    Icon: React.ElementType;
+    to: string;
+    cta: string;
+  }
+> = {
+  attraction: {
+    label: "Attraction",
+    color: "#16845B",
+    Icon: Mountain,
+    to: "/attractions",
+    cta: "Browse attractions",
+  },
+  accommodation: {
+    label: "Accommodation",
+    color: "#2563EB",
+    Icon: Hotel,
+    to: "/accommodations",
+    cta: "Browse stays",
+  },
+  restaurant: {
+    label: "Restaurant",
+    color: "#C2410C",
+    Icon: UtensilsCrossed,
+    to: "/restaurants",
+    cta: "Browse restaurants",
+  },
+};
 
 const normalizeMapLabel = (value: unknown): string =>
   String(value ?? "")
@@ -457,6 +536,26 @@ const createWelcomeAccommodationMarkerIcon = () =>
     tooltipAnchor: [0, -43],
   });
 
+const createWelcomeRestaurantMarkerIcon = () =>
+  L.divIcon({
+    className: "welcome-map-restaurant-marker",
+    html: `
+      <div class="welcome-map-restaurant-pin">
+        <div class="welcome-map-accommodation-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+            <path d="M7 2v20"/>
+            <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+          </svg>
+        </div>
+      </div>
+    `,
+    iconSize: [44, 52],
+    iconAnchor: [22, 49],
+    popupAnchor: [0, -47],
+    tooltipAnchor: [0, -43],
+  });
+
 const WelcomeMapScaleControl: React.FC = () => {
   const map = useMap();
 
@@ -528,7 +627,8 @@ const WelcomeMapLocateControl: React.FC = () => {
 const WelcomeMapFitPlaces: React.FC<{
   attractions: WelcomeMapAttraction[];
   accommodations: WelcomeMapAccommodation[];
-}> = ({ attractions, accommodations }) => {
+  restaurants: WelcomeMapRestaurant[];
+}> = ({ attractions, accommodations, restaurants }) => {
   const map = useMap();
 
   useEffect(() => {
@@ -537,6 +637,9 @@ const WelcomeMapFitPlaces: React.FC<{
         (place) => [place.coordinates.lat, place.coordinates.lng] as [number, number],
       ),
       ...accommodations.map(
+        (place) => [place.coordinates.lat, place.coordinates.lng] as [number, number],
+      ),
+      ...restaurants.map(
         (place) => [place.coordinates.lat, place.coordinates.lng] as [number, number],
       ),
     ];
@@ -556,15 +659,122 @@ const WelcomeMapFitPlaces: React.FC<{
       maxZoom: 14,
       animate: false,
     });
-  }, [map, attractions, accommodations]);
+  }, [map, attractions, accommodations, restaurants]);
 
   return null;
 };
 
+/* Moves the map so the tapped pin stays visible next to the details card */
+const WelcomeMapFocus: React.FC<{ place: SelectedMapPlace | null }> = ({
+  place,
+}) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!place) return;
+
+    const zoom = Math.max(map.getZoom(), 14);
+    const size = map.getSize();
+    const target = L.latLng(place.coordinates.lat, place.coordinates.lng);
+
+    let point = map.project(target, zoom);
+
+    if (window.innerWidth < 768) {
+      // bottom sheet on phones: lift the pin into the visible upper area
+      point = point.add([0, size.y * 0.2]);
+    } else {
+      // side card on larger screens: keep the pin to the right of the card
+      point = point.subtract([170, 0]);
+    }
+
+    map.flyTo(map.unproject(point, zoom), zoom, { duration: 0.6 });
+  }, [map, place]);
+
+  return null;
+};
+
+const WelcomeMapClickAway: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  useMapEvents({
+    click: onClose,
+  });
+
+  return null;
+};
+
+/* Swipeable photos inside the pin card */
+const WelcomeMapPlaceImages: React.FC<{
+  images: string[];
+  name: string;
+  kind: WelcomeMapPlaceKind;
+}> = ({ images, name, kind }) => {
+  const [index, setIndex] = useState(0);
+  const [failed, setFailed] = useState<Record<number, boolean>>({});
+  const trackRef = useRef<HTMLDivElement | null>(null);
+
+  const meta = WELCOME_KIND_META[kind];
+  const Icon = meta.Icon;
+  const visible = images.filter(Boolean);
+
+  const handleScroll = () => {
+    const track = trackRef.current;
+
+    if (!track || !track.clientWidth) return;
+
+    setIndex(Math.round(track.scrollLeft / track.clientWidth));
+  };
+
+  if (visible.length === 0) {
+    return (
+      <div className="welcome-map-card-media">
+        <div className="welcome-map-card-placeholder">
+          <Icon size={38} strokeWidth={1.6} aria-hidden="true" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="welcome-map-card-media">
+      <div className="welcome-map-card-track" ref={trackRef} onScroll={handleScroll}>
+        {visible.map((src, imageIndex) => (
+          <div className="welcome-map-card-slide" key={`${src}-${imageIndex}`}>
+            {failed[imageIndex] ? (
+              <div className="welcome-map-card-placeholder">
+                <Icon size={38} strokeWidth={1.6} aria-hidden="true" />
+              </div>
+            ) : (
+              <img
+                src={src}
+                alt={`${name} photo ${imageIndex + 1}`}
+                draggable={false}
+                onError={() =>
+                  setFailed((previous) => ({ ...previous, [imageIndex]: true }))
+                }
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {visible.length > 1 && (
+        <span className="welcome-map-card-counter">
+          {Math.min(index + 1, visible.length)} / {visible.length}
+        </span>
+      )}
+    </div>
+  );
+};
+
+const toWebsiteHref = (website: string): string =>
+  /^https?:\/\//i.test(website) ? website : `https://${website}`;
+
 const WelcomeMap: React.FC<{
   attractions: WelcomeMapAttraction[];
   accommodations: WelcomeMapAccommodation[];
-}> = ({ attractions, accommodations }) => {
+  restaurants: WelcomeMapRestaurant[];
+}> = ({ attractions, accommodations, restaurants }) => {
+  const [selected, setSelected] = useState<SelectedMapPlace | null>(null);
+
   const attractionIcons = useMemo(
     () =>
       new Map(
@@ -581,8 +791,28 @@ const WelcomeMap: React.FC<{
     [],
   );
 
+  const restaurantIcon = useMemo(() => createWelcomeRestaurantMarkerIcon(), []);
+
+  const closeCard = useCallback(() => setSelected(null), []);
+
+  // Close the card with the Escape key
+  useEffect(() => {
+    if (!selected) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelected(null);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selected]);
+
+  const selectedMeta = selected ? WELCOME_KIND_META[selected.kind] : null;
+  const SelectedIcon = selectedMeta?.Icon;
+
   return (
-    <div className="welcome-map-shell">
+    <div className={`welcome-map-shell ${selected ? "has-card" : ""}`}>
       <MapContainer
         center={DEFAULT_CALBAYOG_CENTER}
         zoom={12}
@@ -598,7 +828,11 @@ const WelcomeMap: React.FC<{
         <WelcomeMapFitPlaces
           attractions={attractions}
           accommodations={accommodations}
+          restaurants={restaurants}
         />
+
+        <WelcomeMapFocus place={selected} />
+        <WelcomeMapClickAway onClose={closeCard} />
 
         <LayersControl position="topright">
           <LayersControl.BaseLayer checked name="Street">
@@ -645,6 +879,14 @@ const WelcomeMap: React.FC<{
             position={[place.coordinates.lat, place.coordinates.lng]}
             icon={attractionIcons.get(place.id)}
             zIndexOffset={100}
+            eventHandlers={{
+              click: () =>
+                setSelected({
+                  ...place,
+                  kind: "attraction",
+                  subtitle: place.subcategory || place.category,
+                }),
+            }}
           >
             <Tooltip
               permanent
@@ -658,26 +900,6 @@ const WelcomeMap: React.FC<{
                 <span className="welcome-map-label-sub">{place.subcategory}</span>
               )}
             </Tooltip>
-
-            <Popup>
-              <div className="welcome-map-popup">
-                <div className="welcome-map-popup-badge">
-                  <MapPin size={10} />
-                  Attraction
-                </div>
-                <h3 className="welcome-map-popup-title">{place.name}</h3>
-                {(place.category || place.subcategory) && (
-                  <p className="welcome-map-popup-category">
-                    {[place.category, place.subcategory]
-                      .filter(Boolean)
-                      .join(" • ")}
-                  </p>
-                )}
-                {place.address && (
-                  <p className="welcome-map-popup-address">{place.address}</p>
-                )}
-              </div>
-            </Popup>
           </Marker>
         ))}
 
@@ -687,6 +909,14 @@ const WelcomeMap: React.FC<{
             position={[place.coordinates.lat, place.coordinates.lng]}
             icon={accommodationIcon}
             zIndexOffset={80}
+            eventHandlers={{
+              click: () =>
+                setSelected({
+                  ...place,
+                  kind: "accommodation",
+                  subtitle: place.type || "Hotels & Resorts",
+                }),
+            }}
           >
             <Tooltip
               permanent
@@ -700,25 +930,138 @@ const WelcomeMap: React.FC<{
                 <span className="welcome-map-label-sub">{place.type}</span>
               )}
             </Tooltip>
+          </Marker>
+        ))}
 
-            <Popup>
-              <div className="welcome-map-popup">
-                <div className="welcome-map-popup-badge accommodation">
-                  <Hotel size={10} />
-                  Accommodation
-                </div>
-                <h3 className="welcome-map-popup-title">{place.name}</h3>
-                {place.type && (
-                  <p className="welcome-map-popup-category">{place.type}</p>
-                )}
-                {place.address && (
-                  <p className="welcome-map-popup-address">{place.address}</p>
-                )}
-              </div>
-            </Popup>
+        {restaurants.map((place) => (
+          <Marker
+            key={`welcome-restaurant-${place.id}`}
+            position={[place.coordinates.lat, place.coordinates.lng]}
+            icon={restaurantIcon}
+            zIndexOffset={90}
+            eventHandlers={{
+              click: () =>
+                setSelected({
+                  ...place,
+                  kind: "restaurant",
+                  subtitle: place.cuisine || "Restaurant",
+                }),
+            }}
+          >
+            <Tooltip
+              permanent
+              direction="top"
+              offset={[0, -4]}
+              opacity={1}
+              className="welcome-map-label restaurant"
+            >
+              <span className="welcome-map-label-name">{place.name}</span>
+              {place.cuisine && (
+                <span className="welcome-map-label-sub">{place.cuisine}</span>
+              )}
+            </Tooltip>
           </Marker>
         ))}
       </MapContainer>
+
+      {/* PIN DETAILS — appears when a pin is tapped */}
+      {selected && selectedMeta && SelectedIcon && (
+        <aside
+          className="welcome-map-place-card"
+          role="dialog"
+          aria-label={`${selected.name} details`}
+          style={{ "--kind-color": selectedMeta.color } as React.CSSProperties}
+        >
+          <button
+            type="button"
+            className="welcome-map-place-close"
+            onClick={closeCard}
+            aria-label="Close details"
+          >
+            <X size={16} strokeWidth={2.2} />
+          </button>
+
+          <WelcomeMapPlaceImages
+            key={`${selected.kind}-${selected.id}`}
+            images={selected.images}
+            name={selected.name}
+            kind={selected.kind}
+          />
+
+          <div className="welcome-map-place-body">
+            <div className="welcome-map-place-badges">
+              <span
+                className="welcome-map-place-badge"
+                style={{
+                  color: selectedMeta.color,
+                  background: `${selectedMeta.color}14`,
+                }}
+              >
+                <SelectedIcon size={11} strokeWidth={2.2} aria-hidden="true" />
+                {selectedMeta.label}
+              </span>
+
+              {selected.subtitle && (
+                <span className="welcome-map-place-chip">{selected.subtitle}</span>
+              )}
+            </div>
+
+            <h3 className="welcome-map-place-title">{selected.name}</h3>
+
+            {selected.description && (
+              <p className="welcome-map-place-desc">{selected.description}</p>
+            )}
+
+            <ul className="welcome-map-place-info">
+              <li>
+                <MapPin size={15} strokeWidth={2} aria-hidden="true" />
+                <span>{selected.address || "Address not available"}</span>
+              </li>
+
+              {selected.hours && (
+                <li>
+                  <Clock3 size={15} strokeWidth={2} aria-hidden="true" />
+                  <span>{selected.hours}</span>
+                </li>
+              )}
+
+              {selected.phone && (
+                <li>
+                  <Phone size={15} strokeWidth={2} aria-hidden="true" />
+                  <a href={`tel:${selected.phone.replace(/\s+/g, "")}`}>
+                    {selected.phone}
+                  </a>
+                </li>
+              )}
+
+              {selected.price && (
+                <li>
+                  <Tag size={15} strokeWidth={2} aria-hidden="true" />
+                  <span>{selected.price}</span>
+                </li>
+              )}
+
+              {selected.website && (
+                <li>
+                  <Globe2 size={15} strokeWidth={2} aria-hidden="true" />
+                  <a
+                    href={toWebsiteHref(selected.website)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {selected.website}
+                  </a>
+                </li>
+              )}
+            </ul>
+
+            <Link to={selectedMeta.to} className="welcome-map-place-cta">
+              {selectedMeta.cta}
+              <ChevronRight size={15} strokeWidth={2.2} aria-hidden="true" />
+            </Link>
+          </div>
+        </aside>
+      )}
 
       <div className="welcome-map-legend" aria-label="Map legend">
         <span>
@@ -728,6 +1071,10 @@ const WelcomeMap: React.FC<{
         <span>
           <span className="welcome-map-legend-dot accommodation" />
           Accommodations
+        </span>
+        <span>
+          <span className="welcome-map-legend-dot restaurant" />
+          Restaurants
         </span>
       </div>
     </div>
@@ -776,6 +1123,30 @@ const toEventCardItem = (item: any): EventCardItem => ({
     "",
 });
 
+/* Shared pin details for the map card */
+const getWelcomePlaceDetails = (item: any) => ({
+  images: toImageList(item?.images),
+  description: getWelcomeFirstValue(item, ["short_description", "description"]),
+  phone: getWelcomeFirstValue(item, [
+    "mobile",
+    "contact_phone",
+    "contact_number",
+    "phone",
+  ]),
+  hours: getWelcomeFirstValue(item, ["operational_hours", "opening_hours"]),
+  price: getWelcomeFirstValue(item, ["entrance_fee", "price_range"]),
+  website: getWelcomeFirstValue(item, ["website", "contact_website"]),
+});
+
+/* A poster frame so featured videos are not a black box before playing */
+const getFeaturedVideoPoster = (video: any): string | undefined =>
+  video?.thumbnail_url ||
+  video?.poster_url ||
+  video?.thumbnail ||
+  video?.poster ||
+  video?.image_url ||
+  undefined;
+
 /* =========================================================
    WELCOME COMPONENT
 ========================================================= */
@@ -820,6 +1191,7 @@ const Welcome: React.FC = () => {
 
   const [mapAttractions, setMapAttractions] = useState<WelcomeMapAttraction[]>([]);
   const [mapAccommodations, setMapAccommodations] = useState<WelcomeMapAccommodation[]>([]);
+  const [mapRestaurants, setMapRestaurants] = useState<WelcomeMapRestaurant[]>([]);
   const [loadingMap, setLoadingMap] = useState(true);
 
   /* ---------- image rotation ---------- */
@@ -1164,7 +1536,21 @@ const Welcome: React.FC = () => {
     try {
       const response: any = await getRestaurants({ show_on_welcome: true });
 
-      const data = Array.isArray(response?.data) ? response.data : [];
+      let data = Array.isArray(response?.data) ? response.data : [];
+
+      // The restaurant admin form has no "show on welcome" switch, so if nothing is
+      // flagged, fall back to the active restaurants (featured ones first).
+      if (data.length === 0) {
+        const fallback: any = await (getRestaurants as any)();
+        const all = Array.isArray(fallback?.data) ? fallback.data : [];
+
+        data = all
+          .filter((restaurant: any) => restaurant?.is_active !== false)
+          .sort(
+            (a: any, b: any) =>
+              Number(Boolean(b?.featured)) - Number(Boolean(a?.featured)),
+          );
+      }
 
       const selected: RestaurantCardItem[] = data
         .map(toRestaurantCardItem)
@@ -1226,10 +1612,16 @@ const Welcome: React.FC = () => {
     setLoadingMap(true);
 
     try {
-      const [attractionsResponse, accommodationsResponse] = await Promise.all([
-        getAttractions(),
-        getAccommodations(),
-      ]);
+      const [attractionsResponse, accommodationsResponse, restaurantsResponse] =
+        await Promise.all([
+          getAttractions(),
+          getAccommodations(),
+          // restaurants must never break the rest of the map
+          ((getRestaurants as any)() as Promise<any>).catch((error: unknown) => {
+            console.error("Failed to load restaurant map pins:", error);
+            return { data: [] };
+          }),
+        ]);
 
       const attractionData = Array.isArray(attractionsResponse?.data)
         ? attractionsResponse.data
@@ -1237,6 +1629,10 @@ const Welcome: React.FC = () => {
 
       const accommodationData = Array.isArray(accommodationsResponse?.data)
         ? accommodationsResponse.data
+        : [];
+
+      const restaurantData = Array.isArray(restaurantsResponse?.data)
+        ? restaurantsResponse.data
         : [];
 
       const nextAttractions = attractionData
@@ -1259,6 +1655,7 @@ const Welcome: React.FC = () => {
               "address",
             ]),
             coordinates,
+            ...getWelcomePlaceDetails(item),
           };
         })
         .filter(Boolean) as WelcomeMapAttraction[];
@@ -1283,16 +1680,41 @@ const Welcome: React.FC = () => {
               "location_address",
             ]),
             coordinates,
+            ...getWelcomePlaceDetails(item),
           };
         })
         .filter(Boolean) as WelcomeMapAccommodation[];
 
+      const nextRestaurants = restaurantData
+        .filter((item: any) => item?.is_active !== false)
+        .map((item: any) => {
+          const coordinates = getWelcomeCoordinates(item);
+          const id = String(item?.id ?? "").trim();
+
+          if (!coordinates || !id) return null;
+
+          return {
+            id,
+            name: String(item?.name ?? "Unnamed restaurant").trim(),
+            cuisine: getWelcomeFirstValue(item, ["cuisine_type", "cuisine"]),
+            address: getWelcomeFirstValue(item, [
+              "location_address",
+              "address",
+            ]),
+            coordinates,
+            ...getWelcomePlaceDetails(item),
+          };
+        })
+        .filter(Boolean) as WelcomeMapRestaurant[];
+
       setMapAttractions(nextAttractions);
       setMapAccommodations(nextAccommodations);
+      setMapRestaurants(nextRestaurants);
     } catch (error) {
       console.error("Failed to load Welcome Page map pins:", error);
       setMapAttractions([]);
       setMapAccommodations([]);
+      setMapRestaurants([]);
     } finally {
       setLoadingMap(false);
     }
@@ -1390,8 +1812,6 @@ const Welcome: React.FC = () => {
      DERIVED VALUES
   ========================================================= */
 
-  const currentHero = heroSlides[activeSlide];
-
   const weatherDescription = getWeatherDescription(weather.weatherCode);
 
   const weatherText = weather.loading
@@ -1423,13 +1843,20 @@ const Welcome: React.FC = () => {
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseLeave}
           >
-            <img
-              key={currentHero.id}
-              src={currentHero.image}
-              alt={currentHero.alt}
-              className="welcome-hero-image"
-              draggable={false}
-            />
+            {/* every slide stays mounted and cross-fades, so changes are smooth */}
+            {heroSlides.map((slide, index) => (
+              <img
+                key={slide.id}
+                src={slide.image}
+                alt={slide.alt}
+                className={`welcome-hero-image ${
+                  index === activeSlide ? "is-active" : ""
+                }`}
+                draggable={false}
+                decoding="async"
+                aria-hidden={index !== activeSlide}
+              />
+            ))}
 
             <div className="welcome-hero-overlay" />
 
@@ -1552,45 +1979,56 @@ const Welcome: React.FC = () => {
                 <WelcomeMap
                   attractions={mapAttractions}
                   accommodations={mapAccommodations}
+                  restaurants={mapRestaurants}
                 />
               )}
             </div>
           </div>
 
-          <Row className="g-3 g-md-4 welcome-quick-grid">
+          <Row className="g-3 g-md-4 welcome-quick-grid justify-content-center">
             {quickCards
               .filter(
                 (card) => card.to !== "/memories" || isUserAuthenticated,
               )
-              .map((card) => (
-                <Col xs={4} sm={4} md={3} lg={3} key={card.to}>
-                  <Link
-                    to={card.to}
-                    className="welcome-quick-link"
-                    onClick={(event) =>
-                      handleProtectedQuickCardClick(event, card.to)
-                    }
-                  >
-                    <Card className="quick-card welcome-quick-card text-center border-0 h-100">
-                      <Card.Body className="quick-card-body">
-                        <div
-                          className="quick-card-icon-wrap"
-                          style={{ background: card.bg }}
-                        >
-                          <span className="quick-card-icon">{card.icon}</span>
-                        </div>
+              .map((card) => {
+                const QuickIcon = card.icon;
 
-                        <div
-                          className="quick-card-label"
-                          style={{ color: card.color }}
-                        >
-                          {card.label}
-                        </div>
-                      </Card.Body>
-                    </Card>
-                  </Link>
-                </Col>
-              ))}
+                return (
+                  <Col xs={6} sm={4} md={3} lg key={card.to}>
+                    <Link
+                      to={card.to}
+                      className="welcome-quick-link"
+                      onClick={(event) =>
+                        handleProtectedQuickCardClick(event, card.to)
+                      }
+                    >
+                      <div
+                        className="welcome-quick-card"
+                        style={
+                          {
+                            "--qc-from": card.from,
+                            "--qc-to": card.toColor,
+                            "--qc-glow": card.glow,
+                          } as React.CSSProperties
+                        }
+                      >
+                        <span className="welcome-quick-tile">
+                          <QuickIcon
+                            size={24}
+                            strokeWidth={1.8}
+                            aria-hidden="true"
+                          />
+                        </span>
+
+                        <span className="welcome-quick-text">
+                          <span className="quick-card-label">{card.label}</span>
+                          <span className="welcome-quick-hint">{card.hint}</span>
+                        </span>
+                      </div>
+                    </Link>
+                  </Col>
+                );
+              })}
           </Row>
         </section>
 
@@ -1609,7 +2047,7 @@ const Welcome: React.FC = () => {
             />
 
             <div className="welcome-attractions-toolbar">
-              <Link to="/attractions" className="welcome-view-more-button">
+              <Link to="/attractions" className="welcome-view-more-link">
                 View more attractions
                 <ChevronRight size={17} strokeWidth={2} aria-hidden="true" />
               </Link>
@@ -1750,7 +2188,7 @@ const Welcome: React.FC = () => {
             />
 
             <div className="welcome-attractions-toolbar">
-              <Link to="/restaurants" className="welcome-view-more-button">
+              <Link to="/restaurants" className="welcome-view-more-link">
                 View more restaurants
                 <ChevronRight size={17} strokeWidth={2} aria-hidden="true" />
               </Link>
@@ -1808,7 +2246,7 @@ const Welcome: React.FC = () => {
             />
 
             <div className="welcome-attractions-toolbar">
-              <Link to="/events" className="welcome-view-more-button">
+              <Link to="/events" className="welcome-view-more-link">
                 View more events
                 <ChevronRight size={17} strokeWidth={2} aria-hidden="true" />
               </Link>
@@ -1941,7 +2379,8 @@ const Welcome: React.FC = () => {
                           className="welcome-video-player"
                           controls={activeVideo === index}
                           playsInline
-                          preload={activeVideo === index ? "metadata" : "none"}
+                          preload="metadata"
+                          poster={getFeaturedVideoPoster(video)}
                           onPlay={(event) => {
                             Object.entries(videoRefs.current).forEach(
                               ([videoId, videoElement]) => {
@@ -1961,7 +2400,11 @@ const Welcome: React.FC = () => {
                             }
                           }}
                         >
-                          <source src={video.video_url} type="video/mp4" />
+                          {/* #t=0.1 makes the browser show the first frame instead of black */}
+                          <source
+                            src={`${video.video_url}#t=0.1`}
+                            type="video/mp4"
+                          />
                           Your browser does not support the video element.
                         </video>
 
@@ -2150,13 +2593,15 @@ const Welcome: React.FC = () => {
         .welcome-map-locate-control button:hover { background: #fff; }
 
         .welcome-map-attraction-marker,
-        .welcome-map-accommodation-marker {
+        .welcome-map-accommodation-marker,
+        .welcome-map-restaurant-marker {
           background: transparent !important;
           border: 0 !important;
         }
 
         .welcome-map-marker-shell,
-        .welcome-map-accommodation-pin {
+        .welcome-map-accommodation-pin,
+        .welcome-map-restaurant-pin {
           position: relative;
           width: 44px;
           height: 52px;
@@ -2195,7 +2640,8 @@ const Welcome: React.FC = () => {
 
         .welcome-map-marker-icon { font-size: 14px; line-height: 1; }
 
-        .welcome-map-accommodation-pin::before {
+        .welcome-map-accommodation-pin::before,
+        .welcome-map-restaurant-pin::before {
           content: "";
           position: absolute;
           top: 0;
@@ -2204,10 +2650,12 @@ const Welcome: React.FC = () => {
           height: 38px;
           border-radius: 50% 50% 50% 0;
           transform: rotate(-45deg);
-          background: #2563EB;
           border: 3px solid #fff;
           box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
         }
+
+        .welcome-map-accommodation-pin::before { background: #2563EB; }
+        .welcome-map-restaurant-pin::before { background: #C2410C; }
 
         .welcome-map-label {
           padding: 5px 8px !important;
@@ -2237,44 +2685,7 @@ const Welcome: React.FC = () => {
         }
 
         .welcome-map-label.accommodation .welcome-map-label-name { color: #2563EB; }
-
-        .welcome-map-popup { min-width: 170px; font-family: Inter, sans-serif; }
-
-        .welcome-map-popup-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          padding: 4px 7px;
-          border-radius: 999px;
-          background: rgba(45, 49, 149, 0.10);
-          color: #2D3195;
-          font-size: 0.58rem;
-          font-weight: 800;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-        }
-
-        .welcome-map-popup-badge.accommodation {
-          background: rgba(37, 99, 235, 0.10);
-          color: #2563EB;
-        }
-
-        .welcome-map-popup-title {
-          margin: 8px 0 3px;
-          color: #222;
-          font-size: 0.88rem;
-          font-weight: 800;
-        }
-
-        .welcome-map-popup-category,
-        .welcome-map-popup-address {
-          margin: 0;
-          color: #666;
-          font-size: 0.68rem;
-          line-height: 1.45;
-        }
-
-        .welcome-map-popup-address { margin-top: 5px; }
+        .welcome-map-label.restaurant .welcome-map-label-name { color: #C2410C; }
 
         .welcome-map-legend {
           position: absolute;
@@ -2283,7 +2694,7 @@ const Welcome: React.FC = () => {
           z-index: 500;
           display: flex;
           flex-wrap: wrap;
-          gap: 6px;
+          gap: 6px 10px;
           padding: 7px 9px;
           border-radius: 10px;
           background: rgba(255, 255, 255, 0.93);
@@ -2304,6 +2715,226 @@ const Welcome: React.FC = () => {
 
         .welcome-map-legend-dot.attraction { background: #16845B; }
         .welcome-map-legend-dot.accommodation { background: #2563EB; }
+        .welcome-map-legend-dot.restaurant { background: #C2410C; }
+
+        .welcome-map-shell.has-card .welcome-map-legend { display: none; }
+
+        /* ---------- map pin details card ---------- */
+
+        .welcome-map-place-card {
+          position: absolute;
+          z-index: 1100;
+          top: 12px;
+          left: 58px;
+          width: min(330px, calc(100% - 150px));
+          max-height: calc(100% - 24px);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          border-radius: 18px;
+          background: #ffffff;
+          box-shadow: 0 18px 44px rgba(15, 23, 42, 0.28);
+          animation: welcome-map-card-in 0.28s ease both;
+        }
+
+        @keyframes welcome-map-card-in {
+          from { opacity: 0; transform: translateY(8px) scale(0.98); }
+          to { opacity: 1; transform: none; }
+        }
+
+        @keyframes welcome-map-sheet-in {
+          from { opacity: 0.6; transform: translateY(100%); }
+          to { opacity: 1; transform: none; }
+        }
+
+        .welcome-map-place-close {
+          position: absolute;
+          z-index: 3;
+          top: 10px;
+          right: 10px;
+          width: 30px;
+          height: 30px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          border: 0;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.96);
+          color: #333;
+          box-shadow: 0 3px 10px rgba(15, 23, 42, 0.22);
+          cursor: pointer;
+          transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        .welcome-map-place-close:hover { background: #fff; transform: scale(1.06); }
+
+        .welcome-map-card-media {
+          position: relative;
+          flex: 0 0 auto;
+          height: 170px;
+          background: #eef0ff;
+        }
+
+        .welcome-map-card-track {
+          display: flex;
+          height: 100%;
+          overflow-x: auto;
+          scroll-snap-type: x mandatory;
+          scrollbar-width: none;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .welcome-map-card-track::-webkit-scrollbar { display: none; }
+
+        .welcome-map-card-slide {
+          flex: 0 0 100%;
+          height: 100%;
+          scroll-snap-align: center;
+        }
+
+        .welcome-map-card-slide img {
+          width: 100%;
+          height: 100%;
+          display: block;
+          object-fit: cover;
+        }
+
+        .welcome-map-card-placeholder {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #ffffff;
+          background: linear-gradient(135deg, var(--kind-color, #2D3195), #1d2061);
+        }
+
+        .welcome-map-card-counter {
+          position: absolute;
+          left: 10px;
+          bottom: 10px;
+          padding: 3px 9px;
+          border-radius: 999px;
+          background: rgba(15, 17, 28, 0.6);
+          color: #ffffff;
+          font-size: 0.6rem;
+          font-weight: 700;
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+        }
+
+        .welcome-map-place-body {
+          padding: 14px 16px 16px;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+        }
+
+        .welcome-map-place-badges {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 8px;
+        }
+
+        .welcome-map-place-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 8px;
+          border-radius: 999px;
+          font-size: 0.58rem;
+          font-weight: 800;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+
+        .welcome-map-place-chip {
+          padding: 4px 8px;
+          border-radius: 999px;
+          background: #f3f4f8;
+          color: #656a78;
+          font-size: 0.6rem;
+          font-weight: 700;
+        }
+
+        .welcome-map-place-title {
+          margin: 0 0 6px;
+          color: #1b1d24;
+          font-size: 1rem;
+          font-weight: 800;
+          line-height: 1.3;
+          overflow-wrap: anywhere;
+        }
+
+        .welcome-map-place-desc {
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          margin: 0 0 10px;
+          color: #6b7080;
+          font-size: 0.7rem;
+          line-height: 1.6;
+        }
+
+        .welcome-map-place-info {
+          display: flex;
+          flex-direction: column;
+          gap: 9px;
+          margin: 0 0 14px;
+          padding: 12px 0 0;
+          border-top: 1px solid #eef0f4;
+          list-style: none;
+        }
+
+        .welcome-map-place-info li {
+          display: flex;
+          align-items: flex-start;
+          gap: 9px;
+          color: #3c4150;
+          font-size: 0.7rem;
+          line-height: 1.5;
+          overflow-wrap: anywhere;
+        }
+
+        .welcome-map-place-info li svg {
+          flex: 0 0 auto;
+          margin-top: 2px;
+          color: var(--kind-color, #2D3195);
+        }
+
+        .welcome-map-place-info a {
+          color: #2D3195;
+          font-weight: 700;
+          text-decoration: none;
+        }
+
+        .welcome-map-place-info a:hover { text-decoration: underline; }
+
+        .welcome-map-place-cta {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          width: 100%;
+          min-height: 40px;
+          border-radius: 12px;
+          background: #2D3195;
+          color: #ffffff;
+          font-size: 0.72rem;
+          font-weight: 700;
+          text-decoration: none;
+          transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .welcome-map-place-cta:hover {
+          background: #242879;
+          color: #ffffff;
+          text-decoration: none;
+          transform: translateY(-1px);
+        }
 
         /* ---------- intro + headings ---------- */
 
@@ -2445,50 +3076,88 @@ const Welcome: React.FC = () => {
 
         /* ---------- quick cards ---------- */
 
-        .welcome-quick-grid { margin-top: 0; row-gap: 42px; }
+        .welcome-quick-grid { margin-top: 0; }
 
         .welcome-quick-link,
-        .welcome-quick-link:hover { color: inherit; text-decoration: none; }
-
-        .welcome-quick-card,
-        .quick-card-body,
-        .quick-card-label { font-family: "Inter", sans-serif; }
-
-        .quick-card-label { font-weight: 600; }
-
-        .welcome-quick-card {
-          background: transparent !important;
-          transition: transform 0.22s ease;
+        .welcome-quick-link:hover {
+          display: block;
+          height: 100%;
+          color: inherit;
+          text-decoration: none;
         }
 
-        .welcome-quick-card:hover { transform: translateY(-3px); }
+        .welcome-quick-card {
+          --qc-from: #2D3195;
+          --qc-to: #5F65D6;
+          --qc-glow: rgba(45, 49, 149, 0.26);
 
-        .welcome-quick-card .quick-card-body { padding: 0.2rem 0.15rem; }
+          position: relative;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 11px;
+          padding: 21px 12px 17px;
+          overflow: hidden;
+          text-align: center;
+          border: 1px solid #edeff6;
+          border-radius: 20px;
+          background: #ffffff;
+          box-shadow: 0 4px 16px rgba(27, 35, 74, 0.05);
+          transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+        }
 
-        .welcome-quick-card .quick-card-icon-wrap {
+        .welcome-quick-card::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: linear-gradient(90deg, var(--qc-from), var(--qc-to));
+        }
+
+        .welcome-quick-link:hover .welcome-quick-card {
+          transform: translateY(-4px);
+          border-color: transparent;
+          box-shadow: 0 14px 30px var(--qc-glow);
+        }
+
+        .welcome-quick-tile {
           width: 54px;
           height: 54px;
-          margin: 0 auto 10px;
           display: flex;
           align-items: center;
           justify-content: center;
           border-radius: 17px;
-          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
-          transition: transform 0.22s ease, box-shadow 0.22s ease;
+          color: #ffffff;
+          background: linear-gradient(135deg, var(--qc-from), var(--qc-to));
+          box-shadow: 0 8px 18px var(--qc-glow);
+          transition: transform 0.25s ease;
         }
 
-        .welcome-quick-card:hover .quick-card-icon-wrap {
-          transform: translateY(-2px);
-          box-shadow: 0 9px 20px rgba(0, 0, 0, 0.09);
+        .welcome-quick-link:hover .welcome-quick-tile { transform: scale(1.07) rotate(-3deg); }
+
+        .welcome-quick-text {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
         }
 
-        .welcome-quick-card .quick-card-icon {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
+        .quick-card-label {
+          color: #1f2433;
+          font-size: 0.8rem;
+          font-weight: 700;
+          line-height: 1.25;
         }
 
-        .welcome-quick-card .quick-card-label { font-size: 0.74rem; line-height: 1.25; }
+        .welcome-quick-hint {
+          color: #7b8191;
+          font-size: 0.64rem;
+          font-weight: 500;
+          line-height: 1.35;
+        }
 
         /* ---------- toolbars + view more ---------- */
 
@@ -2499,32 +3168,6 @@ const Welcome: React.FC = () => {
           align-items: center;
           width: 100%;
           margin: -0.25rem 0 1.05rem;
-        }
-
-        .welcome-view-more-button {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 5px;
-          min-height: 42px;
-          padding: 0.65rem 1rem;
-          border: 1px solid rgba(45, 49, 149, 0.22);
-          border-radius: 999px;
-          background: #ffffff;
-          color: #2D3195;
-          font-size: 0.78rem;
-          font-weight: 700;
-          text-decoration: none;
-          box-shadow: 0 5px 16px rgba(0, 0, 0, 0.06);
-          transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-        }
-
-        .welcome-view-more-button:hover {
-          color: #2D3195;
-          background: #f8f8ff;
-          text-decoration: none;
-          transform: translateY(-2px);
-          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.09);
         }
 
         .welcome-view-more-link {
@@ -2637,7 +3280,7 @@ const Welcome: React.FC = () => {
           width: 100%;
           aspect-ratio: 16 / 9;
           overflow: hidden;
-          background: #10131c;
+          background: linear-gradient(135deg, #1b2036, #10131c);
         }
 
         .welcome-video-player {
@@ -2831,6 +3474,7 @@ const Welcome: React.FC = () => {
 
         .welcome-hero-slider:active { cursor: grabbing; }
 
+        /* all slides are stacked; the active one fades in with a slow, gentle zoom */
         .welcome-hero-image {
           position: absolute;
           inset: 0;
@@ -2840,17 +3484,28 @@ const Welcome: React.FC = () => {
           object-position: center;
           display: block;
           pointer-events: none;
-          animation: welcomeHeroImageFade 0.65s ease;
+          opacity: 0;
+          transform: scale(1.07);
+          transition:
+            opacity 1.1s ease-in-out,
+            transform 0s linear 1.1s;
+          will-change: opacity, transform;
+          backface-visibility: hidden;
         }
 
-        @keyframes welcomeHeroImageFade {
-          from { opacity: 0.45; transform: scale(1.035); }
-          to { opacity: 1; transform: scale(1); }
+        .welcome-hero-image.is-active {
+          z-index: 1;
+          opacity: 1;
+          transform: scale(1);
+          transition:
+            opacity 1.1s ease-in-out,
+            transform 7s ease-out;
         }
 
         .welcome-hero-overlay {
           position: absolute;
           inset: 0;
+          z-index: 2;
           pointer-events: none;
           background:
             linear-gradient(90deg, rgba(0,0,0,0.68) 0%, rgba(0,0,0,0.52) 25%, rgba(0,0,0,0.25) 52%, rgba(0,0,0,0.06) 100%),
@@ -3000,7 +3655,6 @@ const Welcome: React.FC = () => {
           .welcome-section-heading { margin-bottom: 2.4rem; }
           .welcome-main-heading { margin-bottom: 6px; }
           .welcome-explore-mobile-bunting { margin-bottom: 14px; }
-          .welcome-quick-grid { row-gap: 38px; }
 
           .welcome-accommodations-section,
           .welcome-videos-section { margin-top: 75px; }
@@ -3016,6 +3670,22 @@ const Welcome: React.FC = () => {
 
           .welcome-map-shell,
           .welcome-map-loading { height: 360px; }
+
+          /* pin details become a bottom sheet */
+          .welcome-map-place-card {
+            top: auto;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            max-height: 64%;
+            border-radius: 20px 20px 0 0;
+            animation-name: welcome-map-sheet-in;
+          }
+
+          .welcome-map-card-media { height: 140px; }
+          .welcome-map-place-body { padding: 12px 15px 15px; }
+          .welcome-map-place-title { font-size: 0.94rem; }
 
           .welcome-container { padding-left: 15px; padding-right: 15px; }
 
@@ -3079,18 +3749,12 @@ const Welcome: React.FC = () => {
           .welcome-accommodations-title,
           .welcome-videos-title { font-size: 1.45rem; }
 
-          .welcome-quick-grid { row-gap: 32px; }
+          .welcome-quick-card { padding: 17px 10px 14px; gap: 9px; border-radius: 18px; }
+          .welcome-quick-tile { width: 47px; height: 47px; border-radius: 15px; }
+          .welcome-quick-tile svg { width: 22px; height: 22px; }
+          .quick-card-label { font-size: 0.74rem; }
+          .welcome-quick-hint { font-size: 0.6rem; }
 
-          .welcome-quick-card .quick-card-icon-wrap {
-            width: 48px;
-            height: 48px;
-            margin-bottom: 8px;
-            border-radius: 15px;
-          }
-
-          .welcome-quick-card .quick-card-label { font-size: 0.67rem; }
-
-          .welcome-view-more-button { min-height: 40px; padding: 0.58rem 0.9rem; font-size: 0.72rem; }
           .welcome-view-more-link { font-size: 0.72rem; }
 
           .welcome-explore-section,
@@ -3129,6 +3793,8 @@ const Welcome: React.FC = () => {
           .welcome-map-shell,
           .welcome-map-loading { height: 330px; border-radius: 20px; }
 
+          .welcome-map-card-media { height: 124px; }
+
           .welcome-hero-slider { height: 220px; border-radius: 18px; }
           .welcome-hero-content { left: 18px; right: 18px; bottom: 31px; }
           .welcome-hero-title { font-size: 1.60rem; margin-bottom: 9px; }
@@ -3148,7 +3814,6 @@ const Welcome: React.FC = () => {
           .welcome-heading-line { width: 18px; }
 
           .welcome-explore-mobile-bunting { margin-bottom: 12px; }
-          .welcome-quick-grid { row-gap: 38px; }
 
           .welcome-explore-section,
           .welcome-discover-section,
@@ -3175,8 +3840,11 @@ const Welcome: React.FC = () => {
           .welcome-intro-eyebrow { font-size: 0.48rem; }
           .welcome-intro-text { font-size: 0.59rem; }
 
-          .welcome-quick-card .quick-card-icon-wrap { width: 44px; height: 44px; border-radius: 14px; }
-          .welcome-quick-card .quick-card-label { font-size: 0.62rem; }
+          .welcome-quick-card { padding: 15px 8px 12px; }
+          .welcome-quick-tile { width: 42px; height: 42px; border-radius: 13px; }
+          .welcome-quick-tile svg { width: 20px; height: 20px; }
+          .quick-card-label { font-size: 0.68rem; }
+          .welcome-quick-hint { font-size: 0.56rem; }
 
           .welcome-mobile-bunting { width: min(90%, 280px); height: 15px; margin: 0 auto 12px; }
           .bunting-flag { height: 15px; }
@@ -3195,6 +3863,10 @@ const Welcome: React.FC = () => {
 
         @media (prefers-reduced-motion: reduce) {
           .welcome-hero-image,
+          .welcome-hero-image.is-active { transition: opacity 0.01ms linear !important; transform: none !important; }
+
+          .welcome-map-place-card { animation: none !important; }
+
           .welcome-map-loading-spinner,
           .welcome-video-loading-spinner { animation-duration: 0.01ms !important; }
         }
