@@ -1112,6 +1112,7 @@ const toRestaurantCardItem = (item: any): RestaurantCardItem => ({
   images: toImageList(item?.images),
 });
 
+/* Keeps the EventCard exactly as-is, including its own favorite heart */
 const toEventCardItem = (item: any): EventCardItem => ({
   ...item,
   id: String(item?.id ?? item?._id ?? "").trim(),
@@ -1121,6 +1122,7 @@ const toEventCardItem = (item: any): EventCardItem => ({
     item?.image_url ||
     toImageList(item?.images)[0] ||
     "",
+  favorites: item?.favorites ?? item?.favorite_count,
 });
 
 /* Shared pin details for the map card */
@@ -1534,23 +1536,18 @@ const Welcome: React.FC = () => {
     setLoadingRestaurants(true);
 
     try {
-      const response: any = await getRestaurants();
+      const response: any = await (getRestaurants as any)();
 
-      let data = Array.isArray(response?.data) ? response.data : [];
+      const all = Array.isArray(response?.data) ? response.data : [];
 
-      // The restaurant admin form has no "show on welcome" switch, so if nothing is
-      // flagged, fall back to the active restaurants (featured ones first).
-      if (data.length === 0) {
-        const fallback: any = await (getRestaurants as any)();
-        const all = Array.isArray(fallback?.data) ? fallback.data : [];
-
-        data = all
-          .filter((restaurant: any) => restaurant?.is_active !== false)
-          .sort(
-            (a: any, b: any) =>
-              Number(Boolean(b?.featured)) - Number(Boolean(a?.featured)),
-          );
-      }
+      // The restaurant admin form has no "show on welcome" switch, so show
+      // the active restaurants (featured ones first).
+      const data = all
+        .filter((restaurant: any) => restaurant?.is_active !== false)
+        .sort(
+          (a: any, b: any) =>
+            Number(Boolean(b?.featured)) - Number(Boolean(a?.featured)),
+        );
 
       const selected: RestaurantCardItem[] = data
         .map(toRestaurantCardItem)
@@ -1592,6 +1589,13 @@ const Welcome: React.FC = () => {
         .slice(0, WELCOME_CAROUSEL_LIMIT);
 
       setWelcomeEvents(selected);
+
+      // Same as attractions: seed the heart counters from the saved counts.
+      selected.forEach((event) => {
+        const count = Math.max(0, Number(event.favorites ?? 0) || 0);
+
+        setFavoriteCount("event", String(event.id), count);
+      });
     } catch (error) {
       console.error("Failed to load Welcome Page events:", error);
       setWelcomeEvents([]);
@@ -1601,7 +1605,8 @@ const Welcome: React.FC = () => {
   };
 
   const handleEventClick = (event: EventCardItem) => {
-    history.push("/events", { eventId: event.id });
+    // highlightId is what the Events page reads to open the event modal.
+    history.push("/events", { highlightId: event.id, eventId: event.id });
   };
 
   /* =========================================================
@@ -2220,7 +2225,7 @@ const Welcome: React.FC = () => {
         )}
 
         {/* =====================================================
-            EVENTS (swipe left / right)
+            EVENTS (swipe left / right) — EventCard with its own heart
         ===================================================== */}
 
         {!loadingEvents && welcomeEvents.length > 0 && (
@@ -2240,31 +2245,29 @@ const Welcome: React.FC = () => {
               </Link>
             </div>
 
-            <div className="welcome-attractions-carousel">
+            <div className="welcome-events-carousel">
               <Swiper
                 modules={[A11y]}
-                slidesPerView={1.5}
-                spaceBetween={12}
+                slidesPerView={1.6}
+                spaceBetween={6}
                 centeredSlides={false}
                 grabCursor
                 watchOverflow
                 resistanceRatio={0.85}
                 touchRatio={1}
+                touchStartPreventDefault={false}
                 breakpoints={{
-                  400: { slidesPerView: 1.8, spaceBetween: 14 },
-                  576: { slidesPerView: 2.4, spaceBetween: 16 },
-                  768: { slidesPerView: 3.2, spaceBetween: 18 },
-                  992: { slidesPerView: 3.8, spaceBetween: 22 },
-                  1200: { slidesPerView: 4.4, spaceBetween: 24 },
+                  400: { slidesPerView: 1.8, spaceBetween: 8 },
+                  576: { slidesPerView: 2.4, spaceBetween: 10 },
+                  768: { slidesPerView: 3.2, spaceBetween: 12 },
+                  992: { slidesPerView: 3.8, spaceBetween: 14 },
+                  1200: { slidesPerView: 4.3, spaceBetween: 16 },
                 }}
-                className="welcome-attractions-swiper welcome-events-swiper"
+                className="welcome-events-swiper"
               >
                 {welcomeEvents.map((event) => (
-                  <SwiperSlide
-                    key={event.id}
-                    className="welcome-attraction-slide welcome-event-slide"
-                  >
-                    <div className="welcome-attraction-card-shell">
+                  <SwiperSlide key={event.id} className="welcome-event-slide">
+                    <div className="welcome-event-card-shell">
                       <EventCard
                         event={event}
                         showFeatured={true}
@@ -3179,7 +3182,7 @@ const Welcome: React.FC = () => {
         .welcome-view-more-link:active { opacity: 0.55; transform: scale(0.95); }
         .welcome-view-more-link:active svg { transform: translateX(5px); }
 
-        /* ---------- swipe carousels (attractions / restaurants / events) ---------- */
+        /* ---------- swipe carousels (attractions / restaurants) ---------- */
 
         .welcome-attractions-carousel { width: 100%; overflow: hidden; }
 
@@ -3204,63 +3207,44 @@ const Welcome: React.FC = () => {
 
         .welcome-attraction-card-shell > * { width: 100%; }
 
-        /* ---------- Welcome events carousel spacing ---------- */
+        /* ---------- events carousel (circle cards + heart) ---------- */
 
-.welcome-events-carousel {
-  width: 100%;
-  overflow: hidden;
-  padding: 6px 0 12px;
-}
+        .welcome-events-carousel {
+          width: 100%;
+          overflow: hidden;
+          /* room so the hearts, shadows and hover never get clipped */
+          padding: 10px 0 14px;
+        }
 
-.welcome-events-swiper {
-  width: 100%;
-  padding: 12px 0 24px;
-  overflow: visible;
-}
+        .welcome-events-swiper {
+          width: 100%;
+          overflow: visible;
+          padding: 4px 0 10px;
+          touch-action: pan-y;
+        }
 
-.welcome-events-swiper .welcome-event-slide {
-  height: auto;
-  min-width: 0;
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-  padding: 8px 4px 12px;
-  box-sizing: border-box;
-}
+        .welcome-event-slide {
+          height: auto;
+          min-width: 0;
+          display: flex;
+          align-items: stretch;
+          justify-content: center;
+          padding: 6px 4px 8px;
+          box-sizing: border-box;
+        }
 
-.welcome-events-swiper .welcome-attraction-card-shell {
-  width: 100%;
-  min-width: 0;
-  display: flex;
-  justify-content: center;
-  align-items: stretch;
-}
+        .welcome-event-card-shell {
+          width: 100%;
+          min-width: 0;
+          display: flex;
+          justify-content: center;
+          align-items: stretch;
+        }
 
-.welcome-events-swiper .welcome-attraction-card-shell > * {
-  width: 100%;
-  min-width: 0;
-}
+        .welcome-event-card-shell > * { width: 100%; min-width: 0; }
 
-/* Preserve the single favorite button rendered by EventCard itself. */
-.welcome-events-swiper .shared-event-image-wrap {
-  overflow: visible;
-}
-
-@media (max-width: 575.98px) {
-  .welcome-events-carousel {
-    padding-top: 4px;
-  }
-
-  .welcome-events-swiper {
-    padding-top: 10px;
-    padding-bottom: 20px;
-  }
-
-  .welcome-events-swiper .welcome-event-slide {
-    padding-left: 3px;
-    padding-right: 3px;
-  }
-}
+        /* the heart sits on the circle's edge, so never clip it */
+        .welcome-events-swiper .shared-event-image-wrap { overflow: visible; }
 
         /* ---------- accommodations / videos spacing ---------- */
 
@@ -3828,6 +3812,11 @@ const Welcome: React.FC = () => {
         }
 
         /* Phones */
+        @media (max-width: 575.98px) {
+          .welcome-events-carousel { padding-top: 4px; padding-bottom: 10px; }
+          .welcome-event-slide { padding-left: 3px; padding-right: 3px; }
+        }
+
         @media (max-width: 480px) {
           .welcome-container { padding-left: 12px; padding-right: 12px; }
 
