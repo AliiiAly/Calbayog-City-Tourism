@@ -1,4 +1,3 @@
-
 import React, {
   useCallback,
   useEffect,
@@ -28,11 +27,13 @@ import {
   Check,
   Compass,
   Eye,
+  Globe2,
   Image as ImageIcon,
   ImagePlus,
   MapPin,
   Pencil,
   Plus,
+  RefreshCw,
   Search,
   Trash2,
   UtensilsCrossed,
@@ -56,19 +57,24 @@ import { supabase } from "../services/supabase";
 
 const CALBAYOG_BLUE = "#2D3195";
 const MEMORY_BUCKET = "memory-images";
-const ALLOWED_IMAGE_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-];
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const UPLOAD_BATCH_SIZE = 3;
+
+type MemoryFilter = "all" | MemoryItemType;
 
 interface NewPhoto {
   id: string;
   key: string;
   file: File;
   url: string;
+}
+
+interface PlaceOption {
+  id: string;
+  name: string;
+  subtitle: string;
+  image: string;
 }
 
 const ITEM_TYPE_META: Record<
@@ -118,26 +124,132 @@ const ITEM_TYPE_ORDER: MemoryItemType[] = [
   "event",
 ];
 
+const FILTER_ORDER: MemoryFilter[] = ["all", ...ITEM_TYPE_ORDER];
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+const asString = (value: unknown): string =>
+  typeof value === "string" ? value.trim() : "";
+
+/** Finds a usable image URL no matter how the backend names it. */
+const pickImage = (source: any): string => {
+  if (!source || typeof source !== "object") return "";
+
+  const direct = [
+    source.image,
+    source.image_url,
+    source.imageUrl,
+    source.thumbnail,
+    source.cover_image,
+    source.cover,
+    source.photo,
+    source.poster,
+  ];
+
+  for (const candidate of direct) {
+    const value = asString(candidate);
+    if (value) return value;
+  }
+
+  const lists = [source.images, source.image_urls, source.photos];
+
+  for (const list of lists) {
+    if (Array.isArray(list)) {
+      for (const entry of list) {
+        const value =
+          typeof entry === "string"
+            ? asString(entry)
+            : asString(entry?.url || entry?.image_url || entry?.src);
+        if (value) return value;
+      }
+    }
+  }
+
+  return "";
+};
+
+const getItemName = (item: any, type: MemoryItemType): string =>
+  asString(item?.name) ||
+  asString(item?.title) ||
+  asString(item?.event_name) ||
+  asString(item?.event_title) ||
+  ITEM_TYPE_META[type].fallbackName;
+
+const normalizePlaces = (raw: any): PlaceOption[] => {
+  const list: any[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray(raw?.data)
+      ? raw.data
+      : Array.isArray(raw?.data?.data)
+        ? raw.data.data
+        : Array.isArray(raw?.places)
+          ? raw.places
+          : [];
+
+  const seen = new Set<string>();
+  const result: PlaceOption[] = [];
+
+  list.forEach((place: any) => {
+    const id = String(place?.id ?? place?._id ?? place?.event_id ?? "").trim();
+    const name =
+      asString(place?.name) ||
+      asString(place?.title) ||
+      asString(place?.event_name) ||
+      asString(place?.event_title);
+
+    if (!id || !name || seen.has(id)) return;
+
+    seen.add(id);
+
+    result.push({
+      id,
+      name,
+      subtitle:
+        asString(place?.subtitle) ||
+        asString(place?.location) ||
+        asString(place?.venue) ||
+        asString(place?.address) ||
+        asString(place?.category) ||
+        asString(place?.date) ||
+        "",
+      image: pickImage(place),
+    });
+  });
+
+  return result;
+};
+
 const getImageUrls = (memory: UserMemory): string[] => {
   const urls: string[] = [];
+  const anyMemory = memory as any;
 
-  if (Array.isArray(memory.image_urls)) {
+  if (Array.isArray(anyMemory.image_urls)) {
     urls.push(
-      ...memory.image_urls.filter(
-        (url): url is string =>
+      ...anyMemory.image_urls.filter(
+        (url: unknown): url is string =>
           typeof url === "string" && url.trim().length > 0,
       ),
     );
   }
 
   if (
-    typeof memory.image_url === "string" &&
-    memory.image_url.trim().length > 0
+    typeof anyMemory.image_url === "string" &&
+    anyMemory.image_url.trim().length > 0
   ) {
-    urls.push(memory.image_url);
+    urls.push(anyMemory.image_url);
   }
 
   return [...new Set(urls)];
+};
+
+const getMemoryItem = (memory: UserMemory): any =>
+  (memory as any).item || (memory as any).attraction || null;
+
+const getMemoryType = (memory: UserMemory): MemoryItemType => {
+  const type = (memory as any).item_type as MemoryItemType | undefined;
+  return type && ITEM_TYPE_META[type] ? type : "attraction";
 };
 
 const formatMemoryDate = (value?: string): string => {
@@ -145,9 +257,7 @@ const formatMemoryDate = (value?: string): string => {
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
-    return "Date unavailable";
-  }
+  if (Number.isNaN(date.getTime())) return "Date unavailable";
 
   return date.toLocaleDateString("en-PH", {
     year: "numeric",
@@ -162,79 +272,92 @@ const wasEdited = (memory: UserMemory): boolean => {
   const created = new Date(memory.created_at).getTime();
   const updated = new Date(memory.updated_at).getTime();
 
-  if (Number.isNaN(created) || Number.isNaN(updated)) {
-    return false;
-  }
+  if (Number.isNaN(created) || Number.isNaN(updated)) return false;
 
   return updated - created > 60 * 1000;
 };
 
-const getErrorMessage = (
-  error: any,
-  fallback: string,
-): string =>
-  error?.response?.data?.message ||
-  error?.message ||
-  fallback;
+const getErrorMessage = (error: any, fallback: string): string =>
+  error?.response?.data?.message || error?.message || fallback;
+
+/* =========================================================
+   IMAGE WITH FALLBACK (consistent for every type)
+========================================================= */
+
+const SafeImage: React.FC<{
+  src?: string;
+  alt: string;
+  className?: string;
+  fallback: React.ReactNode;
+  loading?: "lazy" | "eager";
+}> = ({ src, alt, className, fallback, loading }) => {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
+
+  if (!src || failed) return <>{fallback}</>;
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      loading={loading}
+      onError={() => setFailed(true)}
+    />
+  );
+};
+
+/* =========================================================
+   COMPONENT
+========================================================= */
 
 const Memories: React.FC = () => {
   const history = useHistory();
 
-  const {
-    user,
-    userToken,
-    loading: authLoading,
-  } = useAuth();
+  const { user, userToken, loading: authLoading } = useAuth();
 
   const [memories, setMemories] = useState<UserMemory[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
-  const [successMessage, setSuccessMessage] =
-    useState<string>("");
+  const [successMessage, setSuccessMessage] = useState<string>("");
 
-  /* View Memory state */
-  const [showViewModal, setShowViewModal] =
-    useState<boolean>(false);
-  const [viewingMemory, setViewingMemory] =
-    useState<UserMemory | null>(null);
+  /* Filter */
+  const [activeFilter, setActiveFilter] = useState<MemoryFilter>("all");
 
-  /* Delete state */
-  const [deletingMemoryId, setDeletingMemoryId] =
-    useState<string | null>(null);
-  const [selectedMemory, setSelectedMemory] =
-    useState<UserMemory | null>(null);
-  const [showDeleteModal, setShowDeleteModal] =
-    useState<boolean>(false);
+  /* View */
+  const [showViewModal, setShowViewModal] = useState<boolean>(false);
+  const [viewingMemory, setViewingMemory] = useState<UserMemory | null>(null);
 
-  /* Add/Edit state */
-  const [showFormModal, setShowFormModal] =
-    useState<boolean>(false);
-  const [formMode, setFormMode] =
-    useState<"add" | "edit">("add");
-  const [editingMemory, setEditingMemory] =
-    useState<UserMemory | null>(null);
+  /* Delete */
+  const [deletingMemoryId, setDeletingMemoryId] = useState<string | null>(null);
+  const [selectedMemory, setSelectedMemory] = useState<UserMemory | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+
+  /* Add / Edit */
+  const [showFormModal, setShowFormModal] = useState<boolean>(false);
+  const [formMode, setFormMode] = useState<"add" | "edit">("add");
+  const [editingMemory, setEditingMemory] = useState<UserMemory | null>(null);
   const [formItemType, setFormItemType] =
     useState<MemoryItemType>("attraction");
   const [formItemId, setFormItemId] = useState<string>("");
-  const [formItemName, setFormItemName] =
-    useState<string>("");
-  const [placeSearch, setPlaceSearch] =
-    useState<string>("");
+  const [formItemName, setFormItemName] = useState<string>("");
+  const [placeSearch, setPlaceSearch] = useState<string>("");
 
   const [placesByType, setPlacesByType] = useState<
-    Partial<Record<MemoryItemType, MemoryPlace[]>>
+    Partial<Record<MemoryItemType, PlaceOption[]>>
   >({});
+  const placesRef = useRef<Partial<Record<MemoryItemType, PlaceOption[]>>>({});
 
-  const [loadingPlaces, setLoadingPlaces] =
-    useState<boolean>(false);
+  const [loadingPlaces, setLoadingPlaces] = useState<boolean>(false);
+  const [placesError, setPlacesError] = useState<string>("");
   const [formCaption, setFormCaption] = useState<string>("");
-  const [existingImages, setExistingImages] =
-    useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
   const [newPhotos, setNewPhotos] = useState<NewPhoto[]>([]);
-  const [savingMemory, setSavingMemory] =
-    useState<boolean>(false);
-  const [uploadProgress, setUploadProgress] =
-    useState<number>(0);
+  const [savingMemory, setSavingMemory] = useState<boolean>(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [formError, setFormError] = useState<string>("");
 
   const newPhotosRef = useRef<NewPhoto[]>([]);
@@ -272,18 +395,21 @@ const Memories: React.FC = () => {
       setLoading(true);
       setError("");
 
-      const result = await getMyMemories();
-      setMemories(result.data);
+      const result: any = await getMyMemories();
+      const list = Array.isArray(result?.data)
+        ? result.data
+        : Array.isArray(result)
+          ? result
+          : [];
+
+      setMemories(list);
     } catch (fetchError: any) {
       console.error("Fetch memories error:", fetchError);
 
       setError(
         fetchError?.response?.status === 401
           ? "Your session has expired. Please log in again."
-          : getErrorMessage(
-              fetchError,
-              "Failed to load your memories.",
-            ),
+          : getErrorMessage(fetchError, "Failed to load your memories."),
       );
     } finally {
       setLoading(false);
@@ -298,7 +424,32 @@ const Memories: React.FC = () => {
     history.push("/attractions");
   };
 
-  /* View Memory handlers */
+  /* Filtering */
+  const typeCounts = useMemo(() => {
+    const counts: Record<MemoryFilter, number> = {
+      all: memories.length,
+      attraction: 0,
+      accommodation: 0,
+      restaurant: 0,
+      event: 0,
+    };
+
+    memories.forEach((memory) => {
+      counts[getMemoryType(memory)] += 1;
+    });
+
+    return counts;
+  }, [memories]);
+
+  const filteredMemories = useMemo(
+    () =>
+      activeFilter === "all"
+        ? memories
+        : memories.filter((memory) => getMemoryType(memory) === activeFilter),
+    [memories, activeFilter],
+  );
+
+  /* View handlers */
   const openViewMemoryModal = (memory: UserMemory): void => {
     setViewingMemory(memory);
     setShowViewModal(true);
@@ -309,42 +460,40 @@ const Memories: React.FC = () => {
     setViewingMemory(null);
   };
 
-  const handleEditFromViewer = (): void => {
-    if (!viewingMemory) return;
-
-    const memoryToEdit = viewingMemory;
-
-    closeViewMemoryModal();
-    openEditMemoryModal(memoryToEdit);
-  };
-
-  /* Place selection */
+  /* Place loading */
   const loadPlaces = useCallback(
-    async (type: MemoryItemType): Promise<void> => {
-      if (placesByType[type]) return;
+    async (type: MemoryItemType, force = false): Promise<void> => {
+      const cached = placesRef.current[type];
+
+      if (!force && cached && cached.length > 0) return;
 
       try {
         setLoadingPlaces(true);
+        setPlacesError("");
 
-        const places = await getMemoryPlaces(type);
+        const raw = await getMemoryPlaces(type);
+        const places = normalizePlaces(raw);
+
+        placesRef.current[type] = places;
 
         setPlacesByType((previous) => ({
           ...previous,
           [type]: places,
         }));
-      } catch (loadError) {
+      } catch (loadError: any) {
         console.error(`Failed to load ${type} places:`, loadError);
 
-        setFormError(
-          `Could not load ${ITEM_TYPE_META[
-            type
-          ].label.toLowerCase()}. Please try again.`,
+        setPlacesError(
+          getErrorMessage(
+            loadError,
+            `Could not load ${ITEM_TYPE_META[type].label.toLowerCase()}.`,
+          ),
         );
       } finally {
         setLoadingPlaces(false);
       }
     },
-    [placesByType],
+    [],
   );
 
   const visiblePlaces = useMemo(() => {
@@ -360,7 +509,7 @@ const Memories: React.FC = () => {
     );
   }, [placesByType, formItemType, placeSearch]);
 
-  /* Add/Edit modal handlers */
+  /* Add / Edit handlers */
   const resetFormState = (): void => {
     clearNewPhotos();
     setFormCaption("");
@@ -369,6 +518,7 @@ const Memories: React.FC = () => {
     setFormItemName("");
     setPlaceSearch("");
     setFormError("");
+    setPlacesError("");
     setUploadProgress(0);
     setEditingMemory(null);
   };
@@ -383,11 +533,14 @@ const Memories: React.FC = () => {
     setSuccessMessage("");
     resetFormState();
 
+    const startType: MemoryItemType =
+      activeFilter === "all" ? "attraction" : activeFilter;
+
     setFormMode("add");
-    setFormItemType("attraction");
+    setFormItemType(startType);
     setShowFormModal(true);
 
-    void loadPlaces("attraction");
+    void loadPlaces(startType);
   };
 
   const openEditMemoryModal = (memory: UserMemory): void => {
@@ -395,20 +548,25 @@ const Memories: React.FC = () => {
     setSuccessMessage("");
     resetFormState();
 
-    const itemType = memory.item_type || "attraction";
+    const itemType = getMemoryType(memory);
 
     setFormMode("edit");
     setEditingMemory(memory);
     setFormItemType(itemType);
-    setFormItemId(memory.item_id || "");
-    setFormItemName(
-      memory.item?.name ||
-        memory.attraction?.name ||
-        ITEM_TYPE_META[itemType].fallbackName,
-    );
+    setFormItemId(String((memory as any).item_id || ""));
+    setFormItemName(getItemName(getMemoryItem(memory), itemType));
     setFormCaption(memory.caption || "");
     setExistingImages(getImageUrls(memory));
     setShowFormModal(true);
+  };
+
+  const handleEditFromViewer = (): void => {
+    if (!viewingMemory) return;
+
+    const memoryToEdit = viewingMemory;
+
+    closeViewMemoryModal();
+    openEditMemoryModal(memoryToEdit);
   };
 
   const closeFormModal = (): void => {
@@ -418,9 +576,7 @@ const Memories: React.FC = () => {
     setShowFormModal(false);
   };
 
-  const handleChangeItemType = (
-    type: MemoryItemType,
-  ): void => {
+  const handleChangeItemType = (type: MemoryItemType): void => {
     if (type === formItemType) return;
 
     setFormItemType(type);
@@ -428,17 +584,18 @@ const Memories: React.FC = () => {
     setFormItemName("");
     setPlaceSearch("");
     setFormError("");
+    setPlacesError("");
 
     void loadPlaces(type);
   };
 
-  const handleSelectPlace = (place: MemoryPlace): void => {
+  const handleSelectPlace = (place: PlaceOption): void => {
     setFormItemId(place.id);
     setFormItemName(place.name);
     setFormError("");
   };
 
-  /* Photo selection */
+  /* Photos */
   const handlePhotosChange = (
     event: React.ChangeEvent<HTMLInputElement>,
   ): void => {
@@ -504,18 +661,14 @@ const Memories: React.FC = () => {
       );
     }
 
-    if (problems.length > 0) {
-      setFormError(problems.join(" "));
-    }
+    if (problems.length > 0) setFormError(problems.join(" "));
   };
 
   const handleRemoveNewPhoto = (photoId: string): void => {
     setFormError("");
 
     setNewPhotos((previous) => {
-      const removed = previous.find(
-        (photo) => photo.id === photoId,
-      );
+      const removed = previous.find((photo) => photo.id === photoId);
 
       if (removed) URL.revokeObjectURL(removed.url);
 
@@ -530,7 +683,7 @@ const Memories: React.FC = () => {
     );
   };
 
-  /* Save Add/Edit */
+  /* Save */
   const handleSaveMemory = async (
     event: React.FormEvent<HTMLFormElement>,
   ): Promise<void> => {
@@ -543,9 +696,7 @@ const Memories: React.FC = () => {
     setSuccessMessage("");
 
     if (!user || !userToken) {
-      setFormError(
-        "Your session has expired. Please log in again.",
-      );
+      setFormError("Your session has expired. Please log in again.");
       return;
     }
 
@@ -600,7 +751,8 @@ const Memories: React.FC = () => {
           .toString(36)
           .slice(2)}.${extension}`;
 
-        const filePath = `${userId}/${formItemType}/${formItemId}/${fileName}`;
+        const safeItemId = formItemId.replace(/[^a-zA-Z0-9_-]/g, "_");
+        const filePath = `${userId}/${formItemType}/${safeItemId}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from(MEMORY_BUCKET)
@@ -621,9 +773,7 @@ const Memories: React.FC = () => {
         const imageUrl = publicUrlData?.publicUrl || "";
 
         if (!imageUrl) {
-          throw new Error(
-            "The uploaded image URL could not be created.",
-          );
+          throw new Error("The uploaded image URL could not be created.");
         }
 
         newUrls[index] = imageUrl;
@@ -635,15 +785,10 @@ const Memories: React.FC = () => {
         start < photosToUpload.length;
         start += UPLOAD_BATCH_SIZE
       ) {
-        const batch = photosToUpload.slice(
-          start,
-          start + UPLOAD_BATCH_SIZE,
-        );
+        const batch = photosToUpload.slice(start, start + UPLOAD_BATCH_SIZE);
 
         await Promise.all(
-          batch.map((photo, offset) =>
-            uploadOne(photo, start + offset),
-          ),
+          batch.map((photo, offset) => uploadOne(photo, start + offset)),
         );
       }
 
@@ -680,9 +825,7 @@ const Memories: React.FC = () => {
 
       if (uploadedPaths.length > 0) {
         try {
-          await supabase.storage
-            .from(MEMORY_BUCKET)
-            .remove(uploadedPaths);
+          await supabase.storage.from(MEMORY_BUCKET).remove(uploadedPaths);
         } catch (cleanupError) {
           console.error(
             "Failed to clean up uploaded memory images:",
@@ -729,27 +872,20 @@ const Memories: React.FC = () => {
       setError("");
       setSuccessMessage("");
 
-      const result = await deleteMyMemory(selectedMemory.id);
+      const result: any = await deleteMyMemory(selectedMemory.id);
 
       setMemories((current) =>
         current.filter((memory) => memory.id !== selectedMemory.id),
       );
 
-      setSuccessMessage(
-        result.message || "Memory deleted successfully.",
-      );
+      setSuccessMessage(result?.message || "Memory deleted successfully.");
 
       setSelectedMemory(null);
       setShowDeleteModal(false);
     } catch (deleteError: any) {
       console.error("Delete memory error:", deleteError);
 
-      setError(
-        getErrorMessage(
-          deleteError,
-          "Failed to delete this memory.",
-        ),
-      );
+      setError(getErrorMessage(deleteError, "Failed to delete this memory."));
     } finally {
       setDeletingMemoryId(null);
     }
@@ -767,6 +903,9 @@ const Memories: React.FC = () => {
 
   const FormTypeIcon = ITEM_TYPE_META[formItemType].icon;
 
+  const filterLabel =
+    activeFilter === "all" ? "All memories" : ITEM_TYPE_META[activeFilter].label;
+
   return (
     <>
       <div className="page-enter memories-page">
@@ -774,8 +913,8 @@ const Memories: React.FC = () => {
           <div className="memories-header-inner">
             <h1 className="memories-title">MY MEMORIES</h1>
             <p className="memories-subtitle">
-              Keep your favorite moments and experiences from
-              exploring Calbayog City.
+              Keep your favorite moments and experiences from exploring
+              Calbayog City.
             </p>
           </div>
         </section>
@@ -787,19 +926,12 @@ const Memories: React.FC = () => {
                 <Camera size={18} strokeWidth={1.9} />
               </div>
               <div>
-                <div className="memories-intro-label">
-                  Personal collection
-                </div>
-                <div className="memories-intro-title">
-                  Your travel moments
-                </div>
+                <div className="memories-intro-label">Personal collection</div>
+                <div className="memories-intro-title">Your travel moments</div>
               </div>
             </div>
 
-            <Button
-              className="memories-add-button"
-              onClick={openAddMemoryModal}
-            >
+            <Button className="memories-add-button" onClick={openAddMemoryModal}>
               <Plus size={15} strokeWidth={2.2} />
               Add Memory
             </Button>
@@ -827,6 +959,36 @@ const Memories: React.FC = () => {
             </Alert>
           )}
 
+          {/* CATEGORY FILTER */}
+          {!authLoading && !loading && memories.length > 0 && (
+            <div className="category-pills">
+              {FILTER_ORDER.map((filter) => {
+                const isActive = activeFilter === filter;
+                const Icon =
+                  filter === "all" ? Globe2 : ITEM_TYPE_META[filter].icon;
+                const label =
+                  filter === "all" ? "All" : ITEM_TYPE_META[filter].label;
+
+                return (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() => setActiveFilter(filter)}
+                    className={`category-pill ${
+                      isActive ? "category-pill-active" : ""
+                    }`}
+                  >
+                    <Icon size={16} strokeWidth={1.9} />
+                    <span>{label}</span>
+                    <span className="category-pill-count">
+                      {typeCounts[filter]}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {!authLoading && !loading && memories.length > 0 && (
             <div className="memories-results-bar">
               <div className="memories-results-left">
@@ -834,14 +996,27 @@ const Memories: React.FC = () => {
                   <ImageIcon size={17} strokeWidth={1.9} />
                 </div>
                 <div>
-                  <div className="memories-results-label">
-                    Showing
-                  </div>
+                  <div className="memories-results-label">Showing</div>
                   <div className="memories-results-count">
-                    <strong>{memories.length}</strong> saved moment
-                    {memories.length !== 1 ? "s" : ""}
+                    <strong>{filteredMemories.length}</strong> saved moment
+                    {filteredMemories.length !== 1 ? "s" : ""}
                   </div>
                 </div>
+              </div>
+
+              <div className="memories-results-right">
+                <span className="memories-results-category">{filterLabel}</span>
+
+                {activeFilter !== "all" && (
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    onClick={() => setActiveFilter("all")}
+                    className="memories-clear-button"
+                  >
+                    Clear
+                  </Button>
+                )}
               </div>
             </div>
           )}
@@ -851,12 +1026,8 @@ const Memories: React.FC = () => {
               <div className="loading-icon">
                 <Spinner animation="border" size="sm" />
               </div>
-              <div className="loading-title">
-                Loading memories...
-              </div>
-              <p className="loading-subtitle">
-                Please wait a moment.
-              </p>
+              <div className="loading-title">Loading memories...</div>
+              <p className="loading-subtitle">Please wait a moment.</p>
             </div>
           ) : memories.length === 0 ? (
             <div className="memories-empty-state">
@@ -865,29 +1036,40 @@ const Memories: React.FC = () => {
               </div>
               <h3>No memories yet</h3>
               <p>
-                Start exploring Calbayog City and save your favorite
-                travel moments here.
+                Start exploring Calbayog City and save your favorite travel
+                moments here.
               </p>
-              <Button
-                className="empty-button"
-                onClick={handleGoToAttractions}
-              >
+              <Button className="empty-button" onClick={handleGoToAttractions}>
                 <Compass size={15} strokeWidth={1.9} />
                 Explore attractions
               </Button>
             </div>
+          ) : filteredMemories.length === 0 ? (
+            <div className="memories-empty-state">
+              <div className="empty-icon">
+                <Camera size={29} strokeWidth={1.6} />
+              </div>
+              <h3>No {filterLabel.toLowerCase()} memories</h3>
+              <p>You have not saved any memories in this category yet.</p>
+              <Button
+                className="empty-button"
+                onClick={() => setActiveFilter("all")}
+              >
+                <Globe2 size={15} strokeWidth={1.9} />
+                View all memories
+              </Button>
+            </div>
           ) : (
             <Row className="memories-grid">
-              {memories.map((memory) => {
+              {filteredMemories.map((memory) => {
                 const imageUrls = getImageUrls(memory);
-                const itemType: MemoryItemType =
-                  memory.item_type || "attraction";
+                const itemType = getMemoryType(memory);
                 const typeMeta = ITEM_TYPE_META[itemType];
                 const TypeIcon = typeMeta.icon;
-                const item = memory.item || memory.attraction;
-                const placeName =
-                  item?.name || typeMeta.fallbackName;
-                const firstImage = imageUrls[0] || item?.image || null;
+                const item = getMemoryItem(memory);
+                const placeName = getItemName(item, itemType);
+                const firstImage = imageUrls[0] || pickImage(item) || "";
+                const busy = deletingMemoryId === memory.id;
 
                 return (
                   <Col
@@ -900,17 +1082,15 @@ const Memories: React.FC = () => {
                     <Card
                       className="memory-card h-100"
                       role="button"
-                      tabIndex={deletingMemoryId === memory.id ? -1 : 0}
+                      tabIndex={busy ? -1 : 0}
                       aria-label={`View memory for ${placeName}`}
                       aria-haspopup="dialog"
                       onClick={() => {
-                        if (deletingMemoryId !== memory.id) {
-                          openViewMemoryModal(memory);
-                        }
+                        if (!busy) openViewMemoryModal(memory);
                       }}
                       onKeyDown={(event) => {
                         if (
-                          deletingMemoryId !== memory.id &&
+                          !busy &&
                           (event.key === "Enter" || event.key === " ") &&
                           event.target === event.currentTarget
                         ) {
@@ -919,52 +1099,53 @@ const Memories: React.FC = () => {
                         }
                       }}
                     >
-                      {firstImage ? (
-                        <div className="memory-image-wrapper">
-                          <img
-                            src={firstImage}
-                            alt={placeName}
-                            className="memory-image"
-                            onError={(event) => {
-                              event.currentTarget.style.display = "none";
-                            }}
-                          />
+                      <div className="memory-image-wrapper">
+                        <SafeImage
+                          src={firstImage}
+                          alt={placeName}
+                          className="memory-image"
+                          fallback={
+                            <div className="memory-image-placeholder">
+                              <TypeIcon size={30} strokeWidth={1.5} />
+                              <span>No image available</span>
+                            </div>
+                          }
+                        />
+
+                        {firstImage && (
                           <div className="memory-image-overlay" />
+                        )}
+
+                        <div className="memory-type-badge">
+                          <TypeIcon size={12} strokeWidth={2} />
+                          {typeMeta.singular}
+                        </div>
+
+                        {imageUrls.length > 1 && (
+                          <div className="memory-image-count">
+                            <ImageIcon size={12} strokeWidth={2} />
+                            {imageUrls.length}
+                          </div>
+                        )}
+
+                        {firstImage && (
                           <div className="memory-location-badge">
-                            <TypeIcon size={12} strokeWidth={2} />
                             <span>{placeName}</span>
                           </div>
-                          {imageUrls.length > 1 && (
-                            <div className="memory-image-count">
-                              <ImageIcon size={12} strokeWidth={2} />
-                              {imageUrls.length}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="memory-image-placeholder">
-                          <Camera size={30} strokeWidth={1.5} />
-                          <span>No image available</span>
-                        </div>
-                      )}
+                        )}
+                      </div>
 
                       <Card.Body className="memory-card-body">
                         <div className="memory-date">
                           {formatMemoryDate(memory.created_at)}
                           {wasEdited(memory) && (
-                            <span className="memory-edited-tag">
-                              Edited
-                            </span>
+                            <span className="memory-edited-tag">Edited</span>
                           )}
                         </div>
 
-                        <h3 className="memory-attraction-name">
-                          {placeName}
-                        </h3>
+                        <h3 className="memory-attraction-name">{placeName}</h3>
 
-                        <p className="memory-caption">
-                          {memory.caption}
-                        </p>
+                        <p className="memory-caption">{memory.caption}</p>
 
                         <div className="memory-card-footer">
                           <div className="memory-card-type">
@@ -981,7 +1162,7 @@ const Memories: React.FC = () => {
                                 event.stopPropagation();
                                 openViewMemoryModal(memory);
                               }}
-                              disabled={deletingMemoryId === memory.id}
+                              disabled={busy}
                             >
                               <Eye size={13} strokeWidth={1.9} />
                               View
@@ -995,7 +1176,7 @@ const Memories: React.FC = () => {
                                 event.stopPropagation();
                                 openEditMemoryModal(memory);
                               }}
-                              disabled={deletingMemoryId === memory.id}
+                              disabled={busy}
                             >
                               <Pencil size={13} strokeWidth={1.9} />
                               Edit
@@ -1009,7 +1190,7 @@ const Memories: React.FC = () => {
                                 event.stopPropagation();
                                 handleOpenDeleteModal(memory);
                               }}
-                              disabled={deletingMemoryId === memory.id}
+                              disabled={busy}
                             >
                               <Trash2 size={13} strokeWidth={1.9} />
                               Delete
@@ -1042,13 +1223,12 @@ const Memories: React.FC = () => {
           {viewingMemory &&
             (() => {
               const imageUrls = getImageUrls(viewingMemory);
-              const itemType: MemoryItemType =
-                viewingMemory.item_type || "attraction";
+              const itemType = getMemoryType(viewingMemory);
               const typeMeta = ITEM_TYPE_META[itemType];
-              const place =
-                viewingMemory.item || viewingMemory.attraction;
-              const placeName =
-                place?.name || typeMeta.fallbackName;
+              const placeName = getItemName(
+                getMemoryItem(viewingMemory),
+                itemType,
+              );
 
               return (
                 <>
@@ -1060,9 +1240,7 @@ const Memories: React.FC = () => {
                     <p>
                       {formatMemoryDate(viewingMemory.created_at)}
                       {wasEdited(viewingMemory) && (
-                        <span className="memory-view-edited">
-                          Edited
-                        </span>
+                        <span className="memory-view-edited">Edited</span>
                       )}
                     </p>
                   </div>
@@ -1146,7 +1324,9 @@ const Memories: React.FC = () => {
         </Modal.Body>
       </Modal>
 
-      {/* ADD / EDIT MEMORY MODAL */}
+      {/* ADD / EDIT MEMORY MODAL
+          The <form> lives INSIDE Modal.Body so Bootstrap's scrollable
+          layout works. The Save button submits it via form="memory-form". */}
       <Modal
         show={showFormModal}
         onHide={closeFormModal}
@@ -1156,16 +1336,14 @@ const Memories: React.FC = () => {
         backdrop={savingMemory ? "static" : true}
         keyboard={!savingMemory}
       >
-        <Form onSubmit={handleSaveMemory}>
-          <Modal.Header closeButton={!savingMemory}>
-            <Modal.Title>
-              {formMode === "edit"
-                ? "Edit Your Memory"
-                : "Share a Travel Memory"}
-            </Modal.Title>
-          </Modal.Header>
+        <Modal.Header closeButton={!savingMemory}>
+          <Modal.Title>
+            {formMode === "edit" ? "Edit Your Memory" : "Share a Travel Memory"}
+          </Modal.Title>
+        </Modal.Header>
 
-          <Modal.Body>
+        <Modal.Body>
+          <Form id="memory-form" onSubmit={handleSaveMemory} noValidate>
             {formError && (
               <Alert
                 variant="danger"
@@ -1225,19 +1403,14 @@ const Memories: React.FC = () => {
                     <input
                       type="search"
                       value={placeSearch}
-                      onChange={(event) =>
-                        setPlaceSearch(event.target.value)
-                      }
-                      placeholder={
-                        ITEM_TYPE_META[formItemType].searchHint
-                      }
+                      onChange={(event) => setPlaceSearch(event.target.value)}
+                      placeholder={ITEM_TYPE_META[formItemType].searchHint}
                       disabled={savingMemory}
                     />
                   </div>
 
                   <div className="memory-place-list">
-                    {loadingPlaces &&
-                    !placesByType[formItemType] ? (
+                    {loadingPlaces && visiblePlaces.length === 0 ? (
                       <div className="memory-place-empty">
                         <Spinner
                           animation="border"
@@ -1245,6 +1418,19 @@ const Memories: React.FC = () => {
                           className="me-2"
                         />
                         Loading...
+                      </div>
+                    ) : placesError && visiblePlaces.length === 0 ? (
+                      <div className="memory-place-empty memory-place-error">
+                        <div>{placesError}</div>
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => void loadPlaces(formItemType, true)}
+                        >
+                          <RefreshCw size={13} className="me-1" />
+                          Try again
+                        </Button>
                       </div>
                     ) : visiblePlaces.length === 0 ? (
                       <div className="memory-place-empty">
@@ -1263,27 +1449,21 @@ const Memories: React.FC = () => {
                             type="button"
                             key={place.id}
                             className={`memory-place-item ${
-                              selected
-                                ? "memory-place-item-active"
-                                : ""
+                              selected ? "memory-place-item-active" : ""
                             }`}
                             onClick={() => handleSelectPlace(place)}
                             disabled={savingMemory}
                           >
-                            {place.image ? (
-                              <img
-                                src={place.image}
-                                alt=""
-                                loading="lazy"
-                              />
-                            ) : (
-                              <span className="memory-place-item-thumb">
-                                <FormTypeIcon
-                                  size={16}
-                                  strokeWidth={1.7}
-                                />
-                              </span>
-                            )}
+                            <SafeImage
+                              src={place.image}
+                              alt=""
+                              loading="lazy"
+                              fallback={
+                                <span className="memory-place-item-thumb">
+                                  <FormTypeIcon size={16} strokeWidth={1.7} />
+                                </span>
+                              }
+                            />
 
                             <span className="memory-place-item-text">
                               <strong>{place.name}</strong>
@@ -1312,10 +1492,7 @@ const Memories: React.FC = () => {
               <div className="memory-photo-grid">
                 {existingImages.map((url, index) => (
                   <div className="memory-photo-tile" key={url}>
-                    <img
-                      src={url}
-                      alt={`Saved photo ${index + 1}`}
-                    />
+                    <img src={url} alt={`Saved photo ${index + 1}`} />
                     <button
                       type="button"
                       className="memory-photo-remove"
@@ -1330,10 +1507,7 @@ const Memories: React.FC = () => {
 
                 {newPhotos.map((photo, index) => (
                   <div className="memory-photo-tile" key={photo.id}>
-                    <img
-                      src={photo.url}
-                      alt={`New photo ${index + 1}`}
-                    />
+                    <img src={photo.url} alt={`New photo ${index + 1}`} />
                     <button
                       type="button"
                       className="memory-photo-remove"
@@ -1374,62 +1548,51 @@ const Memories: React.FC = () => {
                   maxLength={500}
                   placeholder="Tell us about this moment..."
                   value={formCaption}
-                  onChange={(event) =>
-                    setFormCaption(event.target.value)
-                  }
+                  onChange={(event) => setFormCaption(event.target.value)}
                   disabled={savingMemory}
                 />
-                <Form.Text muted>
-                  {formCaption.length}/500 characters
-                </Form.Text>
+                <Form.Text muted>{formCaption.length}/500 characters</Form.Text>
               </Form.Group>
             </div>
-          </Modal.Body>
+          </Form>
+        </Modal.Body>
 
-          <Modal.Footer>
-            <Button
-              variant="outline-secondary"
-              type="button"
-              onClick={closeFormModal}
-              disabled={savingMemory}
-            >
-              Cancel
-            </Button>
+        <Modal.Footer>
+          <Button
+            variant="outline-secondary"
+            type="button"
+            onClick={closeFormModal}
+            disabled={savingMemory}
+          >
+            Cancel
+          </Button>
 
-            <Button
-              type="submit"
-              disabled={savingMemory}
-              style={{
-                backgroundColor: CALBAYOG_BLUE,
-                borderColor: CALBAYOG_BLUE,
-              }}
-            >
-              {savingMemory && (
-                <Spinner
-                  animation="border"
-                  size="sm"
-                  className="me-2"
-                />
-              )}
-              {saveButtonLabel}
-            </Button>
-          </Modal.Footer>
-        </Form>
+          <Button
+            type="submit"
+            form="memory-form"
+            disabled={savingMemory}
+            style={{
+              backgroundColor: CALBAYOG_BLUE,
+              borderColor: CALBAYOG_BLUE,
+            }}
+          >
+            {savingMemory && (
+              <Spinner animation="border" size="sm" className="me-2" />
+            )}
+            {saveButtonLabel}
+          </Button>
+        </Modal.Footer>
       </Modal>
 
       {/* DELETE CONFIRMATION MODAL */}
-      <Modal
-        show={showDeleteModal}
-        onHide={handleCloseDeleteModal}
-        centered
-      >
+      <Modal show={showDeleteModal} onHide={handleCloseDeleteModal} centered>
         <Modal.Header closeButton={!deletingMemoryId}>
           <Modal.Title>Delete Memory</Modal.Title>
         </Modal.Header>
 
         <Modal.Body>
-          Are you sure you want to delete this memory? This action
-          cannot be undone.
+          Are you sure you want to delete this memory? This action cannot be
+          undone.
         </Modal.Body>
 
         <Modal.Footer>
@@ -1448,11 +1611,7 @@ const Memories: React.FC = () => {
           >
             {deletingMemoryId ? (
               <>
-                <Spinner
-                  animation="border"
-                  size="sm"
-                  className="me-2"
-                />
+                <Spinner animation="border" size="sm" className="me-2" />
                 Deleting...
               </>
             ) : (
@@ -1525,7 +1684,7 @@ const Memories: React.FC = () => {
           align-items: center;
           justify-content: space-between;
           gap: 18px;
-          margin-bottom: 24px;
+          margin-bottom: 18px;
           padding: 15px 0;
           border-top: 1px solid #f0f2f0;
           border-bottom: 1px solid #f0f2f0;
@@ -1594,6 +1753,66 @@ const Memories: React.FC = () => {
           font-size: .78rem;
         }
 
+        /* CATEGORY FILTER PILLS */
+        .category-pills {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          overflow-x: auto;
+          overflow-y: hidden;
+          margin: 0 0 5px;
+          padding: 6px 0 14px;
+          scrollbar-width: none;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .category-pills::-webkit-scrollbar {
+          display: none;
+        }
+
+        .category-pill {
+          flex: 0 0 auto;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          min-height: 39px;
+          padding: 8px 15px;
+          border: 1px solid #e3e7e4;
+          border-radius: 999px;
+          background: #fff;
+          color: #68716c;
+          font-family: "Nunito", "Segoe UI", sans-serif;
+          font-size: .74rem;
+          font-weight: 800;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: color .2s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease;
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .category-pill:hover,
+        .category-pill-active {
+          color: ${CALBAYOG_BLUE};
+          border-color: ${CALBAYOG_BLUE};
+          background: #eef0ff;
+        }
+
+        .category-pill-active {
+          box-shadow: 0 5px 16px rgba(20,30,24,.07);
+        }
+
+        .category-pill-count {
+          min-width: 20px;
+          padding: 1px 6px;
+          border-radius: 999px;
+          background: rgba(45,49,149,.1);
+          color: ${CALBAYOG_BLUE};
+          font-size: .62rem;
+          font-weight: 800;
+          text-align: center;
+        }
+
         .memories-results-bar {
           display: flex;
           align-items: center;
@@ -1606,7 +1825,8 @@ const Memories: React.FC = () => {
           border-bottom: 1px solid #f0f2f0;
         }
 
-        .memories-results-left {
+        .memories-results-left,
+        .memories-results-right {
           display: flex;
           align-items: center;
           gap: 10px;
@@ -1627,16 +1847,19 @@ const Memories: React.FC = () => {
           color: #252b27;
         }
 
-        .memories-results-badge {
-          padding: 7px 11px;
-          border: 1px solid #e2e4fa;
-          border-radius: 999px;
-          background: #f1f2ff;
-          color: ${CALBAYOG_BLUE};
+        .memories-results-category {
           font-family: "Nunito", sans-serif;
-          font-size: .6rem;
-          font-weight: 800;
-          letter-spacing: .06em;
+          font-size: .69rem;
+          font-weight: 700;
+          color: #858d88;
+        }
+
+        .memories-clear-button {
+          border-radius: 999px !important;
+          padding: 5px 11px !important;
+          font-family: "Nunito", sans-serif;
+          font-size: .66rem !important;
+          font-weight: 800 !important;
         }
 
         .memories-grid {
@@ -1747,6 +1970,7 @@ const Memories: React.FC = () => {
           color: ${CALBAYOG_BLUE} !important;
         }
 
+        /* CARD - identical for all four types */
         .memory-card {
           width: 100%;
           overflow: hidden;
@@ -1776,6 +2000,7 @@ const Memories: React.FC = () => {
 
         .memory-image-wrapper {
           position: relative;
+          flex: 0 0 auto;
           height: 238px;
           overflow: hidden;
           background: linear-gradient(135deg, #eef0ff, #f7f8fb);
@@ -1798,6 +2023,23 @@ const Memories: React.FC = () => {
           inset: 0;
           background: linear-gradient(to top, rgba(15,20,30,.58), rgba(15,20,30,.02) 55%);
           pointer-events: none;
+        }
+
+        .memory-type-badge {
+          position: absolute;
+          top: 12px;
+          left: 12px;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 6px 10px;
+          border-radius: 999px;
+          background: rgba(255,255,255,.94);
+          color: ${CALBAYOG_BLUE};
+          font-family: "Nunito", sans-serif;
+          font-size: .66rem;
+          font-weight: 800;
+          box-shadow: 0 2px 8px rgba(20,23,35,.12);
         }
 
         .memory-location-badge {
@@ -1838,7 +2080,8 @@ const Memories: React.FC = () => {
         }
 
         .memory-image-placeholder {
-          height: 220px;
+          width: 100%;
+          height: 100%;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -1852,6 +2095,7 @@ const Memories: React.FC = () => {
 
         .memory-card-body {
           display: flex;
+          flex: 1 1 auto;
           flex-direction: column;
           padding: 20px !important;
         }
@@ -1879,6 +2123,7 @@ const Memories: React.FC = () => {
         .memory-attraction-name {
           display: -webkit-box;
           overflow: hidden;
+          min-height: 2.8em;
           margin: 0 0 9px;
           color: #252b27;
           font-family: "Poppins", sans-serif;
@@ -1889,7 +2134,6 @@ const Memories: React.FC = () => {
           -webkit-line-clamp: 2;
         }
 
-        /* Keep cards compact; the View modal displays the full note. */
         .memory-caption {
           display: -webkit-box;
           overflow: hidden;
@@ -1959,7 +2203,7 @@ const Memories: React.FC = () => {
           border-color: ${CALBAYOG_BLUE} !important;
         }
 
-        /* VIEW MEMORY MODAL */
+        /* VIEW MODAL */
         .memory-view-body {
           padding: 22px !important;
         }
@@ -2272,6 +2516,7 @@ const Memories: React.FC = () => {
 
         .memory-place-empty {
           display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
           padding: 26px 14px;
@@ -2279,6 +2524,10 @@ const Memories: React.FC = () => {
           font-family: "Nunito", sans-serif;
           font-size: .73rem;
           text-align: center;
+        }
+
+        .memory-place-error {
+          color: #b4344d;
         }
 
         .memory-place-item {
@@ -2453,6 +2702,7 @@ const Memories: React.FC = () => {
           font-family: "Nunito", sans-serif;
           font-size: .85rem;
           line-height: 1.65;
+          overscroll-behavior: contain;
         }
 
         .modal-footer .btn {
@@ -2511,16 +2761,16 @@ const Memories: React.FC = () => {
             align-items: flex-start;
           }
 
-          .memories-results-badge {
-            align-self: center;
+          .memories-results-right {
+            width: 100%;
+            justify-content: space-between;
           }
 
           .memories-grid {
             row-gap: 28px !important;
           }
 
-          .memory-image-wrapper,
-          .memory-image-placeholder {
+          .memory-image-wrapper {
             height: clamp(205px, 54vw, 270px);
           }
 
