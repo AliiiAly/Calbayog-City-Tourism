@@ -133,40 +133,47 @@ const FILTER_ORDER: MemoryFilter[] = ["all", ...ITEM_TYPE_ORDER];
 const asString = (value: unknown): string =>
   typeof value === "string" ? value.trim() : "";
 
-/** Finds a usable image URL no matter how the backend names it. */
-const pickImage = (source: any): string => {
-  if (!source || typeof source !== "object") return "";
-
-  const direct = [
-    source.image,
-    source.image_url,
-    source.imageUrl,
-    source.thumbnail,
-    source.cover_image,
-    source.cover,
-    source.photo,
-    source.poster,
-  ];
-
-  for (const candidate of direct) {
-    const value = asString(candidate);
-    if (value) return value;
+/** Extract image URLs from the different shapes returned by Supabase/API rows. */
+const imageCandidateToUrl = (candidate: any): string => {
+  if (typeof candidate === "string") {
+    const value = candidate.trim();
+    if (!value) return "";
+    // Some older rows store image arrays as JSON strings.
+    if ((value.startsWith("[") && value.endsWith("]")) || (value.startsWith("{") && value.endsWith("}"))) {
+      try { return imageCandidateToUrl(JSON.parse(value)); } catch { /* keep as URL below */ }
+    }
+    return value;
   }
-
-  const lists = [source.images, source.image_urls, source.photos];
-
-  for (const list of lists) {
-    if (Array.isArray(list)) {
-      for (const entry of list) {
-        const value =
-          typeof entry === "string"
-            ? asString(entry)
-            : asString(entry?.url || entry?.image_url || entry?.src);
-        if (value) return value;
-      }
+  if (Array.isArray(candidate)) {
+    for (const entry of candidate) {
+      const found = imageCandidateToUrl(entry);
+      if (found) return found;
+    }
+    return "";
+  }
+  if (candidate && typeof candidate === "object") {
+    for (const key of ["url", "image_url", "imageUrl", "src", "path", "publicUrl", "public_url", "original", "thumbnail"]) {
+      const found = imageCandidateToUrl(candidate[key]);
+      if (found) return found;
     }
   }
+  return "";
+};
 
+const pickImage = (source: any): string => {
+  if (!source || typeof source !== "object") return imageCandidateToUrl(source);
+  const direct = [
+    source.image, source.image_url, source.imageUrl, source.main_image,
+    source.mainImage, source.featured_image, source.featuredImage,
+    source.thumbnail, source.cover_image, source.coverImage, source.cover,
+    source.photo, source.poster, source.banner, source.image_path,
+    source.photo_url, source.picture, source.images, source.image_urls,
+    source.photos, source.gallery, source.gallery_images,
+  ];
+  for (const candidate of direct) {
+    const value = imageCandidateToUrl(candidate);
+    if (value) return value;
+  }
   return "";
 };
 
@@ -178,74 +185,49 @@ const getItemName = (item: any, type: MemoryItemType): string =>
   ITEM_TYPE_META[type].fallbackName;
 
 const normalizePlaces = (raw: any): PlaceOption[] => {
-  const list: any[] = Array.isArray(raw)
-    ? raw
-    : Array.isArray(raw?.data)
-      ? raw.data
-      : Array.isArray(raw?.data?.data)
-        ? raw.data.data
-        : Array.isArray(raw?.places)
-          ? raw.places
-          : [];
-
+  const candidates = [raw, raw?.data, raw?.data?.data, raw?.places, raw?.items, raw?.results];
+  const list: any[] = candidates.find(Array.isArray) || [];
   const seen = new Set<string>();
   const result: PlaceOption[] = [];
 
-  list.forEach((place: any) => {
-    const id = String(place?.id ?? place?._id ?? place?.event_id ?? "").trim();
-    const name =
-      asString(place?.name) ||
-      asString(place?.title) ||
-      asString(place?.event_name) ||
-      asString(place?.event_title);
-
+  list.forEach((original: any) => {
+    const place = original?.item || original?.attraction || original?.accommodation || original?.restaurant || original?.event || original;
+    const id = String(place?.id ?? place?._id ?? place?.event_id ?? place?.attraction_id ?? place?.restaurant_id ?? place?.accommodation_id ?? "").trim();
+    const name = asString(place?.name) || asString(place?.title) || asString(place?.event_name) || asString(place?.event_title);
     if (!id || !name || seen.has(id)) return;
-
     seen.add(id);
-
     result.push({
       id,
       name,
-      subtitle:
-        asString(place?.subtitle) ||
-        asString(place?.location) ||
-        asString(place?.venue) ||
-        asString(place?.address) ||
-        asString(place?.category) ||
-        asString(place?.date) ||
-        "",
-      image: pickImage(place),
+      subtitle: asString(place?.subtitle) || asString(place?.location) || asString(place?.venue) || asString(place?.address) || asString(place?.location_address) || asString(place?.category) || asString(place?.date) || "",
+      image: pickImage(place) || pickImage(original),
     });
   });
-
   return result;
 };
 
 const getImageUrls = (memory: UserMemory): string[] => {
-  const urls: string[] = [];
   const anyMemory = memory as any;
-
-  if (Array.isArray(anyMemory.image_urls)) {
-    urls.push(
-      ...anyMemory.image_urls.filter(
-        (url: unknown): url is string =>
-          typeof url === "string" && url.trim().length > 0,
-      ),
-    );
-  }
-
-  if (
-    typeof anyMemory.image_url === "string" &&
-    anyMemory.image_url.trim().length > 0
-  ) {
-    urls.push(anyMemory.image_url);
-  }
-
+  const candidates = [anyMemory.image_urls, anyMemory.images, anyMemory.photos, anyMemory.image_url, anyMemory.image, anyMemory.photo_url];
+  const urls: string[] = [];
+  candidates.forEach((candidate) => {
+    if (Array.isArray(candidate)) {
+      candidate.forEach((entry) => {
+        const url = imageCandidateToUrl(entry);
+        if (url) urls.push(url);
+      });
+    } else {
+      const url = imageCandidateToUrl(candidate);
+      if (url) urls.push(url);
+    }
+  });
   return [...new Set(urls)];
 };
 
-const getMemoryItem = (memory: UserMemory): any =>
-  (memory as any).item || (memory as any).attraction || null;
+const getMemoryItem = (memory: UserMemory): any => {
+  const source = memory as any;
+  return source.item || source.attraction || source.accommodation || source.restaurant || source.event || source.place || null;
+};
 
 const getMemoryType = (memory: UserMemory): MemoryItemType => {
   const type = (memory as any).item_type as MemoryItemType | undefined;
