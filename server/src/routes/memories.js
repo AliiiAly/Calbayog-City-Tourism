@@ -1,6 +1,6 @@
+
 const express = require("express");
 const axios = require("axios");
-
 const { protectUser } = require("../middleware/auth");
 
 const router = express.Router();
@@ -15,13 +15,9 @@ const SUPABASE_SERVICE_ROLE_KEY =
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.warn(
-    "Warning: Supabase credentials are missing for memories routes.",
+    "Warning: Supabase credentials are missing for memories routes."
   );
 }
-
-// =====================================================
-// SUPABASE HEADERS
-// =====================================================
 
 const supabaseHeaders = {
   apikey: SUPABASE_SERVICE_ROLE_KEY,
@@ -34,39 +30,24 @@ const supabaseJsonHeaders = {
 };
 
 // =====================================================
-// HELPER FUNCTIONS
+// HELPERS
 // =====================================================
 
-const getSupabaseRestUrl = (tableName) => {
-  return `${SUPABASE_URL}/rest/v1/${tableName}`;
-};
+const getSupabaseRestUrl = (tableName) =>
+  `${SUPABASE_URL}/rest/v1/${tableName}`;
 
-/**
- * Validate UUID values.
- */
-const isValidUuid = (value) => {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    String(value || ""),
+const isValidUuid = (value) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    String(value || "")
   );
-};
 
-/**
- * Validate image URLs.
- */
 const isValidImageUrl = (value) => {
-  if (typeof value !== "string") {
-    return false;
-  }
-
-  const trimmedValue = value.trim();
-
-  if (!trimmedValue) {
+  if (typeof value !== "string" || !value.trim()) {
     return false;
   }
 
   try {
-    const parsedUrl = new URL(trimmedValue);
-
+    const parsedUrl = new URL(value.trim());
     return (
       parsedUrl.protocol === "http:" ||
       parsedUrl.protocol === "https:"
@@ -76,189 +57,257 @@ const isValidImageUrl = (value) => {
   }
 };
 
-/**
- * Get the authenticated user's ID.
- */
-const getUserId = (req) => {
-  return req.user?.id || req.user?.user_id;
-};
+const getUserId = (req) =>
+  req.user?.id || req.user?.user_id;
 
-/**
- * Normalize image URLs.
- *
- * Supports:
- *
- * image_urls: ["url1", "url2", ...]
- *
- * and:
- *
- * image_url: "url1"
- *
- * There is no maximum number of images per memory.
- */
 const normalizeImageUrls = (body = {}) => {
   let incomingImages = [];
 
   if (Array.isArray(body.image_urls)) {
     incomingImages = body.image_urls;
+  } else if (Array.isArray(body.imageUrls)) {
+    incomingImages = body.imageUrls;
   } else if (body.image_url) {
     incomingImages = [body.image_url];
+  } else if (body.imageUrl) {
+    incomingImages = [body.imageUrl];
   }
 
-  const cleanedImages = incomingImages
-    .map((imageUrl) => String(imageUrl || "").trim())
-    .filter(Boolean);
-
-  return [...new Set(cleanedImages)];
+  return [
+    ...new Set(
+      incomingImages
+        .map((url) => String(url || "").trim())
+        .filter(Boolean)
+    ),
+  ];
 };
 
-/**
- * Return a consistent Supabase error message.
- */
-const getSupabaseErrorMessage = (error) => {
-  return (
-    error?.response?.data?.message ||
-    error?.response?.data?.error_description ||
-    error?.response?.data?.details ||
-    error?.response?.data?.hint ||
-    error?.message ||
-    "An unexpected error occurred."
-  );
+const getSupabaseErrorMessage = (error) =>
+  error?.response?.data?.message ||
+  error?.response?.data?.error_description ||
+  error?.response?.data?.details ||
+  error?.response?.data?.hint ||
+  error?.message ||
+  "An unexpected error occurred.";
+
+// Allowed item types and their Supabase tables.
+const ITEM_TABLES = {
+  attraction: "attractions",
+  accommodation: "accommodations",
+  restaurant: "restaurants",
 };
 
-/**
- * Get an attraction image.
- *
- * Supports multiple possible image field formats
- * used in the attractions table.
- */
-const getAttractionImage = (attraction) => {
-  if (!attraction || typeof attraction !== "object") {
+const getItemType = (value) => {
+  const normalized = String(
+    value || "attraction"
+  ).trim().toLowerCase();
+
+  return Object.prototype.hasOwnProperty.call(
+    ITEM_TABLES,
+    normalized
+  )
+    ? normalized
+    : null;
+};
+
+const getItemName = (item, itemType) =>
+  item?.name ||
+  item?.title ||
+  item?.restaurant_name ||
+  item?.accommodation_name ||
+  `Unnamed ${itemType}`;
+
+const getItemImage = (item) => {
+  if (!item || typeof item !== "object") {
     return null;
   }
 
-  if (
-    typeof attraction.image === "string" &&
-    attraction.image.trim()
-  ) {
-    return attraction.image;
+  for (const field of [
+    "image",
+    "image_url",
+    "cover_image",
+    "thumbnail",
+  ]) {
+    if (
+      typeof item[field] === "string" &&
+      item[field].trim()
+    ) {
+      return item[field].trim();
+    }
   }
 
-  if (
-    typeof attraction.image_url === "string" &&
-    attraction.image_url.trim()
-  ) {
-    return attraction.image_url;
-  }
+  for (const field of [
+    "images",
+    "image_urls",
+    "photos",
+  ]) {
+    const value = item[field];
 
-  if (
-    Array.isArray(attraction.images) &&
-    typeof attraction.images[0] === "string"
-  ) {
-    return attraction.images[0];
-  }
+    if (
+      Array.isArray(value) &&
+      typeof value[0] === "string" &&
+      value[0].trim()
+    ) {
+      return value[0].trim();
+    }
 
-  if (
-    Array.isArray(attraction.image_urls) &&
-    typeof attraction.image_urls[0] === "string"
-  ) {
-    return attraction.image_urls[0];
+    if (typeof value === "string" && value.trim()) {
+      try {
+        const parsed = JSON.parse(value);
+
+        if (
+          Array.isArray(parsed) &&
+          typeof parsed[0] === "string"
+        ) {
+          return parsed[0];
+        }
+      } catch {
+        // Ignore values that are not JSON arrays.
+      }
+    }
   }
 
   return null;
 };
 
-/**
- * Attach attraction information to memory records.
- *
- * A memory stores attraction_id.
- * This helper retrieves the related attraction and adds:
- *
- * attraction: {
- *   id,
- *   name,
- *   image
- * }
- */
-const attachAttractionDetails = async (memories = []) => {
+const fetchItemById = async (itemType, itemId) => {
+  const tableName = ITEM_TABLES[itemType];
+
+  const url =
+    `${getSupabaseRestUrl(tableName)}` +
+    `?id=eq.${encodeURIComponent(String(itemId))}` +
+    `&select=*`;
+
+  const response = await axios.get(url, {
+    headers: supabaseHeaders,
+  });
+
+  return Array.isArray(response.data)
+    ? response.data[0] || null
+    : null;
+};
+
+// Attach details for attractions, accommodations,
+// and restaurants to each memory.
+const attachItemDetails = async (memories = []) => {
   if (!Array.isArray(memories) || memories.length === 0) {
     return [];
   }
 
-  const attractionIds = [
-    ...new Set(
-      memories
-        .map((memory) => String(memory.attraction_id || "").trim())
-        .filter(Boolean),
-    ),
-  ];
+  const cache = new Map();
 
-  if (attractionIds.length === 0) {
-    return memories;
-  }
-
-  try {
-    // Fetch attractions from Supabase.
-    // The response is filtered locally so this works
-    // with different attraction ID formats.
-    const attractionsUrl =
-      `${getSupabaseRestUrl("attractions")}` +
-      `?select=*`;
-
-    const attractionsResponse = await axios.get(attractionsUrl, {
-      headers: supabaseHeaders,
-    });
-
-    const attractions = Array.isArray(attractionsResponse.data)
-      ? attractionsResponse.data
-      : [];
-
-    const attractionsMap = new Map(
-      attractions
-        .filter((attraction) => attraction?.id !== undefined)
-        .map((attraction) => [
-          String(attraction.id),
-          attraction,
-        ]),
-    );
-
-    return memories.map((memory) => {
-      const attraction = attractionsMap.get(
-        String(memory.attraction_id),
+  await Promise.all(
+    memories.map(async (memory) => {
+      // Old memories may only have attraction_id.
+      const itemType = getItemType(
+        memory.item_type ||
+          (memory.attraction_id ? "attraction" : "")
       );
 
-      return {
-        ...memory,
-        attraction: attraction
-          ? {
-              id: attraction.id,
-              name:
-                attraction.name ||
-                attraction.title ||
-                "Unnamed attraction",
-              image: getAttractionImage(attraction),
-            }
-          : null,
-      };
-    });
-  } catch (error) {
-    console.error(
-      "Attach attraction details error:",
-      error.response?.data || error.message,
+      const itemId =
+        memory.item_id || memory.attraction_id;
+
+      if (!itemType || !itemId) {
+        return;
+      }
+
+      const key = `${itemType}:${String(itemId)}`;
+
+      if (cache.has(key)) {
+        return;
+      }
+
+      try {
+        const item = await fetchItemById(
+          itemType,
+          itemId
+        );
+
+        cache.set(key, item);
+      } catch (error) {
+        console.error(
+          `Attach ${itemType} details error:`,
+          error.response?.data || error.message
+        );
+
+        cache.set(key, null);
+      }
+    })
+  );
+
+  return memories.map((memory) => {
+    const itemType = getItemType(
+      memory.item_type ||
+        (memory.attraction_id ? "attraction" : "")
     );
 
-    // Return memories even if attraction details
-    // cannot be retrieved.
-    return memories.map((memory) => ({
+    const itemId =
+      memory.item_id || memory.attraction_id;
+
+    const relatedItem =
+      itemType && itemId
+        ? cache.get(
+            `${itemType}:${String(itemId)}`
+          ) || null
+        : null;
+
+    const details = relatedItem
+      ? {
+          id: relatedItem.id,
+          name: getItemName(
+            relatedItem,
+            itemType
+          ),
+          image: getItemImage(relatedItem),
+        }
+      : null;
+
+    return {
       ...memory,
-      attraction: null,
-    }));
-  }
+      item: details
+        ? { ...details, type: itemType }
+        : null,
+
+      // Keep the old attraction property working.
+      attraction:
+        itemType === "attraction"
+          ? details
+          : null,
+
+      accommodation:
+        itemType === "accommodation"
+          ? details
+          : null,
+
+      restaurant:
+        itemType === "restaurant"
+          ? details
+          : null,
+    };
+  });
+};
+
+const getMemoryRecordsForUser = async (
+  userId,
+  extraQuery = ""
+) => {
+  const url =
+    `${getSupabaseRestUrl("memories")}` +
+    `?user_id=eq.${encodeURIComponent(userId)}` +
+    `${extraQuery}` +
+    `&select=*&order=created_at.desc`;
+
+  const response = await axios.get(url, {
+    headers: supabaseHeaders,
+  });
+
+  return Array.isArray(response.data)
+    ? response.data
+    : [];
 };
 
 // =====================================================
-// GET ALL MEMORIES OF THE CURRENT USER
-//
+// GET ALL MEMORIES FOR THE CURRENT USER
 // GET /api/memories
 // =====================================================
 
@@ -272,29 +321,17 @@ router.get("/", protectUser, async (req, res) => {
       });
     }
 
-    const memoriesUrl =
-      `${getSupabaseRestUrl("memories")}` +
-      `?user_id=eq.${encodeURIComponent(userId)}` +
-      `&select=*` +
-      `&order=created_at.desc`;
+    const records =
+      await getMemoryRecordsForUser(userId);
 
-    const response = await axios.get(memoriesUrl, {
-      headers: supabaseHeaders,
-    });
+    const memories =
+      await attachItemDetails(records);
 
-    const memoryRecords = Array.isArray(response.data)
-      ? response.data
-      : [];
-
-    const memories = await attachAttractionDetails(memoryRecords);
-
-    return res.status(200).json({
-      memories,
-    });
+    return res.status(200).json({ memories });
   } catch (error) {
     console.error(
       "Get user memories error:",
-      error.response?.data || error.message,
+      error.response?.data || error.message
     );
 
     return res.status(500).json({
@@ -305,9 +342,7 @@ router.get("/", protectUser, async (req, res) => {
 
 // =====================================================
 // GET MEMORIES FOR ONE ATTRACTION
-//
-// ONLY THE CURRENT USER'S MEMORIES ARE RETURNED.
-//
+// Legacy endpoint
 // GET /api/memories/attraction/:attractionId
 // =====================================================
 
@@ -321,7 +356,8 @@ router.get(
 
       if (!userId) {
         return res.status(401).json({
-          message: "Authenticated user ID is missing.",
+          message:
+            "Authenticated user ID is missing.",
         });
       }
 
@@ -331,175 +367,241 @@ router.get(
         });
       }
 
-      const memoriesUrl =
-        `${getSupabaseRestUrl("memories")}` +
-        `?user_id=eq.${encodeURIComponent(userId)}` +
-        `&attraction_id=eq.${encodeURIComponent(attractionId)}` +
-        `&select=*` +
-        `&order=created_at.desc`;
+      const records =
+        await getMemoryRecordsForUser(
+          userId,
+          `&or=(attraction_id.eq.${encodeURIComponent(
+            attractionId
+          )},and(item_type.eq.attraction,item_id.eq.${encodeURIComponent(
+            attractionId
+          )}))`
+        );
 
-      const response = await axios.get(memoriesUrl, {
-        headers: supabaseHeaders,
-      });
+      const memories =
+        await attachItemDetails(records);
 
-      const memoryRecords = Array.isArray(response.data)
-        ? response.data
-        : [];
-
-      const memories = await attachAttractionDetails(memoryRecords);
-
-      return res.status(200).json({
-        memories,
-      });
+      return res.status(200).json({ memories });
     } catch (error) {
       console.error(
         "Get attraction memories error:",
-        error.response?.data || error.message,
+        error.response?.data || error.message
       );
 
       return res.status(500).json({
-        message: "Failed to load memories for this attraction.",
+        message:
+          "Failed to load memories for this attraction.",
       });
     }
-  },
+  }
+);
+
+// =====================================================
+// GET MEMORIES FOR A SPECIFIC ITEM
+// GET /api/memories/item/:itemType/:itemId
+// =====================================================
+
+router.get(
+  "/item/:itemType/:itemId",
+  protectUser,
+  async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const itemType = getItemType(
+        req.params.itemType
+      );
+      const itemId = String(
+        req.params.itemId || ""
+      ).trim();
+
+      if (!userId) {
+        return res.status(401).json({
+          message:
+            "Authenticated user ID is missing.",
+        });
+      }
+
+      if (!itemType || !itemId) {
+        return res.status(400).json({
+          message:
+            "A valid item type and item ID are required.",
+        });
+      }
+
+      const records =
+        await getMemoryRecordsForUser(
+          userId,
+          `&item_type=eq.${encodeURIComponent(
+            itemType
+          )}&item_id=eq.${encodeURIComponent(
+            itemId
+          )}`
+        );
+
+      const memories =
+        await attachItemDetails(records);
+
+      return res.status(200).json({ memories });
+    } catch (error) {
+      console.error(
+        "Get item memories error:",
+        error.response?.data || error.message
+      );
+
+      return res.status(500).json({
+        message:
+          "Failed to load memories for this item.",
+      });
+    }
+  }
 );
 
 // =====================================================
 // CREATE A MEMORY
-//
 // POST /api/memories
 //
-// Expected request body:
-//
+// Body:
 // {
-//   "attraction_id": "uuid",
-//   "caption": "Beautiful experience!",
-//   "image_urls": [
-//     "https://example.com/image1.jpg",
-//     "https://example.com/image2.jpg",
-//     ...any number of images
-//   ]
+//   item_type: "attraction" | "accommodation" | "restaurant",
+//   item_id: "selected item ID",
+//   caption: "My memory",
+//   image_urls: ["url1", "url2"]
 // }
+//
+// Legacy attraction requests using attraction_id
+// are also supported.
 // =====================================================
 
 router.post("/", protectUser, async (req, res) => {
   try {
     const userId = getUserId(req);
 
-    const {
-      attraction_id: attractionId,
-      caption,
-    } = req.body;
-
-    const imageUrls = normalizeImageUrls(req.body);
-
-    // -------------------------------------------------
-    // VALIDATE USER
-    // -------------------------------------------------
-
     if (!userId) {
       return res.status(401).json({
-        message: "Authenticated user ID is missing.",
+        message:
+          "Authenticated user ID is missing.",
       });
     }
 
-    // -------------------------------------------------
-    // VALIDATE ATTRACTION ID
-    // -------------------------------------------------
+    const body = req.body || {};
 
-    if (!attractionId) {
+    const rawType =
+      body.item_type ||
+      body.itemType ||
+      (body.attraction_id ? "attraction" : "");
+
+    const itemType = getItemType(rawType);
+
+    const itemId = String(
+      body.item_id ||
+        body.itemId ||
+        body.attraction_id ||
+        ""
+    ).trim();
+
+    const caption = String(
+      body.caption || ""
+    ).trim();
+
+    const imageUrls = normalizeImageUrls(body);
+
+    if (!itemType) {
       return res.status(400).json({
-        message: "Attraction ID is required.",
+        message:
+          "A valid item_type is required: attraction, accommodation, or restaurant.",
       });
     }
 
-    if (!isValidUuid(attractionId)) {
+    if (!itemId) {
+      return res.status(400).json({
+        message: "Item ID is required.",
+      });
+    }
+
+    if (
+      itemType === "attraction" &&
+      !isValidUuid(itemId)
+    ) {
       return res.status(400).json({
         message: "Invalid attraction ID.",
       });
     }
 
-    // -------------------------------------------------
-    // VALIDATE CAPTION
-    // -------------------------------------------------
-
-    const trimmedCaption = String(caption || "").trim();
-
-    if (!trimmedCaption) {
+    if (!caption) {
       return res.status(400).json({
         message: "Memory caption is required.",
       });
     }
 
-    if (trimmedCaption.length > 500) {
+    if (caption.length > 500) {
       return res.status(400).json({
         message:
           "Memory caption must not exceed 500 characters.",
       });
     }
 
-    // -------------------------------------------------
-    // VALIDATE IMAGES
-    //
-    // At least one image is required. There is no
-    // maximum number of images per memory.
-    // -------------------------------------------------
-
     if (imageUrls.length === 0) {
       return res.status(400).json({
-        message: "At least one image URL is required.",
+        message:
+          "At least one image URL is required.",
       });
     }
-
-    const invalidImageUrl = imageUrls.find(
-      (imageUrl) => !isValidImageUrl(imageUrl),
-    );
-
-    if (invalidImageUrl) {
-      return res.status(400).json({
-        message: "One or more image URLs are invalid.",
-      });
-    }
-
-    // -------------------------------------------------
-    // CHECK IF ATTRACTION EXISTS
-    // -------------------------------------------------
-
-    const attractionUrl =
-      `${getSupabaseRestUrl("attractions")}` +
-      `?id=eq.${encodeURIComponent(attractionId)}` +
-      `&select=id`;
-
-    const attractionResponse = await axios.get(
-      attractionUrl,
-      {
-        headers: supabaseHeaders,
-      },
-    );
 
     if (
-      !Array.isArray(attractionResponse.data) ||
-      attractionResponse.data.length === 0
+      imageUrls.some(
+        (url) => !isValidImageUrl(url)
+      )
     ) {
-      return res.status(404).json({
-        message: "Attraction not found.",
+      return res.status(400).json({
+        message:
+          "One or more image URLs are invalid.",
       });
     }
 
-    // -------------------------------------------------
-    // INSERT MEMORY
-    // -------------------------------------------------
+    // Check that the selected item exists
+    // in the correct Supabase table.
+    let relatedItem;
 
-    
-const insertPayload = {
-  user_id: userId,
-  item_type: req.body.item_type || "attraction",
-  item_id: req.body.item_id || attractionId,
-  attraction_id: attractionId,
-  caption: trimmedCaption,
-  image_urls: imageUrls,
-};
+    try {
+      relatedItem = await fetchItemById(
+        itemType,
+        itemId
+      );
+    } catch (error) {
+      console.error(
+        `Validate ${itemType} error:`,
+        error.response?.data || error.message
+      );
 
+      return res.status(500).json({
+        message:
+          `Could not validate the selected ${itemType}.`,
+      });
+    }
+
+    if (!relatedItem) {
+      return res.status(404).json({
+        message:
+          `${itemType[0].toUpperCase()}${itemType.slice(
+            1
+          )} not found.`,
+      });
+    }
+
+    const insertPayload = {
+      user_id: userId,
+      item_type: itemType,
+      item_id: itemId,
+
+      // Preserve compatibility with old attraction memories.
+      attraction_id:
+        itemType === "attraction"
+          ? itemId
+          : null,
+
+      caption,
+      image_url: imageUrls[0] || null,
+      image_urls: imageUrls,
+    };
 
     const insertResponse = await axios.post(
       getSupabaseRestUrl("memories"),
@@ -509,10 +611,11 @@ const insertPayload = {
           ...supabaseJsonHeaders,
           Prefer: "return=representation",
         },
-      },
+      }
     );
 
-    const createdMemory = insertResponse.data?.[0];
+    const createdMemory =
+      insertResponse.data?.[0];
 
     if (!createdMemory) {
       return res.status(500).json({
@@ -520,19 +623,18 @@ const insertPayload = {
       });
     }
 
-    // Attach attraction information to the newly
-    // created memory before returning it.
-    const [memoryWithAttraction] =
-      await attachAttractionDetails([createdMemory]);
+    const [memoryWithDetails] =
+      await attachItemDetails([createdMemory]);
 
     return res.status(201).json({
       message: "Memory added successfully.",
-      memory: memoryWithAttraction || createdMemory,
+      memory:
+        memoryWithDetails || createdMemory,
     });
   } catch (error) {
     console.error(
       "Create memory error:",
-      error.response?.data || error.message,
+      error.response?.data || error.message
     );
 
     return res.status(500).json({
@@ -547,118 +649,130 @@ const insertPayload = {
   }
 });
 
+// =====================================================
+// UPDATE A MEMORY
+// PUT /api/memories/:memoryId
+// Only the owner can update their memory.
+// =====================================================
 
-/* =====================================================
-   UPDATE A MEMORY
-   ONLY THE OWNER CAN UPDATE THEIR MEMORY.
+router.put(
+  "/:memoryId",
+  protectUser,
+  async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { memoryId } = req.params;
+      const body = req.body || {};
 
-   PUT /api/memories/:memoryId
-===================================================== */
+      const caption = String(
+        body.caption || ""
+      ).trim();
 
-router.put("/:memoryId", protectUser, async (req, res) => {
-  try {
-    const userId = getUserId(req);
-    const { memoryId } = req.params;
-    const { caption } = req.body || {};
-    const imageUrls = normalizeImageUrls(req.body || {});
+      const imageUrls =
+        normalizeImageUrls(body);
 
-    if (!userId) {
-      return res.status(401).json({
-        message: "Authenticated user ID is missing.",
-      });
-    }
-
-    if (!isValidUuid(memoryId)) {
-      return res.status(400).json({
-        message: "Invalid memory ID.",
-      });
-    }
-
-    // Require the caption and images to remain valid.
-    const trimmedCaption = String(caption || "").trim();
-
-    if (!trimmedCaption) {
-      return res.status(400).json({
-        message: "Memory caption is required.",
-      });
-    }
-
-    if (trimmedCaption.length > 500) {
-      return res.status(400).json({
-        message: "Memory caption must not exceed 500 characters.",
-      });
-    }
-
-    if (imageUrls.length === 0) {
-      return res.status(400).json({
-        message: "At least one image URL is required.",
-      });
-    }
-
-    if (imageUrls.some((url) => !isValidImageUrl(url))) {
-      return res.status(400).json({
-        message: "One or more image URLs are invalid.",
-      });
-    }
-
-    // Update only this user's memory.
-    const updateUrl =
-      `${getSupabaseRestUrl("memories")}` +
-      `?id=eq.${encodeURIComponent(memoryId)}` +
-      `&user_id=eq.${encodeURIComponent(userId)}` +
-      `&select=*`;
-
-    const response = await axios.patch(
-      updateUrl,
-      {
-        caption: trimmedCaption,
-        image_urls: imageUrls,
-      },
-      {
-        headers: {
-          ...supabaseJsonHeaders,
-          Prefer: "return=representation",
-        },
+      if (!userId) {
+        return res.status(401).json({
+          message:
+            "Authenticated user ID is missing.",
+        });
       }
-    );
 
-    const updatedMemory = response.data?.[0];
+      if (!isValidUuid(memoryId)) {
+        return res.status(400).json({
+          message: "Invalid memory ID.",
+        });
+      }
 
-    if (!updatedMemory) {
-      return res.status(404).json({
+      if (!caption) {
+        return res.status(400).json({
+          message: "Memory caption is required.",
+        });
+      }
+
+      if (caption.length > 500) {
+        return res.status(400).json({
+          message:
+            "Memory caption must not exceed 500 characters.",
+        });
+      }
+
+      if (imageUrls.length === 0) {
+        return res.status(400).json({
+          message:
+            "At least one image URL is required.",
+        });
+      }
+
+      if (
+        imageUrls.some(
+          (url) => !isValidImageUrl(url)
+        )
+      ) {
+        return res.status(400).json({
+          message:
+            "One or more image URLs are invalid.",
+        });
+      }
+
+      const updateUrl =
+        `${getSupabaseRestUrl("memories")}` +
+        `?id=eq.${encodeURIComponent(memoryId)}` +
+        `&user_id=eq.${encodeURIComponent(userId)}` +
+        `&select=*`;
+
+      const response = await axios.patch(
+        updateUrl,
+        {
+          caption,
+          image_url: imageUrls[0] || null,
+          image_urls: imageUrls,
+        },
+        {
+          headers: {
+            ...supabaseJsonHeaders,
+            Prefer: "return=representation",
+          },
+        }
+      );
+
+      const updatedMemory =
+        response.data?.[0];
+
+      if (!updatedMemory) {
+        return res.status(404).json({
+          message:
+            "Memory not found or you do not have permission to update it.",
+        });
+      }
+
+      const [memoryWithDetails] =
+        await attachItemDetails([updatedMemory]);
+
+      return res.status(200).json({
+        message: "Memory updated successfully.",
+        memory:
+          memoryWithDetails || updatedMemory,
+      });
+    } catch (error) {
+      console.error(
+        "Update memory error:",
+        error.response?.data || error.message
+      );
+
+      return res.status(500).json({
         message:
-          "Memory not found or you do not have permission to update it.",
+          getSupabaseErrorMessage(error) ||
+          "Failed to update memory.",
       });
     }
-
-    const [memoryWithAttraction] =
-      await attachAttractionDetails([updatedMemory]);
-
-    return res.status(200).json({
-      message: "Memory updated successfully.",
-      memory: memoryWithAttraction || updatedMemory,
-    });
-  } catch (error) {
-    console.error(
-      "Update memory error:",
-      error.response?.data || error.message
-    );
-
-    return res.status(500).json({
-      message:
-        getSupabaseErrorMessage(error) ||
-        "Failed to update memory.",
-    });
   }
-});
-
+);
 
 // =====================================================
 // DELETE A MEMORY
-//
-// ONLY THE OWNER CAN DELETE THEIR MEMORY.
-//
 // DELETE /api/memories/:memoryId
+// Only the owner can delete their memory.
 // =====================================================
 
 router.delete(
@@ -671,7 +785,8 @@ router.delete(
 
       if (!userId) {
         return res.status(401).json({
-          message: "Authenticated user ID is missing.",
+          message:
+            "Authenticated user ID is missing.",
         });
       }
 
@@ -686,19 +801,19 @@ router.delete(
         `?id=eq.${encodeURIComponent(memoryId)}` +
         `&user_id=eq.${encodeURIComponent(userId)}`;
 
-      const deleteResponse = await axios.delete(
+      const response = await axios.delete(
         deleteUrl,
         {
           headers: {
             ...supabaseHeaders,
             Prefer: "return=representation",
           },
-        },
+        }
       );
 
       if (
-        !Array.isArray(deleteResponse.data) ||
-        deleteResponse.data.length === 0
+        !Array.isArray(response.data) ||
+        response.data.length === 0
       ) {
         return res.status(404).json({
           message:
@@ -712,18 +827,14 @@ router.delete(
     } catch (error) {
       console.error(
         "Delete memory error:",
-        error.response?.data || error.message,
+        error.response?.data || error.message
       );
 
       return res.status(500).json({
         message: "Failed to delete memory.",
       });
     }
-  },
+  }
 );
-
-// =====================================================
-// EXPORT ROUTER
-// =====================================================
 
 module.exports = router;
