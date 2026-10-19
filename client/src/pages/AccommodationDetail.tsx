@@ -29,8 +29,8 @@ import {
   ListChecks,
   Mail,
   MapPin,
-  MapPinned,
   Maximize2,
+  MapPinned,
   Phone,
   Share2,
   Tag,
@@ -57,16 +57,19 @@ import "leaflet/dist/leaflet.css";
 import {
   getAccommodation,
   getAccommodations,
+  createMyMemory,
 } from "../services/api";
 
 import {
   subscribeToAccommodations,
   unsubscribeAll,
+  supabase,
 } from "../services/supabase";
 
 import { Accommodation } from "../types";
 
 import { useFavorites } from "../context/FavoritesContext";
+import { useAuth } from "../context/AuthContext";
 
 const CALBAYOG_BLUE = "#2D3195";
 const CALBAYOG_BLUE_SOFT = "#EEF0FF";
@@ -586,26 +589,6 @@ const AccommodationMap: React.FC<AccommodationMapProps> = ({
   );
 };
 
-const openStreetLevelView = (
-  coordinates: MapCoordinates | null,
-): void => {
-  if (!coordinates) {
-    return;
-  }
-
-  const url = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${coordinates.lat},${coordinates.lng}`;
-
-  const opened = window.open(
-    url,
-    "_blank",
-    "noopener,noreferrer",
-  );
-
-  if (!opened) {
-    window.location.href = url;
-  }
-};
-
 /* =========================================================
    COMPONENT
 ========================================================= */
@@ -619,6 +602,99 @@ const AccommodationDetail: React.FC =
 
     const history =
       useHistory();
+
+    const auth = useAuth();
+    const isUserAuthenticated = Boolean((auth as any)?.isUserAuthenticated && (auth as any)?.user);
+
+    const [memoryNotice, setMemoryNotice] = useState("");
+    const [showMemoryForm, setShowMemoryForm] = useState(false);
+    const [memoryCaption, setMemoryCaption] = useState("");
+    const [memoryPhoto, setMemoryPhoto] = useState<File | null>(null);
+    const [memoryPhotoPreview, setMemoryPhotoPreview] = useState("");
+    const [memorySubmitting, setMemorySubmitting] = useState(false);
+    const [memoryError, setMemoryError] = useState("");
+
+    useEffect(() => () => {
+      if (memoryPhotoPreview) URL.revokeObjectURL(memoryPhotoPreview);
+    }, [memoryPhotoPreview]);
+
+    const handleAddMemories = () => {
+      setMemoryNotice("");
+      setMemoryError("");
+      if (!isUserAuthenticated) {
+        window.dispatchEvent(new Event("open-login-modal"));
+        return;
+      }
+      setShowMemoryForm(true);
+    };
+
+    const handleMemoryPhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0] || null;
+      if (memoryPhotoPreview) URL.revokeObjectURL(memoryPhotoPreview);
+      setMemoryPhoto(null);
+      setMemoryPhotoPreview("");
+      setMemoryError("");
+      if (!file) return;
+      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+        setMemoryError("Please choose a JPG, PNG, or WEBP image.");
+        event.target.value = "";
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setMemoryError("The image must be 5 MB or smaller.");
+        event.target.value = "";
+        return;
+      }
+      setMemoryPhoto(file);
+      setMemoryPhotoPreview(URL.createObjectURL(file));
+    };
+
+    const closeMemoryForm = () => {
+      if (memorySubmitting) return;
+      setShowMemoryForm(false);
+      setMemoryCaption("");
+      setMemoryPhoto(null);
+      if (memoryPhotoPreview) URL.revokeObjectURL(memoryPhotoPreview);
+      setMemoryPhotoPreview("");
+      setMemoryError("");
+    };
+
+    const handleSubmitMemory = async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (memorySubmitting) return;
+      setMemoryError("");
+      setMemoryNotice("");
+      const userId = String((auth as any)?.user?.id || "").trim();
+      const accommodationId = cleanString((accommodation as any)?.id ?? (accommodation as any)?._id ?? id);
+      const caption = memoryCaption.trim();
+      if (!userId) { setMemoryError("Please log in before submitting a memory."); return; }
+      if (!accommodationId || !memoryPhoto) { setMemoryError("Please select a photo to share."); return; }
+      if (!caption || caption.length > 500) { setMemoryError("Please enter a caption of 1–500 characters."); return; }
+      let uploadedPath = "";
+      try {
+        setMemorySubmitting(true);
+        const extension = memoryPhoto.name.split(".").pop()?.toLowerCase() || "jpg";
+        uploadedPath = `${userId}/${accommodationId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+        const { error: uploadError } = await supabase.storage.from("memory-images").upload(uploadedPath, memoryPhoto, { cacheControl: "3600", upsert: false, contentType: memoryPhoto.type });
+        if (uploadError) throw uploadError;
+        const { data } = supabase.storage.from("memory-images").getPublicUrl(uploadedPath);
+        const imageUrl = data?.publicUrl || "";
+        if (!imageUrl) throw new Error("Could not create a public image URL.");
+        await createMyMemory({ attraction_id: accommodationId, item_type: "accommodation", item_id: accommodationId, caption, image_urls: [imageUrl] } as any);
+        setShowMemoryForm(false);
+        setMemoryCaption("");
+        setMemoryPhoto(null);
+        if (memoryPhotoPreview) URL.revokeObjectURL(memoryPhotoPreview);
+        setMemoryPhotoPreview("");
+        setMemoryNotice("Your memory has been added successfully!");
+      } catch (submitError: any) {
+        console.error("Accommodation memory submission error:", submitError);
+        if (uploadedPath) {
+          try { await supabase.storage.from("memory-images").remove([uploadedPath]); } catch { /* best-effort cleanup */ }
+        }
+        setMemoryError(submitError?.response?.data?.message || submitError?.message || "Unable to add your memory. Please try again.");
+      } finally { setMemorySubmitting(false); }
+    };
 
     const {
       isFavorite,
@@ -1337,7 +1413,7 @@ const AccommodationDetail: React.FC =
               <ArrowLeft
                 size={16}
               />
-              Back to accommodations
+              Back
             </button>
           </div>
         </div>
@@ -2518,6 +2594,26 @@ const AccommodationDetail: React.FC =
               animation: none !important;
             }
           }
+          .detail-memory-section { margin-top: 22px; padding: 16px; border: 1px solid rgba(45,49,149,.14); border-radius: 16px; background: linear-gradient(135deg,#fafaff 0%,#f4f5ff 100%); }
+          .detail-memory-content { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+          .detail-memory-copy { display:flex; align-items:flex-start; gap:10px; min-width:0; }
+          .detail-memory-icon { width:36px; height:36px; flex:0 0 36px; display:flex; align-items:center; justify-content:center; border-radius:11px; background:${CALBAYOG_BLUE}; color:#fff; }
+          .detail-memory-title { margin:0 0 3px; font-size:.78rem; font-weight:900; color:${TEXT}; }
+          .detail-memory-subtitle { margin:0; color:${MUTED}; font-size:.68rem; line-height:1.5; }
+          .detail-memory-button,.detail-memory-submit { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:38px; padding:9px 13px; border:0; border-radius:10px; background:${CALBAYOG_BLUE}; color:#fff; font-size:.7rem; font-weight:900; cursor:pointer; }
+          .detail-memory-form { margin-top:15px; padding:15px; border:1px solid ${BORDER}; border-radius:12px; background:#fff; }
+          .detail-memory-form-header,.detail-memory-form-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+          .detail-memory-form-header h3 { margin:0; font-size:.9rem; font-weight:900; }
+          .detail-memory-close { width:32px; height:32px; border:0; border-radius:50%; background:#f0f1f5; font-size:1.2rem; cursor:pointer; }
+          .detail-memory-form label { display:block; margin:13px 0 6px; font-size:.72rem; font-weight:900; }
+          .detail-memory-form input[type=file],.detail-memory-form textarea { display:block; width:100%; padding:10px; border:1px solid ${BORDER}; border-radius:9px; background:#fff; color:${TEXT}; font:inherit; font-size:.75rem; }
+          .detail-memory-form small { display:block; margin-top:6px; color:${MUTED}; font-size:.65rem; }
+          .detail-memory-preview { display:block; width:min(100%,280px); max-height:220px; object-fit:cover; margin-top:12px; border-radius:10px; }
+          .detail-memory-error { margin:10px 0; color:#b42318; font-size:.72rem; font-weight:700; }
+          .detail-memory-notice { margin-top:10px; color:#16794b; font-size:.72rem; font-weight:800; }
+          .detail-memory-cancel { min-height:38px; padding:8px 12px; border:1px solid ${BORDER}; border-radius:10px; background:#fff; color:${TEXT}; font-size:.7rem; font-weight:800; cursor:pointer; }
+          @media(max-width:575px) { .detail-memory-content { align-items:stretch; flex-direction:column; } .detail-memory-button { width:100%; } .detail-memory-form { padding:12px; } }
+
         `}</style>
 
         <Container className="attraction-detail-container">
@@ -2526,16 +2622,20 @@ const AccommodationDetail: React.FC =
           <button
             type="button"
             className="detail-back-button"
-            onClick={() =>
-              history.push(
-                "/accommodations"
-              )
-            }
+            onClick={() => {
+              // A card navigation normally pushes this detail route. Go back to
+              // the originating Welcome/Search/Accommodations screen in that case.
+              if (history.action === "PUSH" && window.history.length > 1) {
+                history.goBack();
+              } else {
+                history.push("/accommodations");
+              }
+            }}
           >
             <ArrowLeft
               size={15}
             />
-            Back to accommodations
+            Go back
           </button>
 
           {/* IMAGE + LOCATION */}
@@ -2706,11 +2806,9 @@ const AccommodationDetail: React.FC =
                     }
                   />
 
-                  <span className="detail-favorite-count">
-                    {
-                      favoriteCount
-                    }
-                  </span>
+                  {favoriteCount > 0 && (
+                    <span className="detail-favorite-count">{favoriteCount}</span>
+                  )}
                 </button>
               </div>
 
@@ -2763,20 +2861,7 @@ const AccommodationDetail: React.FC =
                     />
 
                     <div className="detail-location-map-actions">
-                      <button
-                        type="button"
-                        className="detail-location-map-action street-level"
-                        onClick={() =>
-                          openStreetLevelView(
-                            currentMapCoordinates,
-                          )
-                        }
-                        disabled={!currentMapCoordinates}
-                        aria-label="Open street-level view"
-                      >
-                        <MapPinned size={13} />
-                        Street View
-                      </button>
+
 
                       <button
                         type="button"
@@ -3051,6 +3136,30 @@ const AccommodationDetail: React.FC =
               </div>
             </Col>
           </Row>
+
+          {/* ADD MEMORIES */}
+          <section className="detail-memory-section" aria-label="Add accommodation memory">
+            <div className="detail-memory-content">
+              <div className="detail-memory-copy">
+                <div className="detail-memory-icon"><Camera size={18} /></div>
+                <div><p className="detail-memory-title">Add Memories</p><p className="detail-memory-subtitle">Share your photos and memorable moments from this accommodation.</p></div>
+              </div>
+              <button type="button" className="detail-memory-button" onClick={handleAddMemories}><Camera size={14} /> Add Memory</button>
+            </div>
+            {showMemoryForm && <form className="detail-memory-form" onSubmit={handleSubmitMemory}>
+              <div className="detail-memory-form-header"><h3>Share Your Memory</h3><button type="button" className="detail-memory-close" onClick={closeMemoryForm} disabled={memorySubmitting} aria-label="Close memory form">×</button></div>
+              <label htmlFor="accommodation-memory-photo">Upload a photo</label>
+              <input id="accommodation-memory-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleMemoryPhotoChange} disabled={memorySubmitting} />
+              <small>JPG, PNG, or WEBP. Maximum size: 5 MB.</small>
+              {memoryPhotoPreview && <img className="detail-memory-preview" src={memoryPhotoPreview} alt="Memory preview" />}
+              <label htmlFor="accommodation-memory-caption">Caption</label>
+              <textarea id="accommodation-memory-caption" rows={3} maxLength={500} value={memoryCaption} onChange={(event) => setMemoryCaption(event.target.value)} placeholder="Share a little about your experience..." disabled={memorySubmitting} />
+              <small>{memoryCaption.length}/500 characters</small>
+              {memoryError && <p className="detail-memory-error" role="alert">{memoryError}</p>}
+              <div className="detail-memory-form-actions"><button type="button" className="detail-memory-cancel" onClick={closeMemoryForm} disabled={memorySubmitting}>Cancel</button><button type="submit" className="detail-memory-submit" disabled={memorySubmitting}>{memorySubmitting ? "Submitting…" : "Submit Memory"}</button></div>
+            </form>}
+            {memoryNotice && <p className="detail-memory-notice" role="status">{memoryNotice}</p>}
+          </section>
         </Container>
 
         {/* ENLARGED MAP */}
@@ -3090,7 +3199,7 @@ const AccommodationDetail: React.FC =
                       </h2>
 
                       <p className="detail-map-subtitle">
-                        Drag the map, switch map styles, use your location, or open street-level imagery.
+                        Drag the map, switch map styles, or use your location.
                       </p>
                     </div>
                   </div>
@@ -3103,19 +3212,7 @@ const AccommodationDetail: React.FC =
                     </span>
 
                     <div className="detail-map-header-actions">
-                      <button
-                        type="button"
-                        className="detail-map-street-button"
-                        onClick={() =>
-                          openStreetLevelView(
-                            currentMapCoordinates,
-                          )
-                        }
-                        disabled={!currentMapCoordinates}
-                      >
-                        <MapPinned size={14} />
-                        Street View
-                      </button>
+
 
                       <button
                         type="button"
