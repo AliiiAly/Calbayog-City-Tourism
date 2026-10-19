@@ -33,13 +33,13 @@ export default defineConfig({
         // resized copy of logo2.png and list that file as a 192x192 icon.
         icons: [
   {
-    src: "/logo2-192.png",
+    src: "/LOGO 192X192.png",
     sizes: "192x192",
     type: "image/png",
     purpose: "any",
   },
   {
-    src: "/logo2.png",
+    src: "/LOGO 512X512.png",
     sizes: "512x512",
     type: "image/png",
     purpose: "any",
