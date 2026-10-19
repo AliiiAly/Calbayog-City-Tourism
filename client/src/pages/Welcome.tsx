@@ -2113,56 +2113,81 @@ const Welcome: React.FC = () => {
               </Link>
             </div>
 
-            <Row className="g-3 g-md-4">
-              {welcomeAccommodations.map((accommodation) => {
-                const accommodationData = accommodation as any;
+            <div className="welcome-accommodations-carousel">
+              <Swiper
+                modules={[A11y]}
+                slidesPerView={1.15}
+                spaceBetween={14}
+                centeredSlides={false}
+                grabCursor
+                watchOverflow
+                resistanceRatio={0.85}
+                touchRatio={1}
+                touchStartPreventDefault={false}
+                breakpoints={{
+                  400: { slidesPerView: 1.45, spaceBetween: 16 },
+                  576: { slidesPerView: 2, spaceBetween: 18 },
+                  768: { slidesPerView: 2.5, spaceBetween: 20 },
+                  992: { slidesPerView: 3, spaceBetween: 22 },
+                  1200: { slidesPerView: 4, spaceBetween: 24 },
+                }}
+                className="welcome-accommodations-swiper"
+              >
+                {welcomeAccommodations.map((accommodation) => {
+                  const accommodationData = accommodation as any;
 
-                const images: string[] = toImageList(accommodationData.images);
+                  const images: string[] = toImageList(accommodationData.images);
 
-                const priceMin = accommodationData.price_min;
-                const priceMax = accommodationData.price_max;
+                  const priceMin = accommodationData.price_min;
+                  const priceMax = accommodationData.price_max;
 
-                const hasPriceMin =
-                  priceMin !== null && priceMin !== undefined && priceMin !== "";
-                const hasPriceMax =
-                  priceMax !== null && priceMax !== undefined && priceMax !== "";
+                  const hasPriceMin =
+                    priceMin !== null && priceMin !== undefined && priceMin !== "";
+                  const hasPriceMax =
+                    priceMax !== null && priceMax !== undefined && priceMax !== "";
 
-                let priceText = "";
+                  let priceText = "";
 
-                if (hasPriceMin && hasPriceMax) {
-                  priceText = `₱${Number(priceMin).toLocaleString()} – ₱${Number(
-                    priceMax,
-                  ).toLocaleString()}`;
-                } else if (hasPriceMin) {
-                  priceText = `From ₱${Number(priceMin).toLocaleString()}`;
-                } else if (hasPriceMax) {
-                  priceText = `Up to ₱${Number(priceMax).toLocaleString()}`;
-                }
+                  if (hasPriceMin && hasPriceMax) {
+                    priceText = `₱${Number(priceMin).toLocaleString()} – ₱${Number(
+                      priceMax,
+                    ).toLocaleString()}`;
+                  } else if (hasPriceMin) {
+                    priceText = `From ₱${Number(priceMin).toLocaleString()}`;
+                  } else if (hasPriceMax) {
+                    priceText = `Up to ₱${Number(priceMax).toLocaleString()}`;
+                  }
 
-                const cardItem: AccommodationCardItem = {
-                  id: String(accommodationData.id ?? ""),
-                  name: accommodationData.name,
-                  owner: accommodationData.owner ?? null,
-                  manager: accommodationData.manager ?? null,
-                  address:
-                    accommodationData.address ||
-                    accommodationData.location_address ||
-                    null,
-                  contact_number: accommodationData.contact_number ?? null,
-                  website: accommodationData.website ?? null,
-                  images,
-                  description: accommodationData.description ?? null,
-                  price_range: accommodationData.price_range || priceText || null,
-                  featured: Boolean(accommodationData.featured),
-                };
+                  const cardItem: AccommodationCardItem = {
+                    id: String(accommodationData.id ?? ""),
+                    name: accommodationData.name,
+                    owner: accommodationData.owner ?? null,
+                    manager: accommodationData.manager ?? null,
+                    address:
+                      accommodationData.address ||
+                      accommodationData.location_address ||
+                      null,
+                    contact_number: accommodationData.contact_number ?? null,
+                    website: accommodationData.website ?? null,
+                    images,
+                    description: accommodationData.description ?? null,
+                    price_range: accommodationData.price_range || priceText || null,
+                    featured: Boolean(accommodationData.featured),
+                  };
 
-                return (
-                  <Col xs={12} sm={6} lg={3} key={accommodation.id}>
-                    <AccommodationCard accommodation={cardItem} />
-                  </Col>
-                );
-              })}
-            </Row>
+                  return (
+                    <SwiperSlide
+                      key={accommodation.id}
+                      className="welcome-accommodation-slide"
+                    >
+                      <div className="welcome-accommodation-card-shell">
+                        <AccommodationCard accommodation={cardItem} />
+                      </div>
+                    </SwiperSlide>
+                  );
+                })}
+              </Swiper>
+            </div>
           </section>
         )}
 
@@ -3207,6 +3232,40 @@ const Welcome: React.FC = () => {
 
         .welcome-attraction-card-shell > * { width: 100%; }
 
+        /* ---------- accommodations carousel (swipe left / right) ---------- */
+
+        .welcome-accommodations-carousel {
+          width: 100%;
+          overflow: hidden;
+          padding: 0 0 8px;
+        }
+
+        .welcome-accommodations-swiper {
+          width: 100%;
+          overflow: visible;
+          padding: 0 0 6px;
+          touch-action: pan-y;
+        }
+
+        .welcome-accommodation-slide {
+          height: auto;
+          min-width: 0;
+          display: flex;
+          align-items: stretch;
+        }
+
+        .welcome-accommodation-card-shell {
+          width: 100%;
+          min-width: 0;
+          display: flex;
+          align-items: stretch;
+        }
+
+        .welcome-accommodation-card-shell > * {
+          width: 100%;
+          min-width: 0;
+        }
+
         /* ---------- events carousel (circle cards + heart) ---------- */
 
         .welcome-events-carousel {
@@ -3787,7 +3846,8 @@ const Welcome: React.FC = () => {
           .welcome-accommodations-section { margin-bottom: 86px !important; }
 
           .welcome-attractions-heading { margin-bottom: 1.8rem; }
-          .welcome-attractions-swiper { padding-bottom: 4px; touch-action: pan-y; }
+          .welcome-attractions-swiper,
+          .welcome-accommodations-swiper { padding-bottom: 4px; touch-action: pan-y; }
 
           .welcome-attractions-toolbar,
           .welcome-accommodations-toolbar { margin: -0.15rem 0 0.9rem; }
