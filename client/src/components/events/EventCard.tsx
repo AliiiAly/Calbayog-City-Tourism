@@ -1,6 +1,6 @@
 import React from "react";
 import { Card } from "react-bootstrap";
-import { useFavorites } from "../context/FavoritesContext";
+import { useFavorites } from "../../context/FavoritesContext";
 import {
   ArrowUpRight,
   CalendarDays,
@@ -88,25 +88,18 @@ const getCategoryBackground = (category?: string): string => {
   switch (String(category || "").toLowerCase().trim()) {
     case "festival":
       return "#fff5df";
-
     case "cultural":
       return "#f3ece8";
-
     case "sports":
       return "#e8f5ee";
-
     case "religious":
       return "#eef0ff";
-
     case "food":
       return "#fff1e8";
-
     case "music":
       return "#f1ebff";
-
     case "arts":
       return "#f8edf5";
-
     default:
       return "#eef1ef";
   }
@@ -120,16 +113,16 @@ const EventCard: React.FC<EventCardProps> = ({
 }) => {
   const eventId = getEventId(event);
 
-  // Use the existing shared favorites system.
+  // Use the shared FavoritesContext instead of temporary local state.
   const {
     isFavorite,
-    toggleFavorite,
     isFavoritePending,
+    toggleFavorite,
   } = useFavorites();
 
-  // The heart now reflects the saved favorite state instead
-  // of using a separate local liked state.
-  const liked = eventId ? isFavorite("event", eventId) : false;
+  const liked = eventId
+    ? isFavorite("event", eventId)
+    : false;
 
   const favoritePending = eventId
     ? isFavoritePending("event", eventId)
@@ -143,7 +136,8 @@ const EventCard: React.FC<EventCardProps> = ({
 
   const isFree = event.isFree ?? event.is_free ?? false;
 
-  const ticketPrice = event.ticketPrice ?? event.ticket_price ?? "";
+  const ticketPrice =
+    event.ticketPrice ?? event.ticket_price ?? "";
 
   const detailAction = () => {
     if (onClick) {
@@ -151,8 +145,7 @@ const EventCard: React.FC<EventCardProps> = ({
     }
   };
 
-  // Persist the favorite through FavoritesContext.
-  const handleFavoriteClick = async (
+  const handleFavoriteClick = (
     clickEvent: React.MouseEvent<HTMLButtonElement>,
   ) => {
     clickEvent.preventDefault();
@@ -162,7 +155,9 @@ const EventCard: React.FC<EventCardProps> = ({
       return;
     }
 
-    await toggleFavorite("event", eventId);
+    // FavoritesContext handles authentication, persistence,
+    // optimistic updates, and rollback if the request fails.
+    void toggleFavorite("event", eventId);
   };
 
   return (
@@ -223,7 +218,7 @@ const EventCard: React.FC<EventCardProps> = ({
             )}
           </button>
 
-          {/* FAVORITE */}
+          {/* PERSISTENT FAVORITE */}
           {eventId && (
             <div className="shared-event-favorite-control">
               <button
@@ -245,9 +240,11 @@ const EventCard: React.FC<EventCardProps> = ({
                 aria-pressed={liked}
                 aria-busy={favoritePending}
                 title={
-                  liked
-                    ? "Remove from favorites"
-                    : "Add to favorites"
+                  favoritePending
+                    ? "Updating favorite..."
+                    : liked
+                      ? "Remove from favorites"
+                      : "Add to favorites"
                 }
               >
                 <span className="event-heart-glow" />
@@ -358,7 +355,6 @@ const EventCard: React.FC<EventCardProps> = ({
           overflow: visible;
         }
 
-        /* CIRCLE IMAGE */
         .shared-event-image-wrap {
           position: relative;
           width: min(100%, 230px);
@@ -427,7 +423,6 @@ const EventCard: React.FC<EventCardProps> = ({
           font-weight: 800;
         }
 
-        /* CATEGORY BADGE */
         .shared-event-category-badge {
           position: absolute;
           bottom: 11%;
@@ -448,7 +443,6 @@ const EventCard: React.FC<EventCardProps> = ({
           z-index: 3;
         }
 
-        /* FEATURED BADGE */
         .shared-event-featured-badge {
           position: absolute;
           top: 10%;
@@ -468,7 +462,7 @@ const EventCard: React.FC<EventCardProps> = ({
           z-index: 3;
         }
 
-        /* FAVORITE HEART */
+        /* Favorite heart positioned at the circle's top-right edge */
         .shared-event-favorite-control {
           position: absolute;
           top: 4%;
@@ -498,7 +492,7 @@ const EventCard: React.FC<EventCardProps> = ({
 
         .shared-event-favorite-button:disabled {
           cursor: wait;
-          opacity: 0.8;
+          opacity: 0.75;
         }
 
         .shared-event-favorite-button:hover:not(:disabled) {
@@ -573,35 +567,12 @@ const EventCard: React.FC<EventCardProps> = ({
           animation: eventParticle 0.62s ease-out forwards;
         }
 
-        .event-particle.particle-1 {
-          --particle-x: -13px;
-          --particle-y: -12px;
-        }
-
-        .event-particle.particle-2 {
-          --particle-x: 13px;
-          --particle-y: -13px;
-        }
-
-        .event-particle.particle-3 {
-          --particle-x: -17px;
-          --particle-y: 1px;
-        }
-
-        .event-particle.particle-4 {
-          --particle-x: 17px;
-          --particle-y: 1px;
-        }
-
-        .event-particle.particle-5 {
-          --particle-x: -10px;
-          --particle-y: 14px;
-        }
-
-        .event-particle.particle-6 {
-          --particle-x: 11px;
-          --particle-y: 14px;
-        }
+        .particle-1 { --particle-x: -15px; --particle-y: -15px; }
+        .particle-2 { --particle-x: 15px; --particle-y: -16px; }
+        .particle-3 { --particle-x: -19px; --particle-y: 1px; }
+        .particle-4 { --particle-x: 19px; --particle-y: 2px; }
+        .particle-5 { --particle-x: -10px; --particle-y: 17px; }
+        .particle-6 { --particle-x: 11px; --particle-y: 17px; }
 
         @keyframes eventButtonPop {
           0% { transform: scale(0.78); }
@@ -612,47 +583,22 @@ const EventCard: React.FC<EventCardProps> = ({
         }
 
         @keyframes eventHeartPop {
-          0% {
-            transform: scale(0.55) rotate(-8deg);
-          }
-          28% {
-            transform: scale(1.28) rotate(5deg);
-          }
-          48% {
-            transform: scale(0.90) rotate(-2deg);
-          }
-          72% {
-            transform: scale(1.12) rotate(1deg);
-          }
-          100% {
-            transform: scale(1) rotate(0);
-          }
+          0% { transform: scale(0.55) rotate(-8deg); }
+          28% { transform: scale(1.28) rotate(5deg); }
+          48% { transform: scale(0.90) rotate(-2deg); }
+          72% { transform: scale(1.12) rotate(1deg); }
+          100% { transform: scale(1) rotate(0); }
         }
 
         @keyframes eventGlow {
-          0% {
-            opacity: 0;
-            transform: scale(0.45);
-          }
-          35% {
-            opacity: 1;
-            transform: scale(1.6);
-          }
-          100% {
-            opacity: 0;
-            transform: scale(2.25);
-          }
+          0% { opacity: 0; transform: scale(0.45); }
+          35% { opacity: 1; transform: scale(1.6); }
+          100% { opacity: 0; transform: scale(2.25); }
         }
 
         @keyframes eventRipple {
-          0% {
-            opacity: 0.65;
-            transform: scale(0.4);
-          }
-          100% {
-            opacity: 0;
-            transform: scale(2.5);
-          }
+          0% { opacity: 0.65; transform: scale(0.4); }
+          100% { opacity: 0; transform: scale(2.5); }
         }
 
         @keyframes eventParticle {
@@ -660,16 +606,13 @@ const EventCard: React.FC<EventCardProps> = ({
             opacity: 0;
             transform: translate(0, 0) scale(0.4);
           }
-          25% {
-            opacity: 1;
-          }
+          25% { opacity: 1; }
           100% {
             opacity: 0;
             transform: translate(var(--particle-x), var(--particle-y)) scale(0);
           }
         }
 
-        /* CARD BODY */
         .shared-event-card-body {
           padding: 13px 2px 0 !important;
         }
