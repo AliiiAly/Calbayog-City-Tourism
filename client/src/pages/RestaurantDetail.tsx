@@ -696,7 +696,8 @@ const RestaurantDetail: React.FC = () => {
   return (
     <div className="restaurant-detail-page page-enter">
       <style>{`${styles}
-.detail-memory-section { margin: 18px 0; padding: 16px; border: 1px solid rgba(45,49,149,.14); border-radius: 16px; background: linear-gradient(135deg,#fafaff 0%,#f4f5ff 100%); }
+.detail-memory-row { margin-top: 22px; }
+.detail-memory-section { width: 100%; margin: 0; padding: 16px; border: 1px solid rgba(45,49,149,.14); border-radius: 16px; background: linear-gradient(135deg,#fafaff 0%,#f4f5ff 100%); }
 .detail-memory-content { display:flex; align-items:center; justify-content:space-between; gap:14px; }
 .detail-memory-copy { display:flex; align-items:flex-start; gap:10px; min-width:0; }
 .detail-memory-icon { width:36px; height:36px; flex:0 0 36px; display:flex; align-items:center; justify-content:center; border-radius:11px; background:${CALBAYOG_BLUE}; color:#fff; }
@@ -984,6 +985,8 @@ const RestaurantDetail: React.FC = () => {
           </Col>
         </Row>
 
+        <Row className="detail-memory-row g-4">
+          <Col lg={8}>
         <section className="detail-memory-section" aria-label="Add restaurant memory">
               <div className="detail-memory-content"><div className="detail-memory-copy"><div className="detail-memory-icon"><Camera size={18} /></div><div><p className="detail-memory-title">Add Memories</p><p className="detail-memory-subtitle">Share your photos and memorable moments from this restaurant.</p></div></div><button type="button" className="detail-memory-button" onClick={handleAddMemories}><Camera size={14} /> Add Memory</button></div>
               {showMemoryForm && <form className="detail-memory-form" onSubmit={handleSubmitMemory}><div className="detail-memory-form-header"><h3>Share Your Memory</h3><button type="button" className="detail-memory-close" onClick={closeMemoryForm} disabled={memorySubmitting} aria-label="Close memory form">×</button></div>
@@ -994,6 +997,8 @@ const RestaurantDetail: React.FC = () => {
                 {memoryError && <p className="detail-memory-error" role="alert">{memoryError}</p>}<div className="detail-memory-form-actions"><button type="button" className="detail-memory-cancel" onClick={closeMemoryForm} disabled={memorySubmitting}>Cancel</button><button type="submit" className="detail-memory-submit" disabled={memorySubmitting}>{memorySubmitting ? `Uploading ${memoryProgress}/${memoryPhotos.length}…` : "Submit Memory"}</button></div>
               </form>}{memoryNotice && <p className="detail-memory-notice" role="status">{memoryNotice}</p>}
         </section>
+          </Col>
+        </Row>
       </Container>
 
       {/* ENLARGED MAP */}
