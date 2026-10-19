@@ -451,6 +451,7 @@ const AppHeaderStyles: React.FC = () => (
     .header-login-btn:active,
     .header-signup-btn:active { transform: scale(.96); }
 
+    /* Hidden on desktop/tablet; enabled only in the phone breakpoint below. */
     .header-install-btn {
       display: none;
       min-height: 42px;
