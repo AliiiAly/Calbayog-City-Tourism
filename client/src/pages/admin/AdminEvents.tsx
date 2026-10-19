@@ -698,6 +698,26 @@ const ADMIN_EVENTS_STYLES = `
   @media (max-width: 479.98px) {
     .admin-events-page .admin-events-title { font-size: 1.8rem; }
   }
+  /* AdminAttractions visual alignment */
+  .admin-events-page .admin-events-heading { align-items: flex-end !important; margin-bottom: 26px !important; padding-bottom: 6px; }
+  .admin-events-page .admin-events-title { font-family: "Barabara", sans-serif !important; font-size: clamp(1.65rem, 2.8vw, 2.4rem) !important; line-height: .95 !important; letter-spacing: .02em; }
+  .admin-events-page .admin-events-subtitle { font-family: "Nunito", sans-serif; font-size: .78rem; line-height: 1.55; }
+  .admin-events-page .admin-events-add-button { min-height: 46px; padding: 11px 19px !important; border-radius: 13px !important; font-family: "Nunito", sans-serif; font-size: .76rem !important; }
+  .admin-events-page .admin-events-stats .admin-stat-card { min-height: 116px; border-radius: 18px !important; }
+  .admin-events-page .admin-events-toolbar { border-radius: 19px !important; box-shadow: 0 10px 30px rgba(26,30,53,.055) !important; }
+  .admin-events-page .admin-events-toolbar .card-body { padding: 20px !important; }
+  .admin-events-page .admin-event-card { min-height: 100%; border-radius: 19px !important; border: 1px solid #E8EAF1 !important; background: #fff !important; box-shadow: 0 7px 24px rgba(26,30,53,.065) !important; animation: adminAttractionCardIn .55s ease both; transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease, border-color .25s ease; }
+  .admin-events-page .admin-event-card:hover { transform: translateY(-5px); border-color: rgba(45,49,149,.18) !important; box-shadow: 0 18px 40px rgba(26,30,53,.12) !important; }
+  .admin-events-page .admin-event-image-shell { height: 196px; border-radius: 19px 19px 0 0; background: #EEF0FF; }
+  .admin-events-page .admin-event-card .card-body { min-height: 176px; padding: 16px !important; }
+  .admin-events-page .admin-event-name { font-family: "Poppins", sans-serif; font-size: .92rem; font-weight: 800; }
+  .admin-events-page .admin-event-description { min-height: 54px; margin: 6px 0 10px; font-family: "Nunito", sans-serif; }
+  .admin-events-page .admin-event-card-actions { padding-top: 12px; border-top: 1px solid #EEF0F4; }
+  .admin-events-dark .admin-event-card { background: #191C2B !important; border-color: #2B3042 !important; color: #F1F3F8; }
+  .admin-events-dark .admin-event-description, .admin-events-dark .admin-event-meta-row { color: #A8AFBF; }
+  @keyframes adminAttractionCardIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+
 `;
 
 /* =========================================================
