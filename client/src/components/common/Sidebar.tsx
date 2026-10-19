@@ -816,38 +816,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 Account
               </div>
 
-              {isAdmin && (
-                <Link
-                  to="/"
-                  className="sidebar-item"
-                  onClick={onClose}
-                  tabIndex={isOpen ? 0 : -1}
-                >
-                  <span className="sidebar-item-icon">
-                    <SidebarIcon
-                      name="home"
-                      size={19}
-                    />
-                  </span>
-
-                  <span className="sidebar-item-content">
-                    <span className="sidebar-item-label">
-                      Visit Public Site
-                    </span>
-
-                    <span className="sidebar-item-description">
-                      View the visitor experience
-                    </span>
-                  </span>
-
-                  <span className="sidebar-item-arrow">
-                    <SidebarIcon
-                      name="chevron"
-                      size={15}
-                    />
-                  </span>
-                </Link>
-              )}
+              
 
               <button
                 type="button"
