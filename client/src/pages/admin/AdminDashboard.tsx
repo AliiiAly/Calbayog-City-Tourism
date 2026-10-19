@@ -122,11 +122,13 @@ const ADMIN_DASHBOARD_STYLES = `
 
   .admin-dash-title {
     margin: 0 !important;
-    color: var(--admin-primary) !important;
-    font-family: "Barabara", sans-serif !important;
-    font-size: clamp(1.5rem, 2.4vw, 1.9rem) !important;
-    font-weight: 400 !important;
-    letter-spacing: .01em;
+  color: var(--admin-primary) !important;
+  font-family: "Barabara", sans-serif !important;
+  font-size: clamp(1.5rem, 2.4vw, 1.9rem) !important;
+  font-weight: 400 !important;
+  font-style: normal !important;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
   }
 
   .admin-dash-subtitle {
