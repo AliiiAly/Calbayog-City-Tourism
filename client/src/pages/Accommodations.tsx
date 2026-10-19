@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useHistory } from "react-router-dom";
 import { Container, Row, Col, Button, Spinner } from "react-bootstrap";
 import { Hotel } from "lucide-react";
 
@@ -16,6 +17,9 @@ import AccommodationCard from "../components/accommodations/AccommodationCard";
 ========================================================= */
 
 const CALBAYOG_BLUE = "#2D3195";
+
+/* Preserve the listing scroll position when returning from a detail page. */
+let savedAccommodationsScrollY = 0;
 
 /* =========================================================
    ACCOMMODATION RECORD
@@ -88,6 +92,9 @@ const getAccommodationId = (
 ========================================================= */
 
 const Accommodations: React.FC = () => {
+  const history = useHistory();
+  const hasRestoredScroll = useRef(false);
+
   /* =========================================================
      PAGE STATE
   ========================================================= */
@@ -176,6 +183,71 @@ const Accommodations: React.FC = () => {
       unsubscribeAll();
     };
   }, []);
+
+  /* =========================================================
+     PRESERVE SCROLL POSITION WHEN RETURNING FROM DETAILS
+
+     Save the current scroll position before this page unmounts.
+     Restore it only for browser/router Back navigation (POP),
+     after accommodations have finished loading and rendered.
+  ========================================================= */
+
+  useEffect(() => {
+    const saveScrollPosition = () => {
+      savedAccommodationsScrollY =
+        window.scrollY || window.pageYOffset || 0;
+    };
+
+    window.addEventListener(
+      "scroll",
+      saveScrollPosition,
+      { passive: true },
+    );
+
+    saveScrollPosition();
+
+    return () => {
+      saveScrollPosition();
+
+      window.removeEventListener(
+        "scroll",
+        saveScrollPosition,
+      );
+    };
+  }, []);
+
+  useEffect(() => {
+    if (
+      loading ||
+      hasRestoredScroll.current ||
+      history.action !== "POP" ||
+      savedAccommodationsScrollY <= 0
+    ) {
+      return;
+    }
+
+    hasRestoredScroll.current = true;
+
+    const savedPosition = savedAccommodationsScrollY;
+
+    let secondFrame = 0;
+
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        window.scrollTo(0, savedPosition);
+
+        savedAccommodationsScrollY = 0;
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+
+      if (secondFrame) {
+        window.cancelAnimationFrame(secondFrame);
+      }
+    };
+  }, [loading, history.action]);
 
   /* =========================================================
      AUTO IMAGE ROTATION
@@ -607,109 +679,4 @@ const Accommodations: React.FC = () => {
           margin: 0 auto 15px;
           border-radius: 20px;
           color: ${CALBAYOG_BLUE};
-          background: #eef0ff;
-        }
-
-        .empty-state h3 {
-          margin: 0 0 7px;
-          color: #202521;
-          font-family: "Poppins", sans-serif;
-          font-size: 1rem;
-          font-weight: 700;
-        }
-
-        .empty-state p {
-          max-width: 380px;
-          margin: 0 auto 18px;
-          color: #7e8781;
-          font-family: "Nunito", sans-serif;
-          font-size: 0.77rem;
-          line-height: 1.55;
-        }
-
-        .empty-button {
-          display: inline-flex !important;
-          align-items: center;
-          gap: 6px;
-          border-radius: 999px !important;
-          padding: 8px 16px !important;
-          font-size: 0.73rem !important;
-          font-weight: 800 !important;
-        }
-
-        /* =====================================================
-           RESPONSIVE
-        ===================================================== */
-
-        @media (max-width: 991.98px) {
-          .accommodations-header {
-            padding: 28px 20px 18px;
-          }
-
-          .accommodations-title {
-            font-size: clamp(
-              1.65rem,
-              4.5vw,
-              2.25rem
-            );
-          }
-
-          .accommodations-grid {
-            row-gap: 40px !important;
-          }
-        }
-
-        @media (max-width: 767.98px) {
-          .accommodations-header {
-            padding: 25px 17px 16px;
-          }
-
-          .accommodations-title {
-            font-size: 1.9rem;
-          }
-
-          .accommodations-subtitle {
-            margin-top: 6px;
-            font-size: 0.78rem;
-          }
-
-          .accommodations-container {
-            padding-top: 12px;
-            padding-left: 17px;
-            padding-right: 17px;
-          }
-
-          .results-bar {
-            align-items: flex-start;
-          }
-
-          .results-right {
-            width: 100%;
-            justify-content: space-between;
-          }
-
-          .accommodations-grid {
-            row-gap: 36px !important;
-          }
-
-          .accommodation-col {
-            padding-left: 12px;
-            padding-right: 12px;
-          }
-        }
-
-        @media (max-width: 479.98px) {
-          .accommodations-title {
-            font-size: 1.8rem;
-          }
-
-          .accommodations-subtitle {
-            font-size: 0.77rem;
-          }
-        }
-      `}</style>
-    </div>
-  );
-};
-
-export default Accommodations;
+          background: #eef0
