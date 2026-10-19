@@ -666,26 +666,16 @@ export interface Restaurant {
 }
 
 
-
 export const getRestaurants = async (params?: {
   search?: string;
   cuisine_type?: string;
   featured?: boolean;
-  /**
-   * Kept for compatibility with existing callers.
-   * The restaurants table may not contain this column,
-   * so it must not be used as a Supabase query filter.
-   */
-  show_on_welcome?: boolean;
 }) => {
   let query = supabase
     .from("restaurants")
     .select("*")
     .eq("is_active", true)
     .order("created_at", { ascending: false });
-
-  // Do not filter by show_on_welcome because that column is
-  // not part of the confirmed restaurants schema.
 
   if (params?.search?.trim()) {
     const term = params.search.trim();
@@ -714,7 +704,6 @@ export const getRestaurants = async (params?: {
     data: Array.isArray(data) ? (data as Restaurant[]) : [],
   };
 };
-
 
 export const getRestaurant = async (id: string) => {
   if (!id) {
@@ -1149,39 +1138,17 @@ export const deleteNotification = (id: string) =>
 
 // =========================================================
 // USER MEMORIES
-//
-// REPLACE the whole "USER MEMORIES" block in services/api.ts
-// (from this header down to deleteMyMemory) with this code.
-// Everything else in api.ts stays exactly as it is.
 // =========================================================
-
-export type MemoryItemType =
-  | "attraction"
-  | "accommodation"
-  | "restaurant"
-  | "event";
-
-export interface MemoryItem {
-  id: string;
-  type: MemoryItemType;
-  name: string;
-  image?: string | null;
-}
 
 export interface UserMemory {
   id: string;
   user_id: string;
-  item_type: MemoryItemType;
-  item_id: string;
-  /** Only filled for attraction memories (older data) */
-  attraction_id?: string | null;
+  attraction_id: string;
   caption: string;
   image_urls: string[];
   image_url?: string | null;
   created_at?: string;
   updated_at?: string;
-  item?: MemoryItem | null;
-  attraction?: { id?: string; name?: string; image?: string | null } | null;
 }
 
 export interface UserMemoriesResponse {
@@ -1189,18 +1156,10 @@ export interface UserMemoriesResponse {
 }
 
 export interface CreateMemoryPayload {
-  /** Defaults to "attraction" when only attraction_id is given */
-  item_type?: MemoryItemType;
+  attraction_id?: string | null;
+  item_type?: "attraction" | "accommodation";
   item_id?: string;
-  /** Older callers (AttractionDetail / MemoryForm) still work */
-  attraction_id?: string;
   caption: string;
-  image_urls: string[];
-}
-
-export interface UpdateMemoryPayload {
-  caption: string;
-  /** The complete final list of photos (kept + newly uploaded) */
   image_urls: string[];
 }
 
@@ -1226,8 +1185,6 @@ const normalizeMemory = (memory: UserMemory): UserMemory => {
 
   return {
     ...memory,
-    item_type: memory.item_type || "attraction",
-    item_id: memory.item_id || memory.attraction_id || "",
     image_urls: normalizedImageUrls,
     image_url: memory.image_url ?? null,
   };
@@ -1243,15 +1200,13 @@ export const getMyMemories = async (): Promise<{ data: UserMemory[] }> => {
   return { data: memories.map(normalizeMemory) };
 };
 
-export const getMyItemMemories = async (
-  itemType: MemoryItemType,
-  itemId: string,
+export const getMyAttractionMemories = async (
+  attractionId: string,
 ): Promise<{ data: UserMemory[] }> => {
-  if (!itemType) throw new Error("Item type is required.");
-  if (!itemId) throw new Error("Item ID is required.");
+  if (!attractionId) throw new Error("Attraction ID is required.");
 
   const response = await userApi.get<UserMemoriesResponse>(
-    `/memories/item/${encodeURIComponent(itemType)}/${encodeURIComponent(itemId)}`,
+    `/memories/attraction/${encodeURIComponent(attractionId)}`,
   );
 
   const memories = Array.isArray(response.data?.memories)
@@ -1261,18 +1216,13 @@ export const getMyItemMemories = async (
   return { data: memories.map(normalizeMemory) };
 };
 
-// Kept so existing screens that call it keep working.
-export const getMyAttractionMemories = (attractionId: string) =>
-  getMyItemMemories("attraction", attractionId);
-
 export const createMyMemory = async (
   payload: CreateMemoryPayload,
 ): Promise<{ data: UserMemory; message?: string }> => {
-  const itemType: MemoryItemType = payload.item_type || "attraction";
+  const itemType = payload.item_type || "attraction";
   const itemId = payload.item_id || payload.attraction_id || "";
-
   if (!itemId) {
-    throw new Error("Please choose a place for your memory.");
+    throw new Error(itemType === "accommodation" ? "Accommodation ID is required." : "Attraction ID is required.");
   }
 
   if (!payload.caption.trim()) {
@@ -1309,10 +1259,9 @@ export const createMyMemory = async (
       "X-Client-Type": "user",
     },
     body: JSON.stringify({
+      attraction_id: itemType === "attraction" ? itemId : null,
       item_type: itemType,
       item_id: itemId,
-      // Still sent for attractions so older backends keep working.
-      ...(itemType === "attraction" ? { attraction_id: itemId } : {}),
       caption: payload.caption.trim(),
       image_urls: cleanedImageUrls,
     }),
@@ -1334,38 +1283,46 @@ export const createMyMemory = async (
   };
 };
 
-export const updateMyMemory = async (
-  memoryId: string,
-  payload: UpdateMemoryPayload,
-): Promise<{ data: UserMemory; message?: string }> => {
-  if (!memoryId) throw new Error("Memory ID is required.");
+export const uploadMemoryPhotos = async (
+  files: File[],
+  attractionId: string,
+): Promise<{ data: { urls: string[] } }> => {
+  if (!attractionId) throw new Error("Attraction ID is required.");
 
-  if (!payload.caption.trim()) {
-    throw new Error("Memory caption is required.");
+  if (!Array.isArray(files) || files.length === 0) {
+    throw new Error("At least one image is required.");
   }
 
-  const cleanedImageUrls = (payload.image_urls || [])
-    .filter(
-      (url): url is string => typeof url === "string" && url.trim().length > 0,
-    )
-    .map((url) => url.trim());
-
-  if (cleanedImageUrls.length === 0) {
-    throw new Error("A memory needs at least one photo.");
+  if (files.length > 10) {
+    throw new Error("You can upload a maximum of 10 pictures.");
   }
 
-  const response = await userApi.put<{
-    memory: UserMemory;
-    message?: string;
-  }>(`/memories/${encodeURIComponent(memoryId)}`, {
-    caption: payload.caption.trim(),
-    image_urls: cleanedImageUrls,
+  const formData = new FormData();
+
+  formData.append("attraction_id", attractionId);
+
+  files.forEach((file) => {
+    formData.append("photos", file, file.name);
   });
 
-  return {
-    data: normalizeMemory(response.data.memory),
-    message: response.data?.message,
-  };
+  const response = await userApi.post<{ urls?: string[]; message?: string }>(
+    "/memories/upload",
+    formData,
+  );
+
+  const urls = Array.isArray(response.data?.urls)
+    ? response.data.urls.filter(
+        (url): url is string => typeof url === "string" && url.trim().length > 0,
+      )
+    : [];
+
+  if (urls.length !== files.length) {
+    throw new Error(
+      `Only ${urls.length} of ${files.length} images were uploaded successfully.`,
+    );
+  }
+
+  return { data: { urls } };
 };
 
 export const deleteMyMemory = async (
@@ -1378,95 +1335,6 @@ export const deleteMyMemory = async (
   );
 
   return { message: response.data?.message };
-};
-
-// =========================================================
-// PLACES A MEMORY CAN BE ATTACHED TO
-//
-// One list for the "Add Memory" picker: attractions,
-// accommodations, restaurants and events in the same shape.
-// =========================================================
-
-export interface MemoryPlace {
-  id: string;
-  name: string;
-  subtitle: string;
-  image: string | null;
-}
-
-const firstImage = (...candidates: any[]): string | null => {
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      const found = candidate.find(
-        (item) => typeof item === "string" && item.trim().length > 0,
-      );
-      if (found) return found;
-    } else if (typeof candidate === "string" && candidate.trim().length > 0) {
-      return candidate;
-    }
-  }
-
-  return null;
-};
-
-export const getMemoryPlaces = async (
-  itemType: MemoryItemType,
-): Promise<MemoryPlace[]> => {
-  switch (itemType) {
-    case "attraction": {
-      const { data } = await getAttractions();
-
-      return data.map((row: any) => ({
-        id: String(row.id),
-        name: row.name || "Unnamed attraction",
-        subtitle: [row.category, row.attraction_type]
-          .filter(Boolean)
-          .join(" • "),
-        image: firstImage(row.images),
-      }));
-    }
-
-    case "accommodation": {
-      const { data } = await getAccommodations();
-
-      return data.map((row: any) => ({
-        id: String(row.id),
-        name: row.name || "Unnamed accommodation",
-        subtitle: row.address || "",
-        image: firstImage(row.images),
-      }));
-    }
-
-    case "restaurant": {
-      const { data } = await getRestaurants();
-
-      return data.map((row: any) => ({
-        id: String(row.id),
-        name: row.name || "Unnamed restaurant",
-        subtitle: [row.cuisine_type, row.location_address]
-          .filter(Boolean)
-          .join(" • "),
-        image: firstImage(row.images),
-      }));
-    }
-
-    case "event": {
-      const response = await getEvents();
-      const rows = Array.isArray(response.data) ? response.data : [];
-
-      return rows.map((row: any) => ({
-        id: String(row.id),
-        name: row.title || "Untitled event",
-        subtitle: [row.venue || row.address, row.start_date || row.event_date]
-          .filter(Boolean)
-          .join(" • "),
-        image: firstImage(row.images, row.image),
-      }));
-    }
-
-    default:
-      return [];
-  }
 };
 
 // =========================================================
