@@ -317,6 +317,8 @@ interface ItineraryPreferences {
   selectedInterests: string[];
   travelPace: string;
   budget: string;
+  // Empty means let the planner recommend an accommodation automatically.
+  accommodationId: string;
   specialRequests: string;
 }
 
@@ -328,6 +330,7 @@ const defaultPreferences: ItineraryPreferences = {
   selectedInterests: [],
   travelPace: "Balanced",
   budget: "Moderate",
+  accommodationId: "",
   specialRequests: "",
 };
 
@@ -429,7 +432,9 @@ const normalizeAccommodation = (row: any): Destination =>
     location_lat: toNumber(row?.latitude ?? row?.location_lat),
     location_lng: toNumber(row?.longitude ?? row?.location_lng),
     images: toImageList(row?.images),
-    entrance_fee: row?.price_range || "",
+    // Keep lodging price separate from attraction entrance fees.
+    price_range: row?.price_range || "",
+    entrance_fee: "",
     contact_number: row?.contact_number || "",
     __kind: "stay",
   }) as unknown as Destination;
@@ -501,9 +506,68 @@ const getInterestMatch = (dest: Destination, selectedInterests: string[]) => {
   return score;
 };
 
+/**
+ * Reads numeric prices from common admin-entered formats such as
+ * "₱500", "500-1,000", "₱500–₱1,000 per night". Text with no
+ * numeric amount is treated as unknown (not free).
+ */
+const parsePriceRange = (value: unknown): { min: number; max: number } | null => {
+  const text = normalize(value);
+  if (!text) return null;
+  if (/\bfree\b|no entrance fee|no charge/.test(text)) return { min: 0, max: 0 };
+  const matches = String(value ?? "").match(/\d+(?:,\d{3})*(?:\.\d+)?/g);
+  if (!matches?.length) return null;
+  const amounts = matches
+    .map((part) => Number(part.replace(/,/g, "")))
+    .filter((amount) => Number.isFinite(amount) && amount >= 0);
+  if (!amounts.length) return null;
+  return { min: Math.min(...amounts), max: Math.max(...amounts) };
+};
+
+const getPlacePrice = (dest: Destination) =>
+  getStopKind(dest) === "stay"
+    ? parsePriceRange((dest as any).price_range ?? (dest as any).priceRange)
+    : parsePriceRange((dest as any).entrance_fee);
+
 const isLowCost = (dest: Destination) => {
-  const fee = normalize((dest as any).entrance_fee);
-  return !fee || fee.includes("free") || fee.includes("not stated");
+  const price = getPlacePrice(dest);
+  // Unknown prices are deliberately not treated as free or inexpensive.
+  return Boolean(price && price.max <= 200);
+};
+
+const chooseAccommodation = (
+  stays: Destination[],
+  budget: string,
+  requestedId?: string,
+): Destination | null => {
+  if (requestedId) {
+    const requested = stays.find((stay) => stay.id === requestedId);
+    if (requested) return requested;
+  }
+
+  const priced = stays
+    .map((stay) => ({ stay, price: getPlacePrice(stay) }))
+    .filter((item) => item.price !== null) as {
+      stay: Destination;
+      price: { min: number; max: number };
+    }[];
+
+  if (priced.length) {
+    priced.sort((a, b) => {
+      if (budget === "Budget-friendly") return a.price.min - b.price.min;
+      if (budget === "Moderate") {
+        const median = [...priced].sort((x, y) => x.price.min - y.price.min)[
+          Math.floor(priced.length / 2)
+        ].price.min;
+        return Math.abs(a.price.min - median) - Math.abs(b.price.min - median);
+      }
+      return Number(Boolean((b.stay as any).featured)) - Number(Boolean((a.stay as any).featured));
+    });
+    return priced[0].stay;
+  }
+
+  // If every accommodation has an unknown price, still recommend a valid stay.
+  return stays[0] || null;
 };
 
 /* =========================================================
@@ -598,13 +662,19 @@ const generateCustomizedDays = (
     )
     .map((dest) => {
       const match = getInterestMatch(dest, preferences.selectedInterests);
-      const bonus =
-        (dest.featured ? 1 : 0) +
-        (preferences.budget === "Budget-friendly" && isLowCost(dest) ? 2 : 0);
-      return { dest, match, total: match + bonus };
+      const price = getPlacePrice(dest);
+      const budgetBonus =
+        preferences.budget === "Budget-friendly" && isLowCost(dest) ? 2 : 0;
+      const bonus = Number(Boolean(dest.featured)) + budgetBonus;
+      return { dest, match, total: match + bonus, price };
     })
     .sort((a, b) => {
       if (b.total !== a.total) return b.total - a.total;
+      if (preferences.budget === "Budget-friendly") {
+        const aPrice = a.price?.min ?? Number.POSITIVE_INFINITY;
+        const bPrice = b.price?.min ?? Number.POSITIVE_INFINITY;
+        if (aPrice !== bPrice) return aPrice - bPrice;
+      }
       return a.dest.name.localeCompare(b.dest.name);
     });
 
@@ -637,6 +707,14 @@ const generateCustomizedDays = (
     (dest) => (dest as any).is_active !== false && getStopKind(dest) === "food",
   );
   const usedRestaurants = new Set<string>();
+  const accommodations = destinations.filter(
+    (dest) => (dest as any).is_active !== false && getStopKind(dest) === "stay",
+  );
+  const selectedAccommodation = chooseAccommodation(
+    accommodations,
+    preferences.budget,
+    preferences.accommodationId,
+  );
 
   return grouped.map((dayDestinations, index) => {
     const stops = [...dayDestinations];
@@ -649,6 +727,12 @@ const generateCustomizedDays = (
         usedRestaurants.add(lunch.id);
         hasLunch = true;
       }
+    }
+
+    // A multi-day trip includes the selected/recommended accommodation at
+    // the end of each overnight day. The final day has no assumed overnight.
+    if (selectedAccommodation && index < grouped.length - 1) {
+      stops.push(selectedAccommodation);
     }
 
     const baseNote =
@@ -1053,6 +1137,9 @@ const ItineraryPlanner: React.FC = () => {
               : [],
             travelPace: savedItinerary.travel_pace || "Balanced",
             budget: savedItinerary.budget || "Moderate",
+            accommodationId:
+              savedItinerary.days?.flatMap((day: any) => day?.destinations || [])
+                .find((stop: any) => getStopKind(stop) === "stay")?.id || "",
             specialRequests: savedItinerary.special_requests || "",
           });
         }
@@ -1206,6 +1293,49 @@ const ItineraryPlanner: React.FC = () => {
       ),
     [destinations],
   );
+
+  const tripCostEstimate = useMemo(() => {
+    const attractionStops = days.flatMap((day) => day.destinations).filter(
+      (stop) => getStopKind(stop) === "attraction",
+    );
+    const attractionPrices = attractionStops.map(getPlacePrice);
+    const attractionKnown = attractionPrices.filter(Boolean) as { min: number; max: number }[];
+    const attractionUnknown = attractionPrices.length - attractionKnown.length;
+    const attractionMin = attractionKnown.reduce((sum, price) => sum + price.min, 0) *
+      Math.max(1, preferences.groupSize);
+    const attractionMax = attractionKnown.reduce((sum, price) => sum + price.max, 0) *
+      Math.max(1, preferences.groupSize);
+
+    const overnightCount = Math.max(0, getTripDays(
+      preferences.travelDateStart, preferences.travelDateEnd,
+    ) - 1);
+    const chosenStay = days.flatMap((day) => day.destinations).find(
+      (stop) => getStopKind(stop) === "stay",
+    );
+    const stayPrice = chosenStay ? getPlacePrice(chosenStay) : null;
+    const stayMin = stayPrice ? stayPrice.min * overnightCount : null;
+    const stayMax = stayPrice ? stayPrice.max * overnightCount : null;
+
+    return {
+      attractionMin,
+      attractionMax,
+      attractionUnknown,
+      attractionKnownCount: attractionKnown.length,
+      overnightCount,
+      stayMin,
+      stayMax,
+      totalMin: attractionMin + (stayMin ?? 0),
+      totalMax: attractionMax + (stayMax ?? 0),
+      hasUnknown: attractionUnknown > 0 || (overnightCount > 0 && !stayPrice),
+      hasAnyKnown: attractionKnown.length > 0 || Boolean(stayPrice && overnightCount > 0),
+      stayName: chosenStay?.name || "",
+    };
+  }, [days, preferences.groupSize, preferences.travelDateStart, preferences.travelDateEnd]);
+
+  const formatPesoRange = (min: number, max: number) =>
+    min === max
+      ? `₱${min.toLocaleString("en-PH")}`
+      : `₱${min.toLocaleString("en-PH")}–₱${max.toLocaleString("en-PH")}`;
 
   const categories = useMemo(() => {
     const unique = Array.from(
@@ -1955,6 +2085,36 @@ const ItineraryPlanner: React.FC = () => {
             </section>
           )}
 
+        {days.length > 0 && (
+          <section className="planner-cost-summary" aria-label="Estimated trip expenses">
+            <div className="planner-cost-heading">
+              <div className="planner-cost-icon"><WalletCards size={18} /></div>
+              <div>
+                <strong>Estimated trip expenses</strong>
+                <span>Based on recorded attraction fees, accommodation price range, and your group size.</span>
+              </div>
+            </div>
+            <div className="planner-cost-row">
+              <span>Attraction entrance fees ({preferences.groupSize} traveler{preferences.groupSize !== 1 ? "s" : ""})</span>
+              <strong>{tripCostEstimate.attractionKnownCount ? formatPesoRange(tripCostEstimate.attractionMin, tripCostEstimate.attractionMax) : "Price unavailable"}</strong>
+            </div>
+            {tripCostEstimate.overnightCount > 0 && (
+              <div className="planner-cost-row">
+                <span>Accommodation ({tripCostEstimate.overnightCount} night{tripCostEstimate.overnightCount !== 1 ? "s" : ""})</span>
+                <strong>{tripCostEstimate.stayMin !== null && tripCostEstimate.stayMax !== null ? formatPesoRange(tripCostEstimate.stayMin, tripCostEstimate.stayMax) : "Price unavailable"}</strong>
+              </div>
+            )}
+            <div className="planner-cost-total">
+              <span>Known-cost subtotal</span>
+              <strong>{tripCostEstimate.hasAnyKnown ? formatPesoRange(tripCostEstimate.totalMin, tripCostEstimate.totalMax) : "Not available"}</strong>
+            </div>
+            {(tripCostEstimate.hasUnknown || !tripCostEstimate.hasAnyKnown) && (
+              <small>Some prices are missing or could not be read, so the subtotal may be lower than your actual expenses. Accommodation is estimated as one price-range unit per night; confirm room and group rates with the property.</small>
+            )}
+            <small>Restaurants, transportation, meals, and other personal expenses are not included.</small>
+          </section>
+        )}
+
         {generated && days.length > 0 && (
           <div className="planner-success-message">
             <div className="planner-success-icon">
@@ -2648,7 +2808,7 @@ const ItineraryPlanner: React.FC = () => {
               </div>
               <div>
                 <h4>What's your budget preference?</h4>
-                <p>"Budget-friendly" favors free or low-cost attractions.</p>
+                <p>Your preference helps prioritize attraction fees and accommodation prices.</p>
               </div>
             </div>
 
@@ -2674,6 +2834,43 @@ const ItineraryPlanner: React.FC = () => {
                 );
               })}
             </Row>
+          </section>
+
+          {/* ACCOMMODATION */}
+
+          <section className="customizer-section">
+            <div className="customizer-section-heading">
+              <div className="customizer-section-icon">
+                <BedDouble size={17} strokeWidth={1.8} />
+              </div>
+              <div>
+                <h4>Where would you like to stay?</h4>
+                <p>Choose a place, or let the planner recommend one based on your budget.</p>
+              </div>
+            </div>
+
+            <Form.Label className="planner-form-label">Accommodation</Form.Label>
+            <Form.Select
+              value={preferences.accommodationId || ""}
+              onChange={(event) => updatePreference("accommodationId", event.target.value)}
+              className="planner-form-control"
+            >
+              <option value="">Automatically recommend based on my budget</option>
+              {stayPlaces.map((stay) => (
+                <option key={stay.id} value={stay.id}>
+                  {stay.name}
+                  {(stay as any).price_range ? ` — ${(stay as any).price_range}` : " — Price unavailable"}
+                </option>
+              ))}
+            </Form.Select>
+            {stayPlaces.length === 0 && (
+              <div className="planner-info-strip">
+                <BedDouble size={14} /> No accommodations with valid map locations are currently available.
+              </div>
+            )}
+            <div className="planner-info-strip">
+              <WalletCards size={14} /> Accommodation costs are estimated per night; restaurants are excluded from this estimate.
+            </div>
           </section>
 
           {/* SPECIAL REQUESTS */}
@@ -2702,8 +2899,8 @@ const ItineraryPlanner: React.FC = () => {
           <div className="planner-generator-info">
             <Sparkles size={15} strokeWidth={1.8} />
             <span>
-              Your itinerary is built from the attractions in the Calbayog tourism
-              database and grouped by location. You can edit it afterwards.
+              Your itinerary uses attractions and accommodations from the Calbayog tourism
+              database. Restaurants may still appear as suggestions, but are excluded from the budget estimate.
             </span>
           </div>
         </Modal.Body>
@@ -3355,6 +3552,20 @@ const ItineraryPlanner: React.FC = () => {
         .planner-modal-generate:hover { background: #252982 !important; }
         .planner-delete-confirm { border: none !important; }
         .planner-error { border: 1px solid #f0d5d5 !important; border-radius: 12px !important; font-family: "Nunito", sans-serif; font-size: .72rem; }
+
+        /* ESTIMATED TRIP COSTS */
+        .planner-cost-summary { margin: 0 0 18px; padding: 15px 17px; border: 1px solid #e5e8f5; border-radius: 15px; background: #fff; }
+        .planner-cost-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .planner-cost-icon { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 10px; color: ${CALBAYOG_BLUE}; background: ${SOFT_BLUE}; }
+        .planner-cost-heading strong, .planner-cost-heading span { display: block; font-family: "Nunito", sans-serif; }
+        .planner-cost-heading strong { font-size: .76rem; color: #2a302c; }
+        .planner-cost-heading span { margin-top: 2px; font-size: .62rem; color: #858d88; }
+        .planner-cost-row, .planner-cost-total { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; font-family: "Nunito", sans-serif; font-size: .68rem; }
+        .planner-cost-row { border-bottom: 1px solid #f0f2f0; color: #69716c; }
+        .planner-cost-row strong { color: #343b36; text-align: right; }
+        .planner-cost-total { margin-top: 3px; color: #343b36; font-weight: 800; }
+        .planner-cost-total strong { color: ${CALBAYOG_BLUE}; font-size: .85rem; text-align: right; }
+        .planner-cost-summary > small { display: block; margin-top: 6px; color: #8a928d; font-family: "Nunito", sans-serif; font-size: .59rem; line-height: 1.45; }
 
         /* CUSTOMIZER */
         .customizer-section { margin-bottom: 12px; padding: 15px; border: 1px solid #edf0ee; border-radius: 15px; background: #fff; }
