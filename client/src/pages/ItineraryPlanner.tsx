@@ -833,7 +833,11 @@ const SortableItem: React.FC<{
               <Clock size={11} strokeWidth={2} /> {arrive}
             </span>
           )}
-          {d.entrance_fee && <span className="planner-stop-fee">{d.entrance_fee}</span>}
+          {(kind === "stay" ? d.price_range : d.entrance_fee) && (
+            <span className="planner-stop-fee">
+              {kind === "stay" ? d.price_range : d.entrance_fee}
+            </span>
+          )}
         </div>
 
         {otherDays.length > 0 && (
@@ -1270,9 +1274,11 @@ const ItineraryPlanner: React.FC = () => {
      DERIVED DATA
   ===================================================== */
 
+  // Food & Dining is intentionally hidden from the manual Add Place picker for now.
+  // Restaurant suggestions elsewhere in the planner remain unchanged.
   const availableKinds = useMemo(
     () =>
-      (["attraction", "food", "stay"] as StopKind[]).filter((kind) =>
+      (["attraction", "stay"] as StopKind[]).filter((kind) =>
         destinations.some((dest) => getStopKind(dest) === kind),
       ),
     [destinations],
@@ -3106,6 +3112,15 @@ const ItineraryPlanner: React.FC = () => {
                           <span className="planner-picker-travel">
                             <Car size={11} strokeWidth={2} />~{formatDuration(leg.minutes)} ·{" "}
                             {leg.km} km away
+                          </span>
+                        )}
+
+                        {(getStopKind(dest) === "stay"
+                          ? d.price_range
+                          : d.entrance_fee) && (
+                          <span className="planner-picker-travel">
+                            {getStopKind(dest) === "stay" ? "Price per night: " : "Entrance fee: "}
+                            {getStopKind(dest) === "stay" ? d.price_range : d.entrance_fee}
                           </span>
                         )}
 
