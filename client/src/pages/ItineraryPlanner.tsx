@@ -214,72 +214,76 @@ const round1 = (value: number) => Math.round(value * 10) / 10;
 ========================================================= */
 
 interface InterestOption {
+  // These values intentionally match AdminAttractions' top-level category values.
   value: string;
   label: string;
+  description: string;
   icon: React.ElementType;
-  categories?: string[];
-  types?: string[];
-  keywords: string[];
+  categories: string[];
 }
 
 const interestOptions: InterestOption[] = [
   {
     value: "Nature",
     label: "Nature",
+    description: "Waterfalls, beaches, caves, hot springs, rivers, and dive sites",
     icon: Leaf,
     categories: ["Nature"],
-    keywords: ["nature", "forest", "park", "river", "lake"],
-  },
-  {
-    value: "Waterfalls",
-    label: "Waterfalls",
-    icon: Compass,
-    types: ["Waterfalls"],
-    keywords: ["waterfall", "falls", "cascade"],
-  },
-  {
-    value: "Beach",
-    label: "Beaches",
-    icon: MapPin,
-    types: ["Beaches"],
-    keywords: ["beach", "coast", "sea", "island", "marine"],
   },
   {
     value: "History and Culture",
     label: "History & Culture",
+    description: "Churches, museums, historic buildings, monuments, and parks",
     icon: Compass,
     categories: ["History and Culture"],
-    keywords: ["history", "historical", "culture", "heritage", "museum"],
-  },
-  {
-    value: "Religious",
-    label: "Churches & Faith",
-    icon: Compass,
-    types: ["Churches"],
-    keywords: ["religious", "church", "faith", "shrine", "cathedral"],
-  },
-  {
-    value: "Adventure",
-    label: "Adventure",
-    icon: Compass,
-    types: ["Caves", "Dive Sites", "Hot Springs"],
-    keywords: ["adventure", "hiking", "trek", "climb", "cave", "diving"],
-  },
-  {
-    value: "Shopping",
-    label: "Shopping",
-    icon: WalletCards,
-    categories: ["Shopping"],
-    keywords: ["shopping", "market", "souvenir", "craft"],
   },
   {
     value: "Industrial Tourism",
     label: "Industrial Tourism",
+    description: "Factories, farms, and production sites",
     icon: Compass,
     categories: ["Industrial Tourism"],
-    keywords: ["industrial", "factory", "production", "farm"],
+  },
+  {
+    value: "Shopping",
+    label: "Shopping",
+    description: "Markets, malls, and local craft centers",
+    icon: WalletCards,
+    categories: ["Shopping"],
+  },
+  {
+    value: "Other",
+    label: "Other",
+    description: "Other attractions listed by the tourism administrator",
+    icon: MapPin,
+    categories: ["Other"],
   },
 ];
+
+// Migrate values saved by the previous, more granular interest selector.
+// Waterfalls and Beaches are Nature attraction types; Churches belong to
+// History and Culture in AdminAttractions.
+const normalizeSelectedInterests = (values: unknown): string[] => {
+  if (!Array.isArray(values)) return [];
+  const categoryMap: Record<string, string> = {
+    waterfalls: "Nature",
+    beach: "Nature",
+    beaches: "Nature",
+    religious: "History and Culture",
+    "churches & faith": "History and Culture",
+    adventure: "Nature",
+    "history & culture": "History and Culture",
+  };
+  const allowed = new Set(interestOptions.map((option) => option.value));
+  return Array.from(
+    new Set(
+      values
+        .map((value) => String(value ?? "").trim())
+        .map((value) => categoryMap[value.toLowerCase()] || value)
+        .filter((value) => allowed.has(value)),
+    ),
+  );
+};
 
 /* =========================================================
    OPTIONS
@@ -458,52 +462,20 @@ const normalizeRestaurant = (row: any): Destination =>
     __kind: "food",
   }) as unknown as Destination;
 
-const flat = (value: unknown) =>
-  Array.isArray(value) ? value.join(" ") : String(value ?? "");
-
-const getDestinationSearchText = (dest: Destination) => {
-  const d: any = dest;
-  return [
-    d.name,
-    d.category,
-    d.attraction_type,
-    d.other_attraction_type,
-    d.description,
-    d.short_description,
-    d.location_address,
-    d.things_to_do,
-    d.attractions,
-    d.tags,
-    d.tips,
-  ]
-    .map(flat)
-    .join(" ")
-    .toLowerCase();
-};
-
 // How well a destination matches the chosen interests (0 = no match).
 const getInterestMatch = (dest: Destination, selectedInterests: string[]) => {
   if (selectedInterests.length === 0) return 0;
 
-  const d: any = dest;
-  const category = normalize(d.category);
-  const type = normalize(d.attraction_type);
-  const text = getDestinationSearchText(dest);
+  // Match only the administrator's saved top-level category. Do not infer a
+  // category from descriptions or tags; that can put a place in the wrong group.
+  const category = normalize((dest as any).category);
 
-  let score = 0;
-
-  selectedInterests.forEach((interest) => {
+  return selectedInterests.some((interest) => {
     const option = interestOptions.find((item) => item.value === interest);
-    if (!option) return;
-
-    if (option.categories?.some((c) => normalize(c) === category)) score += 10;
-    if (option.types?.some((t) => normalize(t) === type)) score += 12;
-    option.keywords.forEach((keyword) => {
-      if (text.includes(keyword)) score += 3;
-    });
-  });
-
-  return score;
+    return Boolean(option?.categories.some((value) => normalize(value) === category));
+  })
+    ? 10
+    : 0;
 };
 
 /**
@@ -528,12 +500,6 @@ const getPlacePrice = (dest: Destination) =>
   getStopKind(dest) === "stay"
     ? parsePriceRange((dest as any).price_range ?? (dest as any).priceRange)
     : parsePriceRange((dest as any).entrance_fee);
-
-const isLowCost = (dest: Destination) => {
-  const price = getPlacePrice(dest);
-  // Unknown prices are deliberately not treated as free or inexpensive.
-  return Boolean(price && price.max <= 200);
-};
 
 const chooseAccommodation = (
   stays: Destination[],
@@ -663,18 +629,44 @@ const generateCustomizedDays = (
     .map((dest) => {
       const match = getInterestMatch(dest, preferences.selectedInterests);
       const price = getPlacePrice(dest);
-      const budgetBonus =
-        preferences.budget === "Budget-friendly" && isLowCost(dest) ? 2 : 0;
-      const bonus = Number(Boolean(dest.featured)) + budgetBonus;
-      return { dest, match, total: match + bonus, price };
-    })
-    .sort((a, b) => {
-      if (b.total !== a.total) return b.total - a.total;
+      const featuredBonus = Number(Boolean(dest.featured)) * 0.25;
+      return { dest, match, featuredBonus, price };
+    });
+
+  const knownAttractionPrices = scored
+    .map((item) => item.price?.min)
+    .filter((value): value is number => value !== undefined)
+    .sort((a, b) => a - b);
+  const medianAttractionPrice = knownAttractionPrices.length
+    ? knownAttractionPrices[Math.floor(knownAttractionPrices.length / 2)]
+    : null;
+
+  scored.sort((a, b) => {
+      // Interest/category match always takes priority. Budget changes the
+      // order within the matching category; unknown prices are never treated
+      // as free or cheap.
+      if (b.match !== a.match) return b.match - a.match;
+
+      const aPrice = a.price;
+      const bPrice = b.price;
+
       if (preferences.budget === "Budget-friendly") {
-        const aPrice = a.price?.min ?? Number.POSITIVE_INFINITY;
-        const bPrice = b.price?.min ?? Number.POSITIVE_INFINITY;
-        if (aPrice !== bPrice) return aPrice - bPrice;
+        const aValue = aPrice?.min ?? Number.POSITIVE_INFINITY;
+        const bValue = bPrice?.min ?? Number.POSITIVE_INFINITY;
+        if (aValue !== bValue) return aValue - bValue;
+      } else if (preferences.budget === "Moderate") {
+        if (medianAttractionPrice !== null) {
+          const aValue = aPrice ? Math.abs(aPrice.min - medianAttractionPrice) : Number.POSITIVE_INFINITY;
+          const bValue = bPrice ? Math.abs(bPrice.min - medianAttractionPrice) : Number.POSITIVE_INFINITY;
+          if (aValue !== bValue) return aValue - bValue;
+        }
+      } else if (preferences.budget === "Flexible") {
+        if (b.featuredBonus !== a.featuredBonus) return b.featuredBonus - a.featuredBonus;
+        const aValue = aPrice?.max ?? Number.NEGATIVE_INFINITY;
+        const bValue = bPrice?.max ?? Number.NEGATIVE_INFINITY;
+        if (aValue !== bValue) return bValue - aValue;
       }
+
       return a.dest.name.localeCompare(b.dest.name);
     });
 
@@ -697,7 +689,9 @@ const generateCustomizedDays = (
   };
 
   take(matched);
-  take(scored); // fill the remaining slots with featured / other places
+  // If the traveler selected categories, do not silently fill the plan with
+  // unrelated categories. When no interests are selected, use all popular places.
+  if (preferences.selectedInterests.length === 0) take(scored);
 
   // Group by location so each day's stops are close together.
   const grouped = splitIntoDays(selected, perDay, tripDays);
@@ -910,9 +904,7 @@ const ItineraryPlanner: React.FC = () => {
       return {
         ...defaultPreferences,
         ...parsed,
-        selectedInterests: Array.isArray(parsed?.selectedInterests)
-          ? parsed.selectedInterests
-          : [],
+        selectedInterests: normalizeSelectedInterests(parsed?.selectedInterests),
       };
     } catch {
       return defaultPreferences;
@@ -1136,9 +1128,7 @@ const ItineraryPlanner: React.FC = () => {
             travelDateEnd: savedItinerary.travel_date_end || "",
             groupSize: Number(savedItinerary.group_size) || 1,
             groupType: savedItinerary.group_type || "Solo",
-            selectedInterests: Array.isArray(savedItinerary.selected_interests)
-              ? savedItinerary.selected_interests
-              : [],
+            selectedInterests: normalizeSelectedInterests(savedItinerary.selected_interests),
             travelPace: savedItinerary.travel_pace || "Balanced",
             budget: savedItinerary.budget || "Moderate",
             accommodationId:
@@ -1283,6 +1273,14 @@ const ItineraryPlanner: React.FC = () => {
       ),
     [destinations],
   );
+
+  useEffect(() => {
+    if (availableKinds.length > 0 && !availableKinds.includes(pickerKind)) {
+      setPickerKind(availableKinds[0]);
+      setCategory("All");
+      setSearch("");
+    }
+  }, [availableKinds, pickerKind]);
 
   const foodPlaces = useMemo(
     () =>
@@ -2097,7 +2095,7 @@ const ItineraryPlanner: React.FC = () => {
               <div className="planner-cost-icon"><WalletCards size={18} /></div>
               <div>
                 <strong>Estimated trip expenses</strong>
-                <span>Based on recorded attraction fees, accommodation price range, and your group size.</span>
+                <span>Estimate based on recorded attraction fees and accommodation price ranges. It is not a live quote.</span>
               </div>
             </div>
             <div className="planner-cost-row">
@@ -2117,7 +2115,7 @@ const ItineraryPlanner: React.FC = () => {
             {(tripCostEstimate.hasUnknown || !tripCostEstimate.hasAnyKnown) && (
               <small>Some prices are missing or could not be read, so the subtotal may be lower than your actual expenses. Accommodation is estimated as one price-range unit per night; confirm room and group rates with the property.</small>
             )}
-            <small>Restaurants, transportation, meals, and other personal expenses are not included.</small>
+            <small>Restaurants, transportation, meals, and other personal expenses are not included. Scheduled arrival times are estimates, not live traffic or opening-hour updates.</small>
           </section>
         )}
 
@@ -2737,8 +2735,8 @@ const ItineraryPlanner: React.FC = () => {
                 <Heart size={17} strokeWidth={1.8} />
               </div>
               <div>
-                <h4>What are you interested in?</h4>
-                <p>Optional. Skip this to get our most popular places.</p>
+                <h4>What types of places would you like to visit?</h4>
+                <p>Optional. Choose attraction categories from our tourism listings, or skip to get popular places.</p>
               </div>
             </div>
 
@@ -2757,7 +2755,10 @@ const ItineraryPlanner: React.FC = () => {
                     }`}
                   >
                     <Icon size={15} strokeWidth={1.8} />
-                    <span>{interest.label}</span>
+                    <span className="planner-interest-copy">
+                      <strong>{interest.label}</strong>
+                      <small>{interest.description}</small>
+                    </span>
                     {selected && <Check size={13} strokeWidth={2} />}
                   </button>
                 );
@@ -3623,14 +3624,19 @@ const ItineraryPlanner: React.FC = () => {
         }
 
         /* INTERESTS */
-        .planner-interest-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+        .planner-interest-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
         .planner-interest-option {
-          display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 7px 10px; border: 1px solid #e0e5e2;
-          border-radius: 999px; color: #68716c; background: #fff; font-family: "Nunito", sans-serif; font-size: .64rem; font-weight: 800;
+          display: flex; align-items: flex-start; gap: 9px; min-height: 66px; padding: 11px 12px; border: 1px solid #e0e5e2;
+          border-radius: 12px; color: #68716c; background: #fff; font-family: "Nunito", sans-serif; text-align: left;
           cursor: pointer; transition: color .2s ease, border-color .2s ease, background .2s ease;
         }
+        .planner-interest-option > svg { flex: 0 0 auto; margin-top: 2px; }
+        .planner-interest-copy { display: flex; flex: 1; flex-direction: column; gap: 3px; }
+        .planner-interest-copy strong { color: #303731; font-size: .69rem; font-weight: 900; }
+        .planner-interest-copy small { color: #8a928d; font-size: .59rem; line-height: 1.35; font-weight: 600; }
         .planner-interest-option:hover { border-color: #c9cecb; }
         .planner-interest-option-active { border-color: ${CALBAYOG_BLUE}; color: ${CALBAYOG_BLUE}; background: ${SOFT_BLUE}; }
+        .planner-interest-option-active .planner-interest-copy strong { color: ${CALBAYOG_BLUE}; }
         .planner-textarea {
           border: 1px solid #dfe4e1 !important; border-radius: 10px !important; padding: 10px !important; resize: vertical;
           font-family: "Nunito", sans-serif !important; font-size: .7rem !important; box-shadow: none !important;
