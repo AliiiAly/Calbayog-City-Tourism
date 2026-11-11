@@ -14,7 +14,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 import { Destination } from "../types";
-import { getStopKind } from "../utils/itineraryUtils";
+import { formatClock, getStopKind } from "../utils/itineraryUtils";
 import { RoadLeg, getStopPoint } from "../utils/roadRouting";
 
 const CALBAYOG_BLUE = "#2D3195";
@@ -347,6 +347,8 @@ interface DayRouteMapProps {
   legs?: Array<RoadLeg | null>;
   /** fill the parent instead of using a fixed height */
   large?: boolean;
+  /** Estimated arrival times in minutes after midnight, aligned with destinations. */
+  arrivalTimes?: Array<number | null>;
 }
 
 interface MapStop {
@@ -358,10 +360,18 @@ interface MapStop {
 
 const formatKm = (km: number) => `${(Math.round(km * 10) / 10).toFixed(1)} km`;
 
+const displaySavedValue = (value: unknown): string => {
+  if (value === null || value === undefined || String(value).trim() === "") {
+    return "Not provided";
+  }
+  return String(value).trim();
+};
+
 const DayRouteMap: React.FC<DayRouteMapProps> = ({
   destinations,
   legs,
   large = false,
+  arrivalTimes,
 }) => {
   const stops = useMemo<MapStop[]>(
     () =>
@@ -588,6 +598,41 @@ const DayRouteMap: React.FC<DayRouteMapProps> = ({
                           .join(" • ")}
                       </p>
                     )}
+
+                    {arrivalTimes?.[stop.order - 1] !== null &&
+                      arrivalTimes?.[stop.order - 1] !== undefined && (
+                        <p className="prm-popup-detail">
+                          <strong>Estimated arrival:</strong>{" "}
+                          {formatClock(arrivalTimes[stop.order - 1] as number)}
+                        </p>
+                      )}
+
+                    {kind === "attraction" && (
+                      <>
+                        <p className="prm-popup-detail">
+                          <strong>Entrance fee:</strong>{" "}
+                          {displaySavedValue(d?.entrance_fee)}
+                        </p>
+                        <p className="prm-popup-detail">
+                          <strong>Operating hours:</strong>{" "}
+                          {displaySavedValue(d?.operational_hours || d?.opening_hours)}
+                        </p>
+                        {d?.best_time_to_visit && (
+                          <p className="prm-popup-detail">
+                            <strong>Best time to visit:</strong>{" "}
+                            {String(d.best_time_to_visit)}
+                          </p>
+                        )}
+                      </>
+                    )}
+
+                    {kind === "stay" && (
+                      <p className="prm-popup-detail">
+                        <strong>Price per night:</strong>{" "}
+                        {displaySavedValue(d?.price_range)}
+                      </p>
+                    )}
+
                     {stop.dest.location_address && (
                       <p className="prm-popup-addr">{stop.dest.location_address}</p>
                     )}
@@ -842,6 +887,8 @@ const styles = `
 
 .prm-popup h3 { margin: 0; color: #20232a; font-size: 0.78rem; font-weight: 900; line-height: 1.3; }
 .prm-popup-cat { margin: 4px 0 0; color: #747c87; font-size: 0.6rem; font-weight: 800; }
+.prm-popup-detail { margin: 6px 0 0; color: #555e6b; font-size: 0.61rem; font-weight: 600; line-height: 1.45; }
+.prm-popup-detail strong { color: #303744; font-weight: 900; }
 .prm-popup-addr { margin: 7px 0 0; color: #686f79; font-size: 0.61rem; font-weight: 700; line-height: 1.5; }
 
 @media (max-width: 767.98px) {
