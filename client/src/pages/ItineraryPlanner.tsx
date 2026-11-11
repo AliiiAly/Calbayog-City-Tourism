@@ -321,8 +321,6 @@ interface ItineraryPreferences {
   selectedInterests: string[];
   travelPace: string;
   budget: string;
-  // Empty means let the planner recommend an accommodation automatically.
-  accommodationId: string;
   specialRequests: string;
 }
 
@@ -334,7 +332,6 @@ const defaultPreferences: ItineraryPreferences = {
   selectedInterests: [],
   travelPace: "Balanced",
   budget: "Moderate",
-  accommodationId: "",
   specialRequests: "",
 };
 
@@ -440,6 +437,8 @@ const normalizeAccommodation = (row: any): Destination =>
     price_range: row?.price_range || "",
     entrance_fee: "",
     contact_number: row?.contact_number || "",
+    is_active: row?.is_active !== false,
+    featured: Boolean(row?.featured),
     __kind: "stay",
   }) as unknown as Destination;
 
@@ -501,39 +500,98 @@ const getPlacePrice = (dest: Destination) =>
     ? parsePriceRange((dest as any).price_range ?? (dest as any).priceRange)
     : parsePriceRange((dest as any).entrance_fee);
 
+const getCoordinates = (place: Destination) => {
+  const item: any = place;
+  const lat = toNumber(item.location_lat ?? item.latitude ?? item.lat);
+  const lng = toNumber(item.location_lng ?? item.longitude ?? item.lng ?? item.lon);
+  return lat !== null && lng !== null ? { lat, lng } : null;
+};
+
+const getStraightLineDistanceKm = (from: Destination, to: Destination) => {
+  const a = getCoordinates(from);
+  const b = getCoordinates(to);
+  if (!a || !b) return null;
+
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+  const dLat = toRadians(b.lat - a.lat);
+  const dLng = toRadians(b.lng - a.lng);
+  const lat1 = toRadians(a.lat);
+  const lat2 = toRadians(b.lat);
+  const h = Math.min(
+    1,
+    Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2,
+  );
+
+  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+};
+
+/**
+ * Recommends one accommodation for the trip using the selected attractions
+ * as location anchors. Budget preference is a ranking strategy, not a peso limit:
+ * unknown prices are never treated as free, and proximity is considered
+ * so the cheapest or featured property is not selected blindly.
+ */
 const chooseAccommodation = (
   stays: Destination[],
   budget: string,
-  requestedId?: string,
+  attractionAnchors: Destination[],
 ): Destination | null => {
-  if (requestedId) {
-    const requested = stays.find((stay) => stay.id === requestedId);
-    if (requested) return requested;
-  }
+  if (stays.length === 0) return null;
 
-  const priced = stays
-    .map((stay) => ({ stay, price: getPlacePrice(stay) }))
-    .filter((item) => item.price !== null) as {
-      stay: Destination;
-      price: { min: number; max: number };
-    }[];
+  const candidates = stays.map((stay) => {
+    const distances = attractionAnchors
+      .map((attraction) => getStraightLineDistanceKm(attraction, stay))
+      .filter((distance): distance is number => distance !== null);
+    const averageDistance = distances.length
+      ? distances.reduce((sum, distance) => sum + distance, 0) / distances.length
+      : null;
 
-  if (priced.length) {
-    priced.sort((a, b) => {
-      if (budget === "Budget-friendly") return a.price.min - b.price.min;
-      if (budget === "Moderate") {
-        const median = [...priced].sort((x, y) => x.price.min - y.price.min)[
-          Math.floor(priced.length / 2)
-        ].price.min;
-        return Math.abs(a.price.min - median) - Math.abs(b.price.min - median);
-      }
-      return Number(Boolean((b.stay as any).featured)) - Number(Boolean((a.stay as any).featured));
-    });
-    return priced[0].stay;
-  }
+    return {
+      stay,
+      price: getPlacePrice(stay),
+      distance: averageDistance,
+    };
+  });
 
-  // If every accommodation has an unknown price, still recommend a valid stay.
-  return stays[0] || null;
+  const knownPrices = candidates
+    .map((item) => item.price?.min)
+    .filter((value): value is number => value !== undefined)
+    .sort((a, b) => a - b);
+  const knownDistances = candidates
+    .map((item) => item.distance)
+    .filter((value): value is number => value !== null)
+    .sort((a, b) => a - b);
+
+  const bounds = (values: number[]) => ({
+    min: values[0] ?? 0,
+    max: values[values.length - 1] ?? 0,
+  });
+  const priceBounds = bounds(knownPrices);
+  const distanceBounds = bounds(knownDistances);
+
+  const normalized = (value: number | null, limits: { min: number; max: number }) => {
+    if (value === null) return 1;
+    if (limits.max === limits.min) return 0;
+    return (value - limits.min) / (limits.max - limits.min);
+  };
+
+  return candidates
+    .map((item) => {
+      const priceScore = normalized(item.price?.min ?? null, priceBounds);
+      const distanceScore = normalized(item.distance, distanceBounds);
+      const featuredScore = Number(Boolean((item.stay as any).featured));
+
+      const score =
+        budget === "Budget-friendly"
+          ? priceScore * 0.7 + distanceScore * 0.3
+          : budget === "Flexible"
+            ? priceScore * 0.15 + distanceScore * 0.35 + (1 - featuredScore) * 0.5
+            : priceScore * 0.5 + distanceScore * 0.5;
+
+      return { stay: item.stay, score };
+    })
+    .sort((a, b) => a.score - b.score || a.stay.name.localeCompare(b.stay.name))[0].stay;
 };
 
 /* =========================================================
@@ -661,10 +719,12 @@ const generateCustomizedDays = (
           if (aValue !== bValue) return aValue - bValue;
         }
       } else if (preferences.budget === "Flexible") {
+        // Cost is less restrictive, not a reason to prefer expensive places.
+        // Use featured status as the stronger signal, then prefer known lower fees.
         if (b.featuredBonus !== a.featuredBonus) return b.featuredBonus - a.featuredBonus;
-        const aValue = aPrice?.max ?? Number.NEGATIVE_INFINITY;
-        const bValue = bPrice?.max ?? Number.NEGATIVE_INFINITY;
-        if (aValue !== bValue) return bValue - aValue;
+        const aValue = aPrice?.min ?? Number.POSITIVE_INFINITY;
+        const bValue = bPrice?.min ?? Number.POSITIVE_INFINITY;
+        if (aValue !== bValue) return aValue - bValue;
       }
 
       return a.dest.name.localeCompare(b.dest.name);
@@ -696,35 +756,23 @@ const generateCustomizedDays = (
   // Group by location so each day's stops are close together.
   const grouped = splitIntoDays(selected, perDay, tripDays);
 
-  // Add one lunch stop per day, at the restaurant nearest to the 2nd stop.
-  const restaurants = destinations.filter(
-    (dest) => (dest as any).is_active !== false && getStopKind(dest) === "food",
-  );
-  const usedRestaurants = new Set<string>();
+  // One accommodation is selected automatically for the overnight dates.
+  // Restaurants are intentionally not inserted into Customize Your Trip.
   const accommodations = destinations.filter(
     (dest) => (dest as any).is_active !== false && getStopKind(dest) === "stay",
   );
+  // Use the trip's selected attractions as a whole when choosing one base stay.
   const selectedAccommodation = chooseAccommodation(
     accommodations,
     preferences.budget,
-    preferences.accommodationId,
+    selected,
   );
 
   return grouped.map((dayDestinations, index) => {
     const stops = [...dayDestinations];
-    let hasLunch = false;
 
-    if (stops.length >= 2) {
-      const lunch = nearestOf(stops[1], restaurants, usedRestaurants, MAX_MEAL_KM);
-      if (lunch) {
-        stops.splice(2, 0, lunch);
-        usedRestaurants.add(lunch.id);
-        hasLunch = true;
-      }
-    }
-
-    // A multi-day trip includes the selected/recommended accommodation at
-    // the end of each overnight day. The final day has no assumed overnight.
+    // Keep the same recommended accommodation throughout the trip.
+    // The final day has no assumed overnight.
     if (selectedAccommodation && index < grouped.length - 1) {
       stops.push(selectedAccommodation);
     }
@@ -736,12 +784,17 @@ const generateCustomizedDays = (
           ? "A fuller sightseeing day. Adjust the order or remove stops if needed."
           : "A balanced sightseeing day.";
 
+    const hasAccommodation = stops.some((stop) => getStopKind(stop) === "stay");
+    const note = hasAccommodation
+      ? `${baseNote} An accommodation near the day's final attraction has been recommended automatically.`
+      : baseNote;
+
     return {
       id: `day-${Date.now()}-${index}`,
       day: index + 1,
       date: getDateForDay(preferences.travelDateStart, index + 1),
       destinations: stops,
-      notes: hasLunch ? `${baseNote} Lunch is suggested near your second stop.` : baseNote,
+      notes: note,
     };
   });
 };
@@ -1131,9 +1184,6 @@ const ItineraryPlanner: React.FC = () => {
             selectedInterests: normalizeSelectedInterests(savedItinerary.selected_interests),
             travelPace: savedItinerary.travel_pace || "Balanced",
             budget: savedItinerary.budget || "Moderate",
-            accommodationId:
-              savedItinerary.days?.flatMap((day: any) => day?.destinations || [])
-                .find((stop: any) => getStopKind(stop) === "stay")?.id || "",
             specialRequests: savedItinerary.special_requests || "",
           });
         }
@@ -1206,6 +1256,7 @@ const ItineraryPlanner: React.FC = () => {
         accommodationResult.status === "fulfilled" &&
         Array.isArray((accommodationResult.value as any)?.data)
           ? (accommodationResult.value as any).data
+              .filter((row: any) => row?.is_active !== false)
               .map(normalizeAccommodation)
               .filter((item: Destination) => item.name)
           : [];
@@ -1736,8 +1787,12 @@ const ItineraryPlanner: React.FC = () => {
       return;
     }
 
-    if (destinations.length === 0) {
-      setCustomizerError("No attractions are available yet. Please try again in a moment.");
+    const availableAttractions = destinations.filter(
+      (dest) => (dest as any).is_active !== false && getStopKind(dest) === "attraction",
+    );
+
+    if (availableAttractions.length === 0) {
+      setCustomizerError("No attractions with valid map locations are currently available. Please try again later.");
       return;
     }
 
@@ -2256,7 +2311,9 @@ const ItineraryPlanner: React.FC = () => {
                   type="button"
                   className="planner-quick-button"
                   onClick={() => quickPlan(n)}
-                  disabled={destinations.length === 0}
+                  disabled={!destinations.some(
+              (dest) => (dest as any).is_active !== false && getStopKind(dest) === "attraction",
+            )}
                 >
                   <Zap size={15} strokeWidth={2} />
                   <strong>{n}</strong>
@@ -2846,40 +2903,34 @@ const ItineraryPlanner: React.FC = () => {
           </section>
 
           {/* ACCOMMODATION */}
-
           <section className="customizer-section">
             <div className="customizer-section-heading">
               <div className="customizer-section-icon">
                 <BedDouble size={17} strokeWidth={1.8} />
               </div>
               <div>
-                <h4>Where would you like to stay?</h4>
-                <p>Choose a place, or let the planner recommend one based on your budget.</p>
+                <h4>Accommodation planning</h4>
+                <p>
+                  The planner automatically recommends one available place to stay
+                  for your overnight dates, based on your budget preference and its
+                  proximity to the attractions in your trip.
+                </p>
               </div>
             </div>
 
-            <Form.Label className="planner-form-label">Accommodation</Form.Label>
-            <Form.Select
-              value={preferences.accommodationId || ""}
-              onChange={(event) => updatePreference("accommodationId", event.target.value)}
-              className="planner-form-control"
-            >
-              <option value="">Automatically recommend based on my budget</option>
-              {stayPlaces.map((stay) => (
-                <option key={stay.id} value={stay.id}>
-                  {stay.name}
-                  {(stay as any).price_range ? ` — ${(stay as any).price_range}` : " — Price unavailable"}
-                </option>
-              ))}
-            </Form.Select>
-            {stayPlaces.length === 0 && (
+            {stayPlaces.length === 0 ? (
               <div className="planner-info-strip">
-                <BedDouble size={14} /> No accommodations with valid map locations are currently available.
+                <BedDouble size={14} />
+                No accommodations with valid map locations are currently available.
+                Your attraction schedule can still be generated.
+              </div>
+            ) : (
+              <div className="planner-info-strip">
+                <WalletCards size={14} />
+                Accommodation prices are considered per night. You do not need to
+                choose an accommodation manually.
               </div>
             )}
-            <div className="planner-info-strip">
-              <WalletCards size={14} /> Accommodation costs are estimated per night; restaurants are excluded from this estimate.
-            </div>
           </section>
 
           {/* SPECIAL REQUESTS */}
@@ -2908,8 +2959,8 @@ const ItineraryPlanner: React.FC = () => {
           <div className="planner-generator-info">
             <Sparkles size={15} strokeWidth={1.8} />
             <span>
-              Your itinerary uses attractions and accommodations from the Calbayog tourism
-              database. Restaurants may still appear as suggestions, but are excluded from the budget estimate.
+              Your customized itinerary is generated from attractions and accommodations
+              in the Calbayog tourism database. Restaurants are not added to this generated plan.
             </span>
           </div>
         </Modal.Body>
@@ -2925,7 +2976,9 @@ const ItineraryPlanner: React.FC = () => {
 
           <Button
             onClick={() => generateItinerary()}
-            disabled={destinations.length === 0}
+            disabled={!destinations.some(
+              (dest) => (dest as any).is_active !== false && getStopKind(dest) === "attraction",
+            )}
             className="planner-modal-generate"
           >
             <Sparkles size={15} strokeWidth={2} />
