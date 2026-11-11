@@ -2486,6 +2486,7 @@ const ItineraryPlanner: React.FC = () => {
                           <DayRouteMap
                             destinations={day.destinations}
                             legs={legsFor(day.destinations)}
+                            arrivalTimes={schedule?.stops?.map((stop: any) => stop.arrive) ?? []}
                           />
 
                           <button
@@ -2585,6 +2586,7 @@ const ItineraryPlanner: React.FC = () => {
                 <DayRouteMap
                   destinations={expandedMapDay.destinations}
                   legs={legsFor(expandedMapDay.destinations)}
+                  arrivalTimes={expandedSchedule?.stops?.map((stop: any) => stop.arrive) ?? []}
                   large
                 />
               </div>
