@@ -319,6 +319,7 @@ interface ItineraryPreferences {
   groupSize: number;
   groupType: string;
   selectedInterests: string[];
+  includeAccommodation: boolean;
   travelPace: string;
   budget: string;
   specialRequests: string;
@@ -330,6 +331,7 @@ const defaultPreferences: ItineraryPreferences = {
   groupSize: 1,
   groupType: "Solo",
   selectedInterests: [],
+  includeAccommodation: false,
   travelPace: "Balanced",
   budget: "Moderate",
   specialRequests: "",
@@ -756,17 +758,18 @@ const generateCustomizedDays = (
   // Group by location so each day's stops are close together.
   const grouped = splitIntoDays(selected, perDay, tripDays);
 
-  // One accommodation is selected automatically for the overnight dates.
+  // Accommodation is optional. It is recommended only when the traveler
+  // selects the Accommodations option in the preferences section.
   // Restaurants are intentionally not inserted into Customize Your Trip.
-  const accommodations = destinations.filter(
-    (dest) => (dest as any).is_active !== false && getStopKind(dest) === "stay",
-  );
+  const accommodations = preferences.includeAccommodation
+    ? destinations.filter(
+        (dest) => (dest as any).is_active !== false && getStopKind(dest) === "stay",
+      )
+    : [];
   // Use the trip's selected attractions as a whole when choosing one base stay.
-  const selectedAccommodation = chooseAccommodation(
-    accommodations,
-    preferences.budget,
-    selected,
-  );
+  const selectedAccommodation = preferences.includeAccommodation
+    ? chooseAccommodation(accommodations, preferences.budget, selected)
+    : null;
 
   return grouped.map((dayDestinations, index) => {
     const stops = [...dayDestinations];
@@ -958,6 +961,7 @@ const ItineraryPlanner: React.FC = () => {
         ...defaultPreferences,
         ...parsed,
         selectedInterests: normalizeSelectedInterests(parsed?.selectedInterests),
+        includeAccommodation: Boolean(parsed?.includeAccommodation),
       };
     } catch {
       return defaultPreferences;
@@ -1184,6 +1188,16 @@ const ItineraryPlanner: React.FC = () => {
             selectedInterests: normalizeSelectedInterests(savedItinerary.selected_interests),
             travelPace: savedItinerary.travel_pace || "Balanced",
             budget: savedItinerary.budget || "Moderate",
+            includeAccommodation: Boolean(
+              savedItinerary.include_accommodation ??
+              (savedItinerary.days || []).some((day: any) =>
+                Array.isArray(day?.destinations) &&
+                day.destinations.some((stop: any) =>
+                  String(stop?.category || stop?.type || "").toLowerCase().includes("accommodation") ||
+                  String(stop?.category || stop?.type || "").toLowerCase().includes("hotel")
+                )
+              )
+            ),
             specialRequests: savedItinerary.special_requests || "",
           });
         }
@@ -1368,8 +1382,9 @@ const ItineraryPlanner: React.FC = () => {
       (stop) => getStopKind(stop) === "stay",
     );
     const stayPrice = chosenStay ? getPlacePrice(chosenStay) : null;
-    const stayMin = stayPrice ? stayPrice.min * overnightCount : null;
-    const stayMax = stayPrice ? stayPrice.max * overnightCount : null;
+    const accommodationRequested = preferences.includeAccommodation && overnightCount > 0;
+    const stayMin = accommodationRequested && stayPrice ? stayPrice.min * overnightCount : null;
+    const stayMax = accommodationRequested && stayPrice ? stayPrice.max * overnightCount : null;
 
     return {
       attractionMin,
@@ -1381,11 +1396,11 @@ const ItineraryPlanner: React.FC = () => {
       stayMax,
       totalMin: attractionMin + (stayMin ?? 0),
       totalMax: attractionMax + (stayMax ?? 0),
-      hasUnknown: attractionUnknown > 0 || (overnightCount > 0 && !stayPrice),
-      hasAnyKnown: attractionKnown.length > 0 || Boolean(stayPrice && overnightCount > 0),
+      hasUnknown: attractionUnknown > 0 || (accommodationRequested && !stayPrice),
+      hasAnyKnown: attractionKnown.length > 0 || Boolean(stayPrice && accommodationRequested),
       stayName: chosenStay?.name || "",
     };
-  }, [days, preferences.groupSize, preferences.travelDateStart, preferences.travelDateEnd]);
+  }, [days, preferences.groupSize, preferences.travelDateStart, preferences.travelDateEnd, preferences.includeAccommodation]);
 
   const formatPesoRange = (min: number, max: number) =>
     min === max
@@ -2157,7 +2172,7 @@ const ItineraryPlanner: React.FC = () => {
               <span>Attraction entrance fees ({preferences.groupSize} traveler{preferences.groupSize !== 1 ? "s" : ""})</span>
               <strong>{tripCostEstimate.attractionKnownCount ? formatPesoRange(tripCostEstimate.attractionMin, tripCostEstimate.attractionMax) : "Price unavailable"}</strong>
             </div>
-            {tripCostEstimate.overnightCount > 0 && (
+            {preferences.includeAccommodation && tripCostEstimate.overnightCount > 0 && (
               <div className="planner-cost-row">
                 <span>Accommodation ({tripCostEstimate.overnightCount} night{tripCostEstimate.overnightCount !== 1 ? "s" : ""})</span>
                 <strong>{tripCostEstimate.stayMin !== null && tripCostEstimate.stayMax !== null ? formatPesoRange(tripCostEstimate.stayMin, tripCostEstimate.stayMax) : "Price unavailable"}</strong>
@@ -2794,8 +2809,8 @@ const ItineraryPlanner: React.FC = () => {
                 <Heart size={17} strokeWidth={1.8} />
               </div>
               <div>
-                <h4>What types of places would you like to visit?</h4>
-                <p>Optional. Choose attraction categories from our tourism listings, or skip to get popular places.</p>
+                <h4>What would you like included in your trip?</h4>
+                <p>Optional. Choose the types of attractions you'd like to visit and/or accommodation you'd like us to recommend. Skip to get popular attractions.</p>
               </div>
             </div>
 
@@ -2822,6 +2837,21 @@ const ItineraryPlanner: React.FC = () => {
                   </button>
                 );
               })}
+
+              <button
+                type="button"
+                onClick={() => updatePreference("includeAccommodation", !preferences.includeAccommodation)}
+                className={`planner-interest-option ${
+                  preferences.includeAccommodation ? "planner-interest-option-active" : ""
+                }`}
+              >
+                <BedDouble size={15} strokeWidth={1.8} />
+                <span className="planner-interest-copy">
+                  <strong>Accommodations</strong>
+                  <small>Hotels, resorts, inns, and other places to stay</small>
+                </span>
+                {preferences.includeAccommodation && <Check size={13} strokeWidth={2} />}
+              </button>
             </div>
           </section>
 
@@ -2902,37 +2932,6 @@ const ItineraryPlanner: React.FC = () => {
             </Row>
           </section>
 
-          {/* ACCOMMODATION */}
-          <section className="customizer-section">
-            <div className="customizer-section-heading">
-              <div className="customizer-section-icon">
-                <BedDouble size={17} strokeWidth={1.8} />
-              </div>
-              <div>
-                <h4>Accommodation planning</h4>
-                <p>
-                  The planner automatically recommends one available place to stay
-                  for your overnight dates, based on your budget preference and its
-                  proximity to the attractions in your trip.
-                </p>
-              </div>
-            </div>
-
-            {stayPlaces.length === 0 ? (
-              <div className="planner-info-strip">
-                <BedDouble size={14} />
-                No accommodations with valid map locations are currently available.
-                Your attraction schedule can still be generated.
-              </div>
-            ) : (
-              <div className="planner-info-strip">
-                <WalletCards size={14} />
-                Accommodation prices are considered per night. You do not need to
-                choose an accommodation manually.
-              </div>
-            )}
-          </section>
-
           {/* SPECIAL REQUESTS */}
 
           <section className="customizer-section">
@@ -2959,8 +2958,9 @@ const ItineraryPlanner: React.FC = () => {
           <div className="planner-generator-info">
             <Sparkles size={15} strokeWidth={1.8} />
             <span>
-              Your customized itinerary is generated from attractions and accommodations
-              in the Calbayog tourism database. Restaurants are not added to this generated plan.
+              Your customized itinerary is generated from attraction listings and, if selected,
+              a recommended accommodation from the Calbayog tourism database. Restaurants are
+              not added to this generated plan.
             </span>
           </div>
         </Modal.Body>
