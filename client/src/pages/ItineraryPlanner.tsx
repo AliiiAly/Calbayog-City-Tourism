@@ -3356,24 +3356,30 @@ const ItineraryPlanner: React.FC = () => {
               Showing places that fit your <strong>{preferences.budget}</strong> budget (
               {describeBudgetLimits(preferences.budget)}).
             </span>
-            <button
-              type="button"
-              onClick={() => {
-                setShowPicker(false);
-                openCustomizer();
-              }}
-              style={{
-                marginLeft: 8,
-                border: 0,
-                background: "none",
-                padding: 0,
-                fontWeight: 800,
-                textDecoration: "underline",
-                color: CALBAYOG_BLUE,
-              }}
-            >
-              Change budget
-            </button>
+            <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 6, marginLeft: 8 }}>
+              {budgetOptions.map((option) => {
+                const active = preferences.budget === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => updatePreference("budget", option.value)}
+                    aria-pressed={active}
+                    style={{
+                      border: `1px solid ${active ? CALBAYOG_BLUE : "#d5d9e8"}`,
+                      background: active ? CALBAYOG_BLUE : "#fff",
+                      color: active ? "#fff" : CALBAYOG_BLUE,
+                      borderRadius: 999,
+                      padding: "2px 10px",
+                      fontSize: ".68rem",
+                      fontWeight: 800,
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </span>
           </div>
 
           <div className="planner-picker-toolbar">
