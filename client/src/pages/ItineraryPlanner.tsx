@@ -303,10 +303,89 @@ const paceOptions = [
   { value: "Packed", label: "Packed", description: "See as much as possible", stopsPerDay: 4 },
 ];
 
+/**
+ * BUDGET TIERS
+ * One budget preference drives ALL three categories (attractions, stays,
+ * restaurants). Limits are ceilings on a place's STARTING price (the lowest
+ * number in its recorded price text), so a hotel listed "₱1,000 - ₱3,000"
+ * still counts as Budget-friendly if its cheapest room is within the limit.
+ *
+ * The cutoffs were chosen from the real database values:
+ *  - accommodations.price_range: cheapest rooms cluster at or below ₱1,000
+ *    (29 of 48 stays); ₱2,000 covers 44 of 48.
+ *  - restaurants.price_range: most places start at ₱100 - ₱200 (48 of 65 active
+ *    restaurants start at ₱200 or less); ₱500 covers 61 of 65.
+ *  - attractions.entrance_fee: only "Free" is recorded right now, so the
+ *    attraction limits only start to matter once fees are entered by the admin.
+ *
+ * allowUnlistedPrices: what to do with places that have NO readable price
+ * (blank / "Not Stated"). Unknown is never treated as free:
+ *  - Budget-friendly keeps only places with a verified, in-range price.
+ *  - Moderate and Flexible may include unlisted places; they are shown as
+ *    "not listed" and left out of the cost estimate (flagged as missing).
+ * Change these numbers here and every part of the planner follows.
+ */
+interface BudgetTier {
+  attractionMax: number; // entrance fee per person
+  stayMax: number; // accommodation price per night
+  foodMax: number; // restaurant price per person per meal
+  allowUnlistedPrices: boolean;
+}
+
+const BUDGET_TIERS: Record<string, BudgetTier> = {
+  "Budget-friendly": {
+    attractionMax: 100,
+    stayMax: 1000,
+    foodMax: 200,
+    allowUnlistedPrices: false,
+  },
+  Moderate: {
+    attractionMax: 500,
+    stayMax: 2000,
+    foodMax: 500,
+    allowUnlistedPrices: true,
+  },
+  // Flexible is a wider range, not "no limit": it still drops the extreme
+  // outliers in the data (e.g. ₱7,000 resort/villa rentals, ₱1,656 set meals).
+  Flexible: {
+    attractionMax: 1000,
+    stayMax: 5000,
+    foodMax: 1000,
+    allowUnlistedPrices: true,
+  },
+};
+
+const getBudgetTier = (budget: string): BudgetTier =>
+  BUDGET_TIERS[budget] || BUDGET_TIERS.Moderate;
+
+const describeBudgetLimits = (value: string) => {
+  const tier = BUDGET_TIERS[value];
+  if (!tier) return "";
+  const peso = (amount: number) => `₱${amount.toLocaleString("en-PH")}`;
+  return `Fees ≤ ${peso(tier.attractionMax)} · Stays ≤ ${peso(tier.stayMax)}/night · Meals ≤ ${peso(
+    tier.foodMax,
+  )} · ${tier.allowUnlistedPrices ? "Unlisted prices included" : "Listed prices only"}`;
+};
+
 const budgetOptions = [
-  { value: "Budget-friendly", label: "Budget-friendly", description: "Prefers free or low-cost places" },
-  { value: "Moderate", label: "Moderate", description: "A comfortable balance" },
-  { value: "Flexible", label: "Flexible", description: "Cost is less important" },
+  {
+    value: "Budget-friendly",
+    label: "Budget-friendly",
+    description: "Prefers free or low-cost places",
+    limits: describeBudgetLimits("Budget-friendly"),
+  },
+  {
+    value: "Moderate",
+    label: "Moderate",
+    description: "A comfortable balance",
+    limits: describeBudgetLimits("Moderate"),
+  },
+  {
+    value: "Flexible",
+    label: "Flexible",
+    description: "Wider range, higher-priced options allowed",
+    limits: describeBudgetLimits("Flexible"),
+  },
 ];
 
 /* =========================================================
@@ -456,6 +535,9 @@ const normalizeRestaurant = (row: any): Destination =>
     location_lat: toNumber(row?.location_lat ?? row?.latitude),
     location_lng: toNumber(row?.location_lng ?? row?.longitude),
     images: toImageList(row?.images),
+    // Restaurants store their prices in price_range. entrance_fee is kept as a
+    // copy so older saved itineraries and existing displays keep working.
+    price_range: row?.price_range || "",
     entrance_fee: row?.price_range || "",
     opening_hours: row?.opening_hours || "",
     featured: Boolean(row?.featured),
@@ -482,25 +564,77 @@ const getInterestMatch = (dest: Destination, selectedInterests: string[]) => {
 /**
  * Reads numeric prices from common admin-entered formats such as
  * "₱500", "500-1,000", "₱500–₱1,000 per night". Text with no
- * numeric amount is treated as unknown (not free).
+ * numeric amount (blank, "Not Stated") is treated as unknown (not free).
+ * "Free" is only a real zero price; "Free for locals, ₱50 for tourists"
+ * becomes the range ₱0–₱50.
  */
 const parsePriceRange = (value: unknown): { min: number; max: number } | null => {
-  const text = normalize(value);
+  const raw = String(value ?? "");
+  const text = normalize(raw);
   if (!text) return null;
-  if (/\bfree\b|no entrance fee|no charge/.test(text)) return { min: 0, max: 0 };
-  const matches = String(value ?? "").match(/\d+(?:,\d{3})*(?:\.\d+)?/g);
-  if (!matches?.length) return null;
-  const amounts = matches
+
+  const isFree = /\bfree\b|no entrance fee|no charge/.test(text);
+
+  // Admin-typed thousands separators sometimes have a space ("₱1, 000").
+  // Repair them first so "1, 000" is read as 1,000 and not as 1 and 0.
+  // Also drop counts that belong to a unit, not a price ("for 9 hours", "2 pax").
+  const cleaned = raw
+    .replace(/(\d),\s+(\d{3})/g, "$1,$2")
+    .replace(/\d+\s*(?:hours?|hrs?|pax|persons?|people|guests?|nights?|days?)\b/gi, " ");
+  const matches = cleaned.match(/\d+(?:,\d{3})*(?:\.\d+)?/g);
+
+  const amounts = (matches || [])
     .map((part) => Number(part.replace(/,/g, "")))
     .filter((amount) => Number.isFinite(amount) && amount >= 0);
-  if (!amounts.length) return null;
-  return { min: Math.min(...amounts), max: Math.max(...amounts) };
+
+  if (!amounts.length) return isFree ? { min: 0, max: 0 } : null;
+
+  return {
+    min: isFree ? 0 : Math.min(...amounts),
+    max: Math.max(...amounts),
+  };
 };
 
-const getPlacePrice = (dest: Destination) =>
-  getStopKind(dest) === "stay"
-    ? parsePriceRange((dest as any).price_range ?? (dest as any).priceRange)
-    : parsePriceRange((dest as any).entrance_fee);
+// Attractions use entrance_fee. Stays and restaurants use price_range
+// (older saved restaurant stops only have entrance_fee, so it is the fallback).
+const getPlacePrice = (dest: Destination) => {
+  const d: any = dest;
+  const kind = getStopKind(dest);
+  if (kind === "stay") return parsePriceRange(d.price_range ?? d.priceRange);
+  if (kind === "food") return parsePriceRange(d.price_range ?? d.entrance_fee);
+  return parsePriceRange(d.entrance_fee);
+};
+
+const getBudgetCap = (tier: BudgetTier, kind: StopKind) =>
+  kind === "stay" ? tier.stayMax : kind === "food" ? tier.foodMax : tier.attractionMax;
+
+/**
+ * Does this place fit the selected budget?
+ * Known price: its starting price must be within the tier's limit for its kind.
+ * Unknown price: allowed only where the tier allows unlisted prices.
+ */
+const matchesBudget = (dest: Destination, budget: string): boolean => {
+  const tier = getBudgetTier(budget);
+  const price = getPlacePrice(dest);
+  if (!price) return tier.allowUnlistedPrices;
+  return price.min <= getBudgetCap(tier, getStopKind(dest));
+};
+
+/**
+ * Price used in the expense estimate. Attractions use their recorded fee.
+ * Stays and restaurants are recorded as wide ranges ("₱250 - ₱4,500"), and the
+ * traveler would pick an option within their budget, so the top of the range
+ * is capped at the tier's limit. Flexible has no cap, so it keeps the full range.
+ */
+const getEstimatedPrice = (dest: Destination, budget: string) => {
+  const price = getPlacePrice(dest);
+  if (!price) return null;
+  const kind = getStopKind(dest);
+  if (kind === "attraction") return price;
+  const cap = getBudgetCap(getBudgetTier(budget), kind);
+  if (!Number.isFinite(cap)) return price;
+  return { min: price.min, max: Math.max(price.min, Math.min(price.max, cap)) };
+};
 
 const getCoordinates = (place: Destination) => {
   const item: any = place;
@@ -669,12 +803,21 @@ const applyRoadLegs = (
    GENERATE CUSTOMIZED ITINERARY
 ========================================================= */
 
+interface GeneratedPlan {
+  days: ItineraryDay[];
+  // Plain-language messages about things the budget preference limited.
+  notices: string[];
+}
+
 const generateCustomizedDays = (
   destinations: Destination[],
   preferences: ItineraryPreferences,
-): ItineraryDay[] => {
+): GeneratedPlan => {
   const tripDays = getTripDays(preferences.travelDateStart, preferences.travelDateEnd);
-  if (tripDays <= 0 || destinations.length === 0) return [];
+  if (tripDays <= 0 || destinations.length === 0) return { days: [], notices: [] };
+
+  const budget = preferences.budget;
+  const notices: string[] = [];
 
   const pace =
     paceOptions.find((option) => option.value === preferences.travelPace) ||
@@ -682,16 +825,28 @@ const generateCustomizedDays = (
   const perDay = pace.stopsPerDay;
   const wanted = tripDays * perDay;
 
-  const scored = destinations
-    .filter(
-      (dest) => (dest as any).is_active !== false && getStopKind(dest) === "attraction",
-    )
-    .map((dest) => {
-      const match = getInterestMatch(dest, preferences.selectedInterests);
-      const price = getPlacePrice(dest);
-      const featuredBonus = Number(Boolean(dest.featured)) * 0.25;
-      return { dest, match, featuredBonus, price };
-    });
+  // BUDGET FILTER: the selected budget removes places from ALL THREE pools
+  // before anything is picked. This is a real filter, not just a sort order.
+  const activePlaces = destinations.filter((dest) => (dest as any).is_active !== false);
+
+  const attractionPool = activePlaces.filter(
+    (dest) => getStopKind(dest) === "attraction" && matchesBudget(dest, budget),
+  );
+  const restaurantPool = activePlaces.filter(
+    (dest) => getStopKind(dest) === "food" && matchesBudget(dest, budget),
+  );
+  const accommodationPool = preferences.includeAccommodation
+    ? activePlaces.filter(
+        (dest) => getStopKind(dest) === "stay" && matchesBudget(dest, budget),
+      )
+    : [];
+
+  const scored = attractionPool.map((dest) => {
+    const match = getInterestMatch(dest, preferences.selectedInterests);
+    const price = getPlacePrice(dest);
+    const featuredBonus = Number(Boolean(dest.featured)) * 0.25;
+    return { dest, match, featuredBonus, price };
+  });
 
   const knownAttractionPrices = scored
     .map((item) => item.price?.min)
@@ -702,35 +857,35 @@ const generateCustomizedDays = (
     : null;
 
   scored.sort((a, b) => {
-      // Interest/category match always takes priority. Budget changes the
-      // order within the matching category; unknown prices are never treated
-      // as free or cheap.
-      if (b.match !== a.match) return b.match - a.match;
+    // Interest/category match always takes priority. Inside the budget-filtered
+    // pool, the budget preference still orders the places; unknown prices are
+    // never treated as free or cheap.
+    if (b.match !== a.match) return b.match - a.match;
 
-      const aPrice = a.price;
-      const bPrice = b.price;
+    const aPrice = a.price;
+    const bPrice = b.price;
 
-      if (preferences.budget === "Budget-friendly") {
-        const aValue = aPrice?.min ?? Number.POSITIVE_INFINITY;
-        const bValue = bPrice?.min ?? Number.POSITIVE_INFINITY;
-        if (aValue !== bValue) return aValue - bValue;
-      } else if (preferences.budget === "Moderate") {
-        if (medianAttractionPrice !== null) {
-          const aValue = aPrice ? Math.abs(aPrice.min - medianAttractionPrice) : Number.POSITIVE_INFINITY;
-          const bValue = bPrice ? Math.abs(bPrice.min - medianAttractionPrice) : Number.POSITIVE_INFINITY;
-          if (aValue !== bValue) return aValue - bValue;
-        }
-      } else if (preferences.budget === "Flexible") {
-        // Cost is less restrictive, not a reason to prefer expensive places.
-        // Use featured status as the stronger signal, then prefer known lower fees.
-        if (b.featuredBonus !== a.featuredBonus) return b.featuredBonus - a.featuredBonus;
-        const aValue = aPrice?.min ?? Number.POSITIVE_INFINITY;
-        const bValue = bPrice?.min ?? Number.POSITIVE_INFINITY;
+    if (budget === "Budget-friendly") {
+      const aValue = aPrice?.min ?? Number.POSITIVE_INFINITY;
+      const bValue = bPrice?.min ?? Number.POSITIVE_INFINITY;
+      if (aValue !== bValue) return aValue - bValue;
+    } else if (budget === "Moderate") {
+      if (medianAttractionPrice !== null) {
+        const aValue = aPrice ? Math.abs(aPrice.min - medianAttractionPrice) : Number.POSITIVE_INFINITY;
+        const bValue = bPrice ? Math.abs(bPrice.min - medianAttractionPrice) : Number.POSITIVE_INFINITY;
         if (aValue !== bValue) return aValue - bValue;
       }
+    } else if (budget === "Flexible") {
+      // Cost is less restrictive, not a reason to prefer expensive places.
+      // Use featured status as the stronger signal, then prefer known lower fees.
+      if (b.featuredBonus !== a.featuredBonus) return b.featuredBonus - a.featuredBonus;
+      const aValue = aPrice?.min ?? Number.POSITIVE_INFINITY;
+      const bValue = bPrice?.min ?? Number.POSITIVE_INFINITY;
+      if (aValue !== bValue) return aValue - bValue;
+    }
 
-      return a.dest.name.localeCompare(b.dest.name);
-    });
+    return a.dest.name.localeCompare(b.dest.name);
+  });
 
   // Only attractions that really match the chosen interests come first.
   const matched =
@@ -755,28 +910,63 @@ const generateCustomizedDays = (
   // unrelated categories. When no interests are selected, use all popular places.
   if (preferences.selectedInterests.length === 0) take(scored);
 
+  if (selected.length === 0) return { days: [], notices: [] };
+
+  if (selected.length < wanted) {
+    notices.push(
+      `Only ${selected.length} attraction${selected.length !== 1 ? "s" : ""} matched your ${budget} budget${
+        preferences.selectedInterests.length > 0 ? " and selected interests" : ""
+      }, so some days have fewer stops than the ${pace.label} pace normally gives.${
+        budget !== "Flexible" ? " Choose a higher budget preference to see more places." : ""
+      }`,
+    );
+  }
+
   // Group by location so each day's stops are close together.
   const grouped = splitIntoDays(selected, perDay, tripDays);
 
   // Accommodation is optional. It is recommended only when the traveler
-  // selects the Accommodations option in the preferences section.
-  // Restaurants are intentionally not inserted into Customize Your Trip.
-  const accommodations = preferences.includeAccommodation
-    ? destinations.filter(
-        (dest) => (dest as any).is_active !== false && getStopKind(dest) === "stay",
-      )
-    : [];
+  // selects the Accommodations option in the preferences section, and only
+  // from stays that fit the budget.
   // Use the trip's selected attractions as a whole when choosing one base stay.
   const selectedAccommodation = preferences.includeAccommodation
-    ? chooseAccommodation(accommodations, preferences.budget, selected)
+    ? chooseAccommodation(accommodationPool, budget, selected)
     : null;
 
-  return grouped.map((dayDestinations, index) => {
-    const stops = [...dayDestinations];
+  if (preferences.includeAccommodation && !selectedAccommodation) {
+    notices.push(`No accommodation matched your ${budget} budget, so none was added.`);
+  }
+
+  // One lunch per day, chosen only from restaurants that fit the budget and
+  // are close to the day's stops. A restaurant is never used twice in a trip.
+  const usedRestaurantIds = new Set<string>();
+  let daysWithoutLunch = 0;
+
+  const plannedDays = grouped.map((dayDestinations, index) => {
+    let stops = [...dayDestinations];
+    let lunchAdded = false;
+
+    const lunchAnchor = stops[1] || stops[0];
+    if (lunchAnchor && restaurantPool.length > 0) {
+      const lunch = nearestOf(
+        lunchAnchor,
+        restaurantPool,
+        usedRestaurantIds,
+        MAX_MEAL_KM,
+      ) as Destination | null;
+
+      if (lunch) {
+        stops = insertStop(stops, lunch);
+        usedRestaurantIds.add(lunch.id);
+        lunchAdded = true;
+      }
+    }
+
+    if (lunchAnchor && !lunchAdded) daysWithoutLunch += 1;
 
     // Keep the same recommended accommodation throughout the trip.
     // The final day has no assumed overnight.
-    if (selectedAccommodation && index < grouped.length - 1) {
+    if (selectedAccommodation && dayDestinations.length > 0 && index < grouped.length - 1) {
       stops.push(selectedAccommodation);
     }
 
@@ -788,18 +978,35 @@ const generateCustomizedDays = (
           : "A balanced sightseeing day.";
 
     const hasAccommodation = stops.some((stop) => getStopKind(stop) === "stay");
-    const note = hasAccommodation
-      ? `${baseNote} An accommodation near the day's final attraction has been recommended automatically.`
-      : baseNote;
+    const extras = [
+      lunchAdded ? `A lunch stop that fits your ${budget} budget was added.` : "",
+      hasAccommodation
+        ? "An accommodation that fits your budget has been recommended automatically."
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
 
     return {
       id: `day-${Date.now()}-${index}`,
       day: index + 1,
       date: getDateForDay(preferences.travelDateStart, index + 1),
       destinations: stops,
-      notes: note,
+      notes: extras ? `${baseNote} ${extras}` : baseNote,
     };
   });
+
+  if (restaurantPool.length === 0) {
+    notices.push(`No restaurants matched your ${budget} budget, so no lunch stops were added.`);
+  } else if (daysWithoutLunch > 0) {
+    notices.push(
+      `${daysWithoutLunch} day${daysWithoutLunch !== 1 ? "s have" : " has"} no ${budget}-matching restaurant within ${MAX_MEAL_KM} km of the stops, so no lunch was added ${
+        daysWithoutLunch !== 1 ? "on those days" : "that day"
+      }.`,
+    );
+  }
+
+  return { days: plannedDays, notices };
 };
 
 /* =========================================================
@@ -883,9 +1090,13 @@ const SortableItem: React.FC<{
               <Clock size={11} strokeWidth={2} /> {arrive}
             </span>
           )}
-          {(kind === "stay" ? d.price_range : d.entrance_fee) && (
+          {(kind === "stay" ? d.price_range : d.entrance_fee) ? (
             <span className="planner-stop-fee">
               {kind === "stay" ? d.price_range : d.entrance_fee}
+            </span>
+          ) : (
+            <span className="planner-stop-fee">
+              {kind === "attraction" ? "Fee not listed" : "Price not listed"}
             </span>
           )}
         </div>
@@ -988,6 +1199,8 @@ const ItineraryPlanner: React.FC = () => {
   const [category, setCategory] = useState("All");
   const [nearestFirst, setNearestFirst] = useState(true);
   const [pickerKind, setPickerKind] = useState<StopKind>("attraction");
+  // The picker follows the budget preference; this lets a traveler look past it.
+  const [showAllPrices, setShowAllPrices] = useState(false);
   const [justAdded, setJustAdded] = useState("");
   const [customizerError, setCustomizerError] = useState("");
   const [pageNotice, setPageNotice] = useState("");
@@ -1363,25 +1576,47 @@ const ItineraryPlanner: React.FC = () => {
     [destinations],
   );
 
+  // Customization follows the same budget rule as generation: lunch and
+  // overnight suggestions only come from places that fit the preference.
+  const budgetFoodPlaces = useMemo(
+    () => foodPlaces.filter((dest) => matchesBudget(dest, preferences.budget)),
+    [foodPlaces, preferences.budget],
+  );
+
+  const budgetStayPlaces = useMemo(
+    () => stayPlaces.filter((dest) => matchesBudget(dest, preferences.budget)),
+    [stayPlaces, preferences.budget],
+  );
+
   const tripCostEstimate = useMemo(() => {
-    const attractionStops = days.flatMap((day) => day.destinations).filter(
-      (stop) => getStopKind(stop) === "attraction",
-    );
+    const allStops = days.flatMap((day) => day.destinations);
+    const travelers = Math.max(1, preferences.groupSize);
+    const budget = preferences.budget;
+
+    // Attractions: recorded entrance fee per person.
+    const attractionStops = allStops.filter((stop) => getStopKind(stop) === "attraction");
     const attractionPrices = attractionStops.map(getPlacePrice);
     const attractionKnown = attractionPrices.filter(Boolean) as { min: number; max: number }[];
     const attractionUnknown = attractionPrices.length - attractionKnown.length;
-    const attractionMin = attractionKnown.reduce((sum, price) => sum + price.min, 0) *
-      Math.max(1, preferences.groupSize);
-    const attractionMax = attractionKnown.reduce((sum, price) => sum + price.max, 0) *
-      Math.max(1, preferences.groupSize);
+    const attractionMin = attractionKnown.reduce((sum, price) => sum + price.min, 0) * travelers;
+    const attractionMax = attractionKnown.reduce((sum, price) => sum + price.max, 0) * travelers;
 
+    // Restaurants: each restaurant stop is one meal per traveler. Restaurant
+    // prices are ranges (not exact bills), so the range is capped at the
+    // budget's meal limit. Restaurants without a price are counted as missing.
+    const foodStops = allStops.filter((stop) => getStopKind(stop) === "food");
+    const foodPrices = foodStops.map((stop) => getEstimatedPrice(stop, budget));
+    const foodKnown = foodPrices.filter(Boolean) as { min: number; max: number }[];
+    const foodUnknown = foodPrices.length - foodKnown.length;
+    const foodMin = foodKnown.reduce((sum, price) => sum + price.min, 0) * travelers;
+    const foodMax = foodKnown.reduce((sum, price) => sum + price.max, 0) * travelers;
+
+    // Accommodation: one price-range unit per night, capped at the budget limit.
     const overnightCount = Math.max(0, getTripDays(
       preferences.travelDateStart, preferences.travelDateEnd,
     ) - 1);
-    const chosenStay = days.flatMap((day) => day.destinations).find(
-      (stop) => getStopKind(stop) === "stay",
-    );
-    const stayPrice = chosenStay ? getPlacePrice(chosenStay) : null;
+    const chosenStay = allStops.find((stop) => getStopKind(stop) === "stay");
+    const stayPrice = chosenStay ? getEstimatedPrice(chosenStay, budget) : null;
     const accommodationRequested = preferences.includeAccommodation && overnightCount > 0;
     const stayMin = accommodationRequested && stayPrice ? stayPrice.min * overnightCount : null;
     const stayMax = accommodationRequested && stayPrice ? stayPrice.max * overnightCount : null;
@@ -1391,16 +1626,25 @@ const ItineraryPlanner: React.FC = () => {
       attractionMax,
       attractionUnknown,
       attractionKnownCount: attractionKnown.length,
+      foodCount: foodStops.length,
+      foodKnownCount: foodKnown.length,
+      foodUnknown,
+      foodMin,
+      foodMax,
       overnightCount,
       stayMin,
       stayMax,
-      totalMin: attractionMin + (stayMin ?? 0),
-      totalMax: attractionMax + (stayMax ?? 0),
-      hasUnknown: attractionUnknown > 0 || (accommodationRequested && !stayPrice),
-      hasAnyKnown: attractionKnown.length > 0 || Boolean(stayPrice && accommodationRequested),
+      totalMin: attractionMin + foodMin + (stayMin ?? 0),
+      totalMax: attractionMax + foodMax + (stayMax ?? 0),
+      hasUnknown:
+        attractionUnknown > 0 || foodUnknown > 0 || (accommodationRequested && !stayPrice),
+      hasAnyKnown:
+        attractionKnown.length > 0 ||
+        foodKnown.length > 0 ||
+        Boolean(stayPrice && accommodationRequested),
       stayName: chosenStay?.name || "",
     };
-  }, [days, preferences.groupSize, preferences.travelDateStart, preferences.travelDateEnd, preferences.includeAccommodation]);
+  }, [days, preferences.groupSize, preferences.budget, preferences.travelDateStart, preferences.travelDateEnd, preferences.includeAccommodation]);
 
   const formatPesoRange = (min: number, max: number) =>
     min === max
@@ -1433,7 +1677,7 @@ const ItineraryPlanner: React.FC = () => {
         const lunchAnchor = day.destinations[1] || day.destinations[0];
         const lunch =
           lunchAnchor && !dayKinds.includes("food")
-            ? nearestOf(lunchAnchor, foodPlaces, usedDestinationIds, MAX_MEAL_KM)
+            ? nearestOf(lunchAnchor, budgetFoodPlaces, usedDestinationIds, MAX_MEAL_KM)
             : null;
         const stayAnchor = day.destinations[day.destinations.length - 1];
         const stay =
@@ -1441,12 +1685,12 @@ const ItineraryPlanner: React.FC = () => {
           day.destinations.length > 1 &&
           dayIndex < days.length - 1 &&
           !dayKinds.includes("stay")
-            ? nearestOf(stayAnchor, stayPlaces, usedDestinationIds, MAX_STAY_KM)
+            ? nearestOf(stayAnchor, budgetStayPlaces, usedDestinationIds, MAX_STAY_KM)
             : null;
 
         return { lunchAnchor, lunch, stayAnchor, stay };
       }),
-    [days, foodPlaces, stayPlaces, usedDestinationIds],
+    [days, budgetFoodPlaces, budgetStayPlaces, usedDestinationIds],
   );
 
   /* ---------- real road distances between stops ---------- */
@@ -1574,11 +1818,24 @@ const ItineraryPlanner: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showPicker, pickerKind, lastStop?.id, destinations]);
 
+  // How many places of the current tab the budget preference hides.
+  const budgetHiddenCount = useMemo(
+    () =>
+      destinations.filter(
+        (dest) =>
+          getStopKind(dest) === pickerKind && !matchesBudget(dest, preferences.budget),
+      ).length,
+    [destinations, pickerKind, preferences.budget],
+  );
+
   const filteredDestinations = useMemo(() => {
     const query = search.trim().toLowerCase();
 
     const list = destinations.filter((dest) => {
       if (getStopKind(dest) !== pickerKind) return false;
+
+      // Manual customization follows the budget preference too.
+      if (!showAllPrices && !matchesBudget(dest, preferences.budget)) return false;
 
       const d: any = dest;
       const matchesSearch =
@@ -1599,7 +1856,7 @@ const ItineraryPlanner: React.FC = () => {
       pickerRoadKm[dest.id] ?? getTravelLeg(lastStop, dest, speedKmh)?.km ?? Infinity;
 
     return [...list].sort((a, b) => km(a) - km(b));
-  }, [destinations, search, category, nearestFirst, lastStop, speedKmh, pickerKind, pickerRoadKm]);
+  }, [destinations, search, category, nearestFirst, lastStop, speedKmh, pickerKind, pickerRoadKm, showAllPrices, preferences.budget]);
 
   /* =====================================================
      LARGE MAP (history based, so "back" closes it)
@@ -1676,6 +1933,7 @@ const ItineraryPlanner: React.FC = () => {
     setSearch("");
     setCategory("All");
     setNearestFirst(true);
+    setShowAllPrices(false);
     setJustAdded("");
     setShowPicker(true);
   };
@@ -1811,6 +2069,19 @@ const ItineraryPlanner: React.FC = () => {
       return;
     }
 
+    // The budget preference filters the attractions, so check it can still
+    // produce a plan before replacing the current itinerary.
+    const budgetAttractions = availableAttractions.filter((dest) =>
+      matchesBudget(dest, p.budget),
+    );
+
+    if (budgetAttractions.length === 0) {
+      setCustomizerError(
+        `No attractions match the ${p.budget} budget preference. Try Moderate or Flexible.`,
+      );
+      return;
+    }
+
     if (
       totalDests > 0 &&
       !window.confirm("This will replace your current itinerary. Continue?")
@@ -1818,10 +2089,15 @@ const ItineraryPlanner: React.FC = () => {
       return;
     }
 
-    const generatedDays = generateCustomizedDays(destinations, p);
+    const plan = generateCustomizedDays(destinations, p);
+    const generatedDays = plan.days;
 
     if (generatedDays.length === 0) {
-      setCustomizerError("We couldn't build an itinerary from the available attractions.");
+      setCustomizerError(
+        p.selectedInterests.length > 0
+          ? `No attractions match both your selected interests and the ${p.budget} budget preference. Try a different budget or interests.`
+          : "We couldn't build an itinerary from the available attractions.",
+      );
       return;
     }
 
@@ -1830,6 +2106,8 @@ const ItineraryPlanner: React.FC = () => {
     setDays(generatedDays);
     setGenerated(true);
     setCustomizerError("");
+    // Tell the traveler when the budget limited the plan (fewer stops, no stay...).
+    setPageNotice(plan.notices.join(" "));
     setShowCustomizer(false);
     setOpenMapDayId(null);
     closeExpandedMap();
@@ -1944,7 +2222,7 @@ const ItineraryPlanner: React.FC = () => {
       doc.text(
         `${preferences.groupSize} traveler${preferences.groupSize !== 1 ? "s" : ""} • ${
           preferences.groupType
-        } • ${preferences.travelPace} pace`,
+        } • ${preferences.travelPace} pace • ${preferences.budget} budget`,
         14,
         y,
       );
@@ -1958,7 +2236,21 @@ const ItineraryPlanner: React.FC = () => {
       14,
       y,
     );
-    y += 10;
+    y += 6;
+
+    if (tripCostEstimate.hasAnyKnown) {
+      doc.text(
+        `Estimated known costs: ${formatPesoRange(
+          tripCostEstimate.totalMin,
+          tripCostEstimate.totalMax,
+        )}${tripCostEstimate.hasUnknown ? " (some prices not listed)" : ""}`,
+        14,
+        y,
+      );
+      y += 6;
+    }
+
+    y += 4;
 
     days.forEach((day, dayIndex) => {
       if (y > 255) {
@@ -2004,7 +2296,13 @@ const ItineraryPlanner: React.FC = () => {
               getStopKind(stop.dest) !== "attraction"
                 ? ` (${KIND_LABELS[getStopKind(stop.dest)]})`
                 : ""
-            }${d.entrance_fee ? `\nFee: ${d.entrance_fee}` : ""}`,
+            }${
+              getStopKind(stop.dest) === "stay"
+                ? `\nPrice per night: ${d.price_range || "not listed"}`
+                : getStopKind(stop.dest) === "food"
+                  ? `\nPrice: ${d.price_range || d.entrance_fee || "not listed"}`
+                  : `\nFee: ${d.entrance_fee || "not listed"}`
+            }`,
             stop.travelFromPrev
               ? `~${formatDuration(stop.travelFromPrev.minutes)} (${stop.travelFromPrev.km} km)`
               : index === 0
@@ -2160,18 +2458,26 @@ const ItineraryPlanner: React.FC = () => {
           )}
 
         {days.length > 0 && (
-          <section className="planner-cost-summary" aria-label="Estimated trip expenses">
+          <section className="planner-cost-summary" aria-label="Estimated trip cost">
             <div className="planner-cost-heading">
               <div className="planner-cost-icon"><WalletCards size={18} /></div>
               <div>
-                <strong>Estimated trip expenses</strong>
-                <span>Estimate based on recorded attraction fees and accommodation price ranges. It is not a live quote.</span>
+                <strong>Estimated trip cost</strong>
+                <span>Estimate based on recorded attraction fees, restaurant prices, and accommodation price ranges, following your {preferences.budget} budget. It is an informational estimate, not a live quote or a spending limit.</span>
               </div>
             </div>
             <div className="planner-cost-row">
               <span>Attraction entrance fees ({preferences.groupSize} traveler{preferences.groupSize !== 1 ? "s" : ""})</span>
               <strong>{tripCostEstimate.attractionKnownCount ? formatPesoRange(tripCostEstimate.attractionMin, tripCostEstimate.attractionMax) : "Price unavailable"}</strong>
             </div>
+            {tripCostEstimate.foodCount > 0 && (
+              <div className="planner-cost-row">
+                <span>
+                  Restaurant meals ({tripCostEstimate.foodCount} meal{tripCostEstimate.foodCount !== 1 ? "s" : ""} × {preferences.groupSize} traveler{preferences.groupSize !== 1 ? "s" : ""})
+                </span>
+                <strong>{tripCostEstimate.foodKnownCount ? formatPesoRange(tripCostEstimate.foodMin, tripCostEstimate.foodMax) : "Price unavailable"}</strong>
+              </div>
+            )}
             {preferences.includeAccommodation && tripCostEstimate.overnightCount > 0 && (
               <div className="planner-cost-row">
                 <span>Accommodation ({tripCostEstimate.overnightCount} night{tripCostEstimate.overnightCount !== 1 ? "s" : ""})</span>
@@ -2185,7 +2491,10 @@ const ItineraryPlanner: React.FC = () => {
             {(tripCostEstimate.hasUnknown || !tripCostEstimate.hasAnyKnown) && (
               <small>Some prices are missing or could not be read, so the subtotal may be lower than your actual expenses. Accommodation is estimated as one price-range unit per night; confirm room and group rates with the property.</small>
             )}
-            <small>Restaurants, transportation, meals, and other personal expenses are not included. Scheduled arrival times are estimates, not live traffic or opening-hour updates.</small>
+            {(
+              <small>Restaurant and accommodation price ranges are capped at your {preferences.budget} limits (meals up to {formatPesoRange(getBudgetTier(preferences.budget).foodMax, getBudgetTier(preferences.budget).foodMax)} per person, stays up to {formatPesoRange(getBudgetTier(preferences.budget).stayMax, getBudgetTier(preferences.budget).stayMax)} per night), because the plan only recommends options within that budget. Restaurant prices are treated as per person for one meal.</small>
+            )}
+            <small>Transportation, other meals and drinks, and personal expenses are not included. Scheduled arrival times are estimates, not live traffic or opening-hour updates.</small>
           </section>
         )}
 
@@ -2904,7 +3213,7 @@ const ItineraryPlanner: React.FC = () => {
               </div>
               <div>
                 <h4>What's your budget preference?</h4>
-                <p>Your preference helps prioritize attraction fees and accommodation prices.</p>
+                <p>Your preference filters attractions, accommodations, and restaurants by their listed prices.</p>
               </div>
             </div>
 
@@ -2920,6 +3229,9 @@ const ItineraryPlanner: React.FC = () => {
                     >
                       <span className="planner-option-title">{budget.label}</span>
                       <small>{budget.description}</small>
+                      <small style={{ display: "block", marginTop: 4, fontSize: ".6rem", lineHeight: 1.35, opacity: 0.8 }}>
+                        {budget.limits}
+                      </small>
                       {selected && (
                         <span className="planner-option-check">
                           <Check size={12} />
@@ -2958,9 +3270,9 @@ const ItineraryPlanner: React.FC = () => {
           <div className="planner-generator-info">
             <Sparkles size={15} strokeWidth={1.8} />
             <span>
-              Your customized itinerary is generated from attraction listings and, if selected,
-              a recommended accommodation from the Calbayog tourism database. Restaurants are
-              not added to this generated plan.
+              Your customized itinerary is generated from the Calbayog tourism database. The
+              attractions, a daily lunch stop, and (if selected) a recommended accommodation
+              are all chosen from places that fit your budget preference.
             </span>
           </div>
         </Modal.Body>
@@ -3092,6 +3404,17 @@ const ItineraryPlanner: React.FC = () => {
               </label>
             )}
 
+            {budgetHiddenCount > 0 && (
+              <label className="planner-picker-sort">
+                <input
+                  type="checkbox"
+                  checked={showAllPrices}
+                  onChange={(event) => setShowAllPrices(event.target.checked)}
+                />
+                Show all prices ({budgetHiddenCount} outside {preferences.budget})
+              </label>
+            )}
+
             {justAdded && (
               <span className="planner-picker-added">
                 <Check size={12} /> Added {justAdded}
@@ -3105,7 +3428,11 @@ const ItineraryPlanner: React.FC = () => {
                 <Search size={26} strokeWidth={1.5} />
               </div>
               <h4>No places found</h4>
-              <p>Try another search term or category.</p>
+              <p>
+                {budgetHiddenCount > 0 && !showAllPrices
+                  ? `Nothing here fits your ${preferences.budget} budget. Tick “Show all prices” to see the rest, or try another search term or category.`
+                  : "Try another search term or category."}
+              </p>
             </div>
           ) : (
             <Row className="g-3">
@@ -3171,14 +3498,13 @@ const ItineraryPlanner: React.FC = () => {
                           </span>
                         )}
 
-                        {(getStopKind(dest) === "stay"
-                          ? d.price_range
-                          : d.entrance_fee) && (
-                          <span className="planner-picker-travel">
-                            {getStopKind(dest) === "stay" ? "Price per night: " : "Entrance fee: "}
-                            {getStopKind(dest) === "stay" ? d.price_range : d.entrance_fee}
-                          </span>
-                        )}
+                        <span className="planner-picker-travel">
+                          {getStopKind(dest) === "stay"
+                            ? `Price per night: ${d.price_range || "not listed"}`
+                            : getStopKind(dest) === "food"
+                              ? `Price: ${d.price_range || d.entrance_fee || "not listed"}`
+                              : `Entrance fee: ${d.entrance_fee || "not listed"}`}
+                        </span>
 
                         {dest.location_address && (
                           <span className="planner-picker-location">
