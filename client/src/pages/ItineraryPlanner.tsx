@@ -1542,11 +1542,11 @@ const ItineraryPlanner: React.FC = () => {
      DERIVED DATA
   ===================================================== */
 
-  // Food & Dining is intentionally hidden from the manual Add Place picker for now.
-  // Restaurant suggestions elsewhere in the planner remain unchanged.
+  // The Add Place picker offers attractions, restaurants, and stays. Every tab
+  // follows the budget preference (see filteredDestinations).
   const availableKinds = useMemo(
     () =>
-      (["attraction", "stay"] as StopKind[]).filter((kind) =>
+      (["attraction", "food", "stay"] as StopKind[]).filter((kind) =>
         destinations.some((dest) => getStopKind(dest) === kind),
       ),
     [destinations],
@@ -3345,6 +3345,17 @@ const ItineraryPlanner: React.FC = () => {
               ))}
             </div>
           )}
+
+          <div
+            className="planner-info-strip"
+            style={{ marginBottom: 10 }}
+          >
+            <WalletCards size={14} strokeWidth={1.8} />
+            <span>
+              Showing places that fit your <strong>{preferences.budget}</strong> budget (
+              {describeBudgetLimits(preferences.budget)}). Change it in Customize Trip.
+            </span>
+          </div>
 
           <div className="planner-picker-toolbar">
             <div className="planner-search-wrapper">
