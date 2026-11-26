@@ -1611,15 +1611,19 @@ const ItineraryPlanner: React.FC = () => {
     const foodMin = foodKnown.reduce((sum, price) => sum + price.min, 0) * travelers;
     const foodMax = foodKnown.reduce((sum, price) => sum + price.max, 0) * travelers;
 
-    // Accommodation: one price-range unit per night, capped at the budget limit.
-    const overnightCount = Math.max(0, getTripDays(
-      preferences.travelDateStart, preferences.travelDateEnd,
-    ) - 1);
-    const chosenStay = allStops.find((stop) => getStopKind(stop) === "stay");
-    const stayPrice = chosenStay ? getEstimatedPrice(chosenStay, budget) : null;
-    const accommodationRequested = preferences.includeAccommodation && overnightCount > 0;
-    const stayMin = accommodationRequested && stayPrice ? stayPrice.min * overnightCount : null;
-    const stayMax = accommodationRequested && stayPrice ? stayPrice.max * overnightCount : null;
+    // Accommodation: one night for each day that has a stay in it (so a stay
+    // added by hand counts too, with or without dates). Only the first stay of
+    // a day is counted, so nothing is double-counted. The price range is capped
+    // at the budget limit.
+    const stayStops = days
+      .map((day) => day.destinations.find((stop) => getStopKind(stop) === "stay"))
+      .filter(Boolean) as Destination[];
+    const stayPrices = stayStops.map((stop) => getEstimatedPrice(stop, budget));
+    const stayKnown = stayPrices.filter(Boolean) as { min: number; max: number }[];
+    const stayUnknown = stayPrices.length - stayKnown.length;
+    const overnightCount = stayStops.length;
+    const stayMin = stayKnown.length ? stayKnown.reduce((sum, price) => sum + price.min, 0) : null;
+    const stayMax = stayKnown.length ? stayKnown.reduce((sum, price) => sum + price.max, 0) : null;
 
     return {
       attractionMin,
@@ -1636,15 +1640,12 @@ const ItineraryPlanner: React.FC = () => {
       stayMax,
       totalMin: attractionMin + foodMin + (stayMin ?? 0),
       totalMax: attractionMax + foodMax + (stayMax ?? 0),
-      hasUnknown:
-        attractionUnknown > 0 || foodUnknown > 0 || (accommodationRequested && !stayPrice),
+      hasUnknown: attractionUnknown > 0 || foodUnknown > 0 || stayUnknown > 0,
       hasAnyKnown:
-        attractionKnown.length > 0 ||
-        foodKnown.length > 0 ||
-        Boolean(stayPrice && accommodationRequested),
-      stayName: chosenStay?.name || "",
+        attractionKnown.length > 0 || foodKnown.length > 0 || stayKnown.length > 0,
+      stayName: stayStops[0]?.name || "",
     };
-  }, [days, preferences.groupSize, preferences.budget, preferences.travelDateStart, preferences.travelDateEnd, preferences.includeAccommodation]);
+  }, [days, preferences.groupSize, preferences.budget]);
 
   const formatPesoRange = (min: number, max: number) =>
     min === max
@@ -2478,7 +2479,7 @@ const ItineraryPlanner: React.FC = () => {
                 <strong>{tripCostEstimate.foodKnownCount ? formatPesoRange(tripCostEstimate.foodMin, tripCostEstimate.foodMax) : "Price unavailable"}</strong>
               </div>
             )}
-            {preferences.includeAccommodation && tripCostEstimate.overnightCount > 0 && (
+            {tripCostEstimate.overnightCount > 0 && (
               <div className="planner-cost-row">
                 <span>Accommodation ({tripCostEstimate.overnightCount} night{tripCostEstimate.overnightCount !== 1 ? "s" : ""})</span>
                 <strong>{tripCostEstimate.stayMin !== null && tripCostEstimate.stayMax !== null ? formatPesoRange(tripCostEstimate.stayMin, tripCostEstimate.stayMax) : "Price unavailable"}</strong>
@@ -3353,8 +3354,26 @@ const ItineraryPlanner: React.FC = () => {
             <WalletCards size={14} strokeWidth={1.8} />
             <span>
               Showing places that fit your <strong>{preferences.budget}</strong> budget (
-              {describeBudgetLimits(preferences.budget)}). Change it in Customize Trip.
+              {describeBudgetLimits(preferences.budget)}).
             </span>
+            <button
+              type="button"
+              onClick={() => {
+                setShowPicker(false);
+                openCustomizer();
+              }}
+              style={{
+                marginLeft: 8,
+                border: 0,
+                background: "none",
+                padding: 0,
+                fontWeight: 800,
+                textDecoration: "underline",
+                color: CALBAYOG_BLUE,
+              }}
+            >
+              Change budget
+            </button>
           </div>
 
           <div className="planner-picker-toolbar">
